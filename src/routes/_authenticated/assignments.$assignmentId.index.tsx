@@ -313,7 +313,11 @@ function QuestionCard({
   });
 
   const tutorMutation = useMutation({
-    mutationFn: () => tutor({ data: { answerId: answer!.id, message: reply } }),
+    mutationFn: async () => {
+      if (!isEnglishOnly(reply)) throw new Error("Please ask your question in English.");
+      return tutor({ data: { answerId: answer!.id, message: reply } });
+    },
+
     onSuccess: () => {
       setReply("");
       queryClient.invalidateQueries({ queryKey });

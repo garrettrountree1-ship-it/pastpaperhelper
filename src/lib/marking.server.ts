@@ -125,11 +125,14 @@ function clamp(result: z.infer<typeof markSchema>, maxMarks: number): MarkResult
     verdict,
     awardedMarks: awarded,
     feedback: isCorrect
-      ? result.feedback.trim() || "Well done — your answer earns full marks."
-      : verdict === "partial"
-        ? "Not yet."
-        : "Incorrect.",
-    explanation: isCorrect ? "" : limitWords(result.explanation ?? "", 90),
+      ? limitWords(result.feedback.trim() || "Well done — your answer earns full marks.", 40)
+      : [
+          verdict === "partial" ? "Not yet." : "Incorrect.",
+          limitWords(result.explanation ?? "", 85),
+        ]
+          .filter(Boolean)
+          .join(" "),
+    explanation: isCorrect ? "" : limitWords(result.explanation ?? "", 85),
     leadingQuestion: isCorrect ? "" : limitWords(result.leadingQuestion ?? "", 30),
     markPoints: (result.markPoints ?? []).map((p) => ({
       point: p.point.trim(),

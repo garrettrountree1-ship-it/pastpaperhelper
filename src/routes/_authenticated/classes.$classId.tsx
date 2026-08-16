@@ -348,6 +348,46 @@ function NewAssignmentDialog({ classId }: { classId: string }) {
             </div>
           </div>
 
+          <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-4">
+            <h3 className="font-display text-lg">Upload past paper &amp; mark scheme</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              PDFs or photos. Combined in one file, or paper and mark scheme separately — the AI
+              aligns each question with its marking points, and you can edit before saving.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="paper-files">Past paper (or combined file)</Label>
+                <Input
+                  id="paper-files"
+                  type="file"
+                  accept="application/pdf,image/*"
+                  multiple
+                  onChange={(event) => setPaperFiles(Array.from(event.target.files ?? []))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="scheme-files">Mark scheme (optional if combined)</Label>
+                <Input
+                  id="scheme-files"
+                  type="file"
+                  accept="application/pdf,image/*"
+                  multiple
+                  onChange={(event) => setSchemeFiles(Array.from(event.target.files ?? []))}
+                />
+              </div>
+            </div>
+            <Button
+              className="mt-3"
+              variant="secondary"
+              onClick={() => extractMutation.mutate()}
+              disabled={paperFiles.length === 0 || extractMutation.isPending}
+            >
+              <Wand2 className="size-4" />
+              {extractMutation.isPending ? "Reading paper..." : "Build questions with AI"}
+            </Button>
+          </div>
+
+
           <div className="space-y-4">
             {questions.map((question, index) => (
               <div key={index} className="rounded-xl border border-border p-4">

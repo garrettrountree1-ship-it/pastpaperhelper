@@ -130,7 +130,7 @@ function clamp(result: z.infer<typeof markSchema>, maxMarks: number): MarkResult
 
 function extractJson(text: string): string {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const source = fenced ? fenced[1] : text;
+  const source = fenced?.[1] ?? text;
   const start = source.indexOf("{");
   const end = source.lastIndexOf("}");
   return start >= 0 && end > start ? source.slice(start, end + 1) : source;

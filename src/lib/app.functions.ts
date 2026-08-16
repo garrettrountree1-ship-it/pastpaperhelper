@@ -449,12 +449,17 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       .object({
         assignmentId: z.string().uuid(),
         questionId: z.string().uuid(),
-        answerText: z.string().min(1),
+        answerText: z.string(),
+        imagePaths: z.array(z.string()).max(6).optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const imagePaths = (data.imagePaths ?? []).filter((path) => path.startsWith(`${userId}/`));
+    if (!data.answerText.trim() && imagePaths.length === 0) {
+      throw new Error("Write an answer or attach a photo of your working.");
+    }
     const { data: allowed } = await supabase.rpc("can_study_assignment", {
       _assignment_id: data.assignmentId,
       _user_id: userId,
@@ -477,6 +482,8 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       .single();
     const assignment = assignmentRow!;
 
+    const imageUrls = await signWorkImages(db, imagePaths);
+
     const { markStudentAnswer } = await import("./marking.server");
     const result = await markStudentAnswer({
       curriculum: assignment.curriculum,
@@ -485,6 +492,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       markScheme: question.mark_scheme,
       marks: question.marks,
       answer: data.answerText,
+      imageUrls,
     });
 
     const submission = await ensureSubmission(db, data.assignmentId, userId);
@@ -499,6 +507,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       submission_id: submission.id,
       question_id: data.questionId,
       answer_text: data.answerText,
+      image_paths: imagePaths,
       verdict: result.verdict,
       awarded_marks: result.awardedMarks,
       feedback: result.feedback,
@@ -522,6 +531,59 @@ export const gradeAnswer = createServerFn({ method: "POST" })
 
     await recalcSubmission(db, submission.id);
     return { answerId: answer.id, ...result };
+  });
+
+export const extractPaperQuestions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        classId: z.string().uuid(),
+        subject: z.string().default(""),
+        paperFiles: z
+          .array(
+            z.object({
+              filename: z.string(),
+              mimeType: z.string(),
+              base64: z.string().min(1),
+            }),
+          )
+          .min(1)
+          .max(4),
+        markSchemeFiles: z
+          .array(
+            z.object({
+              filename: z.string(),
+              mimeType: z.string(),
+              base64: z.string().min(1),
+            }),
+          )
+          .max(4)
+          .default([]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: klass, error } = await supabase
+      .from("classes")
+      .select("id, teacher_id, curriculum")
+      .eq("id", data.classId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!klass || klass.teacher_id !== userId) throw new Error("You do not own this class.");
+
+    const { extractQuestionsFromPapers } = await import("./paper-extract.server");
+    const questions = await extractQuestionsFromPapers({
+      curriculum: klass.curriculum,
+      subject: data.subject,
+      paperFiles: data.paperFiles,
+      markSchemeFiles: data.markSchemeFiles,
+    });
+    if (questions.length === 0) {
+      throw new Error("No questions could be read from those files. Try clearer or fewer pages.");
+    }
+    return { questions };
   });
 
 export const sendTutorMessage = createServerFn({ method: "POST" })

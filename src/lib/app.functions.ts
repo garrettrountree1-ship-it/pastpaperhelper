@@ -972,6 +972,57 @@ export const submitAssignment = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Read-only student-eye view of an assignment, for the owning teacher. */
+export const getAssignmentPreview = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ assignmentId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: allowed } = await supabase.rpc("can_teach_assignment", {
+      _assignment_id: data.assignmentId,
+      _user_id: userId,
+    });
+    if (!allowed) throw new Error("You don't teach this assignment.");
+
+    const db = await admin();
+    const { data: assignmentRow } = await db
+      .from("assignments")
+      .select("id, title, subject, curriculum, instructions, due_at, class_id")
+      .eq("id", data.assignmentId)
+      .single();
+    const assignment = assignmentRow!;
+    const { data: klass } = await db
+      .from("classes")
+      .select("name")
+      .eq("id", assignment.class_id)
+      .maybeSingle();
+    const { data: questions } = await db
+      .from("questions")
+      .select("id, position, question_text, marks, image_paths")
+      .eq("assignment_id", data.assignmentId)
+      .order("position");
+
+    return {
+      assignment: {
+        id: assignment.id,
+        classId: assignment.class_id,
+        title: assignment.title,
+        subject: assignment.subject,
+        curriculum: assignment.curriculum,
+        instructions: assignment.instructions,
+        dueAt: assignment.due_at,
+        className: klass?.name ?? "",
+      },
+      questions: await Promise.all(
+        (questions ?? []).map(async (q) => ({
+          ...q,
+          imageUrls: await signPaperPages(db, q.image_paths ?? []),
+        })),
+      ),
+    };
+  });
+
+
 /* --------------------------------------------------------------- helpers --- */
 
 type AnyClient = Awaited<ReturnType<typeof admin>>;

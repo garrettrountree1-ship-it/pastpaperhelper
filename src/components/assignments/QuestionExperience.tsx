@@ -51,13 +51,13 @@ export function QuestionExperience({
   result: Result | null;
   attempts: number;
   checking: boolean;
-  checkError?: string;
+  checkError: string | undefined;
   onCheck: () => void;
   thread: TutorTurn[];
   reply: string;
   onReplyChange: (value: string) => void;
   tutoring: boolean;
-  tutorError?: string;
+  tutorError: string | undefined;
   onSend: () => void;
 }) {
   const verdict = result?.verdict ?? null;

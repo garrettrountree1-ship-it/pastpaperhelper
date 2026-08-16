@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Pencil, Plus, Trash2, Wand2 } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Settings, Trash2, Wand2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -36,6 +36,7 @@ import {
   getAssignmentForEdit,
   getClassOverview,
   updateAssignment,
+  updateClass,
 } from "@/lib/app.functions";
 import { filesToPages } from "@/lib/pdf-pages";
 import { questionLabel } from "@/lib/question-label";
@@ -128,7 +129,14 @@ function ClassPage() {
                   </span>
                 </p>
               </div>
-              <AssignmentDialog classId={classId} trigger={<Button>New assignment</Button>} />
+              <div className="flex items-center gap-2">
+                <ClassSettingsDialog
+                  classId={classId}
+                  klass={overview.data.klass}
+                  onSaved={() => overview.refetch()}
+                />
+                <AssignmentDialog classId={classId} trigger={<Button>New assignment</Button>} />
+              </div>
             </div>
 
             <Tabs defaultValue="assignments" className="mt-6">
@@ -659,5 +667,130 @@ function DeleteAssignmentButton({
     >
       <Trash2 className="size-4" />
     </Button>
+  );
+}
+
+function ClassSettingsDialog({
+  classId,
+  klass,
+  onSaved,
+}: {
+  classId: string;
+  klass: { name: string; curriculum: string; subject: string; join_code: string };
+  onSaved: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(klass.name);
+  const [curriculum, setCurriculum] = useState(klass.curriculum);
+  const [subject, setSubject] = useState(klass.subject);
+  const [joinCode, setJoinCode] = useState(klass.join_code);
+  const queryClient = useQueryClient();
+  const save = useServerFn(updateClass);
+
+  useEffect(() => {
+    if (!open) return;
+    setName(klass.name);
+    setCurriculum(klass.curriculum);
+    setSubject(klass.subject);
+    setJoinCode(klass.join_code);
+  }, [open, klass.name, klass.curriculum, klass.subject, klass.join_code]);
+
+  const mutation = useMutation({
+    mutationFn: (input: { regenerate?: boolean }) =>
+      save({
+        data: {
+          classId,
+          name: name.trim(),
+          curriculum: curriculum.trim(),
+          subject: subject.trim(),
+          ...(input.regenerate
+            ? { regenerateJoinCode: true }
+            : joinCode.trim().toUpperCase() !== klass.join_code
+              ? { joinCode: joinCode.trim() }
+              : {}),
+        },
+      }),
+    onSuccess: (updated) => {
+      setJoinCode(updated.join_code);
+      queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });
+      queryClient.invalidateQueries({ queryKey: ["teacher-classes"] });
+      onSaved();
+      toast.success("Class updated");
+      setOpen(false);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline">
+          <Settings className="size-4" />
+          Class settings
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Class settings</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="class-name">Class name</Label>
+            <Input id="class-name" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="class-curriculum">Curriculum</Label>
+              <Input
+                id="class-curriculum"
+                value={curriculum}
+                onChange={(e) => setCurriculum(e.target.value)}
+                placeholder="IGCSE, A-Level, IB"
+              />
+            </div>
+            <div>
+              <Label htmlFor="class-subject">Subject</Label>
+              <Input
+                id="class-subject"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+              />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="class-code">Join code</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="class-code"
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                className="font-mono uppercase"
+                maxLength={10}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={mutation.isPending}
+                onClick={() => mutation.mutate({ regenerate: true })}
+              >
+                <RefreshCw className="size-4" />
+                New code
+              </Button>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Changing the code stops the old one from working — share the new code with students.
+            </p>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            disabled={mutation.isPending || name.trim().length === 0 || joinCode.trim().length < 4}
+            onClick={() => mutation.mutate({})}
+          >
+            {mutation.isPending ? "Saving…" : "Save changes"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

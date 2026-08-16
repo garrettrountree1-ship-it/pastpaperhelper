@@ -94,9 +94,9 @@ export async function extractQuestionsFromPapers(
 
   return parsed
     .map((item) => ({
-      questionText: String(item.questionText ?? "").trim(),
-      markScheme: String(item.markScheme ?? "").trim(),
-      marks: Math.max(1, Math.round(Number(item.marks) || 1)),
+      questionText: String(item["questionText"] ?? "").trim(),
+      markScheme: String(item["markScheme"] ?? "").trim(),
+      marks: Math.max(1, Math.round(Number(item["marks"]) || 1)),
     }))
     .filter((item) => item.questionText.length > 0);
 }

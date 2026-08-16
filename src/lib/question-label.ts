@@ -4,22 +4,25 @@
  * show the paper's own numbering instead of a running 1, 2, 3 count.
  */
 const ROMAN = "i{1,3}|iv|v|vi{1,3}|ix|x";
-const PART = `\\(?(?:${ROMAN}|[a-z])\\)?`;
-const LABEL = new RegExp(`^\\s*\\(?(\\d{1,2})\\)?\\s*[.)]?\\s*((?:${PART}\\s*)*)`, "i");
+const HEAD = new RegExp(`^\\s*\\(?(\\d{1,2})\\)?\\s*[.)]?\\s*((?:${ROMAN}|[a-z])\\b)?`, "i");
+const PAREN_PART = new RegExp(`^\\s*\\(\\s*(${ROMAN}|[a-z])\\s*\\)`, "i");
 
 type Parsed = { label: string; rest: string };
 
 function parseOnce(text: string): Parsed | null {
-  const match = LABEL.exec(text);
-  if (!match || !match[1]) return null;
-  const parts = (match[2] ?? "")
-    .replace(/[()]/g, " ")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  const label =
-    parts.length > 0 ? `${match[1]}${parts.map((p) => `(${p.toLowerCase()})`).join("")}` : match[1];
-  return { label, rest: text.slice(match[0].length).replace(/^[\s.):-]+/, "") };
+  const head = HEAD.exec(text);
+  if (!head || !head[1]) return null;
+  const parts: string[] = [];
+  if (head[2]) parts.push(head[2].toLowerCase());
+  let rest = text.slice(head[0].length);
+  for (;;) {
+    const part = PAREN_PART.exec(rest);
+    if (!part) break;
+    parts.push(part[1]!.toLowerCase());
+    rest = rest.slice(part[0].length);
+  }
+  const label = `${head[1]}${parts.map((p) => `(${p})`).join("")}`;
+  return { label, rest: rest.replace(/^[\s.):-]+/, "") };
 }
 
 export function questionLabel(questionText: string, fallbackIndex: number): string {

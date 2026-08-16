@@ -687,7 +687,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: question, error: qError } = await db
       .from("questions")
-      .select("id, question_text, mark_scheme, marks, assignment_id")
+      .select("id, question_text, mark_scheme, marks, assignment_id, image_paths")
       .eq("id", data.questionId)
       .single();
     if (qError) throw new Error(qError.message);
@@ -711,6 +711,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       marks: question.marks,
       answer: data.answerText,
       imageUrls,
+      questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
     });
 
     const submission = await ensureSubmission(db, data.assignmentId, userId);

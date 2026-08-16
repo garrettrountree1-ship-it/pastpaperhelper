@@ -335,3 +335,43 @@ function parseJson(text: string): Record<string, unknown> {
     throw new Error("The AI reply could not be read. Try uploading fewer pages at a time.");
   }
 }
+
+/**
+ * Repairs symbols the model commonly mangles (degrees Celsius, micro, ohm,
+ * superscripts, mojibake from mis-decoded UTF-8) so the printed notation is kept.
+ */
+export function normaliseSymbols(input: string): string {
+  let text = input;
+
+  // Mojibake: UTF-8 bytes read as Latin-1 (e.g. "Â°C", "Î©", "Âµ").
+  if (/[ÂÃÎ][\u0080-\u00bf\u0090-\u00ff]/.test(text)) {
+    try {
+      const bytes = Uint8Array.from([...text].map((ch) => ch.charCodeAt(0) & 0xff));
+      const repaired = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+      if (!repaired.includes("\uFFFD")) text = repaired;
+    } catch {
+      /* keep original */
+    }
+  }
+
+  const replacements: Array<[RegExp, string]> = [
+    [/\u00c2\u00b0/g, "\u00b0"],
+    [/\uFFFD(?=\s?[CF]\b)/g, "\u00b0"],
+    [/\\u00b0/gi, "\u00b0"],
+    [/&deg;?/gi, "\u00b0"],
+    [/\bdeg(?:rees)?\s*(?:\.|\s)?\s*([CFK])\b/gi, "\u00b0$1"],
+    [/(\d)\s*(?:\^o|\^0|\*o|\bo\b|\u00ba|\u25e6)\s*([CF])\b/g, "$1 \u00b0$2"],
+    [/(?<![A-Za-z0-9])(?:\^o|\^0|\u00ba|\u25e6)\s*([CF])\b/g, "\u00b0$1"],
+    [/(\d)\s*o\s*C\b/g, "$1 \u00b0C"],
+    [/\bohms?\b/g, "\u03a9"],
+    [/\bmicro(?=\s?[a-zA-Z])/g, "\u00b5"],
+    [/\+\/-/g, "\u00b1"],
+    [/\bx\s*10\s*\^\s*(-?\d+)/g, "\u00d7 10^$1"],
+    [/\bdegrees?\b(?!\s*[CFK])/gi, "\u00b0"],
+  ];
+  for (const [pattern, value] of replacements) text = text.replace(pattern, value);
+
+  // Tidy spacing around the degree sign: "25 °C" stays, "25°  C" collapses.
+  text = text.replace(/\u00b0\s+([CFK])\b/g, "\u00b0$1");
+  return text;
+}

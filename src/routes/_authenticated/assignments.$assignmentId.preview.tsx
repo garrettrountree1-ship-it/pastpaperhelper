@@ -1,15 +1,24 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { CheckCircle2, Sparkles, XCircle } from "lucide-react";
+import { Camera, CheckCircle2, Sparkles, XCircle } from "lucide-react";
 import { useState } from "react";
 
 import { AppHeader } from "@/components/AppHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { getAssignmentPreview, previewGradeAnswer } from "@/lib/app.functions";
+import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
+import { needsPhotoAnswer } from "@/lib/needs-photo";
+import {
+  getAssignmentPreview,
+  previewGradeAnswer,
+  previewTutorMessage,
+} from "@/lib/app.functions";
 import { questionBody, questionLabel } from "@/lib/question-label";
+
 
 export const Route = createFileRoute("/_authenticated/assignments/$assignmentId/preview")({
   head: () => ({

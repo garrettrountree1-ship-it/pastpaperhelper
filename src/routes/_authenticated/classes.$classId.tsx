@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Wand2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { createAssignment, getClassOverview } from "@/lib/app.functions";
+import { createAssignment, extractPaperQuestions, getClassOverview } from "@/lib/app.functions";
 
 export const Route = createFileRoute("/_authenticated/classes/$classId")({
   head: () => ({
@@ -216,17 +216,49 @@ function ClassPage() {
   );
 }
 
+async function toUploadFile(file: File) {
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]!);
+  return {
+    filename: file.name,
+    mimeType: file.type || "application/pdf",
+    base64: btoa(binary),
+  };
+}
+
 function NewAssignmentDialog({ classId }: { classId: string }) {
   const queryClient = useQueryClient();
   const create = useServerFn(createAssignment);
+  const extract = useServerFn(extractPaperQuestions);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
   const [instructions, setInstructions] = useState("");
   const [dueAt, setDueAt] = useState("");
+  const [paperFiles, setPaperFiles] = useState<File[]>([]);
+  const [schemeFiles, setSchemeFiles] = useState<File[]>([]);
   const [questions, setQuestions] = useState<QuestionDraft[]>([
     { questionText: "", markScheme: "", marks: 1 },
   ]);
+
+  const extractMutation = useMutation({
+    mutationFn: async () => {
+      const [paper, scheme] = await Promise.all([
+        Promise.all(paperFiles.map(toUploadFile)),
+        Promise.all(schemeFiles.map(toUploadFile)),
+      ]);
+      return extract({
+        data: { classId, subject, paperFiles: paper, markSchemeFiles: scheme },
+      });
+    },
+    onSuccess: (result) => {
+      setQuestions(result.questions);
+      toast.success(`${result.questions.length} questions read from your files`);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -315,6 +347,46 @@ function NewAssignmentDialog({ classId }: { classId: string }) {
               />
             </div>
           </div>
+
+          <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-4">
+            <h3 className="font-display text-lg">Upload past paper &amp; mark scheme</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              PDFs or photos. Combined in one file, or paper and mark scheme separately — the AI
+              aligns each question with its marking points, and you can edit before saving.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="paper-files">Past paper (or combined file)</Label>
+                <Input
+                  id="paper-files"
+                  type="file"
+                  accept="application/pdf,image/*"
+                  multiple
+                  onChange={(event) => setPaperFiles(Array.from(event.target.files ?? []))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="scheme-files">Mark scheme (optional if combined)</Label>
+                <Input
+                  id="scheme-files"
+                  type="file"
+                  accept="application/pdf,image/*"
+                  multiple
+                  onChange={(event) => setSchemeFiles(Array.from(event.target.files ?? []))}
+                />
+              </div>
+            </div>
+            <Button
+              className="mt-3"
+              variant="secondary"
+              onClick={() => extractMutation.mutate()}
+              disabled={paperFiles.length === 0 || extractMutation.isPending}
+            >
+              <Wand2 className="size-4" />
+              {extractMutation.isPending ? "Reading paper..." : "Build questions with AI"}
+            </Button>
+          </div>
+
 
           <div className="space-y-4">
             {questions.map((question, index) => (

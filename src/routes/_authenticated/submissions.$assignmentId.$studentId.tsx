@@ -110,6 +110,20 @@ function SubmissionPage() {
                       <p className="mt-1 whitespace-pre-wrap text-sm">
                         {answer?.answer_text ?? "No answer yet."}
                       </p>
+                      {answer?.imageUrls && answer.imageUrls.length > 0 ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {answer.imageUrls.map((url) => (
+                            <a key={url} href={url} target="_blank" rel="noreferrer">
+                              <img
+                                src={url}
+                                alt="Student uploaded working"
+                                loading="lazy"
+                                className="size-24 rounded-lg border border-border object-cover"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      ) : null}
                       {answer?.feedback ? (
                         <p className="mt-3 text-sm text-muted-foreground">{answer.feedback}</p>
                       ) : null}

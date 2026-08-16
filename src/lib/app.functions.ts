@@ -294,11 +294,20 @@ export const getSubmissionDetail = createServerFn({ method: "POST" })
     const { data: answers } = submission
       ? await db
           .from("answers")
-          .select("id, question_id, answer_text, verdict, awarded_marks, feedback, attempts")
+          .select(
+            "id, question_id, answer_text, image_paths, verdict, awarded_marks, feedback, attempts",
+          )
           .eq("submission_id", submission.id)
       : { data: [] };
 
-    return { questions: questions ?? [], submission, answers: answers ?? [] };
+    const withImages = await Promise.all(
+      (answers ?? []).map(async (a) => ({
+        ...a,
+        imageUrls: await signWorkImages(db, a.image_paths ?? []),
+      })),
+    );
+
+    return { questions: questions ?? [], submission, answers: withImages };
   });
 
 /* --------------------------------------------------------------- student --- */
@@ -413,8 +422,17 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
 
     const { data: answers } = await db
       .from("answers")
-      .select("id, question_id, answer_text, verdict, awarded_marks, feedback, attempts, resolved")
+      .select(
+        "id, question_id, answer_text, image_paths, verdict, awarded_marks, feedback, attempts, resolved",
+      )
       .eq("submission_id", submission.id);
+
+    const answersWithImages = await Promise.all(
+      (answers ?? []).map(async (a) => ({
+        ...a,
+        imageUrls: await signWorkImages(db, a.image_paths ?? []),
+      })),
+    );
 
     const answerIds = (answers ?? []).map((a) => a.id);
     const { data: messages } = answerIds.length
@@ -437,7 +455,7 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
       },
       questions: questions ?? [],
       submission,
-      answers: answers ?? [],
+      answers: answersWithImages,
       messages: messages ?? [],
     };
   });
@@ -449,12 +467,17 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       .object({
         assignmentId: z.string().uuid(),
         questionId: z.string().uuid(),
-        answerText: z.string().min(1),
+        answerText: z.string(),
+        imagePaths: z.array(z.string()).max(6).optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const imagePaths = (data.imagePaths ?? []).filter((path) => path.startsWith(`${userId}/`));
+    if (!data.answerText.trim() && imagePaths.length === 0) {
+      throw new Error("Write an answer or attach a photo of your working.");
+    }
     const { data: allowed } = await supabase.rpc("can_study_assignment", {
       _assignment_id: data.assignmentId,
       _user_id: userId,
@@ -477,6 +500,8 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       .single();
     const assignment = assignmentRow!;
 
+    const imageUrls = await signWorkImages(db, imagePaths);
+
     const { markStudentAnswer } = await import("./marking.server");
     const result = await markStudentAnswer({
       curriculum: assignment.curriculum,
@@ -485,6 +510,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       markScheme: question.mark_scheme,
       marks: question.marks,
       answer: data.answerText,
+      imageUrls,
     });
 
     const submission = await ensureSubmission(db, data.assignmentId, userId);
@@ -499,6 +525,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       submission_id: submission.id,
       question_id: data.questionId,
       answer_text: data.answerText,
+      image_paths: imagePaths,
       verdict: result.verdict,
       awarded_marks: result.awardedMarks,
       feedback: result.feedback,
@@ -522,6 +549,59 @@ export const gradeAnswer = createServerFn({ method: "POST" })
 
     await recalcSubmission(db, submission.id);
     return { answerId: answer.id, ...result };
+  });
+
+export const extractPaperQuestions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        classId: z.string().uuid(),
+        subject: z.string().default(""),
+        paperFiles: z
+          .array(
+            z.object({
+              filename: z.string(),
+              mimeType: z.string(),
+              base64: z.string().min(1),
+            }),
+          )
+          .min(1)
+          .max(4),
+        markSchemeFiles: z
+          .array(
+            z.object({
+              filename: z.string(),
+              mimeType: z.string(),
+              base64: z.string().min(1),
+            }),
+          )
+          .max(4)
+          .default([]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: klass, error } = await supabase
+      .from("classes")
+      .select("id, teacher_id, curriculum")
+      .eq("id", data.classId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!klass || klass.teacher_id !== userId) throw new Error("You do not own this class.");
+
+    const { extractQuestionsFromPapers } = await import("./paper-extract.server");
+    const questions = await extractQuestionsFromPapers({
+      curriculum: klass.curriculum,
+      subject: data.subject,
+      paperFiles: data.paperFiles,
+      markSchemeFiles: data.markSchemeFiles,
+    });
+    if (questions.length === 0) {
+      throw new Error("No questions could be read from those files. Try clearer or fewer pages.");
+    }
+    return { questions };
   });
 
 export const sendTutorMessage = createServerFn({ method: "POST" })
@@ -637,4 +717,10 @@ async function recalcSubmission(db: AnyClient, submissionId: string) {
     .eq("submission_id", submissionId);
   const awarded = (answers ?? []).reduce((sum, a) => sum + Number(a.awarded_marks), 0);
   await db.from("submissions").update({ awarded_marks: awarded }).eq("id", submissionId);
+}
+
+async function signWorkImages(db: AnyClient, paths: string[]) {
+  if (paths.length === 0) return [];
+  const { data } = await db.storage.from("student-work").createSignedUrls(paths, 3600);
+  return (data ?? []).map((item) => item.signedUrl).filter((url): url is string => Boolean(url));
 }

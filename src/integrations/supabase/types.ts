@@ -203,6 +203,7 @@ export type Database = {
           assignment_id: string
           created_at: string
           id: string
+          image_paths: string[]
           mark_scheme: string
           marks: number
           position: number
@@ -212,6 +213,7 @@ export type Database = {
           assignment_id: string
           created_at?: string
           id?: string
+          image_paths?: string[]
           mark_scheme: string
           marks?: number
           position?: number
@@ -221,6 +223,7 @@ export type Database = {
           assignment_id?: string
           created_at?: string
           id?: string
+          image_paths?: string[]
           mark_scheme?: string
           marks?: number
           position?: number

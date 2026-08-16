@@ -37,6 +37,7 @@ import {
   getClassOverview,
   updateAssignment,
 } from "@/lib/app.functions";
+import { filesToPages } from "@/lib/pdf-pages";
 
 export const Route = createFileRoute("/_authenticated/classes/$classId")({
   head: () => ({
@@ -70,7 +71,23 @@ export const Route = createFileRoute("/_authenticated/classes/$classId")({
   notFoundComponent: () => <div className="p-8 text-center">Class not found.</div>,
 });
 
-type QuestionDraft = { id: string | null; questionText: string; markScheme: string; marks: number };
+type QuestionDraft = {
+  id: string | null;
+  questionText: string;
+  markScheme: string;
+  marks: number;
+  imagePaths: string[];
+  imageUrls: string[];
+};
+
+const emptyQuestion = (): QuestionDraft => ({
+  id: null,
+  questionText: "",
+  markScheme: "",
+  marks: 1,
+  imagePaths: [],
+  imageUrls: [],
+});
 
 function ClassPage() {
   const { classId } = Route.useParams();
@@ -240,18 +257,6 @@ function ClassPage() {
   );
 }
 
-async function toUploadFile(file: File) {
-  const buffer = await file.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]!);
-  return {
-    filename: file.name,
-    mimeType: file.type || "application/pdf",
-    base64: btoa(binary),
-  };
-}
-
 function AssignmentDialog({
   classId,
   assignmentId,
@@ -273,9 +278,7 @@ function AssignmentDialog({
   const [dueAt, setDueAt] = useState("");
   const [paperFiles, setPaperFiles] = useState<File[]>([]);
   const [schemeFiles, setSchemeFiles] = useState<File[]>([]);
-  const [questions, setQuestions] = useState<QuestionDraft[]>([
-    { id: null, questionText: "", markScheme: "", marks: 1 },
-  ]);
+  const [questions, setQuestions] = useState<QuestionDraft[]>([emptyQuestion()]);
 
   const editing = Boolean(assignmentId);
 
@@ -294,23 +297,34 @@ function AssignmentDialog({
     setDueAt(existing.data.dueAt ? existing.data.dueAt.slice(0, 10) : "");
     setQuestions(
       existing.data.questions.length > 0
-        ? existing.data.questions
-        : [{ id: null, questionText: "", markScheme: "", marks: 1 }],
+        ? existing.data.questions.map((q) => ({
+            ...q,
+            imagePaths: q.imagePaths ?? [],
+            imageUrls: q.imageUrls ?? [],
+          }))
+        : [emptyQuestion()],
     );
   }, [open, editing, existing.data]);
 
   const extractMutation = useMutation({
     mutationFn: async () => {
       const [paper, scheme] = await Promise.all([
-        Promise.all(paperFiles.map(toUploadFile)),
-        Promise.all(schemeFiles.map(toUploadFile)),
+        filesToPages(paperFiles),
+        filesToPages(schemeFiles),
       ]);
       return extract({
         data: { classId, subject, paperFiles: paper, markSchemeFiles: scheme },
       });
     },
     onSuccess: (result) => {
-      setQuestions(result.questions.map((q) => ({ ...q, id: null })));
+      setQuestions(
+        result.questions.map((q) => ({
+          ...q,
+          id: null,
+          imagePaths: q.imagePaths ?? [],
+          imageUrls: q.imageUrls ?? [],
+        })),
+      );
       toast.success(`${result.questions.length} questions read from your files`);
     },
     onError: (error: Error) => toast.error(error.message),
@@ -323,6 +337,7 @@ function AssignmentDialog({
         questionText: q.questionText.trim(),
         markScheme: q.markScheme.trim(),
         marks: q.marks,
+        imagePaths: q.imagePaths ?? [],
       }));
       if (editing) {
         return update({
@@ -354,7 +369,7 @@ function AssignmentDialog({
         setTitle("");
         setInstructions("");
         setDueAt("");
-        setQuestions([{ id: null, questionText: "", markScheme: "", marks: 1 }]);
+        setQuestions([emptyQuestion()]);
       }
       queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });
       if (assignmentId) {
@@ -440,7 +455,9 @@ function AssignmentDialog({
               PDF, Word (.docx) or photos. Combined in one file, or paper and mark scheme
               separately. The questions below are taken straight from the file you upload — every
               part (1a, 1b(i), 1b(ii)…) is transcribed and matched to its marking points, and you
-              can edit anything before saving. Nothing is invented.
+              can edit anything before saving. Nothing is invented — every figure, diagram, graph
+              and equation stays as the original page image attached to the question, so students
+              see exactly what was printed rather than a description.
             </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
@@ -501,6 +518,42 @@ function AssignmentDialog({
                   ) : null}
                 </div>
                 <div className="mt-3 space-y-3">
+                  {question.imageUrls.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">
+                        Original paper page shown to students (figures, diagrams and equations
+                        exactly as printed)
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {question.imageUrls.map((url, imageIndex) => (
+                          <div key={url} className="relative">
+                            <a href={url} target="_blank" rel="noreferrer">
+                              <img
+                                src={url}
+                                alt={`Original paper page for question ${index + 1}`}
+                                className="h-40 rounded-lg border border-border bg-card object-contain"
+                              />
+                            </a>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-1 top-1 bg-card/90"
+                              onClick={() =>
+                                update_(index, {
+                                  imageUrls: question.imageUrls.filter((_, i) => i !== imageIndex),
+                                  imagePaths: question.imagePaths.filter(
+                                    (_, i) => i !== imageIndex,
+                                  ),
+                                })
+                              }
+                            >
+                              <Trash2 className="size-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                   <Textarea
                     value={question.questionText}
                     onChange={(event) => update_(index, { questionText: event.target.value })}
@@ -532,10 +585,7 @@ function AssignmentDialog({
             <Button
               variant="outline"
               onClick={() =>
-                setQuestions((prev) => [
-                  ...prev,
-                  { id: null, questionText: "", markScheme: "", marks: 1 },
-                ])
+                setQuestions((prev) => [...prev, emptyQuestion()])
               }
             >
               <Plus className="size-4" />

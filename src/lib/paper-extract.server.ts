@@ -5,6 +5,8 @@ export type ExtractedQuestion = {
   questionText: string;
   markScheme: string;
   marks: number;
+  /** 1-based page numbers of the uploaded paper this part appears on. */
+  pages: number[];
 };
 
 export type UploadedFile = {
@@ -20,7 +22,7 @@ type ExtractInput = {
   markSchemeFiles: UploadedFile[];
 };
 
-type InventoryItem = { label: string; marks: number };
+type InventoryItem = { label: string; marks: number; pages: number[] };
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const BATCH_SIZE = 6;
@@ -38,18 +40,21 @@ const INVENTORY_SYSTEM = [
   "Labels must be exactly as printed, e.g. \"1(a)\", \"1(b)(ii)\", \"3\", \"7(c)\".",
   "If a question has no sub-parts, list the question number alone.",
   "Include every part, even easy ones, diagram/graph ones and extended-writing ones.",
-  'Reply with JSON only: {"items":[{"label":"1(a)","marks":2}]}',
+  "Each paper page is supplied as an image labelled PAGE 1, PAGE 2, ... Record which page(s) each part appears on, including a page that only holds its figure, diagram, graph or table.",
+  'Reply with JSON only: {"items":[{"label":"1(a)","marks":2,"pages":[3]}]}',
 ].join(" ");
 
 const DETAIL_SYSTEM = [
   SHARED_RULES,
   "Task: for ONLY the requested part labels, transcribe the question and align the official mark scheme.",
-  "questionText: start with the part label, then the full wording the student must answer, including any stem/context shared with earlier parts, given data and units. Describe any figure or diagram in words. Never include the answer.",
+  "questionText: start with the part label, then transcribe the full wording the student must answer verbatim, including any stem/context shared with earlier parts, given data and units. Never include the answer.",
+  "NEVER describe or re-draw a figure, diagram, graph, table, circuit or chemical structure in words: the original paper page image is attached to the question for the student to look at. Instead transcribe the wording and refer to it as printed (e.g. \"Fig. 2.1\").",
+  "Equations, formulae and expressions must be transcribed exactly as printed, keeping symbols, indices, fractions and units; use plain text/LaTeX-style notation only where unavoidable.",
   "markScheme: the official marking points for that exact part, verbatim where possible, with accepted alternatives and mark allocation.",
   "If no mark scheme document was supplied, write a concise expected answer with marking points instead.",
   "marks: the integer marks for that part (default 1).",
   "Return one item per requested label, in the same order, and never skip a label.",
-  'Reply with JSON only: {"questions":[{"label":"1(a)","questionText":"...","markScheme":"...","marks":2}]}',
+  'Reply with JSON only: {"questions":[{"label":"1(a)","questionText":"...","markScheme":"...","marks":2,"pages":[3]}]}',
 ].join(" ");
 
 export async function extractQuestionsFromPapers(
@@ -100,10 +105,21 @@ const DOCX_MIME =
 
 function buildDocumentContent(input: ExtractInput): Array<Record<string, unknown>> {
   const content: Array<Record<string, unknown>> = [];
+  let paperPage = 0;
+  const paperCount = input.paperFiles.length;
+  let index = -1;
   for (const file of [...input.paperFiles, ...input.markSchemeFiles]) {
+    index += 1;
     if (!file.base64) continue;
+    const isPaper = index < paperCount;
     const name = file.filename.toLowerCase();
     if (file.mimeType.startsWith("image/")) {
+      if (isPaper) {
+        paperPage += 1;
+        content.push({ type: "text", text: `--- PAGE ${paperPage} of the past paper ---` });
+      } else {
+        content.push({ type: "text", text: `--- Mark scheme page: ${file.filename} ---` });
+      }
       content.push({
         type: "image_url",
         image_url: { url: `data:${file.mimeType};base64,${file.base64}` },
@@ -227,7 +243,16 @@ async function runInventory(
       const label = String(item["label"] ?? "").trim();
       if (!label || seen.has(label.toLowerCase())) continue;
       seen.add(label.toLowerCase());
-      out.push({ label, marks: Math.max(1, Math.round(Number(item["marks"]) || 1)) });
+      const pages = Array.isArray(item["pages"])
+        ? (item["pages"] as unknown[])
+            .map((n) => Math.round(Number(n)))
+            .filter((n) => Number.isFinite(n) && n > 0)
+        : [];
+      out.push({
+        label,
+        marks: Math.max(1, Math.round(Number(item["marks"]) || 1)),
+        pages: [...new Set(pages)].slice(0, 3),
+      });
     }
     return out.slice(0, 120);
   } catch {
@@ -246,7 +271,14 @@ async function runDetail(
     ? "Transcribe EVERY answerable question part in the paper with its mark scheme. Do not stop early and do not sample."
     : [
         "Transcribe exactly these part labels, in this order, with their mark schemes:",
-        batch.map((b) => `- ${b.label} (${b.marks} mark${b.marks === 1 ? "" : "s"})`).join("\n"),
+        batch
+          .map(
+            (b) =>
+              `- ${b.label} (${b.marks} mark${b.marks === 1 ? "" : "s"})${
+                b.pages.length ? ` on PAGE ${b.pages.join(", ")}` : ""
+              }`,
+          )
+          .join("\n"),
       ].join("\n");
 
   const text = await callGateway(key, DETAIL_SYSTEM, [
@@ -265,13 +297,17 @@ async function runDetail(
       if (label && !questionText.toLowerCase().startsWith(label.toLowerCase())) {
         questionText = `${label} ${questionText}`;
       }
-      const fallbackMarks = batch.find(
-        (b) => b.label.toLowerCase() === label.toLowerCase(),
-      )?.marks;
+      const match = batch.find((b) => b.label.toLowerCase() === label.toLowerCase());
+      const pagesFromModel = Array.isArray(item["pages"])
+        ? (item["pages"] as unknown[])
+            .map((n) => Math.round(Number(n)))
+            .filter((n) => Number.isFinite(n) && n > 0)
+        : [];
       return {
         questionText,
         markScheme: String(item["markScheme"] ?? "").trim(),
-        marks: Math.max(1, Math.round(Number(item["marks"]) || fallbackMarks || 1)),
+        marks: Math.max(1, Math.round(Number(item["marks"]) || match?.marks || 1)),
+        pages: match?.pages?.length ? match.pages : [...new Set(pagesFromModel)].slice(0, 3),
       };
     })
     .filter((item) => item.questionText.length > 0);

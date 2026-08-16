@@ -25,10 +25,13 @@ type MarkInput = {
   marks: number;
   answer: string;
   imageUrls?: string[];
+  /** Original past-paper page images holding the question's figures/equations. */
+  questionImageUrls?: string[];
 };
 
 export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
   const images = input.imageUrls ?? [];
+  const questionImages = input.questionImageUrls ?? [];
   const prompt = [
     `Curriculum: ${input.curriculum}`,
     `Subject: ${input.subject || "General"}`,
@@ -36,6 +39,9 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     `Question:\n${input.question}`,
     `Official mark scheme:\n${input.markScheme}`,
     `Student typed answer:\n${input.answer || "(none typed)"}`,
+    questionImages.length > 0
+      ? "The first attached image(s) are the original past-paper page(s) for this question, including any figure, diagram, graph or equation the student is working from."
+      : "",
     images.length > 0
       ? `The student also attached ${images.length} photo(s) of handwritten working or a diagram. Read them carefully — that working is part of the answer.`
       : "",
@@ -61,6 +67,7 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
           role: "user",
           content: [
             { type: "text" as const, text: prompt },
+            ...questionImages.map((url) => ({ type: "image" as const, image: new URL(url) })),
             ...images.map((url) => ({ type: "image" as const, image: new URL(url) })),
           ],
         },

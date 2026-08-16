@@ -95,6 +95,20 @@ function SubmissionPage() {
                       <span className="text-sm text-muted-foreground">{question.marks} marks</span>
                     </div>
                     <p className="mt-3 whitespace-pre-wrap">{question.question_text}</p>
+                    {question.imageUrls && question.imageUrls.length > 0 ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {question.imageUrls.map((url) => (
+                          <a key={url} href={url} target="_blank" rel="noreferrer">
+                            <img
+                              src={url}
+                              alt={`Past-paper page for question ${question.position}`}
+                              loading="lazy"
+                              className="h-48 rounded-lg border border-border bg-card object-contain"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    ) : null}
 
                     <div className="mt-4 rounded-xl border border-border p-4">
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">

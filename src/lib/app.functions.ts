@@ -8,6 +8,14 @@ async function admin() {
   return supabaseAdmin;
 }
 
+function decodeBase64(base64: string): Uint8Array {
+  const clean = base64.includes(",") ? base64.slice(base64.indexOf(",") + 1) : base64;
+  const binary = atob(clean);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
 function makeJoinCode() {
   const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   let code = "";
@@ -113,6 +121,7 @@ export const createAssignment = createServerFn({ method: "POST" })
             questionText: z.string().min(1),
             markScheme: z.string().min(1),
             marks: z.number().int().positive(),
+            imagePaths: z.array(z.string()).default([]),
           }),
         ),
       })
@@ -151,6 +160,7 @@ export const createAssignment = createServerFn({ method: "POST" })
         question_text: q.questionText,
         mark_scheme: q.markScheme,
         marks: q.marks,
+        image_paths: q.imagePaths ?? [],
       })),
     );
     if (qError) throw new Error(qError.message);
@@ -178,7 +188,7 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
 
     const { data: questions, error: qError } = await supabase
       .from("questions")
-      .select("id, question_text, mark_scheme, marks, position")
+      .select("id, question_text, mark_scheme, marks, position, image_paths")
       .eq("assignment_id", data.assignmentId)
       .order("position");
     if (qError) throw new Error(qError.message);
@@ -189,12 +199,16 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
       subject: assignment.subject ?? "",
       instructions: assignment.instructions ?? "",
       dueAt: assignment.due_at,
-      questions: (questions ?? []).map((q) => ({
-        id: q.id,
-        questionText: q.question_text,
-        markScheme: q.mark_scheme,
-        marks: q.marks,
-      })),
+      questions: await Promise.all(
+        (questions ?? []).map(async (q) => ({
+          id: q.id,
+          questionText: q.question_text,
+          markScheme: q.mark_scheme,
+          marks: q.marks,
+          imagePaths: q.image_paths ?? [],
+          imageUrls: await signPaperPages(await admin(), q.image_paths ?? []),
+        })),
+      ),
     };
   });
 
@@ -214,6 +228,7 @@ export const updateAssignment = createServerFn({ method: "POST" })
             questionText: z.string().min(1),
             markScheme: z.string().min(1),
             marks: z.number().int().positive(),
+            imagePaths: z.array(z.string()).default([]),
           }),
         ),
       })
@@ -253,6 +268,7 @@ export const updateAssignment = createServerFn({ method: "POST" })
         mark_scheme: q.markScheme,
         marks: q.marks,
         position: index + 1,
+        image_paths: q.imagePaths ?? [],
       };
       if (q.id && existingIds.has(q.id)) {
         const { error } = await supabase.from("questions").update(payload).eq("id", q.id);
@@ -452,7 +468,7 @@ export const getSubmissionDetail = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: questions } = await db
       .from("questions")
-      .select("id, position, question_text, mark_scheme, marks")
+      .select("id, position, question_text, mark_scheme, marks, image_paths")
       .eq("assignment_id", data.assignmentId)
       .order("position");
 
@@ -479,7 +495,14 @@ export const getSubmissionDetail = createServerFn({ method: "POST" })
       })),
     );
 
-    return { questions: questions ?? [], submission, answers: withImages };
+    const questionsWithPages = await Promise.all(
+      (questions ?? []).map(async (q) => ({
+        ...q,
+        imageUrls: await signPaperPages(db, q.image_paths ?? []),
+      })),
+    );
+
+    return { questions: questionsWithPages, submission, answers: withImages };
   });
 
 /* --------------------------------------------------------------- student --- */
@@ -586,7 +609,7 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     // Mark schemes are deliberately excluded here.
     const { data: questions } = await db
       .from("questions")
-      .select("id, position, question_text, marks")
+      .select("id, position, question_text, marks, image_paths")
       .eq("assignment_id", data.assignmentId)
       .order("position");
 
@@ -625,7 +648,12 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
         dueAt: assignment.due_at,
         className: klass?.name ?? "",
       },
-      questions: questions ?? [],
+      questions: await Promise.all(
+        (questions ?? []).map(async (q) => ({
+          ...q,
+          imageUrls: await signPaperPages(db, q.image_paths ?? []),
+        })),
+      ),
       submission,
       answers: answersWithImages,
       messages: messages ?? [],
@@ -739,7 +767,7 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
             }),
           )
           .min(1)
-          .max(4),
+          .max(30),
         markSchemeFiles: z
           .array(
             z.object({
@@ -748,7 +776,7 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
               base64: z.string().min(1),
             }),
           )
-          .max(4)
+          .max(30)
           .default([]),
       })
       .parse(input),
@@ -773,7 +801,39 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
     if (questions.length === 0) {
       throw new Error("No questions could be read from those files. Try clearer or fewer pages.");
     }
-    return { questions };
+
+    // Keep the original paper pages so figures, diagrams and equations are shown
+    // to students exactly as printed instead of being described in words.
+    const db = await admin();
+    const folder = `${data.classId}/${Date.now()}`;
+    const pagePaths: Record<number, string> = {};
+    for (const [index, file] of data.paperFiles.entries()) {
+      if (!file.mimeType.startsWith("image/")) continue;
+      const pageNumber = index + 1;
+      const path = `${folder}/page-${pageNumber}.jpg`;
+      const bytes = decodeBase64(file.base64);
+      const { error: upError } = await db.storage
+        .from("paper-pages")
+        .upload(path, bytes, { contentType: file.mimeType, upsert: true });
+      if (!upError) pagePaths[pageNumber] = path;
+    }
+
+    const withPages = await Promise.all(
+      questions.map(async (q) => {
+        const paths = q.pages
+          .map((page) => pagePaths[page])
+          .filter((path): path is string => Boolean(path));
+        return {
+          questionText: q.questionText,
+          markScheme: q.markScheme,
+          marks: q.marks,
+          imagePaths: paths,
+          imageUrls: await signPaperPages(db, paths),
+        };
+      }),
+    );
+
+    return { questions: withPages };
   });
 
 export const sendTutorMessage = createServerFn({ method: "POST" })
@@ -889,6 +949,12 @@ async function recalcSubmission(db: AnyClient, submissionId: string) {
     .eq("submission_id", submissionId);
   const awarded = (answers ?? []).reduce((sum, a) => sum + Number(a.awarded_marks), 0);
   await db.from("submissions").update({ awarded_marks: awarded }).eq("id", submissionId);
+}
+
+async function signPaperPages(db: AnyClient, paths: string[]) {
+  if (paths.length === 0) return [];
+  const { data } = await db.storage.from("paper-pages").createSignedUrls(paths, 60 * 60 * 8);
+  return (data ?? []).map((item) => item.signedUrl).filter((url): url is string => Boolean(url));
 }
 
 async function signWorkImages(db: AnyClient, paths: string[]) {

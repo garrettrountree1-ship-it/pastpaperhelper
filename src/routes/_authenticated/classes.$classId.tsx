@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Pencil, Plus, RefreshCw, Settings, Trash2, Wand2 } from "lucide-react";
+import { Eye, Pencil, Plus, RefreshCw, Settings, Trash2, Wand2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -167,6 +167,16 @@ function ClassPage() {
                         <Badge variant="secondary">
                           {assignment.submittedCount} submitted
                         </Badge>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link
+                            to="/assignments/$assignmentId/preview"
+                            params={{ assignmentId: assignment.id }}
+                          >
+                            <Eye className="size-4" />
+                            Student view
+                          </Link>
+                        </Button>
+
                         <AssignmentDialog
                           classId={classId}
                           assignmentId={assignment.id}

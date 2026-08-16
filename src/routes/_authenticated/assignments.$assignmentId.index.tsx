@@ -322,8 +322,6 @@ function QuestionCard({
   });
 
   const thread = answer ? messages.filter((m) => m.answer_id === answer.id) : [];
-  const verdict = answer?.verdict ?? null;
-
   return (
     <QuestionExperience
       question={question}

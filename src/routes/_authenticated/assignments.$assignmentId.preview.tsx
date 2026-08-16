@@ -194,6 +194,7 @@ function PreviewQuestion({
   const [photos, setPhotos] = useState<string[]>([]);
   const [reply, setReply] = useState("");
   const [thread, setThread] = useState<Array<{ role: "tutor" | "student"; content: string }>>([]);
+  const [attempts, setAttempts] = useState(0);
 
   const check = useMutation({
     mutationFn: async () => {
@@ -208,6 +209,7 @@ function PreviewQuestion({
       });
     },
     onSuccess: (result) => {
+      setAttempts((count) => count + 1);
       const opener = result.leadingQuestion;
       setThread(opener ? [{ role: "tutor", content: opener }] : []);
     },
@@ -270,7 +272,7 @@ function PreviewQuestion({
       photoUrls={photos}
       onPhotosChange={(files) => void addPhotos(files)}
       result={result ?? null}
-      attempts={result ? 1 : 0}
+      attempts={attempts}
       checking={check.isPending}
       checkError={check.isError ? (check.error as Error).message : undefined}
       onCheck={() => check.mutate()}

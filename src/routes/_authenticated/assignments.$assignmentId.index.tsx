@@ -346,9 +346,13 @@ function QuestionCard({
         <Textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder={requiresPhoto ? "Describe what you drew (and upload a photo of it below)" : "Write your answer"}
+          placeholder={requiresPhoto ? "Describe what you drew (and upload a photo of it below)" : "Write your answer in English"}
           rows={4}
         />
+        {draft && !isEnglishOnly(draft) ? (
+          <p className="text-sm text-destructive">{ENGLISH_ONLY_MESSAGE}</p>
+        ) : null}
+
 
         {showPhoto ? (
         <div className="rounded-xl border border-dashed border-border p-3">

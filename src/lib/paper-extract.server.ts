@@ -54,7 +54,7 @@ const DETAIL_SYSTEM = [
   "If no mark scheme document was supplied, write a concise expected answer with marking points instead.",
   "marks: the integer marks for that part (default 1).",
   "Return one item per requested label, in the same order, and never skip a label.",
-  'Reply with JSON only: {"questions":[{"label":"1(a)","questionText":"...","markScheme":"...","marks":2}]}',
+  'Reply with JSON only: {"questions":[{"label":"1(a)","questionText":"...","markScheme":"...","marks":2,"pages":[3]}]}',
 ].join(" ");
 
 export async function extractQuestionsFromPapers(

@@ -174,8 +174,15 @@ export function QuestionExperience({
               {verdict === "partial" ? "Partly right" : verdict === "correct" ? "Correct" : "Not yet"}
             </span>
           </div>
-          {result.feedback ? (
+          {verdict === "correct" && result.feedback ? (
             <p className="mt-2 whitespace-pre-wrap text-sm">{result.feedback}</p>
+          ) : verdict !== "correct" ? (
+            <p className="mt-2 whitespace-pre-wrap text-sm">
+              Your answer does not earn full marks yet. It may use an idea that does not fully fit
+              what the question is asking, or it may not show enough reasoning to support the
+              conclusion. Re-read the command word and check each part of your response against the
+              information given before trying again.
+            </p>
           ) : null}
           {verdict !== "correct" ? (
             <p className="mt-2 text-xs text-muted-foreground">

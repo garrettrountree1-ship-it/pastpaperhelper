@@ -130,13 +130,17 @@ export const updateClass = createServerFn({ method: "POST" })
     if (classError) throw new Error(classError.message);
     if (!klass || klass.teacher_id !== userId) throw new Error("You do not own this class.");
 
-    const patch: Record<string, string> = {
+    const joinCode = data.regenerateJoinCode
+      ? makeJoinCode()
+      : data.joinCode
+        ? data.joinCode.toUpperCase()
+        : undefined;
+    const patch = {
       name: data.name,
       curriculum: data.curriculum,
       subject: data.subject,
+      ...(joinCode ? { join_code: joinCode } : {}),
     };
-    if (data.regenerateJoinCode) patch["join_code"] = makeJoinCode();
-    else if (data.joinCode) patch["join_code"] = data.joinCode.toUpperCase();
 
     const { data: updated, error } = await supabase
       .from("classes")

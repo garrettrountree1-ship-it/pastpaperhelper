@@ -73,9 +73,10 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     "Award marks only for points that genuinely match the mark scheme. Never award more than the marks available and never award negative marks.",
     "verdict is 'correct' only when full marks are earned, 'partial' when some marks are earned, 'incorrect' when none are.",
     "ABSOLUTE RULE: when the student has not earned full marks you must NEVER reveal or hint at the correct answer in feedback, explanation or leadingQuestion. Do not state the required value, word, letter, option, formula, equation, name or final result, and never quote or paraphrase the mark scheme wording. Do not give a worked solution or a 'the answer should be...' sentence. The student must keep trying until they reach it themselves.",
-    "feedback: at most 3 short sentences, addressed to the student, naming only which marking points were credited (generically) and that something is still missing — without saying what the missing content is.",
-    "explanation: when marks are missing, write 50-100 words explaining WHY the student's reasoning is wrong or incomplete and which concept they appear to have misunderstood, in general terms only, with no correct values, no correct terminology from the mark scheme and no worked steps. If full marks are earned, set explanation to an empty string.",
-    "leadingQuestion: one short Socratic question that probes the most likely misunderstanding, phrased so that answering it does not require you to have given the answer away. If the answer is fully correct, leave leadingQuestion as an empty string.",
+    "Students dislike reading: keep feedback + explanation together under 100 words total, ideally under 60. Be direct, no filler, no restating the question, no generic study advice like 'read the command word'.",
+    "feedback: when full marks are earned, one short praise sentence. Otherwise exactly 'Not yet.' or 'Incorrect.' and nothing more.",
+    "explanation: when marks are missing, 1-3 short sentences of REAL subject teaching (chemistry/physics/biology/maths reasoning) that names the specific concept, rule or misconception behind the student's error and why their stated idea does not work — while still not revealing the required answer, value, word, formula or mark-scheme wording. If full marks are earned, set explanation to an empty string.",
+    "leadingQuestion: at most one short, specific Socratic question about the concept in the explanation. May be an empty string if the explanation is already enough. Empty when fully correct.",
     "Output raw JSON only.",
   ].join(" ");
 
@@ -124,18 +125,27 @@ function clamp(result: z.infer<typeof markSchema>, maxMarks: number): MarkResult
     verdict,
     awardedMarks: awarded,
     feedback: isCorrect
-      ? result.feedback.trim() || "Well done — your answer earns full marks."
-      : "Your answer does not earn full marks yet. It may use an idea that does not fully fit what the question is asking, or it may not show enough reasoning to support the conclusion. Re-read the command word and check each part of your response against the information given before trying again.",
-    explanation: "",
-    leadingQuestion: isCorrect
-      ? ""
-      : "What is the question asking you to determine, and what evidence or method should support your response?",
+      ? limitWords(result.feedback.trim() || "Well done — your answer earns full marks.", 40)
+      : [
+          verdict === "partial" ? "Not yet." : "Incorrect.",
+          limitWords(result.explanation ?? "", 85),
+        ]
+          .filter(Boolean)
+          .join(" "),
+    explanation: isCorrect ? "" : limitWords(result.explanation ?? "", 85),
+    leadingQuestion: isCorrect ? "" : limitWords(result.leadingQuestion ?? "", 30),
     markPoints: (result.markPoints ?? []).map((p) => ({
       point: p.point.trim(),
       marks: Math.max(0, Math.min(maxMarks, p.marks)),
       awarded: Boolean(p.awarded),
     })),
   };
+}
+
+function limitWords(text: string, maxWords: number): string {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return words.join(" ");
+  return `${words.slice(0, maxWords).join(" ")}…`;
 }
 
 function extractJson(text: string): string {

@@ -63,19 +63,28 @@ type Question = {
   imageUrls?: string[];
 };
 
+/** Signed URLs carry a per-request token, so compare the storage path only. */
+function pageKey(url: string) {
+  return url.split("?")[0] ?? url;
+}
+
 /** Each past-paper page appears once, above the questions it introduces. */
 function groupByPage(questions: Question[]) {
   const groups: Array<{ key: string; imageUrls: string[]; questions: Question[] }> = [];
   const shown = new Set<string>();
   questions.forEach((question, index) => {
-    const fresh = (question.imageUrls ?? []).filter((url) => !shown.has(url));
+    const fresh = (question.imageUrls ?? []).filter((url) => !shown.has(pageKey(url)));
     const last = groups[groups.length - 1];
     if (fresh.length === 0 && last) {
       last.questions.push(question);
       return;
     }
-    fresh.forEach((url) => shown.add(url));
-    groups.push({ key: fresh.join("|") || `none-${index}`, imageUrls: fresh, questions: [question] });
+    fresh.forEach((url) => shown.add(pageKey(url)));
+    groups.push({
+      key: fresh.map(pageKey).join("|") || `none-${index}`,
+      imageUrls: fresh,
+      questions: [question],
+    });
   });
   return groups;
 }

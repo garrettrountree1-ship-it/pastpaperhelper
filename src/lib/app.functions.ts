@@ -422,8 +422,17 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
 
     const { data: answers } = await db
       .from("answers")
-      .select("id, question_id, answer_text, verdict, awarded_marks, feedback, attempts, resolved")
+      .select(
+        "id, question_id, answer_text, image_paths, verdict, awarded_marks, feedback, attempts, resolved",
+      )
       .eq("submission_id", submission.id);
+
+    const answersWithImages = await Promise.all(
+      (answers ?? []).map(async (a) => ({
+        ...a,
+        imageUrls: await signWorkImages(db, a.image_paths ?? []),
+      })),
+    );
 
     const answerIds = (answers ?? []).map((a) => a.id);
     const { data: messages } = answerIds.length
@@ -446,7 +455,7 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
       },
       questions: questions ?? [],
       submission,
-      answers: answers ?? [],
+      answers: answersWithImages,
       messages: messages ?? [],
     };
   });

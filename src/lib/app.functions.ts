@@ -1051,13 +1051,18 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
         assignmentId: z.string().uuid(),
         questionId: z.string().uuid(),
         answerText: z.string(),
+        imageDataUrls: z.array(z.string().startsWith("data:image/").max(8_000_000)).max(3).optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    if (!data.answerText.trim()) throw new Error("Type an answer to test the marking.");
+    const previewImages = data.imageDataUrls ?? [];
+    if (!data.answerText.trim() && previewImages.length === 0) {
+      throw new Error("Type an answer or attach a photo to test the marking.");
+    }
     if (!isEnglishOnly(data.answerText)) throw new Error(ENGLISH_ONLY_MESSAGE);
+
 
     const { data: allowed } = await supabase.rpc("can_teach_assignment", {
       _assignment_id: data.assignmentId,
@@ -1089,7 +1094,7 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       markScheme: question.mark_scheme,
       marks: question.marks,
       answer: data.answerText,
-      imageUrls: [],
+      imageUrls: previewImages,
       questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
     });
 
@@ -1097,11 +1102,69 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       verdict: result.verdict,
       awardedMarks: result.awardedMarks,
       totalMarks: question.marks,
-      feedback: [result.feedback, result.explanation].filter(Boolean).join("\n\n"),
+      feedback: result.feedback,
+      explanation: result.explanation ?? "",
       leadingQuestion: result.leadingQuestion ?? "",
       markPoints: result.markPoints ?? [],
     };
   });
+
+/** Teacher-only trial tutor chat: same Socratic tutor, nothing saved. */
+export const previewTutorMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        assignmentId: z.string().uuid(),
+        questionId: z.string().uuid(),
+        studentAnswer: z.string().default(""),
+        message: z.string().min(1).max(2000),
+        history: z
+          .array(z.object({ role: z.enum(["tutor", "student"]), content: z.string() }))
+          .max(40)
+          .default([]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    if (!isEnglishOnly(data.message)) throw new Error("Please ask your question in English.");
+    const { data: allowed } = await supabase.rpc("can_teach_assignment", {
+      _assignment_id: data.assignmentId,
+      _user_id: userId,
+    });
+    if (!allowed) throw new Error("You don't teach this assignment.");
+
+    const db = await admin();
+    const { data: question, error: qError } = await db
+      .from("questions")
+      .select("question_text, mark_scheme, marks, assignment_id")
+      .eq("id", data.questionId)
+      .single();
+    if (qError) throw new Error(qError.message);
+    if (question.assignment_id !== data.assignmentId) throw new Error("Question mismatch.");
+
+    const { data: assignmentRow } = await db
+      .from("assignments")
+      .select("subject, curriculum")
+      .eq("id", data.assignmentId)
+      .single();
+    const assignment = assignmentRow!;
+
+    const { tutorStep } = await import("./marking.server");
+    const reply = await tutorStep({
+      curriculum: assignment.curriculum,
+      subject: assignment.subject,
+      question: question.question_text,
+      markScheme: question.mark_scheme,
+      marks: question.marks,
+      studentAnswer: data.studentAnswer,
+      history: data.history,
+      latestMessage: data.message,
+    });
+    return { reply };
+  });
+
 
 
 

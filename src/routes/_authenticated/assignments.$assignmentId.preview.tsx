@@ -1,15 +1,24 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { CheckCircle2, Sparkles, XCircle } from "lucide-react";
+import { Camera, CheckCircle2, Sparkles, XCircle } from "lucide-react";
 import { useState } from "react";
 
 import { AppHeader } from "@/components/AppHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { getAssignmentPreview, previewGradeAnswer } from "@/lib/app.functions";
+import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
+import { needsPhotoAnswer } from "@/lib/needs-photo";
+import {
+  getAssignmentPreview,
+  previewGradeAnswer,
+  previewTutorMessage,
+} from "@/lib/app.functions";
 import { questionBody, questionLabel } from "@/lib/question-label";
+
 
 export const Route = createFileRoute("/_authenticated/assignments/$assignmentId/preview")({
   head: () => ({
@@ -184,11 +193,73 @@ function PreviewQuestion({
   question: Question;
 }) {
   const [answer, setAnswer] = useState("");
+  const requiresPhoto = needsPhotoAnswer(question.question_text);
+  const [showPhoto, setShowPhoto] = useState(requiresPhoto);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [reply, setReply] = useState("");
+  const [thread, setThread] = useState<Array<{ role: "tutor" | "student"; content: string }>>([]);
+
   const check = useMutation({
-    mutationFn: () =>
-      previewGradeAnswer({ data: { assignmentId, questionId: question.id, answerText: answer } }),
+    mutationFn: async () => {
+      if (!isEnglishOnly(answer)) throw new Error(ENGLISH_ONLY_MESSAGE);
+      return previewGradeAnswer({
+        data: {
+          assignmentId,
+          questionId: question.id,
+          answerText: answer,
+          imageDataUrls: photos,
+        },
+      });
+    },
+    onSuccess: (result) => {
+      const opener = [result.explanation, result.leadingQuestion].filter(Boolean).join("\n\n");
+      setThread(opener ? [{ role: "tutor", content: opener }] : []);
+    },
   });
   const result = check.data;
+
+  const tutor = useMutation({
+    mutationFn: async () => {
+      if (!isEnglishOnly(reply)) throw new Error("Please ask your question in English.");
+      const history = thread;
+      const message = reply;
+      const res = await previewTutorMessage({
+        data: {
+          assignmentId,
+          questionId: question.id,
+          studentAnswer: answer,
+          message,
+          history,
+        },
+      });
+      return { message, reply: res.reply };
+    },
+    onSuccess: ({ message, reply: tutorReply }) => {
+      setThread((prev) => [
+        ...prev,
+        { role: "student", content: message },
+        { role: "tutor", content: tutorReply },
+      ]);
+      setReply("");
+    },
+  });
+
+  async function addPhotos(files: FileList | null) {
+    if (!files) return;
+    const picked = Array.from(files).slice(0, 3);
+    const dataUrls = await Promise.all(
+      picked.map(
+        (file) =>
+          new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.onerror = () => reject(new Error("Couldn't read that image."));
+            reader.readAsDataURL(file);
+          }),
+      ),
+    );
+    setPhotos(dataUrls);
+  }
 
   return (
     <div className="paper p-5">
@@ -202,15 +273,77 @@ function PreviewQuestion({
         rows={3}
         value={answer}
         onChange={(event) => setAnswer(event.target.value)}
-        placeholder="Type a test answer here…"
+        placeholder={
+          requiresPhoto
+            ? "Describe what you drew (and attach a photo below)"
+            : "Type a test answer in English…"
+        }
       />
+      {answer && !isEnglishOnly(answer) ? (
+        <p className="mt-2 text-sm text-destructive">{ENGLISH_ONLY_MESSAGE}</p>
+      ) : null}
+
+      {showPhoto ? (
+        <div className="mt-3 rounded-xl border border-dashed border-border p-3">
+          <Label
+            htmlFor={`preview-photo-${question.id}`}
+            className="flex items-center gap-2 text-sm font-medium"
+          >
+            <Camera className="size-4" />
+            Photo of working or diagram
+            {requiresPhoto ? <Badge variant="secondary">needed here</Badge> : null}
+          </Label>
+          <Input
+            id={`preview-photo-${question.id}`}
+            type="file"
+            accept="image/*"
+            multiple
+            className="mt-2"
+            onChange={(event) => void addPhotos(event.target.files)}
+          />
+          {photos.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {photos.map((src, index) => (
+                <img
+                  key={`${index}-${src.slice(-12)}`}
+                  src={src}
+                  alt="Attached working"
+                  className="h-20 rounded-md border border-border object-cover"
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="mt-2"
+          onClick={() => setShowPhoto(true)}
+        >
+          <Camera className="mr-2 h-4 w-4" />
+          Add a photo
+        </Button>
+      )}
+
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button size="sm" onClick={() => check.mutate()} disabled={check.isPending || !answer.trim()}>
+        <Button
+          size="sm"
+          onClick={() => check.mutate()}
+          disabled={check.isPending || (!answer.trim() && photos.length === 0)}
+        >
           <Sparkles className="mr-2 h-4 w-4" />
-          {check.isPending ? "Marking…" : "Check answer"}
+          {check.isPending ? "Marking…" : result ? "Re-check answer" : "Check answer"}
         </Button>
         {result || check.isError ? (
-          <Button size="sm" variant="ghost" onClick={() => check.reset()}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              check.reset();
+              setThread([]);
+            }}
+          >
             Clear
           </Button>
         ) : null}
@@ -244,11 +377,49 @@ function PreviewQuestion({
           {result.feedback ? (
             <p className="mt-3 whitespace-pre-wrap text-sm">{result.feedback}</p>
           ) : null}
-          {result.leadingQuestion ? (
-            <p className="mt-3 text-sm italic text-muted-foreground">{result.leadingQuestion}</p>
+        </div>
+      ) : null}
+
+      {result ? (
+        <div className="mt-4 space-y-3">
+          {thread.map((turn, index) => (
+            <div
+              key={`${turn.role}-${index}`}
+              className={
+                turn.role === "tutor"
+                  ? "rounded-lg border border-border bg-card p-3 text-sm"
+                  : "rounded-lg bg-primary/10 p-3 text-sm"
+              }
+            >
+              <p className="mb-1 text-xs font-medium text-muted-foreground">
+                {turn.role === "tutor" ? "AI tutor" : "Student"}
+              </p>
+              <p className="whitespace-pre-wrap">{turn.content}</p>
+            </div>
+          ))}
+
+          <div className="flex gap-2">
+            <Textarea
+              rows={2}
+              value={reply}
+              onChange={(event) => setReply(event.target.value)}
+              placeholder="Ask the AI tutor a follow-up question (in English)…"
+            />
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => tutor.mutate()}
+              disabled={tutor.isPending || !reply.trim()}
+            >
+              {tutor.isPending ? "…" : "Ask"}
+            </Button>
+          </div>
+          {tutor.isError ? (
+            <p className="text-sm text-destructive">{(tutor.error as Error).message}</p>
           ) : null}
         </div>
       ) : null}
     </div>
   );
 }
+

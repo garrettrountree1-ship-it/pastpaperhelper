@@ -73,12 +73,23 @@ export async function extractQuestionsFromPapers(
     return await runDetail(key, header, documents, [], true);
   }
 
-  const results: ExtractedQuestion[] = [];
+  const batches: InventoryItem[][] = [];
   for (let i = 0; i < inventory.length; i += BATCH_SIZE) {
-    const batch = inventory.slice(i, i + BATCH_SIZE);
-    const batchResults = await runDetail(key, header, documents, batch, false);
-    results.push(...batchResults);
+    batches.push(inventory.slice(i, i + BATCH_SIZE));
   }
+
+  const results: ExtractedQuestion[] = [];
+  const CONCURRENCY = 3;
+  for (let i = 0; i < batches.length; i += CONCURRENCY) {
+    const slice = batches.slice(i, i + CONCURRENCY);
+    const settled = await Promise.all(
+      slice.map((batch) =>
+        runDetail(key, header, documents, batch, false).catch(() => [] as ExtractedQuestion[]),
+      ),
+    );
+    for (const part of settled) results.push(...part);
+  }
+
 
   return dedupe(results);
 }

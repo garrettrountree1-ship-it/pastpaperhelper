@@ -212,7 +212,7 @@ type Message = { id: string; answer_id: string; role: string; content: string };
  */
 function pageKey(url: string) {
   // Signed URLs carry a per-request token, so compare the storage path only.
-  return url.split("?")[0];
+  return url.split("?")[0] ?? url;
 }
 
 function groupByPage(questions: Question[]) {

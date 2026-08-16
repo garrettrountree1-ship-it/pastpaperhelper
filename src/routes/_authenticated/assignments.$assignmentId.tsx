@@ -206,22 +206,35 @@ type Answer = {
 };
 type Message = { id: string; answer_id: string; role: string; content: string };
 
-/** Groups consecutive questions that share the same past-paper page image(s). */
+/**
+ * Groups questions under their past-paper page image(s). Each page image is
+ * shown at most once for the whole assignment: a question only starts a new
+ * page block when it introduces pages that haven't been shown yet.
+ */
 function groupByPage(questions: Question[]) {
   const groups: Array<{
     key: string;
     imageUrls: string[];
     questions: Array<{ question: Question; index: number }>;
   }> = [];
+  const shown = new Set<string>();
   questions.forEach((question, index) => {
-    const imageUrls = question.imageUrls ?? [];
-    const key = imageUrls.join("|");
+    const fresh = (question.imageUrls ?? []).filter((url) => !shown.has(url));
     const last = groups[groups.length - 1];
-    if (last && last.key === key) last.questions.push({ question, index });
-    else groups.push({ key: key || `none-${index}`, imageUrls, questions: [{ question, index }] });
+    if (fresh.length === 0 && last) {
+      last.questions.push({ question, index });
+      return;
+    }
+    fresh.forEach((url) => shown.add(url));
+    groups.push({
+      key: fresh.join("|") || `none-${index}`,
+      imageUrls: fresh,
+      questions: [{ question, index }],
+    });
   });
   return groups;
 }
+
 
 function QuestionCard({
   assignmentId,

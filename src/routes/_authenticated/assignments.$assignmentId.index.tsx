@@ -210,6 +210,11 @@ type Message = { id: string; answer_id: string; role: string; content: string };
  * shown at most once for the whole assignment: a question only starts a new
  * page block when it introduces pages that haven't been shown yet.
  */
+function pageKey(url: string) {
+  // Signed URLs carry a per-request token, so compare the storage path only.
+  return url.split("?")[0];
+}
+
 function groupByPage(questions: Question[]) {
   const groups: Array<{
     key: string;
@@ -218,15 +223,15 @@ function groupByPage(questions: Question[]) {
   }> = [];
   const shown = new Set<string>();
   questions.forEach((question, index) => {
-    const fresh = (question.imageUrls ?? []).filter((url) => !shown.has(url));
+    const fresh = (question.imageUrls ?? []).filter((url) => !shown.has(pageKey(url)));
     const last = groups[groups.length - 1];
     if (fresh.length === 0 && last) {
       last.questions.push({ question, index });
       return;
     }
-    fresh.forEach((url) => shown.add(url));
+    fresh.forEach((url) => shown.add(pageKey(url)));
     groups.push({
-      key: fresh.join("|") || `none-${index}`,
+      key: fresh.map(pageKey).join("|") || `none-${index}`,
       imageUrls: fresh,
       questions: [{ question, index }],
     });

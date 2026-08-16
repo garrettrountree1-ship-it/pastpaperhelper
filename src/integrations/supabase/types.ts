@@ -21,6 +21,7 @@ export type Database = {
           awarded_marks: number
           feedback: string | null
           id: string
+          image_paths: string[]
           question_id: string
           resolved: boolean
           submission_id: string
@@ -33,6 +34,7 @@ export type Database = {
           awarded_marks?: number
           feedback?: string | null
           id?: string
+          image_paths?: string[]
           question_id: string
           resolved?: boolean
           submission_id: string
@@ -45,6 +47,7 @@ export type Database = {
           awarded_marks?: number
           feedback?: string | null
           id?: string
+          image_paths?: string[]
           question_id?: string
           resolved?: boolean
           submission_id?: string

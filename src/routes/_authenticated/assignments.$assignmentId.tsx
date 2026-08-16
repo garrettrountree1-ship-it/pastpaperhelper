@@ -392,7 +392,14 @@ function QuestionCard({
               {verdict === "partial" ? "Partly right" : verdict === "correct" ? "Correct" : "Not yet"}
             </span>
           </div>
-          {answer.feedback ? <p className="mt-2 text-sm">{answer.feedback}</p> : null}
+          {answer.feedback ? (
+            <p className="mt-2 whitespace-pre-wrap text-sm">{answer.feedback}</p>
+          ) : null}
+          {verdict !== "correct" ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Edit your answer above and press “Re-check answer” to try again.
+            </p>
+          ) : null}
 
           {thread.length > 0 ? (
             <div className="mt-4 space-y-3">

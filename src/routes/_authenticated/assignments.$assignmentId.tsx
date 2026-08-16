@@ -254,16 +254,56 @@ function QuestionCard({
         <Textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder="Write your answer"
+          placeholder="Write your answer (or attach a photo of your working below)"
           rows={4}
         />
+
+        <div className="rounded-xl border border-dashed border-border p-3">
+          <Label
+            htmlFor={`photo-${question.id}`}
+            className="flex items-center gap-2 text-sm font-medium"
+          >
+            <Camera className="size-4" />
+            Photo of your working or diagram
+          </Label>
+          <Input
+            id={`photo-${question.id}`}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            multiple
+            className="mt-2"
+            onChange={(event) => setPhotos(Array.from(event.target.files ?? []).slice(0, 6))}
+          />
+          {photos.length > 0 ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {photos.length} photo{photos.length === 1 ? "" : "s"} ready — they&apos;ll be marked
+              with your answer.
+            </p>
+          ) : null}
+          {answer?.imageUrls && answer.imageUrls.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {answer.imageUrls.map((url) => (
+                <a key={url} href={url} target="_blank" rel="noreferrer">
+                  <img
+                    src={url}
+                    alt="Your uploaded working"
+                    loading="lazy"
+                    className="size-20 rounded-lg border border-border object-cover"
+                  />
+                </a>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs text-muted-foreground">
             {answer ? `${answer.attempts} attempt${answer.attempts === 1 ? "" : "s"}` : ""}
           </span>
           <Button
             onClick={() => gradeMutation.mutate()}
-            disabled={!draft.trim() || gradeMutation.isPending}
+            disabled={(!draft.trim() && photos.length === 0) || gradeMutation.isPending}
           >
             {gradeMutation.isPending ? "Marking..." : answer ? "Re-check answer" : "Check answer"}
           </Button>

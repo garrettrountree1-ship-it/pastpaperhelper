@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { createAssignment, getClassOverview } from "@/lib/app.functions";
+import { createAssignment, extractPaperQuestions, getClassOverview } from "@/lib/app.functions";
 
 export const Route = createFileRoute("/_authenticated/classes/$classId")({
   head: () => ({

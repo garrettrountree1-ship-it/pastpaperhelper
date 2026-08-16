@@ -163,6 +163,8 @@ type Answer = {
   id: string;
   question_id: string;
   answer_text: string;
+  image_paths?: string[] | null;
+  imageUrls?: string[];
   verdict: string | null;
   awarded_marks: number | null;
   feedback: string | null;
@@ -191,11 +193,35 @@ function QuestionCard({
   const tutor = useServerFn(sendTutorMessage);
   const [draft, setDraft] = useState(answer?.answer_text ?? "");
   const [reply, setReply] = useState("");
+  const [photos, setPhotos] = useState<File[]>([]);
 
   const gradeMutation = useMutation({
-    mutationFn: () =>
-      grade({ data: { assignmentId, questionId: question.id, answerText: draft } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    mutationFn: async () => {
+      let imagePaths = answer?.image_paths ?? [];
+      if (photos.length > 0) {
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData.user?.id;
+        if (!userId) throw new Error("Please sign in again.");
+        const uploaded: string[] = [];
+        for (const photo of photos) {
+          const ext = photo.name.split(".").pop() || "jpg";
+          const path = `${userId}/${assignmentId}/${question.id}/${Date.now()}-${uploaded.length}.${ext}`;
+          const { error } = await supabase.storage
+            .from("student-work")
+            .upload(path, photo, { contentType: photo.type || "image/jpeg", upsert: true });
+          if (error) throw new Error(error.message);
+          uploaded.push(path);
+        }
+        imagePaths = uploaded;
+      }
+      return grade({
+        data: { assignmentId, questionId: question.id, answerText: draft, imagePaths },
+      });
+    },
+    onSuccess: () => {
+      setPhotos([]);
+      queryClient.invalidateQueries({ queryKey });
+    },
     onError: (error: Error) => toast.error(error.message),
   });
 

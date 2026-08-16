@@ -79,11 +79,15 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     "Output raw JSON only.",
   ].join(" ");
 
+  const asImage = (url: string) =>
+    ({ type: "image" as const, image: url.startsWith("data:") ? url : new URL(url) });
+
   const content = [
     { type: "text" as const, text: prompt },
-    ...questionImages.map((url) => ({ type: "image" as const, image: new URL(url) })),
-    ...images.map((url) => ({ type: "image" as const, image: new URL(url) })),
+    ...questionImages.map(asImage),
+    ...images.map(asImage),
   ];
+
 
   let lastError: unknown = null;
   for (let attempt = 0; attempt < 2; attempt += 1) {

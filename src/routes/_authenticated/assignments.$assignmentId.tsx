@@ -35,9 +35,23 @@ export const Route = createFileRoute("/_authenticated/assignments/$assignmentId"
     ],
   }),
   component: AssignmentPage,
-  errorComponent: ({ error }) => (
-    <div role="alert" className="p-8 text-center text-destructive">
-      {error.message}
+  pendingComponent: () => (
+    <div className="min-h-screen">
+      <AppHeader role="student" />
+      <main className="mx-auto max-w-3xl px-4 py-8">
+        <Skeleton className="h-64 w-full" />
+      </main>
+    </div>
+  ),
+  errorComponent: ({ error, reset }) => (
+    <div className="min-h-screen">
+      <AppHeader role="student" />
+      <main className="mx-auto max-w-3xl px-4 py-8 text-center">
+        <p className="mb-4 text-muted-foreground">
+          We couldn&apos;t load this homework. {error.message}
+        </p>
+        <Button onClick={reset}>Try again</Button>
+      </main>
     </div>
   ),
   notFoundComponent: () => <div className="p-8 text-center">Assignment not found.</div>,
@@ -50,7 +64,9 @@ function AssignmentPage() {
   const workspace = useQuery({
     queryKey,
     queryFn: () => getAssignmentWorkspace({ data: { assignmentId } }),
+    retry: 2,
   });
+
   const submit = useServerFn(submitAssignment);
 
   const submitMutation = useMutation({
@@ -75,10 +91,15 @@ function AssignmentPage() {
           ← Your homework
         </Link>
 
-        {workspace.isLoading ? (
+        {workspace.isPending ? (
           <Skeleton className="mt-6 h-64 w-full" />
-        ) : workspace.error ? (
-          <p className="mt-6 text-destructive">{(workspace.error as Error).message}</p>
+        ) : workspace.isError ? (
+          <div className="mt-6 text-center">
+            <p className="mb-4 text-muted-foreground">
+              We couldn&apos;t load this homework. {(workspace.error as Error).message}
+            </p>
+            <Button onClick={() => workspace.refetch()}>Retry</Button>
+          </div>
         ) : data ? (
           <>
             <div className="mt-4">

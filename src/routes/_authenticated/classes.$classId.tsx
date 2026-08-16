@@ -216,17 +216,49 @@ function ClassPage() {
   );
 }
 
+async function toUploadFile(file: File) {
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]!);
+  return {
+    filename: file.name,
+    mimeType: file.type || "application/pdf",
+    base64: btoa(binary),
+  };
+}
+
 function NewAssignmentDialog({ classId }: { classId: string }) {
   const queryClient = useQueryClient();
   const create = useServerFn(createAssignment);
+  const extract = useServerFn(extractPaperQuestions);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
   const [instructions, setInstructions] = useState("");
   const [dueAt, setDueAt] = useState("");
+  const [paperFiles, setPaperFiles] = useState<File[]>([]);
+  const [schemeFiles, setSchemeFiles] = useState<File[]>([]);
   const [questions, setQuestions] = useState<QuestionDraft[]>([
     { questionText: "", markScheme: "", marks: 1 },
   ]);
+
+  const extractMutation = useMutation({
+    mutationFn: async () => {
+      const [paper, scheme] = await Promise.all([
+        Promise.all(paperFiles.map(toUploadFile)),
+        Promise.all(schemeFiles.map(toUploadFile)),
+      ]);
+      return extract({
+        data: { classId, subject, paperFiles: paper, markSchemeFiles: scheme },
+      });
+    },
+    onSuccess: (result) => {
+      setQuestions(result.questions);
+      toast.success(`${result.questions.length} questions read from your files`);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   const mutation = useMutation({
     mutationFn: () =>

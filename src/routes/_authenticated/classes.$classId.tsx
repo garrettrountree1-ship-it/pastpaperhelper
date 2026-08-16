@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Pencil, Plus, Trash2, Wand2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
@@ -288,10 +288,22 @@ function AssignmentDialog({
     queryFn: () => loadForEdit({ data: { assignmentId: assignmentId! } }),
     enabled: open && editing,
     retry: 1,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    staleTime: Infinity,
   });
 
+  // Fill the form from the saved assignment exactly once per open, so a
+  // background refetch never overwrites what the teacher is typing.
+  const hydrated = useRef(false);
   useEffect(() => {
-    if (!open || !editing || !existing.data) return;
+    if (!open) hydrated.current = false;
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !editing || !existing.data || hydrated.current) return;
+    hydrated.current = true;
     setTitle(existing.data.title);
     setSubject(existing.data.subject);
     setInstructions(existing.data.instructions);
@@ -306,6 +318,8 @@ function AssignmentDialog({
         : [emptyQuestion()],
     );
   }, [open, editing, existing.data]);
+
+  const loadingExisting = editing && !hydrated.current;
 
   const extractMutation = useMutation({
     mutationFn: async () => {
@@ -368,8 +382,11 @@ function AssignmentDialog({
       setOpen(false);
       if (!editing) {
         setTitle("");
+        setSubject("");
         setInstructions("");
         setDueAt("");
+        setPaperFiles([]);
+        setSchemeFiles([]);
         setQuestions([emptyQuestion()]);
       }
       queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });
@@ -399,7 +416,7 @@ function AssignmentDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {editing && existing.isPending ? (
+        {loadingExisting && !existing.isError ? (
           <Skeleton className="h-64 w-full" />
         ) : editing && existing.isError ? (
           <div className="py-6 text-center">

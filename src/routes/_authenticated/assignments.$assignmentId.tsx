@@ -315,23 +315,8 @@ function QuestionCard({
         </span>
       </div>
       <p className="mt-3 whitespace-pre-wrap">{questionBody(question.question_text)}</p>
-      {question.imageUrls && question.imageUrls.length > 0 ? (
-        <div className="mt-3 space-y-2">
-          {question.imageUrls.map((url) => (
-            <a key={url} href={url} target="_blank" rel="noreferrer" className="block">
-              <img
-                src={url}
-                alt={`Past-paper page for question ${question.position}`}
-                loading="lazy"
-                className="w-full rounded-lg border border-border bg-card object-contain"
-              />
-            </a>
-          ))}
-          <p className="text-xs text-muted-foreground">
-            Original past-paper page — tap to open full size.
-          </p>
-        </div>
-      ) : null}
+
+
 
       <div className="mt-4 space-y-3">
         <Textarea

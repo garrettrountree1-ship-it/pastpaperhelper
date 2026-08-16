@@ -206,6 +206,23 @@ type Answer = {
 };
 type Message = { id: string; answer_id: string; role: string; content: string };
 
+/** Groups consecutive questions that share the same past-paper page image(s). */
+function groupByPage(questions: Question[]) {
+  const groups: Array<{
+    key: string;
+    imageUrls: string[];
+    questions: Array<{ question: Question; index: number }>;
+  }> = [];
+  questions.forEach((question, index) => {
+    const imageUrls = question.imageUrls ?? [];
+    const key = imageUrls.join("|");
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) last.questions.push({ question, index });
+    else groups.push({ key: key || `none-${index}`, imageUrls, questions: [{ question, index }] });
+  });
+  return groups;
+}
+
 function QuestionCard({
   assignmentId,
   index,

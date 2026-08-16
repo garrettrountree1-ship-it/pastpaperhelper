@@ -700,3 +700,9 @@ async function recalcSubmission(db: AnyClient, submissionId: string) {
   const awarded = (answers ?? []).reduce((sum, a) => sum + Number(a.awarded_marks), 0);
   await db.from("submissions").update({ awarded_marks: awarded }).eq("id", submissionId);
 }
+
+async function signWorkImages(db: AnyClient, paths: string[]) {
+  if (paths.length === 0) return [];
+  const { data } = await db.storage.from("student-work").createSignedUrls(paths, 3600);
+  return (data ?? []).map((item) => item.signedUrl).filter((url): url is string => Boolean(url));
+}

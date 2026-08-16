@@ -43,9 +43,21 @@ export const Route = createFileRoute("/_authenticated/classes/$classId")({
     ],
   }),
   component: ClassPage,
-  errorComponent: ({ error }) => (
-    <div role="alert" className="p-8 text-center text-destructive">
-      {error.message}
+  pendingComponent: () => (
+    <div className="min-h-screen">
+      <AppHeader role="teacher" />
+      <main className="mx-auto max-w-6xl px-4 py-8">
+        <Skeleton className="h-64 w-full" />
+      </main>
+    </div>
+  ),
+  errorComponent: ({ error, reset }) => (
+    <div className="min-h-screen">
+      <AppHeader role="teacher" />
+      <main className="mx-auto max-w-6xl px-4 py-8 text-center">
+        <p className="mb-4 text-muted-foreground">We couldn&apos;t load this class. {error.message}</p>
+        <Button onClick={reset}>Try again</Button>
+      </main>
     </div>
   ),
   notFoundComponent: () => <div className="p-8 text-center">Class not found.</div>,
@@ -58,6 +70,7 @@ function ClassPage() {
   const overview = useQuery({
     queryKey: ["class-overview", classId],
     queryFn: () => getClassOverview({ data: { classId } }),
+    retry: 2,
   });
 
   return (
@@ -68,11 +81,17 @@ function ClassPage() {
           ← All classes
         </Link>
 
-        {overview.isLoading ? (
+        {overview.isPending ? (
           <Skeleton className="mt-6 h-64 w-full" />
-        ) : overview.error ? (
-          <p className="mt-6 text-destructive">{(overview.error as Error).message}</p>
+        ) : overview.isError ? (
+          <div className="mt-6 text-center">
+            <p className="mb-4 text-muted-foreground">
+              We couldn&apos;t load this class. {(overview.error as Error).message}
+            </p>
+            <Button onClick={() => overview.refetch()}>Retry</Button>
+          </div>
         ) : overview.data ? (
+
           <>
             <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
               <div>

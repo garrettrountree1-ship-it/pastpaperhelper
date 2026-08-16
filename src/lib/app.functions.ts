@@ -746,6 +746,8 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     if (!data.answerText.trim() && imagePaths.length === 0) {
       throw new Error("Write an answer or attach a photo of your working.");
     }
+    if (!isEnglishOnly(data.answerText)) throw new Error(ENGLISH_ONLY_MESSAGE);
+
     const { data: allowed } = await supabase.rpc("can_study_assignment", {
       _assignment_id: data.assignmentId,
       _user_id: userId,

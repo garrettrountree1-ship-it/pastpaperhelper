@@ -24,20 +24,28 @@ type MarkInput = {
   markScheme: string;
   marks: number;
   answer: string;
+  imageUrls?: string[];
 };
 
 export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
+  const images = input.imageUrls ?? [];
   const prompt = [
     `Curriculum: ${input.curriculum}`,
     `Subject: ${input.subject || "General"}`,
     `Marks available: ${input.marks}`,
     `Question:\n${input.question}`,
     `Official mark scheme:\n${input.markScheme}`,
-    `Student answer:\n${input.answer}`,
-  ].join("\n\n");
+    `Student typed answer:\n${input.answer || "(none typed)"}`,
+    images.length > 0
+      ? `The student also attached ${images.length} photo(s) of handwritten working or a diagram. Read them carefully — that working is part of the answer.`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   const system = [
     "You are an experienced examiner marking IGCSE, A-Level and IB work strictly against the official mark scheme.",
+    "Answers may include photos of handwritten maths working, graphs or diagrams; read the images and credit correct working shown there.",
     "Award marks only for points that genuinely match the mark scheme. Never award more than the marks available and never award negative marks.",
     "verdict is 'correct' only when full marks are earned, 'partial' when some marks are earned, 'incorrect' when none are.",
     "feedback: at most 3 short sentences, addressed to the student, saying what was credited and what is missing. Never reveal the full mark scheme answer.",
@@ -48,7 +56,15 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     const { output } = await generateText({
       model: gatewayModel(),
       system,
-      prompt,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text" as const, text: prompt },
+            ...images.map((url) => ({ type: "image" as const, image: new URL(url) })),
+          ],
+        },
+      ],
       output: Output.object({ schema: markSchema }),
     });
     return clamp(output, input.marks);

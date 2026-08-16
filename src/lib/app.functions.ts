@@ -783,7 +783,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       image_paths: imagePaths,
       verdict: result.verdict,
       awarded_marks: result.awardedMarks,
-      feedback: result.feedback,
+      feedback: [result.feedback, result.explanation].filter(Boolean).join("\n\n"),
       attempts: (existing?.attempts ?? 0) + 1,
       time_spent_seconds:
         (existing?.time_spent_seconds ?? 0) + Math.round(data.timeSpentSeconds ?? 0),

@@ -130,18 +130,41 @@ function AssignmentPage() {
             </div>
 
             <div className="mt-8 space-y-6">
-              {data.questions.map((question, index) => (
-                <QuestionCard
-                  key={question.id}
-                  assignmentId={assignmentId}
-                  index={index}
-                  question={question}
-                  answer={data.answers.find((a) => a.question_id === question.id) ?? null}
-                  messages={data.messages}
-                  queryKey={queryKey}
-                />
+              {groupByPage(data.questions).map((group) => (
+                <div key={group.key} className="space-y-4">
+                  {group.imageUrls.length > 0 ? (
+                    <div className="paper space-y-2 p-4">
+                      {group.imageUrls.map((url) => (
+                        <a key={url} href={url} target="_blank" rel="noreferrer" className="block">
+                          <img
+                            src={url}
+                            alt="Past-paper page for the questions below"
+                            loading="lazy"
+                            className="w-full rounded-lg border border-border bg-card object-contain"
+                          />
+                        </a>
+                      ))}
+                      <p className="text-xs text-muted-foreground">
+                        Original past-paper page — tap to open full size. The questions below are
+                        from this page.
+                      </p>
+                    </div>
+                  ) : null}
+                  {group.questions.map(({ question, index }) => (
+                    <QuestionCard
+                      key={question.id}
+                      assignmentId={assignmentId}
+                      index={index}
+                      question={question}
+                      answer={data.answers.find((a) => a.question_id === question.id) ?? null}
+                      messages={data.messages}
+                      queryKey={queryKey}
+                    />
+                  ))}
+                </div>
               ))}
             </div>
+
 
             <div className="mt-8 flex justify-end">
               <Button
@@ -182,6 +205,23 @@ type Answer = {
   resolved: boolean;
 };
 type Message = { id: string; answer_id: string; role: string; content: string };
+
+/** Groups consecutive questions that share the same past-paper page image(s). */
+function groupByPage(questions: Question[]) {
+  const groups: Array<{
+    key: string;
+    imageUrls: string[];
+    questions: Array<{ question: Question; index: number }>;
+  }> = [];
+  questions.forEach((question, index) => {
+    const imageUrls = question.imageUrls ?? [];
+    const key = imageUrls.join("|");
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) last.questions.push({ question, index });
+    else groups.push({ key: key || `none-${index}`, imageUrls, questions: [{ question, index }] });
+  });
+  return groups;
+}
 
 function QuestionCard({
   assignmentId,
@@ -275,23 +315,8 @@ function QuestionCard({
         </span>
       </div>
       <p className="mt-3 whitespace-pre-wrap">{questionBody(question.question_text)}</p>
-      {question.imageUrls && question.imageUrls.length > 0 ? (
-        <div className="mt-3 space-y-2">
-          {question.imageUrls.map((url) => (
-            <a key={url} href={url} target="_blank" rel="noreferrer" className="block">
-              <img
-                src={url}
-                alt={`Past-paper page for question ${question.position}`}
-                loading="lazy"
-                className="w-full rounded-lg border border-border bg-card object-contain"
-              />
-            </a>
-          ))}
-          <p className="text-xs text-muted-foreground">
-            Original past-paper page — tap to open full size.
-          </p>
-        </div>
-      ) : null}
+
+
 
       <div className="mt-4 space-y-3">
         <Textarea
@@ -367,7 +392,14 @@ function QuestionCard({
               {verdict === "partial" ? "Partly right" : verdict === "correct" ? "Correct" : "Not yet"}
             </span>
           </div>
-          {answer.feedback ? <p className="mt-2 text-sm">{answer.feedback}</p> : null}
+          {answer.feedback ? (
+            <p className="mt-2 whitespace-pre-wrap text-sm">{answer.feedback}</p>
+          ) : null}
+          {verdict !== "correct" ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Edit your answer above and press “Re-check answer” to try again.
+            </p>
+          ) : null}
 
           {thread.length > 0 ? (
             <div className="mt-4 space-y-3">

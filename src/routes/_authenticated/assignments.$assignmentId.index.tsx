@@ -273,8 +273,10 @@ function QuestionCard({
 
   const gradeMutation = useMutation({
     mutationFn: async () => {
+      if (!isEnglishOnly(draft)) throw new Error(ENGLISH_ONLY_MESSAGE);
       let imagePaths = answer?.image_paths ?? [];
       if (photos.length > 0) {
+
         const { data: userData } = await supabase.auth.getUser();
         const userId = userData.user?.id;
         if (!userId) throw new Error("Please sign in again.");

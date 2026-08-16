@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
+
 
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -746,6 +748,8 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     if (!data.answerText.trim() && imagePaths.length === 0) {
       throw new Error("Write an answer or attach a photo of your working.");
     }
+    if (!isEnglishOnly(data.answerText)) throw new Error(ENGLISH_ONLY_MESSAGE);
+
     const { data: allowed } = await supabase.rpc("can_study_assignment", {
       _assignment_id: data.assignmentId,
       _user_id: userId,
@@ -920,6 +924,8 @@ export const sendTutorMessage = createServerFn({ method: "POST" })
       _user_id: userId,
     });
     if (!owns) throw new Error("Not your answer.");
+    if (!isEnglishOnly(data.message)) throw new Error("Please ask your question in English.");
+
 
     const db = await admin();
     const { data: answerRow } = await db
@@ -1051,6 +1057,8 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     if (!data.answerText.trim()) throw new Error("Type an answer to test the marking.");
+    if (!isEnglishOnly(data.answerText)) throw new Error(ENGLISH_ONLY_MESSAGE);
+
     const { data: allowed } = await supabase.rpc("can_teach_assignment", {
       _assignment_id: data.assignmentId,
       _user_id: userId,

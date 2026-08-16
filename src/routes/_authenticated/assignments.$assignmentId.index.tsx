@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { questionBody, questionLabel } from "@/lib/question-label";
 import { needsPhotoAnswer } from "@/lib/needs-photo";
+import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
+
 
 import { AppHeader } from "@/components/AppHeader";
 import { Badge } from "@/components/ui/badge";
@@ -273,8 +275,10 @@ function QuestionCard({
 
   const gradeMutation = useMutation({
     mutationFn: async () => {
+      if (!isEnglishOnly(draft)) throw new Error(ENGLISH_ONLY_MESSAGE);
       let imagePaths = answer?.image_paths ?? [];
       if (photos.length > 0) {
+
         const { data: userData } = await supabase.auth.getUser();
         const userId = userData.user?.id;
         if (!userId) throw new Error("Please sign in again.");
@@ -309,7 +313,11 @@ function QuestionCard({
   });
 
   const tutorMutation = useMutation({
-    mutationFn: () => tutor({ data: { answerId: answer!.id, message: reply } }),
+    mutationFn: async () => {
+      if (!isEnglishOnly(reply)) throw new Error("Please ask your question in English.");
+      return tutor({ data: { answerId: answer!.id, message: reply } });
+    },
+
     onSuccess: () => {
       setReply("");
       queryClient.invalidateQueries({ queryKey });
@@ -338,9 +346,13 @@ function QuestionCard({
         <Textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder={requiresPhoto ? "Describe what you drew (and upload a photo of it below)" : "Write your answer"}
+          placeholder={requiresPhoto ? "Describe what you drew (and upload a photo of it below)" : "Write your answer in English"}
           rows={4}
         />
+        {draft && !isEnglishOnly(draft) ? (
+          <p className="text-sm text-destructive">{ENGLISH_ONLY_MESSAGE}</p>
+        ) : null}
+
 
         {showPhoto ? (
         <div className="rounded-xl border border-dashed border-border p-3">

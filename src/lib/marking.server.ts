@@ -1,4 +1,4 @@
-import { generateText, Output, NoObjectGeneratedError } from "ai";
+import { generateText } from "ai";
 import { z } from "zod";
 
 import { gatewayModel } from "./ai-gateway.server";
@@ -9,21 +9,23 @@ export type MarkResult = {
   verdict: "correct" | "partial" | "incorrect";
   awardedMarks: number;
   feedback: string;
+  explanation: string;
   leadingQuestion: string;
   markPoints: MarkPoint[];
 };
 
 const markSchema = z.object({
-  verdict: z.enum(["correct", "partial", "incorrect"]),
-  awardedMarks: z.number(),
-  feedback: z.string(),
-  leadingQuestion: z.string(),
+  verdict: z.string(),
+  awardedMarks: z.coerce.number(),
+  feedback: z.string().default(""),
+  explanation: z.string().default(""),
+  leadingQuestion: z.string().default(""),
   markPoints: z
     .array(
       z.object({
-        point: z.string(),
-        marks: z.number(),
-        awarded: z.boolean(),
+        point: z.string().default(""),
+        marks: z.coerce.number().default(0),
+        awarded: z.coerce.boolean().default(false),
       }),
     )
     .default([]),
@@ -57,56 +59,66 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     images.length > 0
       ? `The student also attached ${images.length} photo(s) of handwritten working or a diagram. Read them carefully — that working is part of the answer.`
       : "",
+    "Respond with ONLY a JSON object (no markdown fences, no commentary) of exactly this shape:",
+    `{"verdict":"correct|partial|incorrect","awardedMarks":number,"feedback":"string","explanation":"string","leadingQuestion":"string","markPoints":[{"point":"string","marks":number,"awarded":true}]}`,
   ]
     .filter(Boolean)
     .join("\n\n");
 
   const system = [
     "You are an experienced examiner marking IGCSE, A-Level and IB work strictly against the official mark scheme.",
+    "Be generous with equivalent wording: a short answer such as a single letter, number, formula or option that matches the mark scheme earns full marks.",
     "Answers may include photos of handwritten maths working, graphs or diagrams; read the images and credit correct working shown there.",
     "Split the mark scheme into its individual marking points exactly as written (each M1/A1/B1 or bullet worth its stated marks) and return them in markPoints with marks for that point and awarded true/false. The sum of the marks of awarded points MUST equal awardedMarks.",
     "Award marks only for points that genuinely match the mark scheme. Never award more than the marks available and never award negative marks.",
     "verdict is 'correct' only when full marks are earned, 'partial' when some marks are earned, 'incorrect' when none are.",
     "feedback: at most 3 short sentences, addressed to the student, saying what was credited and what is missing. Never reveal the full mark scheme answer.",
+    "explanation: when marks are missing, write 50-100 words explaining clearly WHY the student's answer is wrong or incomplete and what concept they have misunderstood, without giving the final answer. If full marks are earned, set explanation to an empty string.",
     "leadingQuestion: one short Socratic question that probes the most likely misunderstanding behind the mistake, to help the student find the gap themselves. If the answer is fully correct, leave leadingQuestion as an empty string.",
+    "Output raw JSON only.",
   ].join(" ");
 
-  try {
-    const { output } = await generateText({
-      model: gatewayModel(),
-      system,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text" as const, text: prompt },
-            ...questionImages.map((url) => ({ type: "image" as const, image: new URL(url) })),
-            ...images.map((url) => ({ type: "image" as const, image: new URL(url) })),
-          ],
-        },
-      ],
-      output: Output.object({ schema: markSchema }),
-    });
-    return clamp(output, input.marks);
-  } catch (error) {
-    if (NoObjectGeneratedError.isInstance(error) && error.text) {
-      try {
-        const parsed = markSchema.parse(JSON.parse(extractJson(error.text)));
-        return clamp(parsed, input.marks);
-      } catch {
-        /* fall through */
-      }
+  const content = [
+    { type: "text" as const, text: prompt },
+    ...questionImages.map((url) => ({ type: "image" as const, image: new URL(url) })),
+    ...images.map((url) => ({ type: "image" as const, image: new URL(url) })),
+  ];
+
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const { text } = await generateText({
+        model: gatewayModel(),
+        system,
+        messages: [{ role: "user", content }],
+      });
+      const parsed = markSchema.parse(JSON.parse(extractJson(text)));
+      return clamp(parsed, input.marks);
+    } catch (error) {
+      lastError = error;
     }
-    throw error;
   }
+  throw new Error(
+    `We couldn't mark that answer just now. Please try again. (${
+      lastError instanceof Error ? lastError.message : "unknown error"
+    })`,
+  );
 }
 
 function clamp(result: z.infer<typeof markSchema>, maxMarks: number): MarkResult {
   const awarded = Math.max(0, Math.min(maxMarks, Math.round(result.awardedMarks * 2) / 2));
+  const raw = result.verdict.toLowerCase();
+  const verdict: MarkResult["verdict"] =
+    raw.startsWith("correct") || awarded >= maxMarks
+      ? "correct"
+      : awarded > 0 || raw.startsWith("partial")
+        ? "partial"
+        : "incorrect";
   return {
-    verdict: result.verdict,
+    verdict,
     awardedMarks: awarded,
     feedback: result.feedback.trim(),
+    explanation: result.explanation.trim(),
     leadingQuestion: result.leadingQuestion.trim(),
     markPoints: (result.markPoints ?? []).map((p) => ({
       point: p.point.trim(),
@@ -117,10 +129,13 @@ function clamp(result: z.infer<typeof markSchema>, maxMarks: number): MarkResult
 }
 
 function extractJson(text: string): string {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  return start >= 0 && end > start ? text.slice(start, end + 1) : text;
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const source = fenced ? fenced[1] : text;
+  const start = source.indexOf("{");
+  const end = source.lastIndexOf("}");
+  return start >= 0 && end > start ? source.slice(start, end + 1) : source;
 }
+
 
 type TutorTurn = { role: "tutor" | "student"; content: string };
 

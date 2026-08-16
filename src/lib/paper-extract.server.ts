@@ -1,3 +1,4 @@
+import { unzipSync } from "fflate";
 import { TUTOR_MODEL } from "./ai-gateway.server";
 
 export type ExtractedQuestion = {

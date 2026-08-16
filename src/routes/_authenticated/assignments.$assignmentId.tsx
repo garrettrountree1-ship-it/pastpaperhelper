@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Camera, CheckCircle2, CircleDashed, Sparkles, XCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { questionBody, questionLabel } from "@/lib/question-label";
 
 import { AppHeader } from "@/components/AppHeader";
 import { Badge } from "@/components/ui/badge";
@@ -249,12 +250,14 @@ function QuestionCard({
   return (
     <section className="paper p-6">
       <div className="flex items-start justify-between gap-4">
-        <h2 className="font-display text-xl">Question {index + 1}</h2>
+        <h2 className="font-display text-xl">
+          Question {questionLabel(question.question_text, index)}
+        </h2>
         <span className="text-sm text-muted-foreground">
           {answer?.awarded_marks ?? 0}/{question.marks} marks
         </span>
       </div>
-      <p className="mt-3 whitespace-pre-wrap">{question.question_text}</p>
+      <p className="mt-3 whitespace-pre-wrap">{questionBody(question.question_text)}</p>
       {question.imageUrls && question.imageUrls.length > 0 ? (
         <div className="mt-3 space-y-2">
           {question.imageUrls.map((url) => (

@@ -38,6 +38,7 @@ import {
   updateAssignment,
 } from "@/lib/app.functions";
 import { filesToPages } from "@/lib/pdf-pages";
+import { questionLabel } from "@/lib/question-label";
 
 export const Route = createFileRoute("/_authenticated/classes/$classId")({
   head: () => ({
@@ -504,7 +505,9 @@ function AssignmentDialog({
             {questions.map((question, index) => (
               <div key={question.id ?? `new-${index}`} className="rounded-xl border border-border p-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-display text-lg">Question {index + 1}</h3>
+                  <h3 className="font-display text-lg">
+                    Question {questionLabel(question.questionText, index)}
+                  </h3>
                   {questions.length > 1 ? (
                     <Button
                       variant="ghost"

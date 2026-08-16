@@ -1,21 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Camera, CheckCircle2, CircleDashed, Sparkles, XCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { questionBody, questionLabel } from "@/lib/question-label";
 import { needsPhotoAnswer } from "@/lib/needs-photo";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 
 
 import { AppHeader } from "@/components/AppHeader";
+import { QuestionExperience } from "@/components/assignments/QuestionExperience";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import {
   gradeAnswer,
@@ -326,174 +322,37 @@ function QuestionCard({
   });
 
   const thread = answer ? messages.filter((m) => m.answer_id === answer.id) : [];
-  const verdict = answer?.verdict ?? null;
-
   return (
-    <section className="paper p-6">
-      <div className="flex items-start justify-between gap-4">
-        <h2 className="font-display text-xl">
-          Question {questionLabel(question.question_text, index)}
-        </h2>
-        <span className="text-sm text-muted-foreground">
-          {answer?.awarded_marks ?? 0}/{question.marks} marks
-        </span>
-      </div>
-      <p className="mt-3 whitespace-pre-wrap">{questionBody(question.question_text)}</p>
-
-
-
-      <div className="mt-4 space-y-3">
-        <Textarea
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder={requiresPhoto ? "Describe what you drew (and upload a photo of it below)" : "Write your answer in English"}
-          rows={4}
-        />
-        {draft && !isEnglishOnly(draft) ? (
-          <p className="text-sm text-destructive">{ENGLISH_ONLY_MESSAGE}</p>
-        ) : null}
-
-
-        {showPhoto ? (
-        <div className="rounded-xl border border-dashed border-border p-3">
-          <Label
-            htmlFor={`photo-${question.id}`}
-            className="flex items-center gap-2 text-sm font-medium"
-          >
-            <Camera className="size-4" />
-            Photo of your working or diagram
-          </Label>
-          <Input
-            id={`photo-${question.id}`}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            multiple
-            className="mt-2"
-            onChange={(event) => setPhotos(Array.from(event.target.files ?? []).slice(0, 6))}
-          />
-          {photos.length > 0 ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              {photos.length} photo{photos.length === 1 ? "" : "s"} ready — they&apos;ll be marked
-              with your answer.
-            </p>
-          ) : null}
-          {answer?.imageUrls && answer.imageUrls.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {answer.imageUrls.map((url) => (
-                <a key={url} href={url} target="_blank" rel="noreferrer">
-                  <img
-                    src={url}
-                    alt="Your uploaded working"
-                    loading="lazy"
-                    className="size-20 rounded-lg border border-border object-cover"
-                  />
-                </a>
-              ))}
-            </div>
-          ) : null}
-          {requiresPhoto ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              This question asks you to draw, circle or plot — upload a photo of your work so it can
-              be marked.
-            </p>
-          ) : null}
-        </div>
-        ) : (
-          <Button
-            type="button"
-            variant="ghost"
-            className="w-full justify-start text-muted-foreground"
-            onClick={() => setShowPhoto(true)}
-          >
-            <Camera className="mr-2 size-4" />
-            Add a photo of your working or diagram
-          </Button>
-        )}
-
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-xs text-muted-foreground">
-            {answer ? `${answer.attempts} attempt${answer.attempts === 1 ? "" : "s"}` : ""}
-          </span>
-          <Button
-            onClick={() => gradeMutation.mutate()}
-            disabled={(!draft.trim() && photos.length === 0) || gradeMutation.isPending}
-          >
-            {gradeMutation.isPending ? "Marking..." : answer ? "Re-check answer" : "Check answer"}
-          </Button>
-        </div>
-      </div>
-
-      {answer ? (
-        <div className="mt-5 rounded-xl border border-border bg-secondary/40 p-4">
-          <div className="flex items-center gap-2">
-            {verdict === "correct" ? (
-              <CheckCircle2 className="size-5 text-primary" />
-            ) : verdict === "partial" ? (
-              <CircleDashed className="size-5 text-accent-foreground" />
-            ) : (
-              <XCircle className="size-5 text-destructive" />
-            )}
-            <span className="font-display text-lg capitalize">
-              {verdict === "partial" ? "Partly right" : verdict === "correct" ? "Correct" : "Not yet"}
-            </span>
-          </div>
-          {answer.feedback ? (
-            <p className="mt-2 whitespace-pre-wrap text-sm">{answer.feedback}</p>
-          ) : null}
-          {verdict !== "correct" ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Edit your answer above and press “Re-check answer” to try again.
-            </p>
-          ) : null}
-
-          {thread.length > 0 ? (
-            <div className="mt-4 space-y-3">
-              {thread.map((message) => (
-                <div
-                  key={message.id}
-                  className={
-                    message.role === "tutor"
-                      ? "rounded-lg bg-background p-3 text-sm"
-                      : "rounded-lg bg-primary/10 p-3 text-sm"
-                  }
-                >
-                  <p className="mb-1 flex items-center gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-                    {message.role === "tutor" ? <Sparkles className="size-3" /> : null}
-                    {message.role === "tutor" ? "Tutor" : "You"}
-                  </p>
-                  <p className="whitespace-pre-wrap">{message.content}</p>
-                </div>
-              ))}
-            </div>
-          ) : null}
-
-          <div className="mt-4 space-y-2">
-            <Label htmlFor={`ask-${question.id}`} className="text-xs uppercase tracking-wide text-muted-foreground">
-              Ask the AI tutor
-            </Label>
-            <div className="flex items-end gap-2">
-              <Textarea
-                id={`ask-${question.id}`}
-                value={reply}
-                onChange={(event) => setReply(event.target.value)}
-                placeholder="Reply to the tutor, or ask a follow-up question — as many as you need"
-                rows={2}
-              />
-              <Button
-                variant="secondary"
-                onClick={() => tutorMutation.mutate()}
-                disabled={!reply.trim() || tutorMutation.isPending}
-              >
-                {tutorMutation.isPending ? "Thinking..." : "Send"}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              The tutor never gives the answer, and your teacher can see these questions.
-            </p>
-          </div>
-        </div>
-      ) : null}
-    </section>
+    <QuestionExperience
+      question={question}
+      index={index}
+      draft={draft}
+      onDraftChange={setDraft}
+      requiresPhoto={requiresPhoto}
+      showPhoto={showPhoto}
+      onShowPhoto={() => setShowPhoto(true)}
+      photoCount={photos.length}
+      photoUrls={answer?.imageUrls ?? []}
+      onPhotosChange={(files) => setPhotos(Array.from(files ?? []).slice(0, 6))}
+      result={
+        answer
+          ? {
+              verdict: answer.verdict ?? "incorrect",
+              awardedMarks: answer.awarded_marks ?? 0,
+              feedback: answer.feedback ?? "",
+            }
+          : null
+      }
+      attempts={answer?.attempts ?? 0}
+      checking={gradeMutation.isPending}
+      checkError={gradeMutation.isError ? (gradeMutation.error as Error).message : undefined}
+      onCheck={() => gradeMutation.mutate()}
+      thread={thread}
+      reply={reply}
+      onReplyChange={setReply}
+      tutoring={tutorMutation.isPending}
+      tutorError={tutorMutation.isError ? (tutorMutation.error as Error).message : undefined}
+      onSend={() => tutorMutation.mutate()}
+    />
   );
 }

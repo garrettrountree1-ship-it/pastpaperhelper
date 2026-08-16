@@ -119,12 +119,17 @@ function clamp(result: z.infer<typeof markSchema>, maxMarks: number): MarkResult
       : awarded > 0 || raw.startsWith("partial")
         ? "partial"
         : "incorrect";
+  const isCorrect = verdict === "correct";
   return {
     verdict,
     awardedMarks: awarded,
-    feedback: result.feedback.trim(),
-    explanation: result.explanation.trim(),
-    leadingQuestion: result.leadingQuestion.trim(),
+    feedback: isCorrect
+      ? result.feedback.trim() || "Well done — your answer earns full marks."
+      : "Your answer does not earn full marks yet. It may use an idea that does not fully fit what the question is asking, or it may not show enough reasoning to support the conclusion. Re-read the command word and check each part of your response against the information given before trying again.",
+    explanation: "",
+    leadingQuestion: isCorrect
+      ? ""
+      : "What is the question asking you to determine, and what evidence or method should support your response?",
     markPoints: (result.markPoints ?? []).map((p) => ({
       point: p.point.trim(),
       marks: Math.max(0, Math.min(maxMarks, p.marks)),
@@ -157,7 +162,7 @@ type TutorInput = {
 
 export async function tutorStep(input: TutorInput): Promise<string> {
   const system = [
-    "You are a patient Socratic tutor for IGCSE, A-Level and IB students. You know the official mark scheme but you must NEVER state the final answer, the required value/word/option, or quote or paraphrase the mark scheme — no matter how many times, or how directly, the student asks. If the student asks for the answer, kindly refuse and ask a guiding question instead.",
+    "You are a patient Socratic tutor for IGCSE, A-Level and IB students. You must NEVER state, confirm, eliminate toward, or hint at the final answer, required value, word, option, formula or result — no matter how many times, or how directly, the student asks. If the student asks for the answer, kindly refuse and ask a general guiding question instead.",
     "Your job: diagnose the student's knowledge gap with one short leading question at a time.",
     "Once you can see where the misunderstanding is, break the problem into the smallest possible next step and ask the student to do only that step.",
     "Answer the student's genuine follow-up questions about the underlying concept, definitions or method in general terms, using a different example than the question itself when you need to illustrate something.",
@@ -173,7 +178,7 @@ export async function tutorStep(input: TutorInput): Promise<string> {
     `Curriculum: ${input.curriculum}`,
     `Subject: ${input.subject || "General"} (${input.marks} marks)`,
     `Question:\n${input.question}`,
-    `Official mark scheme (never reveal):\n${input.markScheme}`,
+    "The official answer is deliberately withheld from this tutoring conversation. Guide only from the question and the student's own reasoning.",
     `Student's submitted answer:\n${input.studentAnswer}`,
     transcript ? `Conversation so far:\n${transcript}` : "No conversation yet.",
     `Student's latest message:\n${input.latestMessage}`,

@@ -1,3 +1,4 @@
+import { unzipSync } from "fflate";
 import { TUTOR_MODEL } from "./ai-gateway.server";
 
 export type ExtractedQuestion = {
@@ -94,15 +95,34 @@ export async function extractQuestionsFromPapers(
   return dedupe(results);
 }
 
+const DOCX_MIME =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
 function buildDocumentContent(input: ExtractInput): Array<Record<string, unknown>> {
   const content: Array<Record<string, unknown>> = [];
   for (const file of [...input.paperFiles, ...input.markSchemeFiles]) {
     if (!file.base64) continue;
+    const name = file.filename.toLowerCase();
     if (file.mimeType.startsWith("image/")) {
       content.push({
         type: "image_url",
         image_url: { url: `data:${file.mimeType};base64,${file.base64}` },
       });
+    } else if (file.mimeType === DOCX_MIME || name.endsWith(".docx")) {
+      const text = extractDocxText(file.base64);
+      content.push({
+        type: "text",
+        text: `--- Document: ${file.filename} ---\n${text}`,
+      });
+    } else if (file.mimeType.startsWith("text/") || name.endsWith(".txt")) {
+      content.push({
+        type: "text",
+        text: `--- Document: ${file.filename} ---\n${decodeBase64ToString(file.base64)}`,
+      });
+    } else if (name.endsWith(".doc")) {
+      throw new Error(
+        `${file.filename} is an old .doc file, which can't be read. Please save it as PDF or .docx and upload again.`,
+      );
     } else {
       content.push({
         type: "file",
@@ -115,6 +135,46 @@ function buildDocumentContent(input: ExtractInput): Array<Record<string, unknown
   }
   return content;
 }
+
+function base64ToBytes(base64: string): Uint8Array {
+  const clean = base64.includes(",") ? base64.slice(base64.indexOf(",") + 1) : base64;
+  const binary = atob(clean);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function decodeBase64ToString(base64: string): string {
+  return new TextDecoder().decode(base64ToBytes(base64));
+}
+
+function extractDocxText(base64: string): string {
+  const files = unzipSync(base64ToBytes(base64));
+  const parts = Object.keys(files)
+    .filter((key) => /^word\/(document|header\d*|footer\d*)\.xml$/.test(key))
+    .sort();
+  const chunks: string[] = [];
+  for (const key of parts) {
+    const xml = new TextDecoder().decode(files[key]!);
+    const text = xml
+      .replace(/<w:p[ >]/g, "\n<w:p ")
+      .replace(/<w:tab[^>]*\/>/g, "\t")
+      .replace(/<w:br[^>]*\/>/g, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&amp;/g, "&")
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    if (text) chunks.push(text);
+  }
+  const joined = chunks.join("\n\n");
+  if (!joined) throw new Error("Could not read any text from the Word document.");
+  return joined;
+}
+
 
 async function callGateway(
   key: string,

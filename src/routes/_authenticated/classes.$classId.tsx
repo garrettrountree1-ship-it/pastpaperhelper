@@ -437,8 +437,10 @@ function AssignmentDialog({
           <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-4">
             <h3 className="font-display text-lg">Upload past paper &amp; mark scheme</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              PDFs or photos. Combined in one file, or paper and mark scheme separately — the AI
-              aligns each question with its marking points, and you can edit before saving.
+              PDF, Word (.docx) or photos. Combined in one file, or paper and mark scheme
+              separately. The questions below are taken straight from the file you upload — every
+              part (1a, 1b(i), 1b(ii)…) is transcribed and matched to its marking points, and you
+              can edit anything before saving. Nothing is invented.
             </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
@@ -446,7 +448,7 @@ function AssignmentDialog({
                 <Input
                   id="paper-files"
                   type="file"
-                  accept="application/pdf,image/*"
+                  accept="application/pdf,.pdf,.docx,.doc,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,text/plain,image/*"
                   multiple
                   onChange={(event) => setPaperFiles(Array.from(event.target.files ?? []))}
                 />
@@ -456,7 +458,7 @@ function AssignmentDialog({
                 <Input
                   id="scheme-files"
                   type="file"
-                  accept="application/pdf,image/*"
+                  accept="application/pdf,.pdf,.docx,.doc,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,text/plain,image/*"
                   multiple
                   onChange={(event) => setSchemeFiles(Array.from(event.target.files ?? []))}
                 />
@@ -469,14 +471,17 @@ function AssignmentDialog({
               disabled={paperFiles.length === 0 || extractMutation.isPending}
             >
               <Wand2 className="size-4" />
-              {extractMutation.isPending ? "Reading paper..." : "Build questions with AI"}
+              {extractMutation.isPending
+                ? "Reading your uploaded paper..."
+                : "Extract questions from uploaded paper"}
             </Button>
             {editing ? (
               <p className="mt-2 text-xs text-muted-foreground">
-                Building with AI replaces the questions below.
+                Extracting replaces the questions below.
               </p>
             ) : null}
           </div>
+
 
           <div className="space-y-4">
             {questions.map((question, index) => (

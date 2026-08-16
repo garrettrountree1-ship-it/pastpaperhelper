@@ -22,8 +22,8 @@ function dataUrlToBase64(dataUrl: string) {
 }
 
 async function renderPdf(file: File): Promise<PageImage[]> {
-  const pdfjs = await import("pdfjs-dist");
-  const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const workerUrl = (await import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url")).default;
   pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
   const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
@@ -39,7 +39,7 @@ async function renderPdf(file: File): Promise<PageImage[]> {
     const context = canvas.getContext("2d")!;
     context.fillStyle = "#ffffff";
     context.fillRect(0, 0, canvas.width, canvas.height);
-    await page.render({ canvas, canvasContext: context, viewport } as never).promise;
+    await page.render({ canvasContext: context, viewport } as never).promise;
     pages.push({
       filename: `${file.name.replace(/\.pdf$/i, "")}-page-${n}.jpg`,
       mimeType: "image/jpeg",

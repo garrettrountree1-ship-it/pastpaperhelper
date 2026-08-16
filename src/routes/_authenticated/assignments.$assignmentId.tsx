@@ -91,10 +91,15 @@ function AssignmentPage() {
           ← Your homework
         </Link>
 
-        {workspace.isLoading ? (
+        {workspace.isPending ? (
           <Skeleton className="mt-6 h-64 w-full" />
-        ) : workspace.error ? (
-          <p className="mt-6 text-destructive">{(workspace.error as Error).message}</p>
+        ) : workspace.isError ? (
+          <div className="mt-6 text-center">
+            <p className="mb-4 text-muted-foreground">
+              We couldn&apos;t load this homework. {(workspace.error as Error).message}
+            </p>
+            <Button onClick={() => workspace.refetch()}>Retry</Button>
+          </div>
         ) : data ? (
           <>
             <div className="mt-4">

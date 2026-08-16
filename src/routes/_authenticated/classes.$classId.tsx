@@ -215,6 +215,9 @@ function ClassPage() {
                                     className="underline decoration-accent decoration-2 underline-offset-4"
                                   >
                                     {grade.awardedMarks ?? 0}/{grade.totalMarks}
+                                    {grade.totalMarks > 0
+                                      ? ` (${Math.round(((grade.awardedMarks ?? 0) / grade.totalMarks) * 100)}%)`
+                                      : ""}
                                     {grade.status === "in_progress" ? "*" : ""}
                                   </Link>
                                 )}

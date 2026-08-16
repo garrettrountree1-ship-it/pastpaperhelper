@@ -3,11 +3,14 @@ import { z } from "zod";
 
 import { gatewayModel } from "./ai-gateway.server";
 
+export type MarkPoint = { point: string; marks: number; awarded: boolean };
+
 export type MarkResult = {
   verdict: "correct" | "partial" | "incorrect";
   awardedMarks: number;
   feedback: string;
   leadingQuestion: string;
+  markPoints: MarkPoint[];
 };
 
 const markSchema = z.object({
@@ -15,6 +18,15 @@ const markSchema = z.object({
   awardedMarks: z.number(),
   feedback: z.string(),
   leadingQuestion: z.string(),
+  markPoints: z
+    .array(
+      z.object({
+        point: z.string(),
+        marks: z.number(),
+        awarded: z.boolean(),
+      }),
+    )
+    .default([]),
 });
 
 type MarkInput = {
@@ -52,6 +64,7 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
   const system = [
     "You are an experienced examiner marking IGCSE, A-Level and IB work strictly against the official mark scheme.",
     "Answers may include photos of handwritten maths working, graphs or diagrams; read the images and credit correct working shown there.",
+    "Split the mark scheme into its individual marking points exactly as written (each M1/A1/B1 or bullet worth its stated marks) and return them in markPoints with marks for that point and awarded true/false. The sum of the marks of awarded points MUST equal awardedMarks.",
     "Award marks only for points that genuinely match the mark scheme. Never award more than the marks available and never award negative marks.",
     "verdict is 'correct' only when full marks are earned, 'partial' when some marks are earned, 'incorrect' when none are.",
     "feedback: at most 3 short sentences, addressed to the student, saying what was credited and what is missing. Never reveal the full mark scheme answer.",
@@ -95,6 +108,11 @@ function clamp(result: z.infer<typeof markSchema>, maxMarks: number): MarkResult
     awardedMarks: awarded,
     feedback: result.feedback.trim(),
     leadingQuestion: result.leadingQuestion.trim(),
+    markPoints: (result.markPoints ?? []).map((p) => ({
+      point: p.point.trim(),
+      marks: Math.max(0, Math.min(maxMarks, p.marks)),
+      awarded: Boolean(p.awarded),
+    })),
   };
 }
 

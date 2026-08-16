@@ -22,9 +22,11 @@ export type Database = {
           feedback: string | null
           id: string
           image_paths: string[]
+          mark_breakdown: Json
           question_id: string
           resolved: boolean
           submission_id: string
+          time_spent_seconds: number
           updated_at: string
           verdict: string | null
         }
@@ -35,9 +37,11 @@ export type Database = {
           feedback?: string | null
           id?: string
           image_paths?: string[]
+          mark_breakdown?: Json
           question_id: string
           resolved?: boolean
           submission_id: string
+          time_spent_seconds?: number
           updated_at?: string
           verdict?: string | null
         }
@@ -48,9 +52,11 @@ export type Database = {
           feedback?: string | null
           id?: string
           image_paths?: string[]
+          mark_breakdown?: Json
           question_id?: string
           resolved?: boolean
           submission_id?: string
+          time_spent_seconds?: number
           updated_at?: string
           verdict?: string | null
         }

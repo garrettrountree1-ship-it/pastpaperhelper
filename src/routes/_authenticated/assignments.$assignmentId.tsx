@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Camera, CheckCircle2, CircleDashed, Sparkles, XCircle } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { questionBody, questionLabel } from "@/lib/question-label";
 
@@ -204,6 +204,16 @@ function QuestionCard({
   const [draft, setDraft] = useState(answer?.answer_text ?? "");
   const [reply, setReply] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
+  const secondsRef = useRef(0);
+
+  useEffect(() => {
+    const tick = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        secondsRef.current += 1;
+      }
+    }, 1000);
+    return () => clearInterval(tick);
+  }, []);
 
   const gradeMutation = useMutation({
     mutationFn: async () => {
@@ -225,10 +235,17 @@ function QuestionCard({
         imagePaths = uploaded;
       }
       return grade({
-        data: { assignmentId, questionId: question.id, answerText: draft, imagePaths },
+        data: {
+          assignmentId,
+          questionId: question.id,
+          answerText: draft,
+          imagePaths,
+          timeSpentSeconds: secondsRef.current,
+        },
       });
     },
     onSuccess: () => {
+      secondsRef.current = 0;
       setPhotos([]);
       queryClient.invalidateQueries({ queryKey });
     },

@@ -158,6 +158,178 @@ export const createAssignment = createServerFn({ method: "POST" })
     return { id: assignment.id };
   });
 
+export const getAssignmentForEdit = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ assignmentId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: canTeach } = await supabase.rpc("can_teach_assignment", {
+      _assignment_id: data.assignmentId,
+      _user_id: userId,
+    });
+    if (!canTeach) throw new Error("You do not teach this assignment.");
+
+    const { data: assignment, error } = await supabase
+      .from("assignments")
+      .select("id, title, subject, instructions, due_at")
+      .eq("id", data.assignmentId)
+      .single();
+    if (error) throw new Error(error.message);
+
+    const { data: questions, error: qError } = await supabase
+      .from("questions")
+      .select("id, question_text, mark_scheme, marks, position")
+      .eq("assignment_id", data.assignmentId)
+      .order("position");
+    if (qError) throw new Error(qError.message);
+
+    return {
+      id: assignment.id,
+      title: assignment.title,
+      subject: assignment.subject ?? "",
+      instructions: assignment.instructions ?? "",
+      dueAt: assignment.due_at,
+      questions: (questions ?? []).map((q) => ({
+        id: q.id,
+        questionText: q.question_text,
+        markScheme: q.mark_scheme,
+        marks: q.marks,
+      })),
+    };
+  });
+
+export const updateAssignment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        assignmentId: z.string().uuid(),
+        title: z.string().min(1),
+        subject: z.string(),
+        instructions: z.string(),
+        dueAt: z.string().nullable(),
+        questions: z.array(
+          z.object({
+            id: z.string().uuid().nullable(),
+            questionText: z.string().min(1),
+            markScheme: z.string().min(1),
+            marks: z.number().int().positive(),
+          }),
+        ),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    if (data.questions.length === 0) throw new Error("Add at least one question.");
+
+    const { data: canTeach } = await supabase.rpc("can_teach_assignment", {
+      _assignment_id: data.assignmentId,
+      _user_id: userId,
+    });
+    if (!canTeach) throw new Error("You do not teach this assignment.");
+
+    const { error: aError } = await supabase
+      .from("assignments")
+      .update({
+        title: data.title,
+        subject: data.subject,
+        instructions: data.instructions,
+        due_at: data.dueAt,
+      })
+      .eq("id", data.assignmentId);
+    if (aError) throw new Error(aError.message);
+
+    const { data: existing } = await supabase
+      .from("questions")
+      .select("id")
+      .eq("assignment_id", data.assignmentId);
+    const existingIds = new Set((existing ?? []).map((q) => q.id));
+
+    const keptIds: string[] = [];
+    for (const [index, q] of data.questions.entries()) {
+      const payload = {
+        question_text: q.questionText,
+        mark_scheme: q.markScheme,
+        marks: q.marks,
+        position: index + 1,
+      };
+      if (q.id && existingIds.has(q.id)) {
+        const { error } = await supabase.from("questions").update(payload).eq("id", q.id);
+        if (error) throw new Error(error.message);
+        keptIds.push(q.id);
+      } else {
+        const { data: inserted, error } = await supabase
+          .from("questions")
+          .insert({ assignment_id: data.assignmentId, ...payload })
+          .select("id")
+          .single();
+        if (error) throw new Error(error.message);
+        keptIds.push(inserted.id);
+      }
+    }
+
+    const removed = [...existingIds].filter((id) => !keptIds.includes(id));
+    if (removed.length > 0) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error: delAnswers } = await supabaseAdmin
+        .from("answers")
+        .delete()
+        .in("question_id", removed);
+      if (delAnswers) throw new Error(delAnswers.message);
+      const { error: delError } = await supabase.from("questions").delete().in("id", removed);
+      if (delError) throw new Error(delError.message);
+    }
+
+    const totalMarks = data.questions.reduce((sum, q) => sum + q.marks, 0);
+    await supabase
+      .from("submissions")
+      .update({ total_marks: totalMarks })
+      .eq("assignment_id", data.assignmentId);
+
+    return { id: data.assignmentId };
+  });
+
+export const deleteAssignment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ assignmentId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: canTeach } = await supabase.rpc("can_teach_assignment", {
+      _assignment_id: data.assignmentId,
+      _user_id: userId,
+    });
+    if (!canTeach) throw new Error("You do not teach this assignment.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: subs } = await supabaseAdmin
+      .from("submissions")
+      .select("id")
+      .eq("assignment_id", data.assignmentId);
+    const subIds = (subs ?? []).map((s) => s.id);
+    if (subIds.length > 0) {
+      const { data: answers } = await supabaseAdmin
+        .from("answers")
+        .select("id")
+        .in("submission_id", subIds);
+      const answerIds = (answers ?? []).map((a) => a.id);
+      if (answerIds.length > 0) {
+        await supabaseAdmin.from("tutor_messages").delete().in("answer_id", answerIds);
+        await supabaseAdmin.from("answers").delete().in("id", answerIds);
+      }
+      await supabaseAdmin.from("submissions").delete().in("id", subIds);
+    }
+    await supabaseAdmin.from("questions").delete().eq("assignment_id", data.assignmentId);
+    const { error } = await supabaseAdmin
+      .from("assignments")
+      .delete()
+      .eq("id", data.assignmentId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
+
 export const getClassOverview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ classId: z.string().uuid() }).parse(input))

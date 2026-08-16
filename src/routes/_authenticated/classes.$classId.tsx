@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Trash2, Wand2 } from "lucide-react";
-import { useState } from "react";
+import { Pencil, Plus, Trash2, Wand2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
@@ -29,7 +29,14 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { createAssignment, extractPaperQuestions, getClassOverview } from "@/lib/app.functions";
+import {
+  createAssignment,
+  deleteAssignment,
+  extractPaperQuestions,
+  getAssignmentForEdit,
+  getClassOverview,
+  updateAssignment,
+} from "@/lib/app.functions";
 
 export const Route = createFileRoute("/_authenticated/classes/$classId")({
   head: () => ({
@@ -63,7 +70,7 @@ export const Route = createFileRoute("/_authenticated/classes/$classId")({
   notFoundComponent: () => <div className="p-8 text-center">Class not found.</div>,
 });
 
-type QuestionDraft = { questionText: string; markScheme: string; marks: number };
+type QuestionDraft = { id: string | null; questionText: string; markScheme: string; marks: number };
 
 function ClassPage() {
   const { classId } = Route.useParams();
@@ -103,7 +110,7 @@ function ClassPage() {
                   </span>
                 </p>
               </div>
-              <NewAssignmentDialog classId={classId} />
+              <AssignmentDialog classId={classId} trigger={<Button>New assignment</Button>} />
             </div>
 
             <Tabs defaultValue="assignments" className="mt-6">
@@ -130,9 +137,26 @@ function ClassPage() {
                             : ""}
                         </p>
                       </div>
-                      <Badge variant="secondary">
-                        {assignment.submittedCount} submitted
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">
+                          {assignment.submittedCount} submitted
+                        </Badge>
+                        <AssignmentDialog
+                          classId={classId}
+                          assignmentId={assignment.id}
+                          trigger={
+                            <Button variant="outline" size="sm">
+                              <Pencil className="size-4" />
+                              Edit
+                            </Button>
+                          }
+                        />
+                        <DeleteAssignmentButton
+                          classId={classId}
+                          assignmentId={assignment.id}
+                          title={assignment.title}
+                        />
+                      </div>
                     </div>
                   ))
                 )}
@@ -228,10 +252,20 @@ async function toUploadFile(file: File) {
   };
 }
 
-function NewAssignmentDialog({ classId }: { classId: string }) {
+function AssignmentDialog({
+  classId,
+  assignmentId,
+  trigger,
+}: {
+  classId: string;
+  assignmentId?: string;
+  trigger: React.ReactNode;
+}) {
   const queryClient = useQueryClient();
   const create = useServerFn(createAssignment);
+  const update = useServerFn(updateAssignment);
   const extract = useServerFn(extractPaperQuestions);
+  const loadForEdit = useServerFn(getAssignmentForEdit);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
@@ -240,8 +274,30 @@ function NewAssignmentDialog({ classId }: { classId: string }) {
   const [paperFiles, setPaperFiles] = useState<File[]>([]);
   const [schemeFiles, setSchemeFiles] = useState<File[]>([]);
   const [questions, setQuestions] = useState<QuestionDraft[]>([
-    { questionText: "", markScheme: "", marks: 1 },
+    { id: null, questionText: "", markScheme: "", marks: 1 },
   ]);
+
+  const editing = Boolean(assignmentId);
+
+  const existing = useQuery({
+    queryKey: ["assignment-edit", assignmentId],
+    queryFn: () => loadForEdit({ data: { assignmentId: assignmentId! } }),
+    enabled: open && editing,
+    retry: 1,
+  });
+
+  useEffect(() => {
+    if (!open || !editing || !existing.data) return;
+    setTitle(existing.data.title);
+    setSubject(existing.data.subject);
+    setInstructions(existing.data.instructions);
+    setDueAt(existing.data.dueAt ? existing.data.dueAt.slice(0, 10) : "");
+    setQuestions(
+      existing.data.questions.length > 0
+        ? existing.data.questions
+        : [{ id: null, questionText: "", markScheme: "", marks: 1 }],
+    );
+  }, [open, editing, existing.data]);
 
   const extractMutation = useMutation({
     mutationFn: async () => {
@@ -254,36 +310,56 @@ function NewAssignmentDialog({ classId }: { classId: string }) {
       });
     },
     onSuccess: (result) => {
-      setQuestions(result.questions);
+      setQuestions(result.questions.map((q) => ({ ...q, id: null })));
       toast.success(`${result.questions.length} questions read from your files`);
     },
     onError: (error: Error) => toast.error(error.message),
   });
 
   const mutation = useMutation({
-    mutationFn: () =>
-      create({
+    mutationFn: () => {
+      const payloadQuestions = questions.map((q) => ({
+        id: q.id ?? null,
+        questionText: q.questionText.trim(),
+        markScheme: q.markScheme.trim(),
+        marks: q.marks,
+      }));
+      if (editing) {
+        return update({
+          data: {
+            assignmentId: assignmentId!,
+            title,
+            subject,
+            instructions,
+            dueAt: dueAt ? new Date(dueAt).toISOString() : null,
+            questions: payloadQuestions,
+          },
+        });
+      }
+      return create({
         data: {
           classId,
           title,
           subject,
           instructions,
           dueAt: dueAt ? new Date(dueAt).toISOString() : null,
-          questions: questions.map((q) => ({
-            questionText: q.questionText.trim(),
-            markScheme: q.markScheme.trim(),
-            marks: q.marks,
-          })),
+          questions: payloadQuestions.map(({ id: _id, ...rest }) => rest),
         },
-      }),
+      });
+    },
     onSuccess: () => {
-      toast.success("Assignment set");
+      toast.success(editing ? "Assignment updated" : "Assignment set");
       setOpen(false);
-      setTitle("");
-      setInstructions("");
-      setDueAt("");
-      setQuestions([{ questionText: "", markScheme: "", marks: 1 }]);
+      if (!editing) {
+        setTitle("");
+        setInstructions("");
+        setDueAt("");
+        setQuestions([{ id: null, questionText: "", markScheme: "", marks: 1 }]);
+      }
       queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });
+      if (assignmentId) {
+        queryClient.invalidateQueries({ queryKey: ["assignment-edit", assignmentId] });
+      }
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -293,20 +369,30 @@ function NewAssignmentDialog({ classId }: { classId: string }) {
     questions.length > 0 &&
     questions.every((q) => q.questionText.trim() && q.markScheme.trim() && q.marks > 0);
 
-  function update(index: number, patch: Partial<QuestionDraft>) {
+  function update_(index: number, patch: Partial<QuestionDraft>) {
     setQuestions((prev) => prev.map((q, i) => (i === index ? { ...q, ...patch } : q)));
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>New assignment</Button>
-      </DialogTrigger>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Set past-paper homework</DialogTitle>
+          <DialogTitle>
+            {editing ? "Edit past-paper homework" : "Set past-paper homework"}
+          </DialogTitle>
         </DialogHeader>
 
+        {editing && existing.isPending ? (
+          <Skeleton className="h-64 w-full" />
+        ) : editing && existing.isError ? (
+          <div className="py-6 text-center">
+            <p className="mb-4 text-muted-foreground">
+              We couldn&apos;t load this assignment. {(existing.error as Error).message}
+            </p>
+            <Button onClick={() => existing.refetch()}>Retry</Button>
+          </div>
+        ) : (
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -385,12 +471,16 @@ function NewAssignmentDialog({ classId }: { classId: string }) {
               <Wand2 className="size-4" />
               {extractMutation.isPending ? "Reading paper..." : "Build questions with AI"}
             </Button>
+            {editing ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Building with AI replaces the questions below.
+              </p>
+            ) : null}
           </div>
-
 
           <div className="space-y-4">
             {questions.map((question, index) => (
-              <div key={index} className="rounded-xl border border-border p-4">
+              <div key={question.id ?? `new-${index}`} className="rounded-xl border border-border p-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-display text-lg">Question {index + 1}</h3>
                   {questions.length > 1 ? (
@@ -408,13 +498,13 @@ function NewAssignmentDialog({ classId }: { classId: string }) {
                 <div className="mt-3 space-y-3">
                   <Textarea
                     value={question.questionText}
-                    onChange={(event) => update(index, { questionText: event.target.value })}
+                    onChange={(event) => update_(index, { questionText: event.target.value })}
                     placeholder="Paste the past-paper question here"
                     rows={3}
                   />
                   <Textarea
                     value={question.markScheme}
-                    onChange={(event) => update(index, { markScheme: event.target.value })}
+                    onChange={(event) => update_(index, { markScheme: event.target.value })}
                     placeholder="Paste the mark scheme answer here (students never see this)"
                     rows={3}
                   />
@@ -426,7 +516,7 @@ function NewAssignmentDialog({ classId }: { classId: string }) {
                       min={1}
                       value={question.marks}
                       onChange={(event) =>
-                        update(index, { marks: Math.max(1, Number(event.target.value) || 1) })
+                        update_(index, { marks: Math.max(1, Number(event.target.value) || 1) })
                       }
                       className="w-20"
                     />
@@ -437,7 +527,10 @@ function NewAssignmentDialog({ classId }: { classId: string }) {
             <Button
               variant="outline"
               onClick={() =>
-                setQuestions((prev) => [...prev, { questionText: "", markScheme: "", marks: 1 }])
+                setQuestions((prev) => [
+                  ...prev,
+                  { id: null, questionText: "", markScheme: "", marks: 1 },
+                ])
               }
             >
               <Plus className="size-4" />
@@ -445,13 +538,48 @@ function NewAssignmentDialog({ classId }: { classId: string }) {
             </Button>
           </div>
         </div>
+        )}
 
         <DialogFooter>
           <Button onClick={() => mutation.mutate()} disabled={!valid || mutation.isPending}>
-            {mutation.isPending ? "Saving..." : "Set homework"}
+            {mutation.isPending ? "Saving..." : editing ? "Save changes" : "Set homework"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function DeleteAssignmentButton({
+  classId,
+  assignmentId,
+  title,
+}: {
+  classId: string;
+  assignmentId: string;
+  title: string;
+}) {
+  const queryClient = useQueryClient();
+  const remove = useServerFn(deleteAssignment);
+  const mutation = useMutation({
+    mutationFn: () => remove({ data: { assignmentId } }),
+    onSuccess: () => {
+      toast.success("Assignment deleted");
+      queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      disabled={mutation.isPending}
+      onClick={() => {
+        if (window.confirm(`Delete "${title}" and all its submissions?`)) mutation.mutate();
+      }}
+    >
+      <Trash2 className="size-4" />
+    </Button>
   );
 }

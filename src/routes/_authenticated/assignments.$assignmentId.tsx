@@ -8,8 +8,11 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
 import {
   gradeAnswer,
   getAssignmentWorkspace,

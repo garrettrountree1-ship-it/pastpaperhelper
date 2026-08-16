@@ -365,6 +365,7 @@ export function normaliseSymbols(input: string): string {
     [/(\d)\s*(?:\^o|\^0|\*o|\bo\b|\u00ba|\u25e6)\s*([CF])\b/g, "$1 \u00b0$2"],
     [/(?<![A-Za-z0-9])(?:\^o|\^0|\u00ba|\u25e6)\s*([CF])\b/g, "\u00b0$1"],
     [/(\d)\s*o\s*C\b/g, "$1 \u00b0C"],
+    [/(\d\s*[kM]?)\s*ohms?\b/g, "$1\u03a9"],
     [/\bohms?\b/g, "\u03a9"],
     [/\bmicro(?=\s?[a-zA-Z])/g, "\u00b5"],
     [/\+\/-/g, "\u00b1"],

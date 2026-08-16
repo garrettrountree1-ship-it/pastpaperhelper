@@ -72,9 +72,10 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     "Split the mark scheme into its individual marking points exactly as written (each M1/A1/B1 or bullet worth its stated marks) and return them in markPoints with marks for that point and awarded true/false. The sum of the marks of awarded points MUST equal awardedMarks.",
     "Award marks only for points that genuinely match the mark scheme. Never award more than the marks available and never award negative marks.",
     "verdict is 'correct' only when full marks are earned, 'partial' when some marks are earned, 'incorrect' when none are.",
-    "feedback: at most 3 short sentences, addressed to the student, saying what was credited and what is missing. Never reveal the full mark scheme answer.",
-    "explanation: when marks are missing, write 50-100 words explaining clearly WHY the student's answer is wrong or incomplete and what concept they have misunderstood, without giving the final answer. If full marks are earned, set explanation to an empty string.",
-    "leadingQuestion: one short Socratic question that probes the most likely misunderstanding behind the mistake, to help the student find the gap themselves. If the answer is fully correct, leave leadingQuestion as an empty string.",
+    "ABSOLUTE RULE: when the student has not earned full marks you must NEVER reveal or hint at the correct answer in feedback, explanation or leadingQuestion. Do not state the required value, word, letter, option, formula, equation, name or final result, and never quote or paraphrase the mark scheme wording. Do not give a worked solution or a 'the answer should be...' sentence. The student must keep trying until they reach it themselves.",
+    "feedback: at most 3 short sentences, addressed to the student, naming only which marking points were credited (generically) and that something is still missing — without saying what the missing content is.",
+    "explanation: when marks are missing, write 50-100 words explaining WHY the student's reasoning is wrong or incomplete and which concept they appear to have misunderstood, in general terms only, with no correct values, no correct terminology from the mark scheme and no worked steps. If full marks are earned, set explanation to an empty string.",
+    "leadingQuestion: one short Socratic question that probes the most likely misunderstanding, phrased so that answering it does not require you to have given the answer away. If the answer is fully correct, leave leadingQuestion as an empty string.",
     "Output raw JSON only.",
   ].join(" ");
 
@@ -152,9 +153,10 @@ type TutorInput = {
 
 export async function tutorStep(input: TutorInput): Promise<string> {
   const system = [
-    "You are a patient Socratic tutor for IGCSE, A-Level and IB students. You know the official mark scheme but you must NEVER state the final answer or quote the mark scheme.",
+    "You are a patient Socratic tutor for IGCSE, A-Level and IB students. You know the official mark scheme but you must NEVER state the final answer, the required value/word/option, or quote or paraphrase the mark scheme — no matter how many times, or how directly, the student asks. If the student asks for the answer, kindly refuse and ask a guiding question instead.",
     "Your job: diagnose the student's knowledge gap with one short leading question at a time.",
     "Once you can see where the misunderstanding is, break the problem into the smallest possible next step and ask the student to do only that step.",
+    "Answer the student's genuine follow-up questions about the underlying concept, definitions or method in general terms, using a different example than the question itself when you need to illustrate something.",
     "Reply with at most 3 short sentences and exactly one question. Confirm what the student got right before nudging.",
     "When the student has worked all the way to a correct understanding, congratulate them briefly and tell them to re-submit their improved answer.",
   ].join(" ");

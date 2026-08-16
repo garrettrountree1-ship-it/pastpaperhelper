@@ -5,6 +5,7 @@ import { Camera, CheckCircle2, CircleDashed, Sparkles, XCircle } from "lucide-re
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { questionBody, questionLabel } from "@/lib/question-label";
+import { needsPhotoAnswer } from "@/lib/needs-photo";
 
 import { AppHeader } from "@/components/AppHeader";
 import { Badge } from "@/components/ui/badge";
@@ -257,6 +258,8 @@ function QuestionCard({
   const [draft, setDraft] = useState(answer?.answer_text ?? "");
   const [reply, setReply] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
+  const requiresPhoto = needsPhotoAnswer(question.question_text);
+  const [showPhoto, setShowPhoto] = useState(requiresPhoto);
   const secondsRef = useRef(0);
 
   useEffect(() => {
@@ -335,10 +338,11 @@ function QuestionCard({
         <Textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder="Write your answer (or attach a photo of your working below)"
+          placeholder={requiresPhoto ? "Describe what you drew (and upload a photo of it below)" : "Write your answer"}
           rows={4}
         />
 
+        {showPhoto ? (
         <div className="rounded-xl border border-dashed border-border p-3">
           <Label
             htmlFor={`photo-${question.id}`}
@@ -376,7 +380,24 @@ function QuestionCard({
               ))}
             </div>
           ) : null}
+          {requiresPhoto ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              This question asks you to draw, circle or plot — upload a photo of your work so it can
+              be marked.
+            </p>
+          ) : null}
         </div>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full justify-start text-muted-foreground"
+            onClick={() => setShowPhoto(true)}
+          >
+            <Camera className="mr-2 size-4" />
+            Add a photo of your working or diagram
+          </Button>
+        )}
 
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs text-muted-foreground">
@@ -435,12 +456,16 @@ function QuestionCard({
             </div>
           ) : null}
 
-          {verdict !== "correct" ? (
-            <div className="mt-4 flex items-end gap-2">
+          <div className="mt-4 space-y-2">
+            <Label htmlFor={`ask-${question.id}`} className="text-xs uppercase tracking-wide text-muted-foreground">
+              Ask the AI tutor
+            </Label>
+            <div className="flex items-end gap-2">
               <Textarea
+                id={`ask-${question.id}`}
                 value={reply}
                 onChange={(event) => setReply(event.target.value)}
-                placeholder="Reply to the tutor's question"
+                placeholder="Reply to the tutor, or ask a follow-up question — as many as you need"
                 rows={2}
               />
               <Button
@@ -451,7 +476,10 @@ function QuestionCard({
                 {tutorMutation.isPending ? "Thinking..." : "Send"}
               </Button>
             </div>
-          ) : null}
+            <p className="text-xs text-muted-foreground">
+              The tutor never gives the answer, and your teacher can see these questions.
+            </p>
+          </div>
         </div>
       ) : null}
     </section>

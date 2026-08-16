@@ -194,6 +194,38 @@ function SubmissionPage() {
                       <p className="mt-1 whitespace-pre-wrap text-sm">{question.mark_scheme}</p>
                     </div>
 
+                    {(() => {
+                      const thread = (
+                        detail.data.messages as Array<{
+                          id: string;
+                          answer_id: string;
+                          role: string;
+                          content: string;
+                          created_at: string;
+                        }>
+                      ).filter((m) => m.answer_id === answer?.id);
+                      if (thread.length === 0) return null;
+                      return (
+                        <div className="mt-4 rounded-xl border border-border p-4">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            AI tutor log ({thread.filter((m) => m.role === "student").length}{" "}
+                            student question
+                            {thread.filter((m) => m.role === "student").length === 1 ? "" : "s"})
+                          </p>
+                          <div className="mt-2 space-y-2">
+                            {thread.map((message) => (
+                              <div key={message.id} className="text-sm">
+                                <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                                  {message.role === "tutor" ? "Tutor" : "Student"}
+                                </span>
+                                <p className="whitespace-pre-wrap">{message.content}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     <div className="mt-4 rounded-xl bg-secondary/40 p-4">
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">
                         Student answer

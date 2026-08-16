@@ -555,7 +555,21 @@ export const getSubmissionDetail = createServerFn({ method: "POST" })
       })),
     );
 
-    return { questions: questionsWithPages, submission, answers: withImages };
+    const answerIds = withImages.map((a) => a.id);
+    const { data: tutorMessages } = answerIds.length
+      ? await db
+          .from("tutor_messages")
+          .select("id, answer_id, role, content, created_at")
+          .in("answer_id", answerIds)
+          .order("created_at")
+      : { data: [] };
+
+    return {
+      questions: questionsWithPages,
+      submission,
+      answers: withImages,
+      messages: tutorMessages ?? [],
+    };
   });
 
 /* --------------------------------------------------------------- student --- */

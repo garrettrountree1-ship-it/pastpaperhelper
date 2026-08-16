@@ -924,6 +924,8 @@ export const sendTutorMessage = createServerFn({ method: "POST" })
       _user_id: userId,
     });
     if (!owns) throw new Error("Not your answer.");
+    if (!isEnglishOnly(data.message)) throw new Error("Please ask your question in English.");
+
 
     const db = await admin();
     const { data: answerRow } = await db

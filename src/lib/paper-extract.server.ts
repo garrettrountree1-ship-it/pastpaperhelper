@@ -304,8 +304,8 @@ async function runDetail(
             .filter((n) => Number.isFinite(n) && n > 0)
         : [];
       return {
-        questionText,
-        markScheme: String(item["markScheme"] ?? "").trim(),
+        questionText: normaliseSymbols(questionText),
+        markScheme: normaliseSymbols(String(item["markScheme"] ?? "").trim()),
         marks: Math.max(1, Math.round(Number(item["marks"]) || match?.marks || 1)),
         pages: match?.pages?.length ? match.pages : [...new Set(pagesFromModel)].slice(0, 3),
       };

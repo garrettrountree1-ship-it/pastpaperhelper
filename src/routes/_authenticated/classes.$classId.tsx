@@ -167,6 +167,16 @@ function ClassPage() {
                         <Badge variant="secondary">
                           {assignment.submittedCount} submitted
                         </Badge>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link
+                            to="/assignments/$assignmentId/preview"
+                            params={{ assignmentId: assignment.id }}
+                          >
+                            <Eye className="size-4" />
+                            Student view
+                          </Link>
+                        </Button>
+
                         <AssignmentDialog
                           classId={classId}
                           assignmentId={assignment.id}

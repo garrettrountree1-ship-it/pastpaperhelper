@@ -1051,13 +1051,18 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
         assignmentId: z.string().uuid(),
         questionId: z.string().uuid(),
         answerText: z.string(),
+        imageDataUrls: z.array(z.string().startsWith("data:image/").max(8_000_000)).max(3).optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    if (!data.answerText.trim()) throw new Error("Type an answer to test the marking.");
+    const previewImages = data.imageDataUrls ?? [];
+    if (!data.answerText.trim() && previewImages.length === 0) {
+      throw new Error("Type an answer or attach a photo to test the marking.");
+    }
     if (!isEnglishOnly(data.answerText)) throw new Error(ENGLISH_ONLY_MESSAGE);
+
 
     const { data: allowed } = await supabase.rpc("can_teach_assignment", {
       _assignment_id: data.assignmentId,

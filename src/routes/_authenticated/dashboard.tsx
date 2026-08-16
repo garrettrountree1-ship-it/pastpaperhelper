@@ -39,17 +39,44 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
     ],
   }),
   component: Dashboard,
+  pendingComponent: () => (
+    <div className="min-h-screen">
+      <AppHeader />
+      <main className="mx-auto max-w-6xl px-4 py-8">
+        <Skeleton className="h-40 w-full" />
+      </main>
+    </div>
+  ),
+  errorComponent: ({ error, reset }) => (
+    <div className="min-h-screen">
+      <AppHeader />
+      <main className="mx-auto max-w-6xl px-4 py-8 text-center">
+        <p className="mb-4 text-muted-foreground">
+          We couldn&apos;t load your dashboard. {error.message}
+        </p>
+        <Button onClick={reset}>Try again</Button>
+      </main>
+    </div>
+  ),
+  notFoundComponent: () => <div className="p-8 text-center">Page not found.</div>,
 });
 
 function Dashboard() {
-  const me = useQuery({ queryKey: ["me"], queryFn: useServerFn(getMe) });
+  const me = useQuery({ queryKey: ["me"], queryFn: useServerFn(getMe), retry: 2 });
 
   return (
     <div className="min-h-screen">
       <AppHeader name={me.data?.fullName || me.data?.email} role={me.data?.role} />
       <main className="mx-auto max-w-6xl px-4 py-8">
-        {me.isLoading ? (
+        {me.isPending ? (
           <Skeleton className="h-40 w-full" />
+        ) : me.isError ? (
+          <div className="text-center">
+            <p className="mb-4 text-muted-foreground">
+              We couldn&apos;t load your account. {me.error.message}
+            </p>
+            <Button onClick={() => me.refetch()}>Retry</Button>
+          </div>
         ) : me.data?.role === "teacher" ? (
           <TeacherHome />
         ) : (
@@ -59,6 +86,7 @@ function Dashboard() {
     </div>
   );
 }
+
 
 function TeacherHome() {
   const queryClient = useQueryClient();

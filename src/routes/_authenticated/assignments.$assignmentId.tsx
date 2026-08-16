@@ -130,18 +130,41 @@ function AssignmentPage() {
             </div>
 
             <div className="mt-8 space-y-6">
-              {data.questions.map((question, index) => (
-                <QuestionCard
-                  key={question.id}
-                  assignmentId={assignmentId}
-                  index={index}
-                  question={question}
-                  answer={data.answers.find((a) => a.question_id === question.id) ?? null}
-                  messages={data.messages}
-                  queryKey={queryKey}
-                />
+              {groupByPage(data.questions).map((group) => (
+                <div key={group.key} className="space-y-4">
+                  {group.imageUrls.length > 0 ? (
+                    <div className="paper space-y-2 p-4">
+                      {group.imageUrls.map((url) => (
+                        <a key={url} href={url} target="_blank" rel="noreferrer" className="block">
+                          <img
+                            src={url}
+                            alt="Past-paper page for the questions below"
+                            loading="lazy"
+                            className="w-full rounded-lg border border-border bg-card object-contain"
+                          />
+                        </a>
+                      ))}
+                      <p className="text-xs text-muted-foreground">
+                        Original past-paper page — tap to open full size. The questions below are
+                        from this page.
+                      </p>
+                    </div>
+                  ) : null}
+                  {group.questions.map(({ question, index }) => (
+                    <QuestionCard
+                      key={question.id}
+                      assignmentId={assignmentId}
+                      index={index}
+                      question={question}
+                      answer={data.answers.find((a) => a.question_id === question.id) ?? null}
+                      messages={data.messages}
+                      queryKey={queryKey}
+                    />
+                  ))}
+                </div>
               ))}
             </div>
+
 
             <div className="mt-8 flex justify-end">
               <Button

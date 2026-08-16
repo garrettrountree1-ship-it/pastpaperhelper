@@ -294,11 +294,20 @@ export const getSubmissionDetail = createServerFn({ method: "POST" })
     const { data: answers } = submission
       ? await db
           .from("answers")
-          .select("id, question_id, answer_text, verdict, awarded_marks, feedback, attempts")
+          .select(
+            "id, question_id, answer_text, image_paths, verdict, awarded_marks, feedback, attempts",
+          )
           .eq("submission_id", submission.id)
       : { data: [] };
 
-    return { questions: questions ?? [], submission, answers: answers ?? [] };
+    const withImages = await Promise.all(
+      (answers ?? []).map(async (a) => ({
+        ...a,
+        imageUrls: await signWorkImages(db, a.image_paths ?? []),
+      })),
+    );
+
+    return { questions: questions ?? [], submission, answers: withImages };
   });
 
 /* --------------------------------------------------------------- student --- */

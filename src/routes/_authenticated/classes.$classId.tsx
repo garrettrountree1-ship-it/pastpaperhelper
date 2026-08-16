@@ -128,7 +128,14 @@ function ClassPage() {
                   </span>
                 </p>
               </div>
-              <AssignmentDialog classId={classId} trigger={<Button>New assignment</Button>} />
+              <div className="flex items-center gap-2">
+                <ClassSettingsDialog
+                  classId={classId}
+                  klass={overview.data.klass}
+                  onSaved={() => overview.refetch()}
+                />
+                <AssignmentDialog classId={classId} trigger={<Button>New assignment</Button>} />
+              </div>
             </div>
 
             <Tabs defaultValue="assignments" className="mt-6">

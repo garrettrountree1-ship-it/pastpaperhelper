@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Trash2, Wand2 } from "lucide-react";
-import { useState } from "react";
+import { Pencil, Plus, Trash2, Wand2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
@@ -29,7 +29,14 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { createAssignment, extractPaperQuestions, getClassOverview } from "@/lib/app.functions";
+import {
+  createAssignment,
+  deleteAssignment,
+  extractPaperQuestions,
+  getAssignmentForEdit,
+  getClassOverview,
+  updateAssignment,
+} from "@/lib/app.functions";
 
 export const Route = createFileRoute("/_authenticated/classes/$classId")({
   head: () => ({
@@ -63,7 +70,7 @@ export const Route = createFileRoute("/_authenticated/classes/$classId")({
   notFoundComponent: () => <div className="p-8 text-center">Class not found.</div>,
 });
 
-type QuestionDraft = { questionText: string; markScheme: string; marks: number };
+type QuestionDraft = { id: string | null; questionText: string; markScheme: string; marks: number };
 
 function ClassPage() {
   const { classId } = Route.useParams();
@@ -103,7 +110,7 @@ function ClassPage() {
                   </span>
                 </p>
               </div>
-              <NewAssignmentDialog classId={classId} />
+              <AssignmentDialog classId={classId} trigger={<Button>New assignment</Button>} />
             </div>
 
             <Tabs defaultValue="assignments" className="mt-6">
@@ -130,9 +137,26 @@ function ClassPage() {
                             : ""}
                         </p>
                       </div>
-                      <Badge variant="secondary">
-                        {assignment.submittedCount} submitted
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">
+                          {assignment.submittedCount} submitted
+                        </Badge>
+                        <AssignmentDialog
+                          classId={classId}
+                          assignmentId={assignment.id}
+                          trigger={
+                            <Button variant="outline" size="sm">
+                              <Pencil className="size-4" />
+                              Edit
+                            </Button>
+                          }
+                        />
+                        <DeleteAssignmentButton
+                          classId={classId}
+                          assignmentId={assignment.id}
+                          title={assignment.title}
+                        />
+                      </div>
                     </div>
                   ))
                 )}

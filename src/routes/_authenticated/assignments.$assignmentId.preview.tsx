@@ -1,13 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { Camera, Sparkles } from "lucide-react";
+import { CheckCircle2, Sparkles, XCircle } from "lucide-react";
+import { useState } from "react";
 
 import { AppHeader } from "@/components/AppHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { getAssignmentPreview } from "@/lib/app.functions";
+import { getAssignmentPreview, previewGradeAnswer } from "@/lib/app.functions";
 import { questionBody, questionLabel } from "@/lib/question-label";
 
 export const Route = createFileRoute("/_authenticated/assignments/$assignmentId/preview")({
@@ -154,43 +155,100 @@ function PreviewPage() {
                   ) : null}
 
                   {group.questions.map((question) => (
-                    <div key={question.id} className="paper p-5">
-                      <div className="flex items-start justify-between gap-4">
-                        <h2 className="text-lg">
-                          {questionLabel(question.question_text, question.position)}
-                        </h2>
-                        <Badge variant="secondary">{question.marks} marks</Badge>
-                      </div>
-                      <p className="mt-2 whitespace-pre-wrap text-sm">
-                        {questionBody(question.question_text)}
-                      </p>
-                      <Textarea
-                        className="mt-4"
-                        rows={3}
-                        disabled
-                        placeholder="Students type their answer here…"
-                      />
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Button size="sm" variant="outline" disabled>
-                          <Camera className="mr-2 h-4 w-4" /> Add photo of work
-                        </Button>
-                        <Button size="sm" disabled>
-                          <Sparkles className="mr-2 h-4 w-4" /> Check answer
-                        </Button>
-                      </div>
-                    </div>
+                    <PreviewQuestion
+                      key={question.id}
+                      assignmentId={assignmentId}
+                      question={question}
+                    />
                   ))}
                 </div>
               ))}
             </div>
 
             <p className="mt-8 text-center text-xs text-muted-foreground">
-              This is a read-only preview. Answering, AI marking and coaching are live only on
-              student accounts.
+You can test any question here — the AI marks it exactly as it would for a student, but
+              nothing is saved to grades.
             </p>
           </>
         ) : null}
       </main>
+    </div>
+  );
+}
+
+function PreviewQuestion({
+  assignmentId,
+  question,
+}: {
+  assignmentId: string;
+  question: Question;
+}) {
+  const [answer, setAnswer] = useState("");
+  const check = useMutation({
+    mutationFn: () =>
+      previewGradeAnswer({ data: { assignmentId, questionId: question.id, answerText: answer } }),
+  });
+  const result = check.data;
+
+  return (
+    <div className="paper p-5">
+      <div className="flex items-start justify-between gap-4">
+        <h2 className="text-lg">{questionLabel(question.question_text, question.position)}</h2>
+        <Badge variant="secondary">{question.marks} marks</Badge>
+      </div>
+      <p className="mt-2 whitespace-pre-wrap text-sm">{questionBody(question.question_text)}</p>
+      <Textarea
+        className="mt-4"
+        rows={3}
+        value={answer}
+        onChange={(event) => setAnswer(event.target.value)}
+        placeholder="Type a test answer here…"
+      />
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button size="sm" onClick={() => check.mutate()} disabled={check.isPending || !answer.trim()}>
+          <Sparkles className="mr-2 h-4 w-4" />
+          {check.isPending ? "Marking…" : "Check answer"}
+        </Button>
+        {result || check.isError ? (
+          <Button size="sm" variant="ghost" onClick={() => check.reset()}>
+            Clear
+          </Button>
+        ) : null}
+      </div>
+
+      {check.isError ? (
+        <p className="mt-3 text-sm text-destructive">{(check.error as Error).message}</p>
+      ) : null}
+
+      {result ? (
+        <div className="mt-4 rounded-lg border border-border bg-muted/40 p-4">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            {result.verdict === "correct" ? (
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+            ) : (
+              <XCircle className="h-4 w-4 text-destructive" />
+            )}
+            <span>
+              {result.awardedMarks} / {result.totalMarks} marks · {result.verdict}
+            </span>
+          </div>
+          {result.markPoints.length > 0 ? (
+            <ul className="mt-3 space-y-1 text-sm">
+              {result.markPoints.map((point, index) => (
+                <li key={`${point.point}-${index}`}>
+                  {point.awarded ? "✓" : "✗"} {point.point} ({point.marks})
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {result.feedback ? (
+            <p className="mt-3 whitespace-pre-wrap text-sm">{result.feedback}</p>
+          ) : null}
+          {result.leadingQuestion ? (
+            <p className="mt-3 text-sm italic text-muted-foreground">{result.leadingQuestion}</p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

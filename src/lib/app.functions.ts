@@ -1022,8 +1022,66 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
     };
   });
 
+/** Teacher-only trial marking: runs the real AI marker but saves nothing. */
+export const previewGradeAnswer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        assignmentId: z.string().uuid(),
+        questionId: z.string().uuid(),
+        answerText: z.string(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    if (!data.answerText.trim()) throw new Error("Type an answer to test the marking.");
+    const { data: allowed } = await supabase.rpc("can_teach_assignment", {
+      _assignment_id: data.assignmentId,
+      _user_id: userId,
+    });
+    if (!allowed) throw new Error("You don't teach this assignment.");
 
-/* --------------------------------------------------------------- helpers --- */
+    const db = await admin();
+    const { data: question, error: qError } = await db
+      .from("questions")
+      .select("id, question_text, mark_scheme, marks, assignment_id, image_paths")
+      .eq("id", data.questionId)
+      .single();
+    if (qError) throw new Error(qError.message);
+    if (question.assignment_id !== data.assignmentId) throw new Error("Question mismatch.");
+
+    const { data: assignmentRow } = await db
+      .from("assignments")
+      .select("subject, curriculum")
+      .eq("id", data.assignmentId)
+      .single();
+    const assignment = assignmentRow!;
+
+    const { markStudentAnswer } = await import("./marking.server");
+    const result = await markStudentAnswer({
+      curriculum: assignment.curriculum,
+      subject: assignment.subject,
+      question: question.question_text,
+      markScheme: question.mark_scheme,
+      marks: question.marks,
+      answer: data.answerText,
+      imageUrls: [],
+      questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
+    });
+
+    return {
+      verdict: result.verdict,
+      awardedMarks: result.awardedMarks,
+      totalMarks: question.marks,
+      feedback: [result.feedback, result.explanation].filter(Boolean).join("\n\n"),
+      leadingQuestion: result.leadingQuestion ?? "",
+      markPoints: result.markPoints ?? [],
+    };
+  });
+
+
 
 type AnyClient = Awaited<ReturnType<typeof admin>>;
 

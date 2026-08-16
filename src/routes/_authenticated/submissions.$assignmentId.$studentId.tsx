@@ -26,9 +26,23 @@ export const Route = createFileRoute("/_authenticated/submissions/$assignmentId/
     ],
   }),
   component: SubmissionPage,
-  errorComponent: ({ error }) => (
-    <div role="alert" className="p-8 text-center text-destructive">
-      {error.message}
+  pendingComponent: () => (
+    <div className="min-h-screen">
+      <AppHeader role="teacher" />
+      <main className="mx-auto max-w-3xl px-4 py-8">
+        <Skeleton className="h-64 w-full" />
+      </main>
+    </div>
+  ),
+  errorComponent: ({ error, reset }) => (
+    <div className="min-h-screen">
+      <AppHeader role="teacher" />
+      <main className="mx-auto max-w-3xl px-4 py-8 text-center">
+        <p className="mb-4 text-muted-foreground">
+          We couldn&apos;t load this submission. {error.message}
+        </p>
+        <Button onClick={reset}>Try again</Button>
+      </main>
     </div>
   ),
   notFoundComponent: () => <div className="p-8 text-center">Submission not found.</div>,
@@ -40,6 +54,7 @@ function SubmissionPage() {
   const detail = useQuery({
     queryKey,
     queryFn: () => getSubmissionDetail({ data: { assignmentId, studentId } }),
+    retry: 2,
   });
 
   return (
@@ -50,11 +65,17 @@ function SubmissionPage() {
           ← Back
         </Link>
 
-        {detail.isLoading ? (
+        {detail.isPending ? (
           <Skeleton className="mt-6 h-64 w-full" />
-        ) : detail.error ? (
-          <p className="mt-6 text-destructive">{(detail.error as Error).message}</p>
+        ) : detail.isError ? (
+          <div className="mt-6 text-center">
+            <p className="mb-4 text-muted-foreground">
+              We couldn&apos;t load this submission. {(detail.error as Error).message}
+            </p>
+            <Button onClick={() => detail.refetch()}>Retry</Button>
+          </div>
         ) : detail.data ? (
+
           <>
             <div className="mt-4 flex items-center justify-between gap-4">
               <h1 className="text-3xl">Submission review</h1>

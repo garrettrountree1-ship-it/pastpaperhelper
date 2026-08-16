@@ -106,6 +106,55 @@ export const createClass = createServerFn({ method: "POST" })
     throw new Error(lastError || "Could not create class.");
   });
 
+export const updateClass = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        classId: z.string().uuid(),
+        name: z.string().min(1),
+        curriculum: z.string().min(1),
+        subject: z.string(),
+        joinCode: z.string().trim().min(4).max(10).optional(),
+        regenerateJoinCode: z.boolean().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: klass, error: classError } = await supabase
+      .from("classes")
+      .select("id, teacher_id")
+      .eq("id", data.classId)
+      .maybeSingle();
+    if (classError) throw new Error(classError.message);
+    if (!klass || klass.teacher_id !== userId) throw new Error("You do not own this class.");
+
+    const patch: Record<string, string> = {
+      name: data.name,
+      curriculum: data.curriculum,
+      subject: data.subject,
+    };
+    if (data.regenerateJoinCode) patch["join_code"] = makeJoinCode();
+    else if (data.joinCode) patch["join_code"] = data.joinCode.toUpperCase();
+
+    const { data: updated, error } = await supabase
+      .from("classes")
+      .update(patch)
+      .eq("id", data.classId)
+      .select("id, name, curriculum, subject, join_code")
+      .single();
+    if (error) {
+      if (error.code === "23505" || error.message.includes("duplicate")) {
+        throw new Error("That join code is already taken. Try another.");
+      }
+      throw new Error(error.message);
+    }
+    return updated;
+  });
+
+
+
 export const createAssignment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>

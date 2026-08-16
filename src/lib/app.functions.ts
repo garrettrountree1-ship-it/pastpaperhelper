@@ -1057,6 +1057,8 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     if (!data.answerText.trim()) throw new Error("Type an answer to test the marking.");
+    if (!isEnglishOnly(data.answerText)) throw new Error(ENGLISH_ONLY_MESSAGE);
+
     const { data: allowed } = await supabase.rpc("can_teach_assignment", {
       _assignment_id: data.assignmentId,
       _user_id: userId,

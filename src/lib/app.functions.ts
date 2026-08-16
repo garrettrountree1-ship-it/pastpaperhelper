@@ -483,7 +483,7 @@ export const getSubmissionDetail = createServerFn({ method: "POST" })
       ? await db
           .from("answers")
           .select(
-            "id, question_id, answer_text, image_paths, verdict, awarded_marks, feedback, attempts",
+            "id, question_id, answer_text, image_paths, verdict, awarded_marks, feedback, attempts, time_spent_seconds, mark_breakdown",
           )
           .eq("submission_id", submission.id)
       : { data: [] };
@@ -669,6 +669,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
         questionId: z.string().uuid(),
         answerText: z.string(),
         imagePaths: z.array(z.string()).max(6).optional(),
+        timeSpentSeconds: z.number().int().min(0).max(60 * 60 * 6).optional(),
       })
       .parse(input),
   )
@@ -717,7 +718,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     const submission = await ensureSubmission(db, data.assignmentId, userId);
     const { data: existing } = await db
       .from("answers")
-      .select("id, attempts")
+      .select("id, attempts, time_spent_seconds")
       .eq("submission_id", submission.id)
       .eq("question_id", data.questionId)
       .maybeSingle();
@@ -731,6 +732,9 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       awarded_marks: result.awardedMarks,
       feedback: result.feedback,
       attempts: (existing?.attempts ?? 0) + 1,
+      time_spent_seconds:
+        (existing?.time_spent_seconds ?? 0) + Math.round(data.timeSpentSeconds ?? 0),
+      mark_breakdown: result.markPoints ?? [],
       resolved: result.verdict === "correct",
       updated_at: new Date().toISOString(),
     };

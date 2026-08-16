@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAssignmentsAssignmentIdRouteImport } from './routes/_authenticated/assignments.$assignmentId'
 import { Route as AuthenticatedClassesClassIdRouteImport } from './routes/_authenticated/classes.$classId'
+import { Route as AuthenticatedAssignmentsAssignmentIdIndexRouteImport } from './routes/_authenticated/assignments.$assignmentId.index'
 import { Route as AuthenticatedAssignmentsAssignmentIdPreviewRouteImport } from './routes/_authenticated/assignments.$assignmentId.preview'
 import { Route as AuthenticatedSubmissionsAssignmentIdStudentIdRouteImport } from './routes/_authenticated/submissions.$assignmentId.$studentId'
 
@@ -49,6 +50,12 @@ const AuthenticatedClassesClassIdRoute =
     path: '/classes/$classId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAssignmentsAssignmentIdIndexRoute =
+  AuthenticatedAssignmentsAssignmentIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAssignmentsAssignmentIdRoute,
+  } as any)
 const AuthenticatedAssignmentsAssignmentIdPreviewRoute =
   AuthenticatedAssignmentsAssignmentIdPreviewRouteImport.update({
     id: '/preview',
@@ -70,15 +77,16 @@ export interface FileRoutesByFullPath {
   '/classes/$classId': typeof AuthenticatedClassesClassIdRoute
   '/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
   '/submissions/$assignmentId/$studentId': typeof AuthenticatedSubmissionsAssignmentIdStudentIdRoute
+  '/assignments/$assignmentId/': typeof AuthenticatedAssignmentsAssignmentIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/assignments/$assignmentId': typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
   '/classes/$classId': typeof AuthenticatedClassesClassIdRoute
   '/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
   '/submissions/$assignmentId/$studentId': typeof AuthenticatedSubmissionsAssignmentIdStudentIdRoute
+  '/assignments/$assignmentId': typeof AuthenticatedAssignmentsAssignmentIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -90,6 +98,7 @@ export interface FileRoutesById {
   '/_authenticated/classes/$classId': typeof AuthenticatedClassesClassIdRoute
   '/_authenticated/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
   '/_authenticated/submissions/$assignmentId/$studentId': typeof AuthenticatedSubmissionsAssignmentIdStudentIdRoute
+  '/_authenticated/assignments/$assignmentId/': typeof AuthenticatedAssignmentsAssignmentIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,15 +110,16 @@ export interface FileRouteTypes {
     | '/classes/$classId'
     | '/assignments/$assignmentId/preview'
     | '/submissions/$assignmentId/$studentId'
+    | '/assignments/$assignmentId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/dashboard'
-    | '/assignments/$assignmentId'
     | '/classes/$classId'
     | '/assignments/$assignmentId/preview'
     | '/submissions/$assignmentId/$studentId'
+    | '/assignments/$assignmentId'
   id:
     | '__root__'
     | '/'
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/_authenticated/classes/$classId'
     | '/_authenticated/assignments/$assignmentId/preview'
     | '/_authenticated/submissions/$assignmentId/$studentId'
+    | '/_authenticated/assignments/$assignmentId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -172,6 +183,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClassesClassIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/assignments/$assignmentId/': {
+      id: '/_authenticated/assignments/$assignmentId/'
+      path: '/'
+      fullPath: '/assignments/$assignmentId/'
+      preLoaderRoute: typeof AuthenticatedAssignmentsAssignmentIdIndexRouteImport
+      parentRoute: typeof AuthenticatedAssignmentsAssignmentIdRoute
+    }
     '/_authenticated/assignments/$assignmentId/preview': {
       id: '/_authenticated/assignments/$assignmentId/preview'
       path: '/preview'
@@ -191,12 +209,15 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAssignmentsAssignmentIdRouteChildren {
   AuthenticatedAssignmentsAssignmentIdPreviewRoute: typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
+  AuthenticatedAssignmentsAssignmentIdIndexRoute: typeof AuthenticatedAssignmentsAssignmentIdIndexRoute
 }
 
 const AuthenticatedAssignmentsAssignmentIdRouteChildren: AuthenticatedAssignmentsAssignmentIdRouteChildren =
   {
     AuthenticatedAssignmentsAssignmentIdPreviewRoute:
       AuthenticatedAssignmentsAssignmentIdPreviewRoute,
+    AuthenticatedAssignmentsAssignmentIdIndexRoute:
+      AuthenticatedAssignmentsAssignmentIdIndexRoute,
   }
 
 const AuthenticatedAssignmentsAssignmentIdRouteWithChildren =

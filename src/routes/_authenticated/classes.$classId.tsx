@@ -416,7 +416,7 @@ function AssignmentDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {editing && existing.isPending ? (
+        {loadingExisting && !existing.isError ? (
           <Skeleton className="h-64 w-full" />
         ) : editing && existing.isError ? (
           <div className="py-6 text-center">

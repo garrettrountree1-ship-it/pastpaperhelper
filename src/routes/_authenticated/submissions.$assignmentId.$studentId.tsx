@@ -12,6 +12,15 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getSubmissionDetail, overrideAnswerMarks } from "@/lib/app.functions";
 
+type MarkPoint = { point: string; marks: number; awarded: boolean };
+
+function formatDuration(seconds: number) {
+  if (!seconds) return "—";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
 export const Route = createFileRoute("/_authenticated/submissions/$assignmentId/$studentId")({
   head: () => ({
     meta: [
@@ -86,6 +95,50 @@ function SubmissionPage() {
               </Badge>
             </div>
 
+            {(() => {
+              const answers = detail.data.answers as Array<{
+                attempts?: number;
+                time_spent_seconds?: number;
+              }>;
+              const awarded = Number(detail.data.submission?.awarded_marks ?? 0);
+              const total = Number(
+                detail.data.submission?.total_marks ??
+                  detail.data.questions.reduce((sum, q) => sum + q.marks, 0),
+              );
+              const percent = total > 0 ? Math.round((awarded / total) * 100) : 0;
+              const attempts = answers.reduce((sum, a) => sum + (a.attempts ?? 0), 0);
+              const time = answers.reduce((sum, a) => sum + (a.time_spent_seconds ?? 0), 0);
+              return (
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div className="paper p-4">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Overall score
+                    </p>
+                    <p className="font-display text-2xl">{percent}%</p>
+                    <p className="text-xs text-muted-foreground">
+                      {awarded}/{total} marks
+                    </p>
+                  </div>
+                  <div className="paper p-4">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Total attempts
+                    </p>
+                    <p className="font-display text-2xl">{attempts}</p>
+                    <p className="text-xs text-muted-foreground">
+                      across {detail.data.questions.length} question parts
+                    </p>
+                  </div>
+                  <div className="paper p-4">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Time spent
+                    </p>
+                    <p className="font-display text-2xl">{formatDuration(time)}</p>
+                    <p className="text-xs text-muted-foreground">active time on questions</p>
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="mt-6 space-y-5">
               {detail.data.questions.map((question, index) => {
                 const answer = detail.data.answers.find((a) => a.question_id === question.id);
@@ -96,6 +149,25 @@ function SubmissionPage() {
                         Question {questionLabel(question.question_text, index)}
                       </h2>
                       <span className="text-sm text-muted-foreground">{question.marks} marks</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                      <span className="rounded-full bg-secondary/60 px-2 py-1">
+                        {answer?.awarded_marks ?? 0}/{question.marks} marks (
+                        {question.marks > 0
+                          ? Math.round(((answer?.awarded_marks ?? 0) / question.marks) * 100)
+                          : 0}
+                        %)
+                      </span>
+                      <span className="rounded-full bg-secondary/60 px-2 py-1">
+                        {answer?.attempts ?? 0} attempt
+                        {(answer?.attempts ?? 0) === 1 ? "" : "s"}
+                      </span>
+                      <span className="rounded-full bg-secondary/60 px-2 py-1">
+                        {formatDuration(answer?.time_spent_seconds ?? 0)} spent
+                      </span>
+                      <span className="rounded-full bg-secondary/60 px-2 py-1 capitalize">
+                        {answer?.verdict ?? "not attempted"}
+                      </span>
                     </div>
                     <p className="mt-3 whitespace-pre-wrap">
                       {questionBody(question.question_text)}
@@ -140,6 +212,24 @@ function SubmissionPage() {
                                 className="size-24 rounded-lg border border-border object-cover"
                               />
                             </a>
+                          ))}
+                        </div>
+                      ) : null}
+                      {((answer?.mark_breakdown ?? []) as MarkPoint[]).length > 0 ? (
+                        <div className="mt-3 space-y-1">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            Mark points
+                          </p>
+                          {((answer?.mark_breakdown ?? []) as MarkPoint[]).map((point, i) => (
+                            <p key={i} className="text-sm">
+                              <span className={point.awarded ? "text-primary" : "text-destructive"}>
+                                {point.awarded ? "✓" : "✗"}
+                              </span>{" "}
+                              {point.point}{" "}
+                              <span className="text-muted-foreground">
+                                ({point.awarded ? point.marks : 0}/{point.marks})
+                              </span>
+                            </p>
                           ))}
                         </div>
                       ) : null}

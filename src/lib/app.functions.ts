@@ -801,7 +801,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       image_paths: imagePaths,
       verdict: result.verdict,
       awarded_marks: result.awardedMarks,
-      feedback: [result.feedback, result.explanation].filter(Boolean).join("\n\n"),
+      feedback: result.feedback,
       attempts: (existing?.attempts ?? 0) + 1,
       time_spent_seconds:
         (existing?.time_spent_seconds ?? 0) + Math.round(data.timeSpentSeconds ?? 0),
@@ -824,7 +824,13 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     }
 
     await recalcSubmission(db, submission.id);
-    return { answerId: answer.id, ...result };
+    return {
+      answerId: answer.id,
+      verdict: result.verdict,
+      awardedMarks: result.awardedMarks,
+      feedback: result.feedback,
+      leadingQuestion: result.leadingQuestion,
+    };
   });
 
 export const extractPaperQuestions = createServerFn({ method: "POST" })
@@ -1103,9 +1109,7 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       awardedMarks: result.awardedMarks,
       totalMarks: question.marks,
       feedback: result.feedback,
-      explanation: result.explanation ?? "",
       leadingQuestion: result.leadingQuestion ?? "",
-      markPoints: result.markPoints ?? [],
     };
   });
 

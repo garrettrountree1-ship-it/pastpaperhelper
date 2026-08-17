@@ -193,9 +193,13 @@ You can test any question here — the AI marks it exactly as it would for a stu
 function PreviewQuestion({
   assignmentId,
   question,
+  flags,
+  onFlag,
 }: {
   assignmentId: string;
   question: Question;
+  flags: number;
+  onFlag: () => void;
 }) {
   const [answer, setAnswer] = useState("");
   const requiresPhoto = needsPhotoAnswer(question.question_text);
@@ -215,8 +219,12 @@ function PreviewQuestion({
           questionId: question.id,
           answerText: answer,
           imageDataUrls: photos,
+          priorFlags: flags,
         },
       });
+    },
+    onError: (error: Error) => {
+      if (/AI-generated or copied|locked/i.test(error.message)) onFlag();
     },
     onSuccess: (result) => {
       setAttempts((count) => count + 1);
@@ -224,6 +232,7 @@ function PreviewQuestion({
       setThread(opener ? [{ role: "tutor", content: opener }] : []);
     },
   });
+
   const result = check.data;
 
   const tutor = useMutation({

@@ -64,8 +64,9 @@ function maskIdentifyingText(
     const text = (item.str ?? "").trim();
     if (!text) continue;
     // pdf.js transform: [a, b, c, d, e, f] in PDF space; e/f is the origin.
-    const x = item.transform[4] * scale;
-    const yFromTop = viewport.height - item.transform[5] * scale;
+    const x = (item.transform[4] ?? 0) * scale;
+    const yFromTop = viewport.height - (item.transform[5] ?? 0) * scale;
+
     const height = Math.max((item.height || 10) * scale, 8 * scale);
     const width = Math.max((item.width || text.length * 5) * scale, 4 * scale);
     const inMargin = yFromTop <= topBand || yFromTop >= bottomBand;

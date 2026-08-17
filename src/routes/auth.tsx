@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lovable } from "@/integrations/lovable/index";
+import { emailLinkOrigin } from "@/lib/app-origin";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth")({
@@ -77,7 +78,7 @@ function AuthPage() {
       email,
       password,
       options: {
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: emailLinkOrigin(),
         data: { full_name: fullName, role },
       },
     });
@@ -111,7 +112,7 @@ function AuthPage() {
     }
     setBusy(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${emailLinkOrigin()}/reset-password`,
     });
     setBusy(false);
     if (error) {
@@ -131,7 +132,7 @@ function AuthPage() {
     const { error } = await supabase.auth.resend({
       type: "signup",
       email: target,
-      options: { emailRedirectTo: window.location.origin },
+      options: { emailRedirectTo: emailLinkOrigin() },
     });
     setBusy(false);
     if (error) {

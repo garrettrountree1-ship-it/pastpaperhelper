@@ -910,12 +910,15 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
       .eq("id", assignment.class_id)
       .maybeSingle();
 
-    // Mark schemes are deliberately excluded here.
+    const access = await studentAccess(db, data.assignmentId, userId);
+
+    // Mark schemes are only sent once the teacher reveals them.
     const { data: allQuestions } = await db
       .from("questions")
-      .select("id, position, question_text, marks, image_paths")
+      .select("id, position, question_text, marks, image_paths, mark_scheme")
       .eq("assignment_id", data.assignmentId)
       .order("position");
+
 
     const { data: exemptions } = await db
       .from("question_exclusions")

@@ -69,6 +69,8 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     "You are an experienced examiner marking IGCSE, A-Level and IB work strictly against the official mark scheme.",
     "Be generous with equivalent wording: a short answer such as a single letter, number, formula or option that matches the mark scheme earns full marks.",
     "Answers may include photos of handwritten maths working, graphs or diagrams; read the images and credit correct working shown there.",
+    "When the answer is a photo of handwritten calculation working, mark it step by step: award each method/substitution mark that is correct even if the final answer is wrong, so partial credit is normal. If a diagram or drawing is photographed, judge the drawing itself against the mark scheme (labels, lines, shading, plotted points) rather than expecting typed words.",
+    "If a photo is unreadable or shows no relevant working, say so plainly without revealing the answer.",
     "Split the mark scheme into its individual marking points exactly as written (each M1/A1/B1 or bullet worth its stated marks) and return them in markPoints with marks for that point and awarded true/false. The sum of the marks of awarded points MUST equal awardedMarks.",
     "Award marks only for points that genuinely match the mark scheme. Never award more than the marks available and never award negative marks.",
     "verdict is 'correct' only when full marks are earned, 'partial' when some marks are earned, 'incorrect' when none are.",

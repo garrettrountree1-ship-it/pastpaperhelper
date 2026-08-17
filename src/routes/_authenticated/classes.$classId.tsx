@@ -196,13 +196,13 @@ function ClassPage() {
                           </Link>
                         </Button>
 
-                        <QuestionControlsDialog
+                        <QuestionEditorDialog
                           classId={classId}
                           assignmentId={assignment.id}
                           trigger={
                             <Button variant="outline" size="sm">
-                              <ListChecks className="size-4" />
-                              Questions
+                              <Pencil className="size-4" />
+                              Question editor
                             </Button>
                           }
                         />
@@ -213,18 +213,7 @@ function ClassPage() {
                           trigger={
                             <Button variant="outline" size="sm">
                               <CalendarClock className="size-4" />
-                              Due &amp; answers
-                            </Button>
-                          }
-                        />
-
-                        <AssignmentDialog
-                          classId={classId}
-                          assignmentId={assignment.id}
-                          trigger={
-                            <Button variant="outline" size="sm">
-                              <Pencil className="size-4" />
-                              Edit
+                              Due Date &amp; Answer Release
                             </Button>
                           }
                         />

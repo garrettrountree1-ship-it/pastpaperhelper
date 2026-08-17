@@ -19,12 +19,12 @@ import {
 export const Route = createFileRoute("/_authenticated/assignments/$assignmentId/preview")({
   head: () => ({
     meta: [
-      { title: "Student view · StepWise" },
+      { title: "Student view · AI Homework Hero" },
       {
         name: "description",
         content: "See a homework assignment exactly as your students will see it.",
       },
-      { property: "og:title", content: "Student view · StepWise" },
+      { property: "og:title", content: "Student view · AI Homework Hero" },
       {
         property: "og:description",
         content: "See a homework assignment exactly as your students will see it.",

@@ -18,13 +18,13 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "StepWise — Past-paper homework that teaches, for IG, A-Level & IB" },
+      { title: "AI Homework Hero — Past-paper homework that teaches, for IG, A-Level & IB" },
       {
         name: "description",
         content:
           "Upload past papers and mark schemes. Students are marked point by point, coached by an AI tutor, and copy-paste plus AI-written answers are detected and blocked.",
       },
-      { property: "og:title", content: "StepWise — Past-paper homework that teaches" },
+      { property: "og:title", content: "AI Homework Hero — Past-paper homework that teaches" },
       {
         property: "og:description",
         content:
@@ -212,7 +212,7 @@ function Landing() {
         </section>
 
         <section className="mt-14">
-          <h2 className="text-2xl sm:text-3xl">What StepWise does</h2>
+          <h2 className="text-2xl sm:text-3xl">What AI Homework Hero does</h2>
           <p className="mt-2 max-w-2xl text-muted-foreground">
             Everything a teacher needs to set past-paper homework that actually
             teaches — and to trust that the work is the student&apos;s own.
@@ -302,7 +302,7 @@ function Landing() {
       </main>
 
       <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
-        StepWise · homework, marked and taught.
+        AI Homework Hero · homework, marked and taught.
       </footer>
     </div>
   );

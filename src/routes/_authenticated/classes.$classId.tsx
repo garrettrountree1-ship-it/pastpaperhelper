@@ -67,9 +67,9 @@ import { questionBody, questionLabel } from "@/lib/question-label";
 export const Route = createFileRoute("/_authenticated/classes/$classId")({
   head: () => ({
     meta: [
-      { title: "Class · StepWise" },
+      { title: "Class · AI Homework Hero" },
       { name: "description", content: "Class assignments, students and homework grades." },
-      { property: "og:title", content: "Class · StepWise" },
+      { property: "og:title", content: "Class · AI Homework Hero" },
       { property: "og:description", content: "Class assignments, students and homework grades." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

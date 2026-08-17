@@ -103,10 +103,6 @@ function ClassPage() {
     <div className="min-h-screen">
       <AppHeader role="teacher" />
       <main className="mx-auto max-w-6xl px-4 py-8">
-        <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">
-          ← All classes
-        </Link>
-
         {overview.isPending ? (
           <Skeleton className="mt-6 h-64 w-full" />
         ) : overview.isError ? (
@@ -117,9 +113,11 @@ function ClassPage() {
             <Button onClick={() => overview.refetch()}>Retry</Button>
           </div>
         ) : overview.data ? (
-
-          <>
-            <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
+          <div className="paper mt-4 p-5">
+            <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">
+              ← All classes
+            </Link>
+            <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
               <div>
                 <h1 className="text-3xl">{overview.data.klass.name}</h1>
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -272,7 +270,7 @@ function ClassPage() {
                 </div>
               </TabsContent>
             </Tabs>
-          </>
+          </div>
         ) : null}
       </main>
     </div>

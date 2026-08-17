@@ -338,17 +338,19 @@ function AssignmentDialog({
   classId,
   assignmentId,
   trigger,
+  asPanel,
 }: {
   classId: string;
   assignmentId?: string;
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
+  asPanel?: boolean;
 }) {
   const queryClient = useQueryClient();
   const create = useServerFn(createAssignment);
   const update = useServerFn(updateAssignment);
   const extract = useServerFn(extractPaperQuestions);
   const loadForEdit = useServerFn(getAssignmentForEdit);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(Boolean(asPanel));
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
   const [instructions, setInstructions] = useState("");

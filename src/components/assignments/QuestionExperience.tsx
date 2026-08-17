@@ -256,10 +256,15 @@ export function QuestionExperience({
               <Textarea
                 id={`ask-${question.id}`}
                 value={reply}
-                onChange={(event) => onReplyChange(event.target.value)}
+                onChange={(event) => {
+                  if (tutorGuard.flagged) tutorGuard.clearFlag();
+                  onReplyChange(event.target.value);
+                }}
+                {...tutorGuard.guardProps}
                 placeholder="Reply to the tutor, or ask a follow-up question — as many as you need"
                 rows={2}
               />
+
               <Button
                 variant="secondary"
                 onClick={onSend}

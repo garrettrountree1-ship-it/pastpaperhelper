@@ -1,5 +1,16 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { BookOpenCheck, ClipboardList, MessageCircleQuestion, Users } from "lucide-react";
+import {
+  BookOpenCheck,
+  Camera,
+  ClipboardList,
+  Eye,
+  History,
+  MessageCircleQuestion,
+  ScanSearch,
+  ShieldAlert,
+  Sparkles,
+  Users,
+} from "lucide-react";
 
 import { Brand } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -12,13 +23,13 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Teachers upload past papers and mark schemes. Students answer, get marked instantly, and are coached with leading questions until they can solve it themselves.",
+          "Upload past papers and mark schemes. Students are marked point by point, coached by an AI tutor, and copy-paste plus AI-written answers are detected and blocked.",
       },
       { property: "og:title", content: "StepWise — Past-paper homework that teaches" },
       {
         property: "og:description",
         content:
-          "Mark-scheme accurate marking plus Socratic coaching for IGCSE, A-Level and IB homework.",
+          "Mark-scheme accurate marking, a built-in AI tutor, AI-copying detection, and a full history of every student answer for teachers.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -30,25 +41,85 @@ export const Route = createFileRoute("/")({
 const features = [
   {
     icon: ClipboardList,
-    title: "Set past papers as homework",
-    body: "Paste any past-paper question with its official mark scheme. Group questions into an assignment for a class.",
+    title: "Upload past papers and mark schemes",
+    body: "Drop in the paper and the mark scheme as PDFs — combined or separate — and the questions, marks and diagrams are lined up into a ready assignment. Or paste a single question by hand.",
   },
   {
     icon: BookOpenCheck,
-    title: "Marked against the mark scheme",
-    body: "Every answer is marked point by point against your mark scheme, with marks awarded and honest feedback.",
+    title: "Marked point by point",
+    body: "Every answer is judged against your official mark scheme, mark by mark. Students see which points they earned and which they missed, never the wording of the answer.",
+  },
+  {
+    icon: Sparkles,
+    title: "A built-in AI tutor for every student",
+    body: "Wrong answers get a short, subject-specific explanation of the science — never the answer. Students can then ask the tutor as many follow-up questions as they need until it clicks.",
   },
   {
     icon: MessageCircleQuestion,
     title: "Leading questions, not answers",
-    body: "When a student is wrong, the tutor probes for the misunderstanding and breaks the work into smaller steps.",
+    body: "The tutor works out where the misunderstanding sits, then breaks the question into smaller steps and guides the student to full marks in their own words.",
+  },
+  {
+    icon: Camera,
+    title: "Photos and a writing pad for working",
+    body: "Calculation and drawing questions are done on paper or on screen with a stylus. Working, graphs and diagrams are marked from the image, with partial credit for method.",
   },
   {
     icon: Users,
     title: "Teacher control, student logins",
-    body: "Teachers own classes, assignments and the gradebook. Students join with a class code and see only their work.",
+    body: "Teachers own the classes, assignments and gradebook across IGCSE, A-Level and IB. Students join with a class code and only ever see their own work.",
   },
 ];
+
+const integrity = [
+  {
+    icon: ShieldAlert,
+    title: "No copy-paste, at all",
+    body: "Pasting, dragging text and bulk autofill are blocked in every answer box and in the tutor chat. Answers have to be typed by the student.",
+  },
+  {
+    icon: ScanSearch,
+    title: "AI detection built into marking",
+    body: "Every submission is screened for AI-written and web-copied phrasing before it is marked — even a single polished sentence lifted from a chatbot or a revision site is caught and rejected.",
+  },
+  {
+    icon: History,
+    title: "Three warnings, then locked",
+    body: "Each flagged answer adds a warning. On the fourth the homework locks and is marked as a fail until you unlock it — with an optional percentage deduction of your choosing.",
+  },
+];
+
+const visibility = [
+  "Every answer a student ever submitted, attempt by attempt, with the marks and feedback given each time",
+  "Every photo and stylus drawing they uploaded, saved and viewable full size",
+  "Every question they typed to the AI tutor, plus the tutor's replies, in full",
+  "Time spent per question, number of attempts, percentage score and class averages",
+  "Integrity warnings with the exact flagged text, and one-click unlock with a deduction",
+];
+
+const steps = [
+  {
+    step: "1",
+    title: "Create your class",
+    body: "Pick the curriculum and subject. Share the class code with your students.",
+  },
+  {
+    step: "2",
+    title: "Upload the paper",
+    body: "Add the past paper and mark scheme, check the questions, then publish the homework.",
+  },
+  {
+    step: "3",
+    title: "Students work and learn",
+    body: "They answer, get marked, are coached by the tutor and retry until they earn the marks.",
+  },
+  {
+    step: "4",
+    title: "Review the full picture",
+    body: "Open the gradebook for scores, timings, tutor chats, uploads and integrity flags.",
+  },
+];
+
 
 function Landing() {
   return (

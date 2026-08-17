@@ -1543,19 +1543,66 @@ async function ensureSubmission(db: AnyClient, assignmentId: string, studentId: 
 
 async function recalcSubmission(db: AnyClient, submissionId: string) {
   const [{ data: answers }, { data: submission }] = await Promise.all([
-    db.from("answers").select("awarded_marks").eq("submission_id", submissionId),
+    db.from("answers").select("awarded_marks, question_id").eq("submission_id", submissionId),
     db
       .from("submissions")
-      .select("locked_at, penalty_percent")
+      .select("locked_at, penalty_percent, assignment_id, student_id")
       .eq("id", submissionId)
       .maybeSingle(),
   ]);
-  const raw = (answers ?? []).reduce((sum, a) => sum + Number(a.awarded_marks), 0);
-  const penalty = Number(submission?.penalty_percent ?? 0);
-  const awarded = submission?.locked_at
+  if (!submission) return;
+
+  const [{ data: questions }, { data: exclusions }] = await Promise.all([
+    db.from("questions").select("id, marks").eq("assignment_id", submission.assignment_id),
+    db.from("question_exclusions").select("question_id").eq("student_id", submission.student_id),
+  ]);
+  const excluded = new Set((exclusions ?? []).map((e) => e.question_id));
+  const totalMarks = (questions ?? [])
+    .filter((q) => !excluded.has(q.id))
+    .reduce((sum, q) => sum + q.marks, 0);
+
+  const raw = (answers ?? [])
+    .filter((a) => !excluded.has(a.question_id))
+    .reduce((sum, a) => sum + Number(a.awarded_marks), 0);
+  const penalty = Number(submission.penalty_percent ?? 0);
+  const awarded = submission.locked_at
     ? 0
     : Math.round(raw * (1 - penalty / 100) * 100) / 100;
-  await db.from("submissions").update({ awarded_marks: awarded }).eq("id", submissionId);
+  await db
+    .from("submissions")
+    .update({ awarded_marks: awarded, total_marks: totalMarks })
+    .eq("id", submissionId);
+}
+
+async function recalcAssignment(db: AnyClient, assignmentId: string) {
+  const { data: subs } = await db
+    .from("submissions")
+    .select("id")
+    .eq("assignment_id", assignmentId);
+  for (const sub of subs ?? []) {
+    await recalcSubmission(db, sub.id);
+  }
+}
+
+/** Teacher guard: resolves a question to its assignment and verifies the caller teaches it. */
+async function questionForTeacher(
+  supabase: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown }> },
+  db: AnyClient,
+  questionId: string,
+  userId: string,
+) {
+  const { data: question } = await db
+    .from("questions")
+    .select("id, assignment_id, position, marks, question_text")
+    .eq("id", questionId)
+    .maybeSingle();
+  if (!question) throw new Error("Question not found.");
+  const { data: allowed } = await supabase.rpc("can_teach_assignment", {
+    _assignment_id: question.assignment_id,
+    _user_id: userId,
+  });
+  if (!allowed) throw new Error("Not allowed.");
+  return question;
 }
 
 

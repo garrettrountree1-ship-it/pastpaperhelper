@@ -1085,12 +1085,22 @@ export const submitAssignment = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ assignmentId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const db = await admin();
+    const { data: current } = await db
+      .from("submissions")
+      .select("locked_at")
+      .eq("assignment_id", data.assignmentId)
+      .eq("student_id", userId)
+      .maybeSingle();
+    if (current?.locked_at) throw new Error(LOCKED_MESSAGE);
+
     const { error } = await supabase
       .from("submissions")
       .update({ status: "submitted", submitted_at: new Date().toISOString() })
       .eq("assignment_id", data.assignmentId)
       .eq("student_id", userId);
     if (error) throw new Error(error.message);
+
     return { ok: true };
   });
 

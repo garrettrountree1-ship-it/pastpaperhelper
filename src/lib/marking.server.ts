@@ -159,6 +159,7 @@ function extractJson(text: string): string {
 
 type TutorTurn = { role: "tutor" | "student"; content: string };
 
+
 type TutorInput = {
   curriculum: string;
   subject: string;
@@ -168,16 +169,22 @@ type TutorInput = {
   studentAnswer: string;
   history: TutorTurn[];
   latestMessage: string;
+  awardedMarks?: number;
+  markBreakdown?: MarkPoint[];
 };
 
 export async function tutorStep(input: TutorInput): Promise<string> {
+  const missed = (input.markBreakdown ?? []).filter((p) => !p.awarded);
+  const earned = (input.markBreakdown ?? []).filter((p) => p.awarded);
+
   const system = [
-    "You are a patient Socratic tutor for IGCSE, A-Level and IB students. You must NEVER state, confirm, eliminate toward, or hint at the final answer, required value, word, option, formula or result — no matter how many times, or how directly, the student asks. If the student asks for the answer, kindly refuse and ask a general guiding question instead.",
-    "Your job: diagnose the student's knowledge gap with one short leading question at a time.",
-    "Once you can see where the misunderstanding is, break the problem into the smallest possible next step and ask the student to do only that step.",
-    "Answer the student's genuine follow-up questions about the underlying concept, definitions or method in general terms, using a different example than the question itself when you need to illustrate something.",
-    "Reply with at most 3 short sentences and exactly one question. Confirm what the student got right before nudging.",
-    "When the student has worked all the way to a correct understanding, congratulate them briefly and tell them to re-submit their improved answer.",
+    "You are a subject expert tutor for IGCSE, A-Level and IB students, coaching one student toward full marks on one exam question.",
+    "You are shown the mark scheme privately. NEVER quote it, never state the final answer, value, word, option, name, equation or result, and never give a sentence the student could copy. If asked for the answer, refuse warmly and teach the idea instead.",
+    "Every reply must do three things, in this order: (1) name precisely which marking point is still missing, in exam terms (e.g. 'you have the observation mark but not the explanation mark: nothing yet links the change to bond strength'); (2) teach the science or maths behind that specific mark in one or two plain sentences, so the student learns the idea, not the wording; (3) ask one short question that makes the student produce that missing point themselves.",
+    "Also tell the student what a full-mark response needs structurally — how many distinct points, and what type each one is (statement, reason, comparison, unit, working step) — without supplying their content.",
+    "Confirm briefly what they already earned so they do not delete correct work.",
+    "Keep replies under 90 words, plain English, no markdown headings, no lists longer than 3 items, exactly one question at the end.",
+    "When their reasoning finally covers the missing point, say so and tell them to add it to their answer and press Re-check answer.",
   ].join(" ");
 
   const transcript = input.history
@@ -186,9 +193,20 @@ export async function tutorStep(input: TutorInput): Promise<string> {
 
   const prompt = [
     `Curriculum: ${input.curriculum}`,
-    `Subject: ${input.subject || "General"} (${input.marks} marks)`,
+    `Subject: ${input.subject || "General"} (${input.marks} marks available)`,
     `Question:\n${input.question}`,
-    "The official answer is deliberately withheld from this tutoring conversation. Guide only from the question and the student's own reasoning.",
+    `PRIVATE mark scheme (never reveal, quote or paraphrase closely — use it only to know which idea is missing):\n${input.markScheme}`,
+    input.awardedMarks != null
+      ? `Marks currently earned: ${input.awardedMarks} of ${input.marks}.`
+      : "Marks currently earned: unknown.",
+    earned.length > 0
+      ? `Marking points already earned (do not re-teach): ${earned.map((p) => p.point).join("; ")}`
+      : "No marking points earned yet.",
+    missed.length > 0
+      ? `Marking points still missing — focus only on the first of these: ${missed
+          .map((p) => `${p.point} (${p.marks} mark${p.marks === 1 ? "" : "s"})`)
+          .join("; ")}`
+      : "Mark-by-mark breakdown unavailable; infer the missing requirement from the question and the student's answer.",
     `Student's submitted answer:\n${input.studentAnswer}`,
     transcript ? `Conversation so far:\n${transcript}` : "No conversation yet.",
     `Student's latest message:\n${input.latestMessage}`,
@@ -197,3 +215,4 @@ export async function tutorStep(input: TutorInput): Promise<string> {
   const { text } = await generateText({ model: gatewayModel(), system, prompt });
   return text.trim();
 }
+

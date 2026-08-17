@@ -237,6 +237,8 @@ function PreviewQuestion({
           studentAnswer: answer,
           message,
           history,
+          awardedMarks: check.data?.awardedMarks,
+          markBreakdown: check.data?.markBreakdown ?? undefined,
         },
       });
       return { message, reply: res.reply };

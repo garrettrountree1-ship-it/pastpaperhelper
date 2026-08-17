@@ -1167,6 +1167,18 @@ function ClassSettingsDialog({
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteClass({ data: { classId } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["teacher-classes"] });
+      toast.success("Class deleted");
+      setOpen(false);
+      navigate({ to: "/dashboard" });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>

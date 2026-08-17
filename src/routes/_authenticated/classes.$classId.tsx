@@ -63,6 +63,9 @@ import {
   createAssignment,
   creditQuestionForAll,
   deleteAssignment,
+  deleteClass,
+  removeStudentFromClass,
+
   deleteQuestion,
   getAssignmentQuestionControls,
   setQuestionExclusion,

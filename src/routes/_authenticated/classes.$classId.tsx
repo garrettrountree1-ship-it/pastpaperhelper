@@ -893,7 +893,63 @@ function QuestionControlsDialog({
               })
             )}
           </div>
-        ) : null}
+      ) : null}
+    </>
+  );
+
+  if (asPanel) return body;
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Question controls</DialogTitle>
+        </DialogHeader>
+        {body}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * One place for everything about an assignment's questions: editing the paper
+ * itself and the per-question controls (credit all, delete, unassign).
+ */
+function QuestionEditorDialog({
+  classId,
+  assignmentId,
+  trigger,
+}: {
+  classId: string;
+  assignmentId: string;
+  trigger: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Question editor</DialogTitle>
+        </DialogHeader>
+        <Tabs defaultValue="edit">
+          <TabsList>
+            <TabsTrigger value="edit">Edit questions</TabsTrigger>
+            <TabsTrigger value="controls">Credit, delete &amp; unassign</TabsTrigger>
+          </TabsList>
+          <TabsContent value="edit" className="mt-4">
+            {open ? (
+              <AssignmentDialog classId={classId} assignmentId={assignmentId} asPanel />
+            ) : null}
+          </TabsContent>
+          <TabsContent value="controls" className="mt-4">
+            {open ? (
+              <QuestionControlsDialog classId={classId} assignmentId={assignmentId} asPanel />
+            ) : null}
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

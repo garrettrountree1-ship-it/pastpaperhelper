@@ -147,7 +147,7 @@
     font-family: var(--font-sans);
   }
 
-  /* Mars photo backdrop: real imagery, softly scrimmed so content stays readable. */
+  /* Mars photo backdrop: real imagery, clear in the background, with only a whisper of dark scrim so the white cards remain crisp. */
   .mars-backdrop {
     position: fixed;
     inset: 0;
@@ -164,8 +164,8 @@
     inset: 0;
     background: linear-gradient(
       to bottom,
-      oklch(0.99 0.003 250 / 0.88),
-      oklch(0.99 0.003 250 / 0.94)
+      oklch(0.15 0.03 25 / 0.05),
+      oklch(0.15 0.03 25 / 0.08)
     );
   }
 

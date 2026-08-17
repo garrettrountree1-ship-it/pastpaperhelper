@@ -960,12 +960,20 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
         subject: assignment.subject,
         curriculum: assignment.curriculum,
         instructions: assignment.instructions,
-        dueAt: assignment.due_at,
+        dueAt: access.dueAt,
+        dueOverridden: access.dueOverridden,
+        pastDue: access.pastDue,
+        markSchemeRevealed: access.markSchemeRevealed,
         className: klass?.name ?? "",
       },
       questions: await Promise.all(
         (questions ?? []).map(async (q) => ({
-          ...q,
+          id: q.id,
+          position: q.position,
+          question_text: q.question_text,
+          marks: q.marks,
+          image_paths: q.image_paths,
+          markScheme: access.markSchemeRevealed ? q.mark_scheme : null,
           imageUrls: await signPaperPages(db, q.image_paths ?? []),
         })),
       ),
@@ -974,6 +982,7 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
       messages: messages ?? [],
     };
   });
+
 
 export const gradeAnswer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

@@ -76,6 +76,8 @@ export function QuestionExperience({
   tutorError,
   onSend,
   locked = false,
+  markScheme = null,
+
 }: {
   question: { id: string; question_text: string; marks: number };
   index: number;

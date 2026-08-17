@@ -116,6 +116,16 @@ function AuthPage() {
             Teachers set the homework. Students work through it with a tutor beside them.
           </p>
 
+          {pendingEmail ? (
+            <div className="mt-4 rounded-lg border border-primary/40 bg-primary/5 p-3 text-sm">
+              <p className="font-medium">Verify your email to finish</p>
+              <p className="mt-1 text-muted-foreground">
+                We sent a confirmation link to {pendingEmail}. Click it, then sign in below. Check
+                the spam folder if it does not arrive.
+              </p>
+            </div>
+          ) : null}
+
           <Tabs value={tab} onValueChange={(value) => setTab(value as "signin" | "signup")}>
             <TabsList className="mt-6 grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign in</TabsTrigger>

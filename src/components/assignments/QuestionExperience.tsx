@@ -1,4 +1,6 @@
 import { Camera, CheckCircle2, CircleDashed, Sparkles, XCircle } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,6 +9,38 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { questionBody, questionLabel } from "@/lib/question-label";
+
+const NO_PASTE_MESSAGE =
+  "Pasted text isn't allowed — answers must be your own words, typed in.";
+
+/** Blocks paste, drag-drop and autofill-style bulk insertion into answer inputs. */
+function useOriginalTypingGuard() {
+  const [flagged, setFlagged] = useState(false);
+  const reject = (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+    setFlagged(true);
+    toast.error(NO_PASTE_MESSAGE);
+  };
+  return {
+    flagged,
+    clearFlag: () => setFlagged(false),
+    guardProps: {
+      onPaste: reject,
+      onDrop: reject,
+      onBeforeInput: (event: React.FormEvent<HTMLTextAreaElement>) => {
+        const native = event.nativeEvent as InputEvent;
+        if (
+          native.inputType?.startsWith("insertFromPaste") ||
+          native.inputType === "insertFromDrop" ||
+          (native.inputType === "insertReplacementText" && (native.data ?? "").length > 30)
+        ) {
+          reject(event);
+        }
+      },
+    },
+  };
+}
+
 
 type TutorTurn = { id?: string; role: string; content: string };
 type Result = {
@@ -61,6 +95,8 @@ export function QuestionExperience({
   onSend: () => void;
 }) {
   const verdict = result?.verdict ?? null;
+  const answerGuard = useOriginalTypingGuard();
+  const tutorGuard = useOriginalTypingGuard();
 
   return (
     <section className="paper p-6">
@@ -77,7 +113,11 @@ export function QuestionExperience({
       <div className="mt-4 space-y-3">
         <Textarea
           value={draft}
-          onChange={(event) => onDraftChange(event.target.value)}
+          onChange={(event) => {
+            if (answerGuard.flagged) answerGuard.clearFlag();
+            onDraftChange(event.target.value);
+          }}
+          {...answerGuard.guardProps}
           placeholder={
             requiresPhoto
               ? "Describe what you drew (and upload a photo of it below)"
@@ -85,6 +125,10 @@ export function QuestionExperience({
           }
           rows={4}
         />
+        {answerGuard.flagged ? (
+          <p className="text-sm text-destructive">{NO_PASTE_MESSAGE}</p>
+        ) : null}
+
         {draft && !isEnglishOnly(draft) ? (
           <p className="text-sm text-destructive">{ENGLISH_ONLY_MESSAGE}</p>
         ) : null}
@@ -212,10 +256,15 @@ export function QuestionExperience({
               <Textarea
                 id={`ask-${question.id}`}
                 value={reply}
-                onChange={(event) => onReplyChange(event.target.value)}
+                onChange={(event) => {
+                  if (tutorGuard.flagged) tutorGuard.clearFlag();
+                  onReplyChange(event.target.value);
+                }}
+                {...tutorGuard.guardProps}
                 placeholder="Reply to the tutor, or ask a follow-up question — as many as you need"
                 rows={2}
               />
+
               <Button
                 variant="secondary"
                 onClick={onSend}
@@ -224,6 +273,9 @@ export function QuestionExperience({
                 {tutoring ? "Thinking..." : "Send"}
               </Button>
             </div>
+            {tutorGuard.flagged ? (
+              <p className="text-sm text-destructive">{NO_PASTE_MESSAGE}</p>
+            ) : null}
             {reply && !isEnglishOnly(reply) ? (
               <p className="text-sm text-destructive">Please ask your question in English.</p>
             ) : null}

@@ -234,11 +234,24 @@ export function QuestionExperience({
           <Button
             onClick={onCheck}
             disabled={
-              locked || (!hasWrittenAnswer && photoCount === 0) || checking || !isEnglishOnly(draft)
+              locked ||
+              checking ||
+              (photoOnly
+                ? photoCount === 0
+                : (!hasWrittenAnswer && photoCount === 0) || !isEnglishOnly(draft))
             }
           >
-            {locked ? "Locked" : checking ? "Marking..." : result ? "Re-check answer" : "Check answer"}
+            {locked
+              ? "Locked"
+              : checking
+                ? "Marking..."
+                : result
+                  ? "Re-check answer"
+                  : photoOnly
+                    ? "Mark my working"
+                    : "Check answer"}
           </Button>
+
         </div>
         {checkError ? <p className="text-sm text-destructive">{checkError}</p> : null}
       </div>

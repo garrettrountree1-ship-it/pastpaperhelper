@@ -1268,6 +1268,9 @@ export const sendTutorMessage = createServerFn({ method: "POST" })
       .eq("id", answer.question_id)
       .single();
     const question = questionRow!;
+    const tutorAccess = await studentAccess(db, question.assignment_id, userId);
+    if (tutorAccess.pastDue) throw new Error(PAST_DUE_MESSAGE);
+
     const { data: assignmentRow } = await db
       .from("assignments")
       .select("subject, curriculum")

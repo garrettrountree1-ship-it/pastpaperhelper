@@ -244,7 +244,7 @@ function ClassPage() {
                             <TableHead key={assignment.id}>
                               <div className="flex items-center gap-1">
                                 <span>{assignment.title}</span>
-                                <QuestionControlsDialog
+                                <QuestionEditorDialog
                                   classId={classId}
                                   assignmentId={assignment.id}
                                   trigger={
@@ -252,7 +252,7 @@ function ClassPage() {
                                       variant="ghost"
                                       size="icon"
                                       className="size-7"
-                                      title="Manage questions"
+                                      title="Question editor"
                                     >
                                       <ListChecks className="size-4" />
                                     </Button>
@@ -266,7 +266,7 @@ function ClassPage() {
                                       variant="ghost"
                                       size="icon"
                                       className="size-7"
-                                      title="Due date & mark scheme"
+                                      title="Due date & answer release"
                                     >
                                       <CalendarClock className="size-4" />
                                     </Button>

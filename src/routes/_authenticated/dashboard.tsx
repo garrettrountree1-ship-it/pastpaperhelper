@@ -332,7 +332,7 @@ function StudentHome() {
 
       {work.isLoading ? (
         <Skeleton className="h-32 w-full" />
-      ) : (work.data?.assignments ?? []).length === 0 ? (
+      ) : (work.data?.classes ?? []).length === 0 ? (
         <div className="paper p-8 text-center text-muted-foreground">
           No homework yet. Join your class with the code your teacher gave you.
         </div>

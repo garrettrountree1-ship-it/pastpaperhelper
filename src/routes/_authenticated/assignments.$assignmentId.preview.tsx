@@ -136,7 +136,7 @@ function PreviewPage() {
                 {data.assignment.className} · {data.assignment.curriculum}
                 {data.assignment.subject ? ` · ${data.assignment.subject}` : ""}
                 {data.assignment.dueAt
-                  ? ` · due ${new Date(data.assignment.dueAt).toLocaleDateString()}`
+                  ? ` · due ${new Date(data.assignment.dueAt).toLocaleString()}`
                   : ""}
               </p>
               {data.assignment.instructions ? (
@@ -145,6 +145,10 @@ function PreviewPage() {
               <div className="mt-4 flex items-center gap-3">
                 <Badge variant="secondary">{data.questions.length} questions</Badge>
                 <Badge>{totalMarks} marks</Badge>
+                {data.assignment.markSchemeRevealed ? <Badge>Mark scheme released</Badge> : null}
+                {data.assignment.pastDue ? (
+                  <Badge variant="destructive">Past due · closed for students</Badge>
+                ) : null}
               </div>
               {flags > 0 ? (
                 <p className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
@@ -318,6 +322,7 @@ function PreviewQuestion({
       checking={check.isPending}
       checkError={check.isError ? (check.error as Error).message : undefined}
       onCheck={() => check.mutate()}
+      markScheme={question.markScheme ?? null}
       thread={thread}
       reply={reply}
       onReplyChange={setReply}

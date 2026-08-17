@@ -61,6 +61,8 @@ type Question = {
   question_text: string;
   marks: number;
   imageUrls?: string[];
+  markScheme?: string | null;
+
 };
 
 /** Signed URLs carry a per-request token, so compare the storage path only. */

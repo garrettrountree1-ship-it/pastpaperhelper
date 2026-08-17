@@ -11,15 +11,15 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
     meta: [
-      { title: "Set a new password · StepWise" },
+      { title: "Set a new password · AI Homework Hero" },
       {
         name: "description",
-        content: "Choose a new StepWise password after requesting a reset link by email.",
+        content: "Choose a new AI Homework Hero password after requesting a reset link by email.",
       },
-      { property: "og:title", content: "Set a new password · StepWise" },
+      { property: "og:title", content: "Set a new password · AI Homework Hero" },
       {
         property: "og:description",
-        content: "Choose a new password for your StepWise teacher or student account.",
+        content: "Choose a new password for your AI Homework Hero teacher or student account.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

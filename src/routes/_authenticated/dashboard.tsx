@@ -38,9 +38,9 @@ import {
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard · StepWise" },
+      { title: "Dashboard · AI Homework Hero" },
       { name: "description", content: "Your classes, assignments and homework grades." },
-      { property: "og:title", content: "Dashboard · StepWise" },
+      { property: "og:title", content: "Dashboard · AI Homework Hero" },
       { property: "og:description", content: "Your classes, assignments and homework grades." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

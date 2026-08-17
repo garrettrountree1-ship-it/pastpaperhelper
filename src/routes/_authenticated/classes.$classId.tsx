@@ -1131,7 +1131,10 @@ function ClassSettingsDialog({
   const [subject, setSubject] = useState(klass.subject);
   const [joinCode, setJoinCode] = useState(klass.join_code);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const save = useServerFn(updateClass);
+  const deleteClassFn = useServerFn(deleteClass);
+
 
   useEffect(() => {
     if (!open) return;

@@ -1027,8 +1027,12 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       .single();
     const assignment = assignmentRow!;
 
+    const access = await studentAccess(db, data.assignmentId, userId);
+    if (access.pastDue) throw new Error(PAST_DUE_MESSAGE);
+
     const guardSubmission = await ensureSubmission(db, data.assignmentId, userId);
     if (guardSubmission.locked_at) throw new Error(LOCKED_MESSAGE);
+
 
     /* ---- academic integrity: reject copied AI / web answers ---- */
     const { detectAiAnswer } = await import("./ai-detect.server");

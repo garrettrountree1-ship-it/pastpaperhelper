@@ -3,6 +3,7 @@ import { BookOpenCheck, ClipboardList, MessageCircleQuestion, Users } from "luci
 
 import { Brand } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
+import marsBg from "@/assets/mars-bg.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({

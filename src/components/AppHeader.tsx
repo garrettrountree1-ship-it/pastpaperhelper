@@ -32,7 +32,7 @@ export function AppHeader({
   }
 
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-card/85 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-border bg-card/95 shadow-sm backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
         <Link to="/dashboard" className="hover:opacity-80">
           <Brand />

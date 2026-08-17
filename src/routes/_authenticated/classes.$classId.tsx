@@ -383,7 +383,7 @@ function AssignmentDialog({
     setTitle(existing.data.title);
     setSubject(existing.data.subject);
     setInstructions(existing.data.instructions);
-    setDueAt(existing.data.dueAt ? existing.data.dueAt.slice(0, 10) : "");
+    setDueAt(toLocalInput(existing.data.dueAt));
     setQuestions(
       existing.data.questions.length > 0
         ? existing.data.questions.map((q) => ({
@@ -437,7 +437,7 @@ function AssignmentDialog({
             title,
             subject,
             instructions,
-            dueAt: dueAt ? new Date(dueAt).toISOString() : null,
+            dueAt: fromLocalInput(dueAt),
             questions: payloadQuestions,
           },
         });
@@ -448,7 +448,7 @@ function AssignmentDialog({
           title,
           subject,
           instructions,
-          dueAt: dueAt ? new Date(dueAt).toISOString() : null,
+          dueAt: fromLocalInput(dueAt),
           questions: payloadQuestions.map(({ id: _id, ...rest }) => rest),
         },
       });
@@ -536,7 +536,7 @@ function AssignmentDialog({
               <Label htmlFor="due">Due date (optional)</Label>
               <Input
                 id="due"
-                type="date"
+                type="datetime-local"
                 value={dueAt}
                 onChange={(event) => setDueAt(event.target.value)}
               />

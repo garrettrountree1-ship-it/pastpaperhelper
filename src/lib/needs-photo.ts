@@ -25,7 +25,47 @@ const PHOTO_CUES = [
   "best fit",
 ];
 
+/** Maths / calculation cues — these must be worked on paper and photographed. */
+const CALCULATION_CUES = [
+  "calculate",
+  "work out",
+  "show your working",
+  "show all working",
+  "show that",
+  "determine the value",
+  "find the value",
+  "evaluate",
+  "solve for",
+  "solve the equation",
+  "give your answer to",
+  "correct to",
+  "significant figures",
+  "decimal places",
+  "how many moles",
+  "number of moles",
+  "concentration of",
+  "percentage yield",
+  "relative atomic mass",
+  "molar mass",
+  "use your answer",
+  "using the equation",
+  "substitute",
+  "rearrange",
+];
+
 export function needsPhotoAnswer(questionText: string): boolean {
   const text = questionText.toLowerCase();
-  return PHOTO_CUES.some((cue) => text.includes(cue));
+  return (
+    PHOTO_CUES.some((cue) => text.includes(cue)) ||
+    CALCULATION_CUES.some((cue) => text.includes(cue))
+  );
+}
+
+/**
+ * Calculation questions are photo-only: the student works on paper, uploads it,
+ * and the photo is saved for the teacher. No typed answer box is offered.
+ */
+export function isCalculationQuestion(questionText: string): boolean {
+  const text = questionText.toLowerCase();
+  return CALCULATION_CUES.some((cue) => text.includes(cue));
 }

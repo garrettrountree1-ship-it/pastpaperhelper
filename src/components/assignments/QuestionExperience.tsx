@@ -1,5 +1,5 @@
 import { Camera, CheckCircle2, CircleDashed, Sparkles, XCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { CameraCapture } from "@/components/assignments/CameraCapture";

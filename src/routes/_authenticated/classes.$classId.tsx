@@ -691,8 +691,29 @@ function AssignmentDialog({
             </Button>
           </div>
         </div>
-        )}
+      )}
+      {asPanel ? (
+        <div className="mt-4 flex justify-end">
+          <Button onClick={() => mutation.mutate()} disabled={!valid || mutation.isPending}>
+            {mutation.isPending ? "Saving..." : editing ? "Save changes" : "Set homework"}
+          </Button>
+        </div>
+      ) : null}
+    </>
+  );
 
+  if (asPanel) return body;
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {editing ? "Edit past-paper homework" : "Set past-paper homework"}
+          </DialogTitle>
+        </DialogHeader>
+        {body}
         <DialogFooter>
           <Button onClick={() => mutation.mutate()} disabled={!valid || mutation.isPending}>
             {mutation.isPending ? "Saving..." : editing ? "Save changes" : "Set homework"}

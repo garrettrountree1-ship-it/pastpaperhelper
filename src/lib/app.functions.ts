@@ -1174,10 +1174,13 @@ export const previewTutorMessage = createServerFn({ method: "POST" })
 
 type AnyClient = Awaited<ReturnType<typeof admin>>;
 
+const SUBMISSION_FIELDS =
+  "id, status, awarded_marks, total_marks, submitted_at, ai_flag_count, locked_at, locked_reason";
+
 async function ensureSubmission(db: AnyClient, assignmentId: string, studentId: string) {
   const { data: existing } = await db
     .from("submissions")
-    .select("id, status, awarded_marks, total_marks, submitted_at")
+    .select(SUBMISSION_FIELDS)
     .eq("assignment_id", assignmentId)
     .eq("student_id", studentId)
     .maybeSingle();
@@ -1192,20 +1195,23 @@ async function ensureSubmission(db: AnyClient, assignmentId: string, studentId: 
   const { data: created, error } = await db
     .from("submissions")
     .insert({ assignment_id: assignmentId, student_id: studentId, total_marks: totalMarks })
-    .select("id, status, awarded_marks, total_marks, submitted_at")
+    .select(SUBMISSION_FIELDS)
     .single();
   if (error) throw new Error(error.message);
   return created;
 }
 
 async function recalcSubmission(db: AnyClient, submissionId: string) {
-  const { data: answers } = await db
-    .from("answers")
-    .select("awarded_marks")
-    .eq("submission_id", submissionId);
-  const awarded = (answers ?? []).reduce((sum, a) => sum + Number(a.awarded_marks), 0);
+  const [{ data: answers }, { data: submission }] = await Promise.all([
+    db.from("answers").select("awarded_marks").eq("submission_id", submissionId),
+    db.from("submissions").select("locked_at").eq("id", submissionId).maybeSingle(),
+  ]);
+  const awarded = submission?.locked_at
+    ? 0
+    : (answers ?? []).reduce((sum, a) => sum + Number(a.awarded_marks), 0);
   await db.from("submissions").update({ awarded_marks: awarded }).eq("id", submissionId);
 }
+
 
 async function signPaperPages(db: AnyClient, paths: string[]) {
   if (paths.length === 0) return [];

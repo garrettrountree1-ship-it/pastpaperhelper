@@ -457,7 +457,7 @@ function AssignmentDialog({
     },
     onSuccess: () => {
       toast.success(editing ? "Assignment updated" : "Assignment set");
-      setOpen(false);
+      if (!asPanel) setOpen(false);
       if (!editing) {
         setTitle("");
         setSubject("");

@@ -143,11 +143,21 @@ function AuthPage() {
 
   async function handleGoogle() {
     setBusy(true);
+    try {
+      localStorage.setItem("pendingOAuthRole", role);
+    } catch {
+      // ignore storage errors
+    }
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
     if (result.error) {
       setBusy(false);
+      try {
+        localStorage.removeItem("pendingOAuthRole");
+      } catch {
+        // ignore
+      }
       toast.error("Google sign-in failed. Please try again.");
       return;
     }
@@ -275,21 +285,6 @@ function AuthPage() {
                     onChange={(event) => setPassword(event.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>I am a</Label>
-                  <RadioGroup
-                    value={role}
-                    onValueChange={(value) => setRole(value as "student" | "teacher")}
-                    className="grid grid-cols-2 gap-2"
-                  >
-                    <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 text-sm">
-                      <RadioGroupItem value="student" /> Student
-                    </label>
-                    <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 text-sm">
-                      <RadioGroupItem value="teacher" /> Teacher
-                    </label>
-                  </RadioGroup>
-                </div>
                 <p className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
                   <strong className="text-foreground">Email verification is required.</strong> Both
                   students and teachers get a confirmation link by email after creating an account —
@@ -303,6 +298,23 @@ function AuthPage() {
             </TabsContent>
           </Tabs>
 
+          <div className="mt-6 space-y-2">
+            <Label>I am a</Label>
+            <RadioGroup
+              value={role}
+              onValueChange={(value) => setRole(value as "student" | "teacher")}
+              className="grid grid-cols-2 gap-2"
+            >
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 text-sm">
+                <RadioGroupItem value="student" /> Student
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 text-sm">
+                <RadioGroupItem value="teacher" /> Teacher
+              </label>
+            </RadioGroup>
+            <p className="text-xs text-muted-foreground">Used for new Google and email accounts.</p>
+          </div>
+
           <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-widest text-muted-foreground">
             <span className="h-px flex-1 bg-border" /> or <span className="h-px flex-1 bg-border" />
           </div>
@@ -310,7 +322,8 @@ function AuthPage() {
             Continue with Google
           </Button>
           <p className="mt-3 text-xs text-muted-foreground">
-            Google sign-in creates a student account. Teachers should create an account with email.
+            Google sign-in will create a {role} account if you are new. If you already have an
+            account, you will be signed in with your existing role.
           </p>
         </div>
       </main>

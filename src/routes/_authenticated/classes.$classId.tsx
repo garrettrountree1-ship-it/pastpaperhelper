@@ -484,15 +484,9 @@ function AssignmentDialog({
     setQuestions((prev) => prev.map((q, i) => (i === index ? { ...q, ...patch } : q)));
   }
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {editing ? "Edit past-paper homework" : "Set past-paper homework"}
-          </DialogTitle>
-        </DialogHeader>
+  const body = (
+    <>
+
 
         {loadingExisting && !existing.isError ? (
           <Skeleton className="h-64 w-full" />

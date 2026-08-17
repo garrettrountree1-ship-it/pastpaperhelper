@@ -7,11 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { NO_PASTE_MESSAGE } from "@/lib/integrity";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { questionBody, questionLabel } from "@/lib/question-label";
 
-const NO_PASTE_MESSAGE =
-  "Pasted text isn't allowed — answers must be your own words, typed in.";
 
 /** Blocks paste, drag-drop and autofill-style bulk insertion into answer inputs. */
 function useOriginalTypingGuard() {
@@ -71,6 +70,7 @@ export function QuestionExperience({
   tutoring,
   tutorError,
   onSend,
+  locked = false,
 }: {
   question: { id: string; question_text: string; marks: number };
   index: number;
@@ -93,6 +93,8 @@ export function QuestionExperience({
   tutoring: boolean;
   tutorError: string | undefined;
   onSend: () => void;
+  /** Homework locked for suspected AI use — read-only until a teacher unlocks it. */
+  locked?: boolean;
 }) {
   const verdict = result?.verdict ?? null;
   const answerGuard = useOriginalTypingGuard();
@@ -118,6 +120,7 @@ export function QuestionExperience({
             onDraftChange(event.target.value);
           }}
           {...answerGuard.guardProps}
+          disabled={locked}
           placeholder={
             requiresPhoto
               ? "Describe what you drew (and upload a photo of it below)"
@@ -150,6 +153,7 @@ export function QuestionExperience({
               capture="environment"
               multiple
               className="mt-2"
+              disabled={locked}
               onChange={(event) => onPhotosChange(event.target.files)}
             />
             {photoCount > 0 ? (
@@ -196,9 +200,11 @@ export function QuestionExperience({
           </span>
           <Button
             onClick={onCheck}
-            disabled={(!draft.trim() && photoCount === 0) || checking || !isEnglishOnly(draft)}
+            disabled={
+              locked || (!draft.trim() && photoCount === 0) || checking || !isEnglishOnly(draft)
+            }
           >
-            {checking ? "Marking..." : result ? "Re-check answer" : "Check answer"}
+            {locked ? "Locked" : checking ? "Marking..." : result ? "Re-check answer" : "Check answer"}
           </Button>
         </div>
         {checkError ? <p className="text-sm text-destructive">{checkError}</p> : null}
@@ -261,6 +267,7 @@ export function QuestionExperience({
                   onReplyChange(event.target.value);
                 }}
                 {...tutorGuard.guardProps}
+                disabled={locked}
                 placeholder="Reply to the tutor, or ask a follow-up question — as many as you need"
                 rows={2}
               />
@@ -268,7 +275,7 @@ export function QuestionExperience({
               <Button
                 variant="secondary"
                 onClick={onSend}
-                disabled={!reply.trim() || tutoring || !isEnglishOnly(reply)}
+                disabled={locked || !reply.trim() || tutoring || !isEnglishOnly(reply)}
               >
                 {tutoring ? "Thinking..." : "Send"}
               </Button>

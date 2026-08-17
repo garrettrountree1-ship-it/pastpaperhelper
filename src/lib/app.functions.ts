@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
+import { LOCKED_MESSAGE } from "@/lib/integrity";
 
 
 async function admin() {
@@ -529,10 +530,21 @@ export const getSubmissionDetail = createServerFn({ method: "POST" })
 
     const { data: submission } = await db
       .from("submissions")
-      .select("id, status, awarded_marks, total_marks, submitted_at")
+      .select(
+        "id, status, awarded_marks, total_marks, submitted_at, ai_flag_count, locked_at, locked_reason",
+      )
       .eq("assignment_id", data.assignmentId)
       .eq("student_id", data.studentId)
       .maybeSingle();
+
+    const { data: integrityFlags } = submission
+      ? await db
+          .from("integrity_flags")
+          .select("id, question_id, reason, excerpt, confidence, created_at")
+          .eq("submission_id", submission.id)
+          .order("created_at")
+      : { data: [] };
+
 
     const { data: answers } = submission
       ? await db
@@ -571,8 +583,43 @@ export const getSubmissionDetail = createServerFn({ method: "POST" })
       submission,
       answers: withImages,
       messages: tutorMessages ?? [],
+      integrityFlags: integrityFlags ?? [],
     };
   });
+
+/** Teacher-only: clears AI strikes and unlocks a locked homework submission. */
+export const unlockSubmission = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ assignmentId: z.string().uuid(), studentId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: allowed } = await supabase.rpc("can_teach_assignment", {
+      _assignment_id: data.assignmentId,
+      _user_id: userId,
+    });
+    if (!allowed) throw new Error("Not allowed.");
+
+    const db = await admin();
+    const { data: submission } = await db
+      .from("submissions")
+      .select("id")
+      .eq("assignment_id", data.assignmentId)
+      .eq("student_id", data.studentId)
+      .maybeSingle();
+    if (!submission) throw new Error("No submission to unlock.");
+
+    const { error } = await db
+      .from("submissions")
+      .update({ ai_flag_count: 0, locked_at: null, locked_reason: null })
+      .eq("id", submission.id);
+    if (error) throw new Error(error.message);
+
+    await recalcSubmission(db, submission.id);
+    return { ok: true };
+  });
+
 
 /* --------------------------------------------------------------- student --- */
 
@@ -772,6 +819,47 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       .single();
     const assignment = assignmentRow!;
 
+    const guardSubmission = await ensureSubmission(db, data.assignmentId, userId);
+    if (guardSubmission.locked_at) throw new Error(LOCKED_MESSAGE);
+
+    /* ---- academic integrity: reject copied AI / web answers ---- */
+    const { detectAiAnswer } = await import("./ai-detect.server");
+    const detection = await detectAiAnswer({
+      question: question.question_text,
+      answer: data.answerText,
+      marks: question.marks,
+    });
+    if (detection.isAi) {
+      const strikes = (guardSubmission.ai_flag_count ?? 0) + 1;
+      await db.from("integrity_flags").insert({
+        submission_id: guardSubmission.id,
+        question_id: data.questionId,
+        reason: detection.reason,
+        excerpt: data.answerText.slice(0, 600),
+        confidence: detection.confidence,
+      });
+      const locked = strikes >= 3;
+      await db
+        .from("submissions")
+        .update({
+          ai_flag_count: strikes,
+          ...(locked
+            ? {
+                locked_at: new Date().toISOString(),
+                locked_reason: "Three answers were detected as AI-generated or copied.",
+              }
+            : {}),
+        })
+        .eq("id", guardSubmission.id);
+      if (locked) {
+        await recalcSubmission(db, guardSubmission.id);
+        throw new Error(LOCKED_MESSAGE);
+      }
+      throw new Error(
+        `This answer looks AI-generated or copied, so it was not accepted. Write it in your own words. Warning ${strikes} of 3 — after 3 warnings this homework is locked and marked as a fail until your teacher unlocks it.`,
+      );
+    }
+
     const imageUrls = await signWorkImages(db, imagePaths);
 
     const { markStudentAnswer } = await import("./marking.server");
@@ -785,6 +873,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       imageUrls,
       questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
     });
+
 
     const submission = await ensureSubmission(db, data.assignmentId, userId);
     const { data: existing } = await db
@@ -936,10 +1025,17 @@ export const sendTutorMessage = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: answerRow } = await db
       .from("answers")
-      .select("id, answer_text, question_id")
+      .select("id, answer_text, question_id, submission_id")
       .eq("id", data.answerId)
       .single();
     const answer = answerRow!;
+    const { data: ownerSubmission } = await db
+      .from("submissions")
+      .select("locked_at")
+      .eq("id", answer.submission_id)
+      .maybeSingle();
+    if (ownerSubmission?.locked_at) throw new Error(LOCKED_MESSAGE);
+
     const { data: questionRow } = await db
       .from("questions")
       .select("question_text, mark_scheme, marks, assignment_id")
@@ -989,12 +1085,22 @@ export const submitAssignment = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ assignmentId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const db = await admin();
+    const { data: current } = await db
+      .from("submissions")
+      .select("locked_at")
+      .eq("assignment_id", data.assignmentId)
+      .eq("student_id", userId)
+      .maybeSingle();
+    if (current?.locked_at) throw new Error(LOCKED_MESSAGE);
+
     const { error } = await supabase
       .from("submissions")
       .update({ status: "submitted", submitted_at: new Date().toISOString() })
       .eq("assignment_id", data.assignmentId)
       .eq("student_id", userId);
     if (error) throw new Error(error.message);
+
     return { ok: true };
   });
 
@@ -1092,6 +1198,20 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       .single();
     const assignment = assignmentRow!;
 
+    // Same integrity check students face, but no strikes are recorded here.
+    const { detectAiAnswer } = await import("./ai-detect.server");
+    const previewDetection = await detectAiAnswer({
+      question: question.question_text,
+      answer: data.answerText,
+      marks: question.marks,
+    });
+    if (previewDetection.isAi) {
+      throw new Error(
+        "This answer looks AI-generated or copied, so it was not accepted. Write it in your own words. Warning 1 of 3 — after 3 warnings a student's homework is locked and marked as a fail until a teacher unlocks it.",
+      );
+    }
+
+
     const { markStudentAnswer } = await import("./marking.server");
     const result = await markStudentAnswer({
       curriculum: assignment.curriculum,
@@ -1174,10 +1294,13 @@ export const previewTutorMessage = createServerFn({ method: "POST" })
 
 type AnyClient = Awaited<ReturnType<typeof admin>>;
 
+const SUBMISSION_FIELDS =
+  "id, status, awarded_marks, total_marks, submitted_at, ai_flag_count, locked_at, locked_reason";
+
 async function ensureSubmission(db: AnyClient, assignmentId: string, studentId: string) {
   const { data: existing } = await db
     .from("submissions")
-    .select("id, status, awarded_marks, total_marks, submitted_at")
+    .select(SUBMISSION_FIELDS)
     .eq("assignment_id", assignmentId)
     .eq("student_id", studentId)
     .maybeSingle();
@@ -1192,20 +1315,23 @@ async function ensureSubmission(db: AnyClient, assignmentId: string, studentId: 
   const { data: created, error } = await db
     .from("submissions")
     .insert({ assignment_id: assignmentId, student_id: studentId, total_marks: totalMarks })
-    .select("id, status, awarded_marks, total_marks, submitted_at")
+    .select(SUBMISSION_FIELDS)
     .single();
   if (error) throw new Error(error.message);
   return created;
 }
 
 async function recalcSubmission(db: AnyClient, submissionId: string) {
-  const { data: answers } = await db
-    .from("answers")
-    .select("awarded_marks")
-    .eq("submission_id", submissionId);
-  const awarded = (answers ?? []).reduce((sum, a) => sum + Number(a.awarded_marks), 0);
+  const [{ data: answers }, { data: submission }] = await Promise.all([
+    db.from("answers").select("awarded_marks").eq("submission_id", submissionId),
+    db.from("submissions").select("locked_at").eq("id", submissionId).maybeSingle(),
+  ]);
+  const awarded = submission?.locked_at
+    ? 0
+    : (answers ?? []).reduce((sum, a) => sum + Number(a.awarded_marks), 0);
   await db.from("submissions").update({ awarded_marks: awarded }).eq("id", submissionId);
 }
+
 
 async function signPaperPages(db: AnyClient, paths: string[]) {
   if (paths.length === 0) return [];

@@ -125,7 +125,29 @@ function AssignmentPage() {
                   {data.submission.awarded_marks ?? 0}/{data.submission.total_marks} marks
                 </Badge>
                 {data.submission.status === "submitted" ? <Badge>Submitted</Badge> : null}
+                {data.submission.locked_at ? <Badge variant="destructive">Locked · fail</Badge> : null}
               </div>
+              {data.submission.locked_at ? (
+                <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm">
+                  <p className="font-medium">This homework is locked and marked as a fail.</p>
+                  <p className="mt-1 text-muted-foreground">
+                    {data.submission.locked_reason ??
+                      "AI-generated or copied answers were detected three times."}{" "}
+                    Speak to your teacher — only they can unlock it and give you another chance.
+                  </p>
+                </div>
+              ) : (data.submission.ai_flag_count ?? 0) > 0 ? (
+                <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm">
+                  <p className="font-medium">
+                    Warning {data.submission.ai_flag_count} of 3: AI-generated or copied answers
+                    were rejected.
+                  </p>
+                  <p className="mt-1 text-muted-foreground">
+                    Answers must be your own words. After 3 warnings this homework locks and is
+                    marked as a fail until your teacher unlocks it.
+                  </p>
+                </div>
+              ) : null}
             </div>
 
             <div className="mt-8 space-y-6">
@@ -155,6 +177,7 @@ function AssignmentPage() {
                       assignmentId={assignmentId}
                       index={index}
                       question={question}
+                      locked={Boolean(data.submission.locked_at)}
                       answer={data.answers.find((a) => a.question_id === question.id) ?? null}
                       messages={data.messages}
                       queryKey={queryKey}
@@ -247,6 +270,7 @@ function QuestionCard({
   answer,
   messages,
   queryKey,
+  locked,
 }: {
   assignmentId: string;
   index: number;
@@ -254,6 +278,7 @@ function QuestionCard({
   answer: Answer | null;
   messages: Message[];
   queryKey: string[];
+  locked: boolean;
 }) {
   const queryClient = useQueryClient();
   const grade = useServerFn(gradeAnswer);
@@ -310,7 +335,11 @@ function QuestionCard({
       setPhotos([]);
       queryClient.invalidateQueries({ queryKey });
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => {
+      toast.error(error.message);
+      // Integrity strikes / locking change server state even on rejection.
+      queryClient.invalidateQueries({ queryKey });
+    },
   });
 
   const tutorMutation = useMutation({
@@ -358,6 +387,7 @@ function QuestionCard({
       tutoring={tutorMutation.isPending}
       tutorError={tutorMutation.isError ? (tutorMutation.error as Error).message : undefined}
       onSend={() => tutorMutation.mutate()}
+      locked={locked}
     />
   );
 }

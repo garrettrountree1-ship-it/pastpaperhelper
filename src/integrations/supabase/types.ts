@@ -183,6 +183,51 @@ export type Database = {
         }
         Relationships: []
       }
+      integrity_flags: {
+        Row: {
+          confidence: number
+          created_at: string
+          excerpt: string
+          id: string
+          question_id: string | null
+          reason: string
+          submission_id: string
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          excerpt?: string
+          id?: string
+          question_id?: string | null
+          reason?: string
+          submission_id: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          excerpt?: string
+          id?: string
+          question_id?: string | null
+          reason?: string
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integrity_flags_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "integrity_flags_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -247,30 +292,39 @@ export type Database = {
       }
       submissions: {
         Row: {
+          ai_flag_count: number
           assignment_id: string
           awarded_marks: number
           created_at: string
           id: string
+          locked_at: string | null
+          locked_reason: string | null
           status: string
           student_id: string
           submitted_at: string | null
           total_marks: number
         }
         Insert: {
+          ai_flag_count?: number
           assignment_id: string
           awarded_marks?: number
           created_at?: string
           id?: string
+          locked_at?: string | null
+          locked_reason?: string | null
           status?: string
           student_id: string
           submitted_at?: string | null
           total_marks?: number
         }
         Update: {
+          ai_flag_count?: number
           assignment_id?: string
           awarded_marks?: number
           created_at?: string
           id?: string
+          locked_at?: string | null
+          locked_reason?: string | null
           status?: string
           student_id?: string
           submitted_at?: string | null

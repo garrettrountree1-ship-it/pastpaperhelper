@@ -1,0 +1,3 @@
+update auth.users set email = 'demo@stemhomeworkai.app', raw_user_meta_data = coalesce(raw_user_meta_data,'{}'::jsonb) || jsonb_build_object('email','demo@stemhomeworkai.app'), updated_at = now() where id = '6ead4632-4313-4e7d-a0d2-e27c28284206';
+update auth.identities set identity_data = coalesce(identity_data,'{}'::jsonb) || jsonb_build_object('email','demo@stemhomeworkai.app') where user_id = '6ead4632-4313-4e7d-a0d2-e27c28284206';
+update public.profiles set email = 'demo@stemhomeworkai.app' where id = '6ead4632-4313-4e7d-a0d2-e27c28284206';

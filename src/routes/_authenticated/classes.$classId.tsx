@@ -705,12 +705,14 @@ function QuestionControlsDialog({
   classId,
   assignmentId,
   trigger,
+  asPanel,
 }: {
   classId: string;
   assignmentId: string;
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
+  asPanel?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(Boolean(asPanel));
   const [expanded, setExpanded] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const load = useServerFn(getAssignmentQuestionControls);
@@ -759,13 +761,8 @@ function QuestionControlsDialog({
       (e) => e.questionId === questionId && e.studentId === studentId,
     );
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Question controls</DialogTitle>
-        </DialogHeader>
+  const body = (
+    <>
 
         {controls.isLoading ? (
           <div className="space-y-2">

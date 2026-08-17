@@ -1,4 +1,6 @@
 import { Camera, CheckCircle2, CircleDashed, Sparkles, XCircle } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,6 +9,38 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { questionBody, questionLabel } from "@/lib/question-label";
+
+const NO_PASTE_MESSAGE =
+  "Pasted text isn't allowed — answers must be your own words, typed in.";
+
+/** Blocks paste, drag-drop and autofill-style bulk insertion into answer inputs. */
+function useOriginalTypingGuard() {
+  const [flagged, setFlagged] = useState(false);
+  const reject = (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+    setFlagged(true);
+    toast.error(NO_PASTE_MESSAGE);
+  };
+  return {
+    flagged,
+    clearFlag: () => setFlagged(false),
+    guardProps: {
+      onPaste: reject,
+      onDrop: reject,
+      onBeforeInput: (event: React.FormEvent<HTMLTextAreaElement>) => {
+        const native = event.nativeEvent as InputEvent;
+        if (
+          native.inputType?.startsWith("insertFromPaste") ||
+          native.inputType === "insertFromDrop" ||
+          (native.inputType === "insertReplacementText" && (native.data ?? "").length > 30)
+        ) {
+          reject(event);
+        }
+      },
+    },
+  };
+}
+
 
 type TutorTurn = { id?: string; role: string; content: string };
 type Result = {

@@ -95,6 +95,8 @@ export function QuestionExperience({
   onSend: () => void;
 }) {
   const verdict = result?.verdict ?? null;
+  const answerGuard = useOriginalTypingGuard();
+  const tutorGuard = useOriginalTypingGuard();
 
   return (
     <section className="paper p-6">
@@ -111,7 +113,11 @@ export function QuestionExperience({
       <div className="mt-4 space-y-3">
         <Textarea
           value={draft}
-          onChange={(event) => onDraftChange(event.target.value)}
+          onChange={(event) => {
+            if (answerGuard.flagged) answerGuard.clearFlag();
+            onDraftChange(event.target.value);
+          }}
+          {...answerGuard.guardProps}
           placeholder={
             requiresPhoto
               ? "Describe what you drew (and upload a photo of it below)"
@@ -119,6 +125,10 @@ export function QuestionExperience({
           }
           rows={4}
         />
+        {answerGuard.flagged ? (
+          <p className="text-sm text-destructive">{NO_PASTE_MESSAGE}</p>
+        ) : null}
+
         {draft && !isEnglishOnly(draft) ? (
           <p className="text-sm text-destructive">{ENGLISH_ONLY_MESSAGE}</p>
         ) : null}

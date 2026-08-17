@@ -61,6 +61,12 @@ export function needsPhotoAnswer(questionText: string): boolean {
   );
 }
 
+/** Drawing / diagram questions — the answer only exists on paper. */
+export function isDrawingQuestion(questionText: string): boolean {
+  const text = questionText.toLowerCase();
+  return PHOTO_CUES.some((cue) => text.includes(cue));
+}
+
 /**
  * Calculation questions are photo-only: the student works on paper, uploads it,
  * and the photo is saved for the teacher. No typed answer box is offered.
@@ -69,3 +75,12 @@ export function isCalculationQuestion(questionText: string): boolean {
   const text = questionText.toLowerCase();
   return CALCULATION_CUES.some((cue) => text.includes(cue));
 }
+
+/**
+ * Photo-only questions: calculations (working on paper) and any drawing,
+ * sketching, circling, labelling or plotting task. Applies to every assignment.
+ */
+export function isPhotoOnlyQuestion(questionText: string): boolean {
+  return isCalculationQuestion(questionText) || isDrawingQuestion(questionText);
+}
+

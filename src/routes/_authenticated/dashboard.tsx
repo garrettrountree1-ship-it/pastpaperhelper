@@ -149,10 +149,13 @@ function DemoViewSwitcher({ role }: { role: "teacher" | "student" }) {
 
   return (
     <div className="paper mb-6 flex flex-wrap items-center justify-between gap-3 p-4">
-      <div>
-        <p className="font-display text-lg">Demo account</p>
+      <div className="max-w-xl">
+        <p className="font-display text-lg">Demo account — teacher &amp; student in one</p>
         <p className="text-sm text-muted-foreground">
-          Switch freely between the teacher and student experience.
+          You are currently in the{" "}
+          <span className="font-medium text-foreground">{role} view</span>. Switch back and forth to
+          see both sides of STEM Homework AI. This dual view exists only in this demo account —
+          real accounts are either a teacher or a student, never both.
         </p>
       </div>
       <div className="flex gap-2">
@@ -174,6 +177,7 @@ function DemoViewSwitcher({ role }: { role: "teacher" | "student" }) {
     </div>
   );
 }
+
 
 
 function TeacherHome() {

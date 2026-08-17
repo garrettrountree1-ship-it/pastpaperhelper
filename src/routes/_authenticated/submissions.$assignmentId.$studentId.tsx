@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getSubmissionDetail, overrideAnswerMarks } from "@/lib/app.functions";
+import { getSubmissionDetail, overrideAnswerMarks, unlockSubmission } from "@/lib/app.functions";
 
 type MarkPoint = { point: string; marks: number; awarded: boolean };
 
@@ -65,6 +65,16 @@ function SubmissionPage() {
     queryKey,
     queryFn: () => getSubmissionDetail({ data: { assignmentId, studentId } }),
     retry: 2,
+  });
+  const queryClient = useQueryClient();
+  const unlock = useServerFn(unlockSubmission);
+  const unlockMutation = useMutation({
+    mutationFn: () => unlock({ data: { assignmentId, studentId } }),
+    onSuccess: () => {
+      toast.success("Homework unlocked — the student can try again.");
+      queryClient.invalidateQueries({ queryKey });
+    },
+    onError: (error: Error) => toast.error(error.message),
   });
 
   return (
@@ -136,6 +146,63 @@ function SubmissionPage() {
                     <p className="text-xs text-muted-foreground">active time on questions</p>
                   </div>
                 </div>
+              );
+            })()}
+
+            {(() => {
+              const flags = (detail.data.integrityFlags ?? []) as Array<{
+                id: string;
+                reason: string;
+                excerpt: string | null;
+                confidence: number | null;
+                created_at: string;
+              }>;
+              const submission = detail.data.submission as
+                | { locked_at?: string | null; locked_reason?: string | null; ai_flag_count?: number | null }
+                | null;
+              if (flags.length === 0 && !submission?.locked_at) return null;
+              return (
+                <section className="mt-6 rounded-lg border border-destructive/40 bg-destructive/5 p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h2 className="font-display text-xl">Academic integrity</h2>
+                      <p className="text-sm text-muted-foreground">
+                        {submission?.locked_at
+                          ? submission.locked_reason ??
+                            "Locked after three AI-generated or copied answers."
+                          : `${submission?.ai_flag_count ?? flags.length} warning(s) recorded — locks at 3.`}
+                      </p>
+                    </div>
+                    {submission?.locked_at ? (
+                      <Button
+                        onClick={() => unlockMutation.mutate()}
+                        disabled={unlockMutation.isPending}
+                      >
+                        {unlockMutation.isPending ? "Unlocking..." : "Unlock assignment"}
+                      </Button>
+                    ) : null}
+                  </div>
+                  {flags.length > 0 ? (
+                    <ul className="mt-4 space-y-3">
+                      {flags.map((flag) => (
+                        <li key={flag.id} className="rounded-lg bg-background p-3 text-sm">
+                          <p className="font-medium">{flag.reason}</p>
+                          {flag.excerpt ? (
+                            <p className="mt-1 whitespace-pre-wrap text-muted-foreground">
+                              “{flag.excerpt}”
+                            </p>
+                          ) : null}
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {new Date(flag.created_at).toLocaleString()}
+                            {flag.confidence != null
+                              ? ` · confidence ${Math.round(flag.confidence * 100)}%`
+                              : ""}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </section>
               );
             })()}
 

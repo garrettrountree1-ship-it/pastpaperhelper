@@ -34,6 +34,7 @@ import {
   listTeacherClasses,
   setOAuthRole,
 } from "@/lib/app.functions";
+import { switchDemoRole } from "@/lib/demo.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({

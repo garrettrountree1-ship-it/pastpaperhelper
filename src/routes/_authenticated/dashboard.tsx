@@ -6,6 +6,12 @@ import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
 import { formatDueDate } from "@/lib/datetime";
+import {
+  assignmentStatus,
+  statusBadgeVariant,
+  statusLabels,
+  type AssignmentStatusKey,
+} from "@/lib/assignment-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {

@@ -208,10 +208,12 @@ export function QuestionExperience({
             ) : null}
             {requiresPhoto ? (
               <p className="mt-2 text-xs text-muted-foreground">
-                This question asks you to draw, circle or plot — upload a photo of your work so it
-                can be marked.
+                {photoOnly
+                  ? "Photograph every line of your working — marks are given for the method as well as the final answer."
+                  : "This question asks you to draw, circle or plot — upload a photo of your work so it can be marked."}
               </p>
             ) : null}
+
           </div>
         ) : (
           <Button

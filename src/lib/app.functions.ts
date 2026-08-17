@@ -1594,7 +1594,7 @@ async function recalcAssignment(db: AnyClient, assignmentId: string) {
 
 /** Teacher guard: resolves a question to its assignment and verifies the caller teaches it. */
 async function questionForTeacher(
-  supabase: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown }> },
+  supabase: AnyClient,
   db: AnyClient,
   questionId: string,
   userId: string,

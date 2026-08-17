@@ -838,7 +838,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
         excerpt: data.answerText.slice(0, 600),
         confidence: detection.confidence,
       });
-      const locked = strikes >= 3;
+      const locked = strikes >= 4;
       await db
         .from("submissions")
         .update({
@@ -846,7 +846,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
           ...(locked
             ? {
                 locked_at: new Date().toISOString(),
-                locked_reason: "Three answers were detected as AI-generated or copied.",
+                locked_reason: "A fourth answer was detected as AI-generated or copied.",
               }
             : {}),
         })
@@ -856,8 +856,9 @@ export const gradeAnswer = createServerFn({ method: "POST" })
         throw new Error(LOCKED_MESSAGE);
       }
       throw new Error(
-        `This answer looks AI-generated or copied, so it was not accepted. Write it in your own words. Warning ${strikes} of 3 — after 3 warnings this homework is locked and marked as a fail until your teacher unlocks it.`,
+        `This answer looks AI-generated or copied, so it was not accepted. Write it in your own words. Warning ${strikes} of 3 — a fourth AI answer locks this homework and marks it as a fail until your teacher unlocks it.`,
       );
+
     }
 
     const imageUrls = await signWorkImages(db, imagePaths);

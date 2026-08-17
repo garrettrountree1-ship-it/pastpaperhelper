@@ -1,5 +1,5 @@
 import { Camera, CheckCircle2, CircleDashed, Sparkles, XCircle } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { bulletTargetFor, normaliseBullets, stripBullets } from "@/lib/bullet-scaffold";
 import { NO_PASTE_MESSAGE } from "@/lib/integrity";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { questionBody, questionLabel } from "@/lib/question-label";
@@ -99,6 +100,15 @@ export function QuestionExperience({
   const verdict = result?.verdict ?? null;
   const answerGuard = useOriginalTypingGuard();
   const tutorGuard = useOriginalTypingGuard();
+  const bulletTarget = bulletTargetFor(question.marks, requiresPhoto);
+  const hasWrittenAnswer = stripBullets(draft).trim().length > 0;
+
+  // Seed the marks checklist so the student sees how many points are expected.
+  useEffect(() => {
+    if (bulletTarget > 0 && !locked && draft.trim().length === 0) {
+      onDraftChange(normaliseBullets("", bulletTarget));
+    }
+  }, [bulletTarget, locked, draft, onDraftChange]);
 
   return (
     <section className="paper p-6">
@@ -117,7 +127,11 @@ export function QuestionExperience({
           value={draft}
           onChange={(event) => {
             if (answerGuard.flagged) answerGuard.clearFlag();
-            onDraftChange(event.target.value);
+            onDraftChange(
+              bulletTarget > 0
+                ? normaliseBullets(event.target.value, bulletTarget)
+                : event.target.value,
+            );
           }}
           {...answerGuard.guardProps}
           disabled={locked}
@@ -126,8 +140,14 @@ export function QuestionExperience({
               ? "Describe what you drew (and upload a photo of it below)"
               : "Write your answer in English"
           }
-          rows={4}
+          rows={Math.max(4, bulletTarget + 1)}
         />
+        {bulletTarget > 0 ? (
+          <p className="text-xs text-muted-foreground">
+            {bulletTarget} marks means {bulletTarget} separate points — write one point on each
+            bullet. The bullets stay put; add extra lines if you need them.
+          </p>
+        ) : null}
         {answerGuard.flagged ? (
           <p className="text-sm text-destructive">{NO_PASTE_MESSAGE}</p>
         ) : null}
@@ -201,7 +221,7 @@ export function QuestionExperience({
           <Button
             onClick={onCheck}
             disabled={
-              locked || (!draft.trim() && photoCount === 0) || checking || !isEnglishOnly(draft)
+              locked || (!hasWrittenAnswer && photoCount === 0) || checking || !isEnglishOnly(draft)
             }
           >
             {locked ? "Locked" : checking ? "Marking..." : result ? "Re-check answer" : "Check answer"}

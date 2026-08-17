@@ -167,7 +167,7 @@ export function QuestionExperience({
           <p className="text-sm text-destructive">{ENGLISH_ONLY_MESSAGE}</p>
         ) : null}
 
-        {showPhoto ? (
+        {showPhoto || photoOnly ? (
           <div className="rounded-lg border border-dashed border-border p-3">
             <Label
               htmlFor={`photo-${question.id}`}

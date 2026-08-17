@@ -486,19 +486,51 @@ export const getClassOverview = createServerFn({ method: "POST" })
           .in("assignment_id", assignmentIds)
       : { data: [] };
 
-    const assignmentRows = (assignments ?? []).map((a) => ({
-      id: a.id,
-      title: a.title,
-      subject: a.subject,
-      dueAt: a.due_at,
-      totalMarks: (questions ?? [])
-        .filter((q) => q.assignment_id === a.id)
-        .reduce((sum, q) => sum + q.marks, 0),
-      questionCount: (questions ?? []).filter((q) => q.assignment_id === a.id).length,
-      submittedCount: (submissions ?? []).filter(
-        (s) => s.assignment_id === a.id && s.status === "submitted",
-      ).length,
-    }));
+    const submissionIds = (submissions ?? []).map((s) => s.id);
+    const { data: answerRows } = submissionIds.length
+      ? await db.from("answers").select("submission_id, answer_text, image_paths").in("id", []).or("id.is.null")
+      : { data: [] };
+    const { data: answers } = submissionIds.length
+      ? await db.from("answers").select("submission_id, answer_text, image_paths").in("submission_id", submissionIds)
+      : { data: answerRows ?? [] };
+
+    const answeredFor = (submissionId: string | undefined) =>
+      submissionId
+        ? (answers ?? []).filter(
+            (an) =>
+              an.submission_id === submissionId &&
+              ((an.answer_text ?? "").trim().length > 0 || (an.image_paths ?? []).length > 0),
+          ).length
+        : 0;
+
+    const assignmentRows = (assignments ?? []).map((a) => {
+      const questionCount = (questions ?? []).filter((q) => q.assignment_id === a.id).length;
+      const pastDue = Boolean(a.due_at && new Date(a.due_at).getTime() < Date.now());
+      const behindCount = pastDue
+        ? studentIds.filter((sid) => {
+            const sub = (submissions ?? []).find(
+              (s) => s.assignment_id === a.id && s.student_id === sid,
+            );
+            const answered = answeredFor(sub?.id);
+            return questionCount === 0 ? true : answered / questionCount < 0.5;
+          }).length
+        : 0;
+      return {
+        id: a.id,
+        title: a.title,
+        subject: a.subject,
+        dueAt: a.due_at,
+        totalMarks: (questions ?? [])
+          .filter((q) => q.assignment_id === a.id)
+          .reduce((sum, q) => sum + q.marks, 0),
+        questionCount,
+        submittedCount: (submissions ?? []).filter(
+          (s) => s.assignment_id === a.id && s.status === "submitted",
+        ).length,
+        pastDue,
+        behindCount,
+      };
+    });
 
     const students = studentIds.map((id) => {
       const profile = (profiles ?? []).find((p) => p.id === id);

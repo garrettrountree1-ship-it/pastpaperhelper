@@ -1,0 +1,2 @@
+ALTER TABLE public.submissions ADD COLUMN IF NOT EXISTS penalty_percent numeric NOT NULL DEFAULT 0;
+ALTER TABLE public.answers ADD COLUMN IF NOT EXISTS attempt_history jsonb NOT NULL DEFAULT '[]'::jsonb;

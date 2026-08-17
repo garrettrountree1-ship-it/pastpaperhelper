@@ -370,6 +370,7 @@ function QuestionCard({
       photoCount={photos.length}
       photoUrls={answer?.imageUrls ?? []}
       onPhotosChange={(files) => setPhotos(Array.from(files ?? []).slice(0, 6))}
+      onAddDrawing={(file) => setPhotos((prev) => [...prev, file].slice(0, 6))}
       result={
         answer
           ? {

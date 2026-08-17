@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import type { Json } from "@/integrations/supabase/types";
+
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { LOCKED_MESSAGE } from "@/lib/integrity";
@@ -440,7 +442,9 @@ export const getClassOverview = createServerFn({ method: "POST" })
     const { data: submissions } = assignmentIds.length
       ? await db
           .from("submissions")
-          .select("id, assignment_id, student_id, status, awarded_marks, submitted_at")
+          .select(
+            "id, assignment_id, student_id, status, awarded_marks, submitted_at, locked_at, ai_flag_count, penalty_percent",
+          )
           .in("assignment_id", assignmentIds)
       : { data: [] };
 
@@ -469,6 +473,9 @@ export const getClassOverview = createServerFn({ method: "POST" })
           status: sub?.status ?? "not_started",
           awardedMarks: sub ? Number(sub.awarded_marks) : null,
           totalMarks: a.totalMarks,
+          locked: Boolean(sub?.locked_at),
+          aiFlagCount: sub?.ai_flag_count ?? 0,
+          penaltyPercent: Number(sub?.penalty_percent ?? 0),
         };
       });
       const marked = grades.filter((g) => g.awardedMarks !== null && g.status === "submitted");
@@ -591,7 +598,13 @@ export const getSubmissionDetail = createServerFn({ method: "POST" })
 export const unlockSubmission = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ assignmentId: z.string().uuid(), studentId: z.string().uuid() }).parse(input),
+    z
+      .object({
+        assignmentId: z.string().uuid(),
+        studentId: z.string().uuid(),
+        penaltyPercent: z.number().min(0).max(100).optional(),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -612,12 +625,153 @@ export const unlockSubmission = createServerFn({ method: "POST" })
 
     const { error } = await db
       .from("submissions")
-      .update({ ai_flag_count: 0, locked_at: null, locked_reason: null })
+      .update({
+        ai_flag_count: 0,
+        locked_at: null,
+        locked_reason: null,
+        penalty_percent: data.penaltyPercent ?? 0,
+      })
       .eq("id", submission.id);
     if (error) throw new Error(error.message);
 
     await recalcSubmission(db, submission.id);
     return { ok: true };
+  });
+
+/**
+ * Teacher-only: everything one student did across a class — time per question,
+ * every wrong attempt with its photos, and every tutor prompt they typed.
+ */
+export const getStudentClassReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ classId: z.string().uuid(), studentId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: isTeacher } = await supabase.rpc("is_class_teacher", {
+      _class_id: data.classId,
+      _user_id: userId,
+    });
+    if (!isTeacher) throw new Error("Not allowed.");
+
+    const db = await admin();
+    const { data: assignments } = await db
+      .from("assignments")
+      .select("id, title, created_at")
+      .eq("class_id", data.classId)
+      .order("created_at", { ascending: false });
+
+    const assignmentIds = (assignments ?? []).map((a) => a.id);
+    if (assignmentIds.length === 0) return { assignments: [] };
+
+    const [{ data: questions }, { data: submissions }] = await Promise.all([
+      db
+        .from("questions")
+        .select("id, assignment_id, position, question_text, marks")
+        .in("assignment_id", assignmentIds)
+        .order("position"),
+      db
+        .from("submissions")
+        .select(
+          "id, assignment_id, status, awarded_marks, total_marks, submitted_at, locked_at, locked_reason, ai_flag_count, penalty_percent",
+        )
+        .in("assignment_id", assignmentIds)
+        .eq("student_id", data.studentId),
+    ]);
+
+    const submissionIds = (submissions ?? []).map((s) => s.id);
+    const { data: answers } = submissionIds.length
+      ? await db
+          .from("answers")
+          .select(
+            "id, submission_id, question_id, answer_text, image_paths, verdict, awarded_marks, feedback, attempts, time_spent_seconds, attempt_history",
+          )
+          .in("submission_id", submissionIds)
+      : { data: [] };
+
+    const answerIds = (answers ?? []).map((a) => a.id);
+    const { data: tutorMessages } = answerIds.length
+      ? await db
+          .from("tutor_messages")
+          .select("id, answer_id, role, content, created_at")
+          .in("answer_id", answerIds)
+          .order("created_at")
+      : { data: [] };
+
+    const report = await Promise.all(
+      (assignments ?? []).map(async (assignment) => {
+        const submission = (submissions ?? []).find((s) => s.assignment_id === assignment.id);
+        const assignmentQuestions = (questions ?? []).filter(
+          (q) => q.assignment_id === assignment.id,
+        );
+        const totalMarks =
+          Number(submission?.total_marks ?? 0) ||
+          assignmentQuestions.reduce((sum, q) => sum + q.marks, 0);
+
+        const questionRows = await Promise.all(
+          assignmentQuestions.map(async (question) => {
+            const answer = (answers ?? []).find(
+              (a) => a.submission_id === submission?.id && a.question_id === question.id,
+            );
+            const rawHistory = Array.isArray(answer?.attempt_history)
+              ? (answer!.attempt_history as Array<Record<string, unknown>>)
+              : [];
+            const history = await Promise.all(
+              rawHistory.map(async (entry) => ({
+                at: String(entry["at"] ?? ""),
+                answerText: String(entry["answer_text"] ?? ""),
+                verdict: String(entry["verdict"] ?? ""),
+                awardedMarks: Number(entry["awarded_marks"] ?? 0),
+                feedback: String(entry["feedback"] ?? ""),
+                imageUrls: await signWorkImages(
+                  db,
+                  Array.isArray(entry["image_paths"]) ? (entry["image_paths"] as string[]) : [],
+                ),
+              })),
+            );
+            return {
+              id: question.id,
+              position: question.position,
+              questionText: question.question_text,
+              marks: question.marks,
+              verdict: answer?.verdict ?? null,
+              awardedMarks: answer ? Number(answer.awarded_marks) : null,
+              feedback: answer?.feedback ?? "",
+              attempts: answer?.attempts ?? 0,
+              timeSpentSeconds: answer?.time_spent_seconds ?? 0,
+              imageUrls: await signWorkImages(db, answer?.image_paths ?? []),
+              history,
+              tutorPrompts: (tutorMessages ?? [])
+                .filter((m) => m.answer_id === answer?.id)
+                .map((m) => ({
+                  id: m.id,
+                  role: m.role,
+                  content: m.content,
+                  createdAt: m.created_at,
+                })),
+            };
+          }),
+        );
+
+        return {
+          assignmentId: assignment.id,
+          title: assignment.title,
+          status: submission?.status ?? "not_started",
+          awardedMarks: submission ? Number(submission.awarded_marks) : null,
+          totalMarks,
+          locked: Boolean(submission?.locked_at),
+          lockedReason: submission?.locked_reason ?? null,
+          aiFlagCount: submission?.ai_flag_count ?? 0,
+          penaltyPercent: Number(submission?.penalty_percent ?? 0),
+          timeSpentSeconds: questionRows.reduce((sum, q) => sum + q.timeSpentSeconds, 0),
+          attempts: questionRows.reduce((sum, q) => sum + q.attempts, 0),
+          questions: questionRows,
+        };
+      }),
+    );
+
+    return { assignments: report };
   });
 
 
@@ -879,13 +1033,26 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     const submission = await ensureSubmission(db, data.assignmentId, userId);
     const { data: existing } = await db
       .from("answers")
-      .select("id, attempts, time_spent_seconds")
+      .select("id, attempts, time_spent_seconds, attempt_history")
       .eq("submission_id", submission.id)
       .eq("question_id", data.questionId)
       .maybeSingle();
 
+    const history = Array.isArray(existing?.attempt_history)
+      ? (existing!.attempt_history as Record<string, unknown>[])
+      : [];
+    const attemptEntry = {
+      at: new Date().toISOString(),
+      answer_text: data.answerText,
+      image_paths: imagePaths,
+      verdict: result.verdict,
+      awarded_marks: result.awardedMarks,
+      feedback: result.feedback,
+    };
+
     const payload = {
       submission_id: submission.id,
+      attempt_history: [...history, attemptEntry].slice(-30) as unknown as Json,
       question_id: data.questionId,
       answer_text: data.answerText,
       image_paths: imagePaths,
@@ -1343,11 +1510,17 @@ async function ensureSubmission(db: AnyClient, assignmentId: string, studentId: 
 async function recalcSubmission(db: AnyClient, submissionId: string) {
   const [{ data: answers }, { data: submission }] = await Promise.all([
     db.from("answers").select("awarded_marks").eq("submission_id", submissionId),
-    db.from("submissions").select("locked_at").eq("id", submissionId).maybeSingle(),
+    db
+      .from("submissions")
+      .select("locked_at, penalty_percent")
+      .eq("id", submissionId)
+      .maybeSingle(),
   ]);
+  const raw = (answers ?? []).reduce((sum, a) => sum + Number(a.awarded_marks), 0);
+  const penalty = Number(submission?.penalty_percent ?? 0);
   const awarded = submission?.locked_at
     ? 0
-    : (answers ?? []).reduce((sum, a) => sum + Number(a.awarded_marks), 0);
+    : Math.round(raw * (1 - penalty / 100) * 100) / 100;
   await db.from("submissions").update({ awarded_marks: awarded }).eq("id", submissionId);
 }
 

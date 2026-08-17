@@ -17,6 +17,7 @@ export type Database = {
       answers: {
         Row: {
           answer_text: string
+          attempt_history: Json
           attempts: number
           awarded_marks: number
           feedback: string | null
@@ -32,6 +33,7 @@ export type Database = {
         }
         Insert: {
           answer_text?: string
+          attempt_history?: Json
           attempts?: number
           awarded_marks?: number
           feedback?: string | null
@@ -47,6 +49,7 @@ export type Database = {
         }
         Update: {
           answer_text?: string
+          attempt_history?: Json
           attempts?: number
           awarded_marks?: number
           feedback?: string | null
@@ -299,6 +302,7 @@ export type Database = {
           id: string
           locked_at: string | null
           locked_reason: string | null
+          penalty_percent: number
           status: string
           student_id: string
           submitted_at: string | null
@@ -312,6 +316,7 @@ export type Database = {
           id?: string
           locked_at?: string | null
           locked_reason?: string | null
+          penalty_percent?: number
           status?: string
           student_id: string
           submitted_at?: string | null
@@ -325,6 +330,7 @@ export type Database = {
           id?: string
           locked_at?: string | null
           locked_reason?: string | null
+          penalty_percent?: number
           status?: string
           student_id?: string
           submitted_at?: string | null

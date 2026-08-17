@@ -1,12 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Eye, Pencil, Plus, RefreshCw, Settings, Trash2, Wand2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  Lock,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Settings,
+  Trash2,
+  Unlock,
+  Wand2,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -35,7 +48,9 @@ import {
   extractPaperQuestions,
   getAssignmentForEdit,
   getClassOverview,
+  getStudentClassReport,
   updateAssignment,
+  unlockSubmission,
   updateClass,
 } from "@/lib/app.functions";
 import { filesToPages } from "@/lib/pdf-pages";
@@ -206,6 +221,7 @@ function ClassPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-10" />
                           <TableHead>Student</TableHead>
                           {overview.data.assignments.map((assignment) => (
                             <TableHead key={assignment.id}>{assignment.title}</TableHead>
@@ -215,43 +231,24 @@ function ClassPage() {
                       </TableHeader>
                       <TableBody>
                         {overview.data.students.map((student) => (
-                          <TableRow key={student.id}>
-                            <TableCell className="font-medium">{student.name}</TableCell>
-                            {student.grades.map((grade) => (
-                              <TableCell key={grade.assignmentId}>
-                                {grade.status === "not_started" ? (
-                                  <span className="text-muted-foreground">—</span>
-                                ) : (
-                                  <Link
-                                    to="/submissions/$assignmentId/$studentId"
-                                    params={{
-                                      assignmentId: grade.assignmentId,
-                                      studentId: student.id,
-                                    }}
-                                    className="underline decoration-accent decoration-2 underline-offset-4"
-                                  >
-                                    {grade.awardedMarks ?? 0}/{grade.totalMarks}
-                                    {grade.totalMarks > 0
-                                      ? ` (${Math.round(((grade.awardedMarks ?? 0) / grade.totalMarks) * 100)}%)`
-                                      : ""}
-                                    {grade.status === "in_progress" ? "*" : ""}
-                                  </Link>
-                                )}
-                              </TableCell>
-                            ))}
-                            <TableCell className="font-display">
-                              {student.average === null ? "—" : `${student.average}%`}
-                            </TableCell>
-                          </TableRow>
+                          <GradebookRow
+                            key={student.id}
+                            classId={classId}
+                            student={student}
+                            columns={overview.data.assignments.length + 3}
+                            onChanged={() => overview.refetch()}
+                          />
                         ))}
                       </TableBody>
                     </Table>
                     <p className="p-3 text-xs text-muted-foreground">
-                      * still in progress. Click a score to review answers and adjust marks.
+                      * still in progress. Click a score to review answers and adjust marks, or open
+                      a row to see time spent, tutor questions and every attempt.
                     </p>
                   </div>
                 )}
               </TabsContent>
+
 
               <TabsContent value="students" className="mt-4">
                 <div className="paper divide-y divide-border">
@@ -800,5 +797,341 @@ function ClassSettingsDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+type GradebookStudent = {
+  id: string;
+  name: string;
+  email: string;
+  average: number | null;
+  grades: Array<{
+    assignmentId: string;
+    status: string;
+    awardedMarks: number | null;
+    totalMarks: number;
+    locked: boolean;
+    aiFlagCount: number;
+    penaltyPercent: number;
+  }>;
+};
+
+function formatDuration(seconds: number) {
+  if (!seconds) return "—";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
+/** One gradebook row that expands into the full detail of what the student did. */
+function GradebookRow({
+  classId,
+  student,
+  columns,
+  onChanged,
+}: {
+  classId: string;
+  student: GradebookStudent;
+  columns: number;
+  onChanged: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <TableRow>
+        <TableCell className="w-10">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={open ? "Hide student detail" : "Show student detail"}
+            onClick={() => setOpen((value) => !value)}
+          >
+            {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+          </Button>
+        </TableCell>
+        <TableCell className="font-medium">
+          {student.name}
+          {student.grades.some((grade) => grade.locked) ? (
+            <Badge variant="destructive" className="ml-2">
+              <Lock className="size-3" /> locked
+            </Badge>
+          ) : null}
+        </TableCell>
+        {student.grades.map((grade) => (
+          <TableCell key={grade.assignmentId}>
+            {grade.status === "not_started" ? (
+              <span className="text-muted-foreground">—</span>
+            ) : (
+              <Link
+                to="/submissions/$assignmentId/$studentId"
+                params={{ assignmentId: grade.assignmentId, studentId: student.id }}
+                className="underline decoration-accent decoration-2 underline-offset-4"
+              >
+                {grade.awardedMarks ?? 0}/{grade.totalMarks}
+                {grade.totalMarks > 0
+                  ? ` (${Math.round(((grade.awardedMarks ?? 0) / grade.totalMarks) * 100)}%)`
+                  : ""}
+                {grade.status === "in_progress" ? "*" : ""}
+              </Link>
+            )}
+          </TableCell>
+        ))}
+        <TableCell className="font-display">
+          {student.average === null ? "—" : `${student.average}%`}
+        </TableCell>
+      </TableRow>
+      {open ? (
+        <TableRow>
+          <TableCell colSpan={columns} className="bg-secondary/30 p-4">
+            <StudentReport classId={classId} studentId={student.id} onChanged={onChanged} />
+          </TableCell>
+        </TableRow>
+      ) : null}
+    </>
+  );
+}
+
+function StudentReport({
+  classId,
+  studentId,
+  onChanged,
+}: {
+  classId: string;
+  studentId: string;
+  onChanged: () => void;
+}) {
+  const report = useQuery({
+    queryKey: ["student-report", classId, studentId],
+    queryFn: () => getStudentClassReport({ data: { classId, studentId } }),
+    retry: 1,
+  });
+
+  if (report.isPending) return <Skeleton className="h-40 w-full" />;
+  if (report.isError) {
+    return (
+      <div className="text-center">
+        <p className="mb-3 text-sm text-muted-foreground">
+          We couldn&apos;t load this student&apos;s work. {(report.error as Error).message}
+        </p>
+        <Button size="sm" onClick={() => report.refetch()}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  const rows = (report.data?.assignments ?? []).filter((a) => a.status !== "not_started");
+  if (rows.length === 0) {
+    return <p className="text-sm text-muted-foreground">This student hasn&apos;t started yet.</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {rows.map((assignment) => (
+        <div key={assignment.assignmentId} className="paper p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="font-display text-lg">{assignment.title}</h3>
+              <p className="text-xs text-muted-foreground">
+                {assignment.awardedMarks ?? 0}/{assignment.totalMarks} marks ·{" "}
+                {assignment.attempts} attempts · {formatDuration(assignment.timeSpentSeconds)} spent
+                {assignment.penaltyPercent > 0 ? ` · −${assignment.penaltyPercent}% deduction` : ""}
+                {assignment.aiFlagCount > 0 ? ` · ${assignment.aiFlagCount} AI warning(s)` : ""}
+              </p>
+            </div>
+            <LockControls
+              assignmentId={assignment.assignmentId}
+              studentId={studentId}
+              locked={assignment.locked}
+              penaltyPercent={assignment.penaltyPercent}
+              onDone={() => {
+                report.refetch();
+                onChanged();
+              }}
+            />
+          </div>
+          {assignment.locked ? (
+            <p className="mt-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
+              {assignment.lockedReason ??
+                "Locked automatically after a fourth AI-generated or copied answer."}
+            </p>
+          ) : null}
+
+          <div className="mt-3 space-y-2">
+            {assignment.questions.map((question) => (
+              <details key={question.id} className="rounded-md border border-border bg-background p-3">
+                <summary className="cursor-pointer text-sm">
+                  <span className="font-medium">
+                    Q{questionLabel(question.questionText, question.position - 1)}
+                  </span>{" "}
+                  <span className="text-muted-foreground">
+                    {question.awardedMarks ?? 0}/{question.marks} marks · {question.attempts}{" "}
+                    attempts · {formatDuration(question.timeSpentSeconds)} ·{" "}
+                    {question.tutorPrompts.filter((m) => m.role === "student").length} tutor
+                    questions
+                  </span>
+                </summary>
+
+                {question.history.length > 0 ? (
+                  <div className="mt-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Attempt history
+                    </p>
+                    <ol className="mt-2 space-y-2">
+                      {question.history.map((attempt, attemptIndex) => (
+                        <li
+                          key={`${attempt.at}-${attemptIndex}`}
+                          className="rounded-md bg-secondary/40 p-2 text-sm"
+                        >
+                          <p className="text-xs text-muted-foreground">
+                            Attempt {attemptIndex + 1} ·{" "}
+                            {attempt.verdict === "correct"
+                              ? "correct"
+                              : attempt.verdict === "partial"
+                                ? "partly right"
+                                : "incorrect"}{" "}
+                            · {attempt.awardedMarks}/{question.marks}
+                            {attempt.at ? ` · ${new Date(attempt.at).toLocaleString()}` : ""}
+                          </p>
+                          {attempt.answerText ? (
+                            <p className="mt-1 whitespace-pre-wrap">{attempt.answerText}</p>
+                          ) : null}
+                          {attempt.imageUrls.length > 0 ? (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {attempt.imageUrls.map((url) => (
+                                <a key={url} href={url} target="_blank" rel="noreferrer">
+                                  <img
+                                    src={url}
+                                    alt="Student working"
+                                    loading="lazy"
+                                    className="size-20 rounded border border-border object-cover"
+                                  />
+                                </a>
+                              ))}
+                            </div>
+                          ) : null}
+                          {attempt.feedback ? (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Feedback: {attempt.feedback}
+                            </p>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-muted-foreground">No attempts recorded yet.</p>
+                )}
+
+                {question.tutorPrompts.length > 0 ? (
+                  <div className="mt-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      AI tutor conversation
+                    </p>
+                    <div className="mt-2 space-y-2">
+                      {question.tutorPrompts.map((message) => (
+                        <div
+                          key={message.id}
+                          className={
+                            message.role === "student"
+                              ? "rounded-md bg-primary/10 p-2 text-sm"
+                              : "rounded-md bg-secondary/40 p-2 text-sm"
+                          }
+                        >
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {message.role === "student" ? "Student asked" : "Tutor"}
+                          </p>
+                          <p className="whitespace-pre-wrap">{message.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </details>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Tick the box to unlock a locked homework, optionally deducting a percentage. */
+function LockControls({
+  assignmentId,
+  studentId,
+  locked,
+  penaltyPercent,
+  onDone,
+}: {
+  assignmentId: string;
+  studentId: string;
+  locked: boolean;
+  penaltyPercent: number;
+  onDone: () => void;
+}) {
+  const unlock = useServerFn(unlockSubmission);
+  const [penalty, setPenalty] = useState(String(penaltyPercent || ""));
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      unlock({
+        data: {
+          assignmentId,
+          studentId,
+          penaltyPercent: Math.min(100, Math.max(0, Number(penalty) || 0)),
+        },
+      }),
+    onSuccess: () => {
+      toast.success(
+        Number(penalty) > 0
+          ? `Unlocked with a ${Number(penalty)}% deduction.`
+          : "Homework unlocked — the student can try again.",
+      );
+      onDone();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  if (!locked) {
+    return penaltyPercent > 0 ? (
+      <Badge variant="secondary">−{penaltyPercent}% applied</Badge>
+    ) : (
+      <Badge variant="secondary">
+        <Unlock className="size-3" /> unlocked
+      </Badge>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <label className="flex items-center gap-2 text-sm">
+        <Checkbox
+          checked={false}
+          disabled={mutation.isPending}
+          onCheckedChange={(value) => {
+            if (value) mutation.mutate();
+          }}
+        />
+        Unlock this homework
+      </label>
+      <div className="flex items-center gap-2">
+        <Label htmlFor={`penalty-${assignmentId}-${studentId}`} className="text-xs">
+          Deduct
+        </Label>
+        <Input
+          id={`penalty-${assignmentId}-${studentId}`}
+          type="number"
+          min={0}
+          max={100}
+          value={penalty}
+          onChange={(event) => setPenalty(event.target.value)}
+          className="h-8 w-20"
+          placeholder="0"
+        />
+        <span className="text-xs text-muted-foreground">%</span>
+      </div>
+    </div>
   );
 }

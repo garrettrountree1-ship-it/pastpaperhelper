@@ -1,3 +1,4 @@
+import { DateTime24Input } from "@/components/assignments/DateTime24Input";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
@@ -518,14 +519,10 @@ function AssignmentDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="due">Due date (optional)</Label>
-              <Input
-                id="due"
-                type="datetime-local"
-                value={dueAt}
-                onChange={(event) => setDueAt(event.target.value)}
-              />
+              <Label htmlFor="due">Due date (optional, 24h clock)</Label>
+              <DateTime24Input id="due" value={dueAt} onChange={setDueAt} />
             </div>
+
           </div>
 
           <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-4">

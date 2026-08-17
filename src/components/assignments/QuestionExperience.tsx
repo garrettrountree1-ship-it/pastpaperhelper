@@ -76,6 +76,8 @@ export function QuestionExperience({
   tutorError,
   onSend,
   locked = false,
+  markScheme = null,
+
 }: {
   question: { id: string; question_text: string; marks: number };
   index: number;
@@ -102,8 +104,10 @@ export function QuestionExperience({
   tutoring: boolean;
   tutorError: string | undefined;
   onSend: () => void;
-  /** Homework locked for suspected AI use — read-only until a teacher unlocks it. */
+  /** Homework locked for suspected AI use or a passed due date — read-only. */
   locked?: boolean;
+  /** Mark-scheme answer, only present once the teacher reveals it. */
+  markScheme?: string | null;
 }) {
   const verdict = result?.verdict ?? null;
   const answerGuard = useOriginalTypingGuard();
@@ -129,6 +133,14 @@ export function QuestionExperience({
         </Badge>
       </div>
       <p className="mt-3 whitespace-pre-wrap">{questionBody(question.question_text)}</p>
+
+      {markScheme ? (
+        <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
+          <p className="text-sm font-medium">Mark scheme (released by your teacher)</p>
+          <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{markScheme}</p>
+        </div>
+      ) : null}
+
 
       <div className="mt-4 space-y-3">
         {photoOnly ? (

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
+import { formatDueDate } from "@/lib/datetime";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -308,7 +309,7 @@ function StudentHome() {
                   {assignment.className} · {assignment.questionCount} questions ·{" "}
                   {assignment.totalMarks} marks
                   {assignment.dueAt
-                    ? ` · due ${new Date(assignment.dueAt).toLocaleDateString()}`
+                    ? ` · due ${formatDueDate(assignment.dueAt)}`
                     : ""}
                 </p>
               </div>

@@ -910,12 +910,15 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
       .eq("id", assignment.class_id)
       .maybeSingle();
 
-    // Mark schemes are deliberately excluded here.
+    const access = await studentAccess(db, data.assignmentId, userId);
+
+    // Mark schemes are only sent once the teacher reveals them.
     const { data: allQuestions } = await db
       .from("questions")
-      .select("id, position, question_text, marks, image_paths")
+      .select("id, position, question_text, marks, image_paths, mark_scheme")
       .eq("assignment_id", data.assignmentId)
       .order("position");
+
 
     const { data: exemptions } = await db
       .from("question_exclusions")
@@ -957,12 +960,20 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
         subject: assignment.subject,
         curriculum: assignment.curriculum,
         instructions: assignment.instructions,
-        dueAt: assignment.due_at,
+        dueAt: access.dueAt,
+        dueOverridden: access.dueOverridden,
+        pastDue: access.pastDue,
+        markSchemeRevealed: access.markSchemeRevealed,
         className: klass?.name ?? "",
       },
       questions: await Promise.all(
         (questions ?? []).map(async (q) => ({
-          ...q,
+          id: q.id,
+          position: q.position,
+          question_text: q.question_text,
+          marks: q.marks,
+          image_paths: q.image_paths,
+          markScheme: access.markSchemeRevealed ? q.mark_scheme : null,
           imageUrls: await signPaperPages(db, q.image_paths ?? []),
         })),
       ),
@@ -971,6 +982,7 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
       messages: messages ?? [],
     };
   });
+
 
 export const gradeAnswer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -1015,8 +1027,12 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       .single();
     const assignment = assignmentRow!;
 
+    const access = await studentAccess(db, data.assignmentId, userId);
+    if (access.pastDue) throw new Error(PAST_DUE_MESSAGE);
+
     const guardSubmission = await ensureSubmission(db, data.assignmentId, userId);
     if (guardSubmission.locked_at) throw new Error(LOCKED_MESSAGE);
+
 
     /* ---- academic integrity: reject copied AI / web answers ---- */
     const { detectAiAnswer } = await import("./ai-detect.server");
@@ -1252,6 +1268,9 @@ export const sendTutorMessage = createServerFn({ method: "POST" })
       .eq("id", answer.question_id)
       .single();
     const question = questionRow!;
+    const tutorAccess = await studentAccess(db, question.assignment_id, userId);
+    if (tutorAccess.pastDue) throw new Error(PAST_DUE_MESSAGE);
+
     const { data: assignmentRow } = await db
       .from("assignments")
       .select("subject, curriculum")
@@ -1307,6 +1326,9 @@ export const submitAssignment = createServerFn({ method: "POST" })
       .eq("student_id", userId)
       .maybeSingle();
     if (current?.locked_at) throw new Error(LOCKED_MESSAGE);
+    const submitAccess = await studentAccess(db, data.assignmentId, userId);
+    if (submitAccess.pastDue) throw new Error(PAST_DUE_MESSAGE);
+
 
     const { error } = await supabase
       .from("submissions")
@@ -1333,7 +1355,7 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: assignmentRow } = await db
       .from("assignments")
-      .select("id, title, subject, curriculum, instructions, due_at, class_id")
+      .select("id, title, subject, curriculum, instructions, due_at, class_id, mark_scheme_revealed")
       .eq("id", data.assignmentId)
       .single();
     const assignment = assignmentRow!;
@@ -1344,9 +1366,13 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
       .maybeSingle();
     const { data: questions } = await db
       .from("questions")
-      .select("id, position, question_text, marks, image_paths")
+      .select("id, position, question_text, marks, image_paths, mark_scheme")
       .eq("assignment_id", data.assignmentId)
       .order("position");
+
+    const pastDue = Boolean(
+      assignment.due_at && new Date(assignment.due_at).getTime() < Date.now(),
+    );
 
     return {
       assignment: {
@@ -1357,16 +1383,24 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
         curriculum: assignment.curriculum,
         instructions: assignment.instructions,
         dueAt: assignment.due_at,
+        pastDue,
+        markSchemeRevealed: Boolean(assignment.mark_scheme_revealed),
         className: klass?.name ?? "",
       },
       questions: await Promise.all(
         (questions ?? []).map(async (q) => ({
-          ...q,
+          id: q.id,
+          position: q.position,
+          question_text: q.question_text,
+          marks: q.marks,
+          image_paths: q.image_paths,
+          markScheme: assignment.mark_scheme_revealed ? q.mark_scheme : null,
           imageUrls: await signPaperPages(db, q.image_paths ?? []),
         })),
       ),
     };
   });
+
 
 /** Teacher-only trial marking: runs the real AI marker but saves nothing. */
 export const previewGradeAnswer = createServerFn({ method: "POST" })
@@ -1818,5 +1852,177 @@ export const setQuestionExclusion = createServerFn({ method: "POST" })
       .maybeSingle();
     if (submission) await recalcSubmission(db, submission.id);
 
+    return { ok: true };
+  });
+
+/* ------------------------------------------- due dates & mark schemes ---- */
+
+export const PAST_DUE_MESSAGE =
+  "The due date for this homework has passed, so it is now locked. Ask your teacher to extend the due date if you need more time.";
+
+type StudentAccess = {
+  dueAt: string | null;
+  /** Whether the student-specific due date replaces the class due date. */
+  dueOverridden: boolean;
+  pastDue: boolean;
+  markSchemeRevealed: boolean;
+};
+
+/** Effective due date + mark-scheme visibility for one student on one assignment. */
+async function studentAccess(
+  db: AnyClient,
+  assignmentId: string,
+  studentId: string,
+): Promise<StudentAccess> {
+  const [{ data: assignment }, { data: override }] = await Promise.all([
+    db
+      .from("assignments")
+      .select("due_at, mark_scheme_revealed")
+      .eq("id", assignmentId)
+      .maybeSingle(),
+    db
+      .from("student_assignment_settings")
+      .select("due_at, mark_scheme_revealed")
+      .eq("assignment_id", assignmentId)
+      .eq("student_id", studentId)
+      .maybeSingle(),
+  ]);
+  const dueOverridden = Boolean(override?.due_at);
+  const dueAt = (override?.due_at as string | null) ?? (assignment?.due_at as string | null) ?? null;
+  return {
+    dueAt,
+    dueOverridden,
+    pastDue: Boolean(dueAt && new Date(dueAt).getTime() < Date.now()),
+    markSchemeRevealed: Boolean(assignment?.mark_scheme_revealed || override?.mark_scheme_revealed),
+  };
+}
+
+/** Teacher view of due dates and mark-scheme reveals for an assignment. */
+export const getAssignmentAccessControls = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ assignmentId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: allowed } = await supabase.rpc("can_teach_assignment", {
+      _assignment_id: data.assignmentId,
+      _user_id: userId,
+    });
+    if (!allowed) throw new Error("Not allowed.");
+
+    const db = await admin();
+    const { data: assignment } = await db
+      .from("assignments")
+      .select("id, title, class_id, due_at, mark_scheme_revealed")
+      .eq("id", data.assignmentId)
+      .single();
+
+    const { data: members } = await db
+      .from("class_members")
+      .select("student_id")
+      .eq("class_id", assignment!.class_id);
+    const studentIds = (members ?? []).map((m) => m.student_id);
+
+    const [{ data: profiles }, { data: settings }] = await Promise.all([
+      studentIds.length
+        ? db.from("profiles").select("id, full_name, email").in("id", studentIds)
+        : Promise.resolve({ data: [] as Array<{ id: string; full_name: string; email: string | null }> }),
+      db
+        .from("student_assignment_settings")
+        .select("student_id, due_at, mark_scheme_revealed")
+        .eq("assignment_id", data.assignmentId),
+    ]);
+
+    return {
+      assignmentTitle: assignment!.title,
+      dueAt: assignment!.due_at as string | null,
+      markSchemeRevealed: Boolean(assignment!.mark_scheme_revealed),
+      students: studentIds.map((id) => {
+        const profile = (profiles ?? []).find((p) => p.id === id);
+        const setting = (settings ?? []).find((s) => s.student_id === id);
+        return {
+          id,
+          name: profile?.full_name || profile?.email || "Student",
+          dueAt: (setting?.due_at as string | null) ?? null,
+          markSchemeRevealed: Boolean(setting?.mark_scheme_revealed),
+        };
+      }),
+    };
+  });
+
+/** Teacher-only: whole-class due date and/or mark-scheme reveal. */
+export const setAssignmentAccess = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        assignmentId: z.string().uuid(),
+        dueAt: z.string().nullable().optional(),
+        markSchemeRevealed: z.boolean().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: allowed } = await supabase.rpc("can_teach_assignment", {
+      _assignment_id: data.assignmentId,
+      _user_id: userId,
+    });
+    if (!allowed) throw new Error("Not allowed.");
+
+    const patch: { due_at?: string | null; mark_scheme_revealed?: boolean } = {};
+    if (data.dueAt !== undefined) patch.due_at = data.dueAt;
+    if (data.markSchemeRevealed !== undefined) patch.mark_scheme_revealed = data.markSchemeRevealed;
+    if (Object.keys(patch).length === 0) return { ok: true };
+
+
+    const db = await admin();
+    const { error } = await db.from("assignments").update(patch).eq("id", data.assignmentId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Teacher-only: per-student due date extension and/or mark-scheme reveal. */
+export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        assignmentId: z.string().uuid(),
+        studentId: z.string().uuid(),
+        dueAt: z.string().nullable().optional(),
+        markSchemeRevealed: z.boolean().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: allowed } = await supabase.rpc("can_teach_assignment", {
+      _assignment_id: data.assignmentId,
+      _user_id: userId,
+    });
+    if (!allowed) throw new Error("Not allowed.");
+
+    const db = await admin();
+    const patch: {
+      assignment_id: string;
+      student_id: string;
+      updated_by: string;
+      updated_at: string;
+      due_at?: string | null;
+      mark_scheme_revealed?: boolean;
+    } = {
+      assignment_id: data.assignmentId,
+      student_id: data.studentId,
+      updated_by: userId,
+      updated_at: new Date().toISOString(),
+    };
+    if (data.dueAt !== undefined) patch.due_at = data.dueAt;
+    if (data.markSchemeRevealed !== undefined) patch.mark_scheme_revealed = data.markSchemeRevealed;
+
+
+    const { error } = await db
+      .from("student_assignment_settings")
+      .upsert(patch, { onConflict: "assignment_id,student_id" });
+    if (error) throw new Error(error.message);
     return { ok: true };
   });

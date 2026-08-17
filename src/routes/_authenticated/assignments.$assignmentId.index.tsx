@@ -111,7 +111,7 @@ function AssignmentPage() {
                 {data.assignment.className} · {data.assignment.curriculum}
                 {data.assignment.subject ? ` · ${data.assignment.subject}` : ""}
                 {data.assignment.dueAt
-                  ? ` · due ${new Date(data.assignment.dueAt).toLocaleDateString()}`
+                  ? ` · due ${new Date(data.assignment.dueAt).toLocaleString()}`
                   : ""}
               </p>
               {data.assignment.instructions ? (
@@ -127,6 +127,23 @@ function AssignmentPage() {
                 {data.submission.status === "submitted" ? <Badge>Submitted</Badge> : null}
                 {data.submission.locked_at ? <Badge variant="destructive">Locked · fail</Badge> : null}
               </div>
+              {data.assignment.pastDue ? (
+                <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm">
+                  <p className="font-medium">The due date has passed — this homework is closed.</p>
+                  <p className="mt-1 text-muted-foreground">
+                    You can still read your answers and feedback. Ask your teacher if you need the
+                    due date extended.
+                  </p>
+                </div>
+              ) : null}
+              {data.assignment.markSchemeRevealed ? (
+                <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
+                  <p className="font-medium">Your teacher has released the mark scheme.</p>
+                  <p className="mt-1 text-muted-foreground">
+                    Each question below now shows the official marking points.
+                  </p>
+                </div>
+              ) : null}
               {data.submission.locked_at ? (
                 <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm">
                   <p className="font-medium">This homework is locked and marked as a fail.</p>
@@ -177,7 +194,7 @@ function AssignmentPage() {
                       assignmentId={assignmentId}
                       index={index}
                       question={question}
-                      locked={Boolean(data.submission.locked_at)}
+                      locked={Boolean(data.submission.locked_at) || data.assignment.pastDue}
                       answer={data.answers.find((a) => a.question_id === question.id) ?? null}
                       messages={data.messages}
                       queryKey={queryKey}
@@ -192,6 +209,7 @@ function AssignmentPage() {
               <Button
                 onClick={() => submitMutation.mutate()}
                 disabled={
+                  data.assignment.pastDue ||
                   answered < data.questions.length ||
                   data.submission.status === "submitted" ||
                   submitMutation.isPending
@@ -213,6 +231,7 @@ type Question = {
   question_text: string;
   marks: number;
   imageUrls?: string[];
+  markScheme?: string | null;
 };
 type Answer = {
   id: string;
@@ -391,6 +410,8 @@ function QuestionCard({
       tutorError={tutorMutation.isError ? (tutorMutation.error as Error).message : undefined}
       onSend={() => tutorMutation.mutate()}
       locked={locked}
+      markScheme={question.markScheme ?? null}
+
     />
   );
 }

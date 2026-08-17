@@ -56,9 +56,17 @@ function AuthPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) {
+      if (/not confirmed/i.test(error.message)) {
+        setPendingEmail(email);
+        toast.error(
+          "This email is not verified yet. Click the link in the confirmation email first — or resend it below.",
+        );
+        return;
+      }
       toast.error(error.message);
       return;
     }
+
     navigate({ to: "/dashboard", replace: true });
   }
 

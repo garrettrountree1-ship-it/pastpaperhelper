@@ -299,6 +299,7 @@ function StudentHome() {
   const work = useQuery({ queryKey: ["student-work"], queryFn: useServerFn(listStudentWork) });
   const join = useServerFn(joinClass);
   const [code, setCode] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | AssignmentStatusKey>("all");
 
   const mutation = useMutation({
     mutationFn: () => join({ data: { code } }),

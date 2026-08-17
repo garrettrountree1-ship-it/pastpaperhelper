@@ -1617,3 +1617,198 @@ async function signWorkImages(db: AnyClient, paths: string[]) {
   const { data } = await db.storage.from("student-work").createSignedUrls(paths, 3600);
   return (data ?? []).map((item) => item.signedUrl).filter((url): url is string => Boolean(url));
 }
+
+/* ------------------------------------------------- teacher question controls ---- */
+
+/** Teacher-only: questions of an assignment plus which students are exempt from each. */
+export const getAssignmentQuestionControls = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ assignmentId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: allowed } = await supabase.rpc("can_teach_assignment", {
+      _assignment_id: data.assignmentId,
+      _user_id: userId,
+    });
+    if (!allowed) throw new Error("Not allowed.");
+
+    const db = await admin();
+    const { data: assignment } = await db
+      .from("assignments")
+      .select("id, title, class_id")
+      .eq("id", data.assignmentId)
+      .single();
+
+    const [{ data: questions }, { data: members }] = await Promise.all([
+      db
+        .from("questions")
+        .select("id, position, question_text, marks")
+        .eq("assignment_id", data.assignmentId)
+        .order("position"),
+      db.from("class_members").select("student_id").eq("class_id", assignment!.class_id),
+    ]);
+
+    const studentIds = (members ?? []).map((m) => m.student_id);
+    const { data: profiles } = studentIds.length
+      ? await db.from("profiles").select("id, full_name, email").in("id", studentIds)
+      : { data: [] };
+
+    const questionIds = (questions ?? []).map((q) => q.id);
+    const { data: exclusions } = questionIds.length
+      ? await db
+          .from("question_exclusions")
+          .select("question_id, student_id")
+          .in("question_id", questionIds)
+      : { data: [] };
+
+    return {
+      assignmentTitle: assignment!.title,
+      questions: (questions ?? []).map((q) => ({
+        id: q.id,
+        position: q.position,
+        marks: q.marks,
+        questionText: q.question_text,
+      })),
+      students: studentIds.map((id) => {
+        const profile = (profiles ?? []).find((p) => p.id === id);
+        return { id, name: profile?.full_name || profile?.email || "Student" };
+      }),
+      exclusions: (exclusions ?? []).map((e) => ({
+        questionId: e.question_id,
+        studentId: e.student_id,
+      })),
+    };
+  });
+
+/** Teacher-only: removes a question from an assignment along with every student answer to it. */
+export const deleteQuestion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ questionId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const db = await admin();
+    const question = await questionForTeacher(supabase, db, data.questionId, userId);
+
+    const { data: answers } = await db
+      .from("answers")
+      .select("id")
+      .eq("question_id", data.questionId);
+    const answerIds = (answers ?? []).map((a) => a.id);
+    if (answerIds.length > 0) {
+      await db.from("tutor_messages").delete().in("answer_id", answerIds);
+      await db.from("answers").delete().in("id", answerIds);
+    }
+    await db.from("integrity_flags").delete().eq("question_id", data.questionId);
+    await db.from("question_exclusions").delete().eq("question_id", data.questionId);
+    const { error } = await db.from("questions").delete().eq("id", data.questionId);
+    if (error) throw new Error(error.message);
+
+    await recalcAssignment(db, question.assignment_id);
+    return { ok: true };
+  });
+
+/** Teacher-only: awards full marks on one question to every student in the class. */
+export const creditQuestionForAll = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({ questionId: z.string().uuid(), feedback: z.string().max(400).optional() })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const db = await admin();
+    const question = await questionForTeacher(supabase, db, data.questionId, userId);
+
+    const { data: assignment } = await db
+      .from("assignments")
+      .select("class_id")
+      .eq("id", question.assignment_id)
+      .single();
+    const { data: members } = await db
+      .from("class_members")
+      .select("student_id")
+      .eq("class_id", assignment!.class_id);
+    const { data: exclusions } = await db
+      .from("question_exclusions")
+      .select("student_id")
+      .eq("question_id", data.questionId);
+    const excluded = new Set((exclusions ?? []).map((e) => e.student_id));
+
+    const feedback = data.feedback?.trim() || "Full credit awarded by your teacher.";
+    let credited = 0;
+
+    for (const member of members ?? []) {
+      if (excluded.has(member.student_id)) continue;
+      const submission = await ensureSubmission(db, question.assignment_id, member.student_id);
+      const { data: existing } = await db
+        .from("answers")
+        .select("id")
+        .eq("submission_id", submission.id)
+        .eq("question_id", data.questionId)
+        .maybeSingle();
+
+      const patch = {
+        verdict: "correct",
+        awarded_marks: question.marks,
+        feedback,
+        resolved: true,
+      };
+      if (existing) {
+        await db.from("answers").update(patch).eq("id", existing.id);
+      } else {
+        await db
+          .from("answers")
+          .insert({ submission_id: submission.id, question_id: data.questionId, ...patch });
+      }
+      await recalcSubmission(db, submission.id);
+      credited += 1;
+    }
+
+    return { ok: true, credited };
+  });
+
+/** Teacher-only: unassigns (or re-assigns) a single question for one student. */
+export const setQuestionExclusion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        questionId: z.string().uuid(),
+        studentId: z.string().uuid(),
+        excluded: z.boolean(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const db = await admin();
+    const question = await questionForTeacher(supabase, db, data.questionId, userId);
+
+    if (data.excluded) {
+      const { error } = await db
+        .from("question_exclusions")
+        .upsert(
+          { question_id: data.questionId, student_id: data.studentId, created_by: userId },
+          { onConflict: "question_id,student_id" },
+        );
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await db
+        .from("question_exclusions")
+        .delete()
+        .eq("question_id", data.questionId)
+        .eq("student_id", data.studentId);
+      if (error) throw new Error(error.message);
+    }
+
+    const { data: submission } = await db
+      .from("submissions")
+      .select("id")
+      .eq("assignment_id", question.assignment_id)
+      .eq("student_id", data.studentId)
+      .maybeSingle();
+    if (submission) await recalcSubmission(db, submission.id);
+
+    return { ok: true };
+  });

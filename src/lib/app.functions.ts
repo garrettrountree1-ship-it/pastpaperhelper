@@ -200,6 +200,129 @@ export const updateClass = createServerFn({ method: "POST" })
     return updated;
   });
 
+export const removeStudentFromClass = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ classId: z.string().uuid(), studentId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: isTeacher } = await supabase.rpc("is_class_teacher", {
+      _class_id: data.classId,
+      _user_id: userId,
+    });
+    if (!isTeacher) throw new Error("You do not own this class.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: assignments } = await supabaseAdmin
+      .from("assignments")
+      .select("id")
+      .eq("class_id", data.classId);
+    const assignmentIds = (assignments ?? []).map((a) => a.id);
+
+    if (assignmentIds.length > 0) {
+      const { data: subs } = await supabaseAdmin
+        .from("submissions")
+        .select("id")
+        .eq("student_id", data.studentId)
+        .in("assignment_id", assignmentIds);
+      const subIds = (subs ?? []).map((s) => s.id);
+      if (subIds.length > 0) {
+        const { data: answers } = await supabaseAdmin
+          .from("answers")
+          .select("id")
+          .in("submission_id", subIds);
+        const answerIds = (answers ?? []).map((a) => a.id);
+        if (answerIds.length > 0) {
+          await supabaseAdmin.from("tutor_messages").delete().in("answer_id", answerIds);
+          await supabaseAdmin.from("answers").delete().in("id", answerIds);
+        }
+        await supabaseAdmin.from("integrity_flags").delete().in("submission_id", subIds);
+        await supabaseAdmin.from("submissions").delete().in("id", subIds);
+      }
+      await supabaseAdmin
+        .from("student_assignment_settings")
+        .delete()
+        .eq("student_id", data.studentId)
+        .in("assignment_id", assignmentIds);
+    }
+
+    await supabaseAdmin
+      .from("class_messages")
+      .delete()
+      .eq("class_id", data.classId)
+      .eq("student_id", data.studentId);
+
+    const { error } = await supabaseAdmin
+      .from("class_members")
+      .delete()
+      .eq("class_id", data.classId)
+      .eq("student_id", data.studentId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteClass = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ classId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: isTeacher } = await supabase.rpc("is_class_teacher", {
+      _class_id: data.classId,
+      _user_id: userId,
+    });
+    if (!isTeacher) throw new Error("You do not own this class.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: assignments } = await supabaseAdmin
+      .from("assignments")
+      .select("id")
+      .eq("class_id", data.classId);
+    const assignmentIds = (assignments ?? []).map((a) => a.id);
+
+    if (assignmentIds.length > 0) {
+      const { data: subs } = await supabaseAdmin
+        .from("submissions")
+        .select("id")
+        .in("assignment_id", assignmentIds);
+      const subIds = (subs ?? []).map((s) => s.id);
+      if (subIds.length > 0) {
+        const { data: answers } = await supabaseAdmin
+          .from("answers")
+          .select("id")
+          .in("submission_id", subIds);
+        const answerIds = (answers ?? []).map((a) => a.id);
+        if (answerIds.length > 0) {
+          await supabaseAdmin.from("tutor_messages").delete().in("answer_id", answerIds);
+          await supabaseAdmin.from("answers").delete().in("id", answerIds);
+        }
+        await supabaseAdmin.from("integrity_flags").delete().in("submission_id", subIds);
+        await supabaseAdmin.from("submissions").delete().in("id", subIds);
+      }
+      const { data: questions } = await supabaseAdmin
+        .from("questions")
+        .select("id")
+        .in("assignment_id", assignmentIds);
+      const questionIds = (questions ?? []).map((q) => q.id);
+      if (questionIds.length > 0) {
+        await supabaseAdmin.from("question_exclusions").delete().in("question_id", questionIds);
+      }
+      await supabaseAdmin
+        .from("student_assignment_settings")
+        .delete()
+        .in("assignment_id", assignmentIds);
+      await supabaseAdmin.from("questions").delete().in("assignment_id", assignmentIds);
+    }
+
+    await supabaseAdmin.from("class_messages").delete().eq("class_id", data.classId);
+    await supabaseAdmin.from("class_announcements").delete().eq("class_id", data.classId);
+    await supabaseAdmin.from("assignments").delete().eq("class_id", data.classId);
+    await supabaseAdmin.from("class_members").delete().eq("class_id", data.classId);
+
+    const { error } = await supabaseAdmin.from("classes").delete().eq("id", data.classId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
 
 
 export const createAssignment = createServerFn({ method: "POST" })

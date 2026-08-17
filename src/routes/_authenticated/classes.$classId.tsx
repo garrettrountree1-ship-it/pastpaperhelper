@@ -12,7 +12,7 @@ import {
   type AssignmentStatusKey,
 } from "@/lib/assignment-status";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
   ChevronDown,
@@ -63,6 +63,9 @@ import {
   createAssignment,
   creditQuestionForAll,
   deleteAssignment,
+  deleteClass,
+  removeStudentFromClass,
+
   deleteQuestion,
   getAssignmentQuestionControls,
   setQuestionExclusion,
@@ -280,11 +283,23 @@ function ClassPage() {
                     </p>
                   ) : (
                     overview.data.students.map((student) => (
-                      <div key={student.id} className="flex items-center justify-between p-4">
+                      <div
+                        key={student.id}
+                        className="flex flex-wrap items-center justify-between gap-3 p-4"
+                      >
                         <span>{student.name}</span>
-                        <span className="text-sm text-muted-foreground">{student.email}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm text-muted-foreground">{student.email}</span>
+                          <RemoveStudentButton
+                            classId={classId}
+                            studentId={student.id}
+                            studentName={student.name || student.email}
+                            onRemoved={() => overview.refetch()}
+                          />
+                        </div>
                       </div>
                     ))
+
                   )}
                 </div>
               </TabsContent>
@@ -1116,7 +1131,54 @@ function DeleteAssignmentButton({
   );
 }
 
+function RemoveStudentButton({
+  classId,
+  studentId,
+  studentName,
+  onRemoved,
+}: {
+  classId: string;
+  studentId: string;
+  studentName: string;
+  onRemoved: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const remove = useServerFn(removeStudentFromClass);
+  const mutation = useMutation({
+    mutationFn: () => remove({ data: { classId, studentId } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });
+      queryClient.invalidateQueries({ queryKey: ["teacher-classes"] });
+      onRemoved();
+      toast.success("Student removed");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="text-destructive"
+      disabled={mutation.isPending}
+      onClick={() => {
+        if (
+          window.confirm(
+            `Remove ${studentName} from this class? Their submissions and work for this class will be deleted.`,
+          )
+        ) {
+          mutation.mutate();
+        }
+      }}
+    >
+      <Trash2 className="size-4" />
+      {mutation.isPending ? "Removing…" : "Remove"}
+    </Button>
+  );
+}
+
 function ClassSettingsDialog({
+
   classId,
   klass,
   onSaved,
@@ -1131,7 +1193,10 @@ function ClassSettingsDialog({
   const [subject, setSubject] = useState(klass.subject);
   const [joinCode, setJoinCode] = useState(klass.join_code);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const save = useServerFn(updateClass);
+  const deleteClassFn = useServerFn(deleteClass);
+
 
   useEffect(() => {
     if (!open) return;
@@ -1166,6 +1231,18 @@ function ClassSettingsDialog({
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteClassFn({ data: { classId } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["teacher-classes"] });
+      toast.success("Class deleted");
+      setOpen(false);
+      navigate({ to: "/dashboard" });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -1228,7 +1305,23 @@ function ClassSettingsDialog({
             </p>
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="sm:justify-between">
+          <Button
+            variant="destructive"
+            disabled={deleteMutation.isPending}
+            onClick={() => {
+              if (
+                window.confirm(
+                  "Delete this class? All its assignments, student work and messages will be permanently removed.",
+                )
+              ) {
+                deleteMutation.mutate();
+              }
+            }}
+          >
+            <Trash2 className="size-4" />
+            {deleteMutation.isPending ? "Deleting…" : "Delete class"}
+          </Button>
           <Button
             disabled={mutation.isPending || name.trim().length === 0 || joinCode.trim().length < 4}
             onClick={() => mutation.mutate({})}
@@ -1236,6 +1329,7 @@ function ClassSettingsDialog({
             {mutation.isPending ? "Saving…" : "Save changes"}
           </Button>
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );

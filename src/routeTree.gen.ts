@@ -16,6 +16,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAssignmentsAssignmentIdRouteImport } from './routes/_authenticated/assignments.$assignmentId'
 import { Route as AuthenticatedClassesClassIdRouteImport } from './routes/_authenticated/classes.$classId'
+import { Route as ApiPublicEnsureDemoRouteImport } from './routes/api/public/ensure-demo'
 import { Route as AuthenticatedAssignmentsAssignmentIdIndexRouteImport } from './routes/_authenticated/assignments.$assignmentId.index'
 import { Route as AuthenticatedAssignmentsAssignmentIdPreviewRouteImport } from './routes/_authenticated/assignments.$assignmentId.preview'
 import { Route as AuthenticatedSubmissionsAssignmentIdStudentIdRouteImport } from './routes/_authenticated/submissions.$assignmentId.$studentId'
@@ -56,6 +57,11 @@ const AuthenticatedClassesClassIdRoute =
     path: '/classes/$classId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiPublicEnsureDemoRoute = ApiPublicEnsureDemoRouteImport.update({
+  id: '/api/public/ensure-demo',
+  path: '/api/public/ensure-demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAssignmentsAssignmentIdIndexRoute =
   AuthenticatedAssignmentsAssignmentIdIndexRouteImport.update({
     id: '/',
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/assignments/$assignmentId': typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
   '/classes/$classId': typeof AuthenticatedClassesClassIdRoute
+  '/api/public/ensure-demo': typeof ApiPublicEnsureDemoRoute
   '/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
   '/submissions/$assignmentId/$studentId': typeof AuthenticatedSubmissionsAssignmentIdStudentIdRoute
   '/assignments/$assignmentId/': typeof AuthenticatedAssignmentsAssignmentIdIndexRoute
@@ -92,6 +99,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/classes/$classId': typeof AuthenticatedClassesClassIdRoute
+  '/api/public/ensure-demo': typeof ApiPublicEnsureDemoRoute
   '/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
   '/submissions/$assignmentId/$studentId': typeof AuthenticatedSubmissionsAssignmentIdStudentIdRoute
   '/assignments/$assignmentId': typeof AuthenticatedAssignmentsAssignmentIdIndexRoute
@@ -105,6 +113,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/assignments/$assignmentId': typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
   '/_authenticated/classes/$classId': typeof AuthenticatedClassesClassIdRoute
+  '/api/public/ensure-demo': typeof ApiPublicEnsureDemoRoute
   '/_authenticated/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
   '/_authenticated/submissions/$assignmentId/$studentId': typeof AuthenticatedSubmissionsAssignmentIdStudentIdRoute
   '/_authenticated/assignments/$assignmentId/': typeof AuthenticatedAssignmentsAssignmentIdIndexRoute
@@ -118,6 +127,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/assignments/$assignmentId'
     | '/classes/$classId'
+    | '/api/public/ensure-demo'
     | '/assignments/$assignmentId/preview'
     | '/submissions/$assignmentId/$studentId'
     | '/assignments/$assignmentId/'
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/dashboard'
     | '/classes/$classId'
+    | '/api/public/ensure-demo'
     | '/assignments/$assignmentId/preview'
     | '/submissions/$assignmentId/$studentId'
     | '/assignments/$assignmentId'
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/assignments/$assignmentId'
     | '/_authenticated/classes/$classId'
+    | '/api/public/ensure-demo'
     | '/_authenticated/assignments/$assignmentId/preview'
     | '/_authenticated/submissions/$assignmentId/$studentId'
     | '/_authenticated/assignments/$assignmentId/'
@@ -150,6 +162,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiPublicEnsureDemoRoute: typeof ApiPublicEnsureDemoRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -202,6 +215,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/classes/$classId'
       preLoaderRoute: typeof AuthenticatedClassesClassIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/ensure-demo': {
+      id: '/api/public/ensure-demo'
+      path: '/api/public/ensure-demo'
+      fullPath: '/api/public/ensure-demo'
+      preLoaderRoute: typeof ApiPublicEnsureDemoRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/assignments/$assignmentId/': {
       id: '/_authenticated/assignments/$assignmentId/'
@@ -269,6 +289,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiPublicEnsureDemoRoute: ApiPublicEnsureDemoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

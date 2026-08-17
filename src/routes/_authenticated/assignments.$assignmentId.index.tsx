@@ -391,6 +391,8 @@ function QuestionCard({
       tutorError={tutorMutation.isError ? (tutorMutation.error as Error).message : undefined}
       onSend={() => tutorMutation.mutate()}
       locked={locked}
+      markScheme={question.markScheme ?? null}
+
     />
   );
 }

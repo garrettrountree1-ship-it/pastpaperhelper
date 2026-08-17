@@ -3,7 +3,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { isCalculationQuestion, needsPhotoAnswer } from "@/lib/needs-photo";
+import { isPhotoOnlyQuestion, needsPhotoAnswer } from "@/lib/needs-photo";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 
 
@@ -287,7 +287,7 @@ function QuestionCard({
   const [reply, setReply] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
   const requiresPhoto = needsPhotoAnswer(question.question_text);
-  const photoOnly = isCalculationQuestion(question.question_text);
+  const photoOnly = isPhotoOnlyQuestion(question.question_text);
   const [showPhoto, setShowPhoto] = useState(requiresPhoto);
   const secondsRef = useRef(0);
 

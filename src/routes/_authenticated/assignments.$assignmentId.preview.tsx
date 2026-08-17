@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
-import { isCalculationQuestion, needsPhotoAnswer } from "@/lib/needs-photo";
+import { isPhotoOnlyQuestion, needsPhotoAnswer } from "@/lib/needs-photo";
 import {
   getAssignmentPreview,
   previewGradeAnswer,
@@ -199,7 +199,7 @@ function PreviewQuestion({
 }) {
   const [answer, setAnswer] = useState("");
   const requiresPhoto = needsPhotoAnswer(question.question_text);
-  const photoOnly = isCalculationQuestion(question.question_text);
+  const photoOnly = isPhotoOnlyQuestion(question.question_text);
   const [showPhoto, setShowPhoto] = useState(requiresPhoto);
   const [photos, setPhotos] = useState<string[]>([]);
   const [reply, setReply] = useState("");

@@ -211,10 +211,11 @@ export function QuestionExperience({
             {requiresPhoto ? (
               <p className="mt-2 text-xs text-muted-foreground">
                 {photoOnly
-                  ? "Photograph every line of your working — marks are given for the method as well as the final answer."
+                  ? "Photograph your full drawing or working — marks are given for the method as well as the final answer."
                   : "This question asks you to draw, circle or plot — upload a photo of your work so it can be marked."}
               </p>
             ) : null}
+
 
           </div>
         ) : (

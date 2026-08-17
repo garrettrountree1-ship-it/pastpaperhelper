@@ -92,7 +92,7 @@ export function AccessControlsDialog({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Due date &amp; mark scheme</DialogTitle>
+          <DialogTitle>Due Date &amp; Answer Release</DialogTitle>
         </DialogHeader>
 
         {controls.isPending ? (

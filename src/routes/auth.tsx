@@ -143,11 +143,21 @@ function AuthPage() {
 
   async function handleGoogle() {
     setBusy(true);
+    try {
+      localStorage.setItem("pendingOAuthRole", role);
+    } catch {
+      // ignore storage errors
+    }
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
     if (result.error) {
       setBusy(false);
+      try {
+        localStorage.removeItem("pendingOAuthRole");
+      } catch {
+        // ignore
+      }
       toast.error("Google sign-in failed. Please try again.");
       return;
     }

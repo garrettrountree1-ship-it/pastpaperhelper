@@ -50,7 +50,7 @@ export function DateTime24Input({
       />
       <div className="flex items-center gap-1">
         <Select
-          value={hourPart || undefined}
+          value={hourPart}
           onValueChange={(next) => emit(datePart, next, minutePart || "00")}
         >
           <SelectTrigger className="w-[72px]" aria-label="Hour (24h)">
@@ -66,7 +66,7 @@ export function DateTime24Input({
         </Select>
         <span className="text-muted-foreground">:</span>
         <Select
-          value={minutePart || undefined}
+          value={minutePart}
           onValueChange={(next) => emit(datePart, hourPart || "00", next)}
         >
           <SelectTrigger className="w-[72px]" aria-label="Minutes">

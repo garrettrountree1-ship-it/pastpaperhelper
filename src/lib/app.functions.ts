@@ -1234,7 +1234,7 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       totalMarks: question.marks,
       feedback: result.feedback,
       leadingQuestion: result.leadingQuestion ?? "",
-      markBreakdown: result.markBreakdown ?? [],
+      markBreakdown: result.markPoints ?? [],
     };
   });
 

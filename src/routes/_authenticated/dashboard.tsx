@@ -395,7 +395,12 @@ function StudentHome() {
                         className="flex flex-wrap items-center justify-between gap-4 py-4 transition-colors hover:text-primary"
                       >
                         <div>
-                          <h3 className="text-lg">{assignment.title}</h3>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-lg">{assignment.title}</h3>
+                            <Badge variant={statusBadgeVariant[assignmentStatus(assignment)]}>
+                              {statusLabels[assignmentStatus(assignment)]}
+                            </Badge>
+                          </div>
                           <p className="mt-1 text-sm text-muted-foreground">
                             {assignment.questionCount} questions · {assignment.totalMarks} marks
                             {assignment.dueAt ? ` · due ${formatDueDate(assignment.dueAt)}` : ""}

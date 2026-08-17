@@ -878,6 +878,7 @@ export const listStudentWork = createServerFn({ method: "GET" })
           title: a.title,
           subject: a.subject,
           dueAt: a.due_at,
+          classId: a.class_id,
           className: (classes ?? []).find((c) => c.id === a.class_id)?.name ?? "",
           questionCount: (questions ?? []).filter((q) => q.assignment_id === a.id).length,
           totalMarks: (questions ?? [])

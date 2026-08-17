@@ -74,15 +74,22 @@ import {
   unlockSubmission,
   updateClass,
 } from "@/lib/app.functions";
+import {
+  deleteAnnouncement,
+  listClassBulletin,
+  listClassMessages,
+  postAnnouncement,
+  replyToStudent,
+} from "@/lib/messaging.functions";
 import { filesToPages } from "@/lib/pdf-pages";
 import { questionBody, questionLabel } from "@/lib/question-label";
 
 export const Route = createFileRoute("/_authenticated/classes/$classId")({
   head: () => ({
     meta: [
-      { title: "Class · AI Homework Hero" },
+      { title: "Class · STEM Homework AI" },
       { name: "description", content: "Class assignments, students and homework grades." },
-      { property: "og:title", content: "Class · AI Homework Hero" },
+      { property: "og:title", content: "Class · STEM Homework AI" },
       { property: "og:description", content: "Class assignments, students and homework grades." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -178,6 +185,7 @@ function ClassPage() {
                 <TabsTrigger value="assignments">Assignments</TabsTrigger>
                 <TabsTrigger value="gradebook">Gradebook</TabsTrigger>
                 <TabsTrigger value="students">Students</TabsTrigger>
+                <TabsTrigger value="bulletin">Bulletin &amp; Messages</TabsTrigger>
               </TabsList>
 
               <TabsContent value="assignments" className="mt-4 space-y-3">
@@ -186,6 +194,11 @@ function ClassPage() {
                   assignments={overview.data.assignments}
                   studentCount={overview.data.students.length}
                 />
+              </TabsContent>
+
+              <TabsContent value="bulletin" className="mt-4 space-y-6">
+                <BulletinPanel classId={classId} />
+                <MessagesPanel classId={classId} />
               </TabsContent>
 
               <TabsContent value="gradebook" className="mt-4">
@@ -1561,5 +1574,185 @@ function LockControls({
         <span className="text-xs text-muted-foreground">%</span>
       </div>
     </div>
+  );
+}
+
+/** Teacher bulletin board: one post visible to every student in the class. */
+function BulletinPanel({ classId }: { classId: string }) {
+  const queryClient = useQueryClient();
+  const queryKey = ["class-bulletin", classId];
+  const posts = useQuery({
+    queryKey,
+    queryFn: () => listClassBulletin({ data: { classId } }),
+  });
+  const post = useServerFn(postAnnouncement);
+  const remove = useServerFn(deleteAnnouncement);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+
+  const create = useMutation({
+    mutationFn: () => post({ data: { classId, title: title.trim(), body: body.trim() } }),
+    onSuccess: () => {
+      setTitle("");
+      setBody("");
+      toast.success("Posted to the class bulletin");
+      queryClient.invalidateQueries({ queryKey });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const del = useMutation({
+    mutationFn: (id: string) => remove({ data: { id } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <section className="paper p-5">
+      <h2 className="font-display text-2xl">Class bulletin</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Every student in this class sees these posts on their homework page.
+      </p>
+      <div className="mt-4 space-y-3">
+        <div className="space-y-2">
+          <Label htmlFor="bulletin-title">Title (optional)</Label>
+          <Input
+            id="bulletin-title"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="Reminder"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="bulletin-body">Message</Label>
+          <Textarea
+            id="bulletin-body"
+            rows={3}
+            value={body}
+            onChange={(event) => setBody(event.target.value)}
+            placeholder="Paper 4 homework is due Friday — bring your working."
+          />
+        </div>
+        <Button
+          onClick={() => create.mutate()}
+          disabled={body.trim().length === 0 || create.isPending}
+        >
+          Post to class
+        </Button>
+      </div>
+
+      <div className="mt-6 space-y-3">
+        {posts.isPending ? (
+          <Skeleton className="h-20 w-full" />
+        ) : (posts.data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">No bulletin posts yet.</p>
+        ) : (
+          (posts.data ?? []).map((item) => (
+            <div key={item.id} className="rounded-lg border border-border p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  {item.title ? <p className="font-medium">{item.title}</p> : null}
+                  <p className="mt-1 whitespace-pre-wrap text-sm">{item.body}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {formatDueDate(item.created_at)}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => del.mutate(item.id)}
+                  disabled={del.isPending}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
+/** Private teacher ↔ student threads, grouped by student. */
+function MessagesPanel({ classId }: { classId: string }) {
+  const queryClient = useQueryClient();
+  const queryKey = ["class-messages", classId];
+  const messages = useQuery({
+    queryKey,
+    queryFn: () => listClassMessages({ data: { classId } }),
+  });
+  const reply = useServerFn(replyToStudent);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const send = useMutation({
+    mutationFn: (vars: { studentId: string; body: string }) =>
+      reply({ data: { classId, studentId: vars.studentId, topic: "", body: vars.body } }),
+    onSuccess: (_result, vars) => {
+      setDrafts((prev) => ({ ...prev, [vars.studentId]: "" }));
+      queryClient.invalidateQueries({ queryKey });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const rows = messages.data ?? [];
+  const studentIds = [...new Set(rows.map((m) => m.student_id))];
+
+  return (
+    <section className="paper p-5">
+      <h2 className="font-display text-2xl">Student messages</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Students message you about a specific question. Students never see each other&apos;s
+        messages.
+      </p>
+      {messages.isPending ? (
+        <Skeleton className="mt-4 h-24 w-full" />
+      ) : studentIds.length === 0 ? (
+        <p className="mt-4 text-sm text-muted-foreground">No messages yet.</p>
+      ) : (
+        <div className="mt-4 space-y-4">
+          {studentIds.map((studentId) => {
+            const thread = rows.filter((m) => m.student_id === studentId);
+            const name = thread[0]?.studentName ?? "Student";
+            return (
+              <div key={studentId} className="rounded-lg border border-border p-3">
+                <p className="font-medium">{name}</p>
+                <div className="mt-2 space-y-2">
+                  {thread.map((m) => (
+                    <div
+                      key={m.id}
+                      className={
+                        m.sender_role === "teacher"
+                          ? "rounded-md bg-primary/10 p-2 text-sm"
+                          : "rounded-md bg-muted p-2 text-sm"
+                      }
+                    >
+                      <p className="text-xs text-muted-foreground">
+                        {m.sender_role === "teacher" ? "You" : name}
+                        {m.topic ? ` · ${m.topic}` : ""} · {formatDueDate(m.created_at)}
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap">{m.body}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <Input
+                    value={drafts[studentId] ?? ""}
+                    onChange={(event) =>
+                      setDrafts((prev) => ({ ...prev, [studentId]: event.target.value }))
+                    }
+                    placeholder="Reply to this student"
+                  />
+                  <Button
+                    onClick={() => send.mutate({ studentId, body: (drafts[studentId] ?? "").trim() })}
+                    disabled={(drafts[studentId] ?? "").trim().length === 0 || send.isPending}
+                  >
+                    Reply
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }

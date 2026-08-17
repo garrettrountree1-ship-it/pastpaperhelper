@@ -18,14 +18,14 @@ export const Route = createFileRoute("/auth")({
 
   head: () => ({
     meta: [
-      { title: "Sign in · AI Homework Hero homework tutor" },
+      { title: "Sign in · STEM Homework AI homework tutor" },
       {
         name: "description",
         content:
           "Sign in as a teacher to set past-paper homework, or as a student to join your class with a code.",
       },
-      { property: "og:title", content: "Sign in · AI Homework Hero" },
-      { property: "og:description", content: "Teacher and student logins for AI Homework Hero homework." },
+      { property: "og:title", content: "Sign in · STEM Homework AI" },
+      { property: "og:description", content: "Teacher and student logins for STEM Homework AI homework." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -177,7 +177,7 @@ function AuthPage() {
 
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 pb-16">
         <div className="paper p-6">
-          <h1 className="text-2xl">Welcome to AI Homework Hero</h1>
+          <h1 className="text-2xl">Welcome to STEM Homework AI</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Teachers set the homework. Students work through it with a tutor beside them.
           </p>

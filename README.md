@@ -1,4 +1,4 @@
-# AI Homework Hero
+# STEM Homework AI
 
 This project was built with [Lovable](https://lovable.dev).
 

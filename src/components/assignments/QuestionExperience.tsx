@@ -1,5 +1,5 @@
 import { Camera, CheckCircle2, CircleDashed, Sparkles, XCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { CameraCapture } from "@/components/assignments/CameraCapture";
@@ -77,6 +77,8 @@ export function QuestionExperience({
   onSend,
   locked = false,
   markScheme = null,
+  headerAction = null,
+
 
 }: {
   question: { id: string; question_text: string; marks: number };
@@ -108,6 +110,8 @@ export function QuestionExperience({
   locked?: boolean;
   /** Mark-scheme answer, only present once the teacher reveals it. */
   markScheme?: string | null;
+  /** Optional action shown in the question header (e.g. message the teacher). */
+  headerAction?: ReactNode;
 }) {
   const verdict = result?.verdict ?? null;
   const answerGuard = useOriginalTypingGuard();
@@ -128,10 +132,14 @@ export function QuestionExperience({
         <h2 className="font-display text-xl">
           Question {questionLabel(question.question_text, index)}
         </h2>
-        <Badge variant="secondary">
-          {result ? `${result.awardedMarks}/` : ""}{question.marks} marks
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary">
+            {result ? `${result.awardedMarks}/` : ""}{question.marks} marks
+          </Badge>
+          {headerAction}
+        </div>
       </div>
+
       <p className="mt-3 whitespace-pre-wrap">{questionBody(question.question_text)}</p>
 
       {markScheme ? (

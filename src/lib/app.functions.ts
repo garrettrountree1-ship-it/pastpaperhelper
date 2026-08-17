@@ -530,10 +530,21 @@ export const getSubmissionDetail = createServerFn({ method: "POST" })
 
     const { data: submission } = await db
       .from("submissions")
-      .select("id, status, awarded_marks, total_marks, submitted_at")
+      .select(
+        "id, status, awarded_marks, total_marks, submitted_at, ai_flag_count, locked_at, locked_reason",
+      )
       .eq("assignment_id", data.assignmentId)
       .eq("student_id", data.studentId)
       .maybeSingle();
+
+    const { data: integrityFlags } = submission
+      ? await db
+          .from("integrity_flags")
+          .select("id, question_id, reason, excerpt, confidence, created_at")
+          .eq("submission_id", submission.id)
+          .order("created_at")
+      : { data: [] };
+
 
     const { data: answers } = submission
       ? await db

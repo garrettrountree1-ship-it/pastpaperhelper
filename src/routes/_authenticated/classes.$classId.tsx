@@ -206,6 +206,7 @@ function ClassPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-10" />
                           <TableHead>Student</TableHead>
                           {overview.data.assignments.map((assignment) => (
                             <TableHead key={assignment.id}>{assignment.title}</TableHead>
@@ -215,43 +216,24 @@ function ClassPage() {
                       </TableHeader>
                       <TableBody>
                         {overview.data.students.map((student) => (
-                          <TableRow key={student.id}>
-                            <TableCell className="font-medium">{student.name}</TableCell>
-                            {student.grades.map((grade) => (
-                              <TableCell key={grade.assignmentId}>
-                                {grade.status === "not_started" ? (
-                                  <span className="text-muted-foreground">—</span>
-                                ) : (
-                                  <Link
-                                    to="/submissions/$assignmentId/$studentId"
-                                    params={{
-                                      assignmentId: grade.assignmentId,
-                                      studentId: student.id,
-                                    }}
-                                    className="underline decoration-accent decoration-2 underline-offset-4"
-                                  >
-                                    {grade.awardedMarks ?? 0}/{grade.totalMarks}
-                                    {grade.totalMarks > 0
-                                      ? ` (${Math.round(((grade.awardedMarks ?? 0) / grade.totalMarks) * 100)}%)`
-                                      : ""}
-                                    {grade.status === "in_progress" ? "*" : ""}
-                                  </Link>
-                                )}
-                              </TableCell>
-                            ))}
-                            <TableCell className="font-display">
-                              {student.average === null ? "—" : `${student.average}%`}
-                            </TableCell>
-                          </TableRow>
+                          <GradebookRow
+                            key={student.id}
+                            classId={classId}
+                            student={student}
+                            columns={overview.data.assignments.length + 3}
+                            onChanged={() => overview.refetch()}
+                          />
                         ))}
                       </TableBody>
                     </Table>
                     <p className="p-3 text-xs text-muted-foreground">
-                      * still in progress. Click a score to review answers and adjust marks.
+                      * still in progress. Click a score to review answers and adjust marks, or open
+                      a row to see time spent, tutor questions and every attempt.
                     </p>
                   </div>
                 )}
               </TabsContent>
+
 
               <TabsContent value="students" className="mt-4">
                 <div className="paper divide-y divide-border">

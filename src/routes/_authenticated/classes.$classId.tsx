@@ -1228,7 +1228,23 @@ function ClassSettingsDialog({
             </p>
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="sm:justify-between">
+          <Button
+            variant="destructive"
+            disabled={deleteMutation.isPending}
+            onClick={() => {
+              if (
+                window.confirm(
+                  "Delete this class? All its assignments, student work and messages will be permanently removed.",
+                )
+              ) {
+                deleteMutation.mutate();
+              }
+            }}
+          >
+            <Trash2 className="size-4" />
+            {deleteMutation.isPending ? "Deleting…" : "Delete class"}
+          </Button>
           <Button
             disabled={mutation.isPending || name.trim().length === 0 || joinCode.trim().length < 4}
             onClick={() => mutation.mutate({})}
@@ -1236,6 +1252,7 @@ function ClassSettingsDialog({
             {mutation.isPending ? "Saving…" : "Save changes"}
           </Button>
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );

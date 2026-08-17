@@ -283,11 +283,23 @@ function ClassPage() {
                     </p>
                   ) : (
                     overview.data.students.map((student) => (
-                      <div key={student.id} className="flex items-center justify-between p-4">
+                      <div
+                        key={student.id}
+                        className="flex flex-wrap items-center justify-between gap-3 p-4"
+                      >
                         <span>{student.name}</span>
-                        <span className="text-sm text-muted-foreground">{student.email}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm text-muted-foreground">{student.email}</span>
+                          <RemoveStudentButton
+                            classId={classId}
+                            studentId={student.id}
+                            studentName={student.name || student.email}
+                            onRemoved={() => overview.refetch()}
+                          />
+                        </div>
                       </div>
                     ))
+
                   )}
                 </div>
               </TabsContent>

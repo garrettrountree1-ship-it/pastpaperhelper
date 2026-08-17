@@ -68,51 +68,62 @@ function Landing() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 pb-20">
-        <section className="grid items-center gap-10 py-12 lg:grid-cols-[1.1fr_0.9fr] lg:py-20">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              IGCSE · A-Level · IB
-            </p>
-            <h1 className="mt-4 text-4xl leading-[1.05] sm:text-5xl lg:text-6xl">
-              Homework that finds the <span className="highlight-underline">knowledge gap</span> and
-              closes it.
-            </h1>
-            <p className="mt-6 max-w-xl text-lg text-muted-foreground">
-              Teachers set real past-paper questions with mark schemes. Students answer, learn
-              instantly whether they are right, then get coached with leading questions and smaller
-              steps until the question is within reach.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Button asChild size="lg">
-                <Link to="/auth" search={{ mode: "signup" }}>
-                  Create a teacher account
-                </Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link to="/auth">I have a class code</Link>
-              </Button>
+        <section className="relative -mx-4 overflow-hidden rounded-3xl sm:mx-0">
+          <img
+            src={marsBg}
+            alt="Mars surface landscape"
+            className="absolute inset-0 h-full w-full object-cover"
+            width={1792}
+            height={1024}
+            loading="eager"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/75 to-background/40" />
+          <div className="relative grid items-center gap-10 px-4 py-12 lg:grid-cols-[1.1fr_0.9fr] lg:py-20">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                IGCSE · A-Level · IB
+              </p>
+              <h1 className="mt-4 text-4xl leading-[1.05] sm:text-5xl lg:text-6xl">
+                Homework that finds the <span className="highlight-underline">knowledge gap</span> and
+                closes it.
+              </h1>
+              <p className="mt-6 max-w-xl text-lg text-muted-foreground">
+                Teachers set real past-paper questions with mark schemes. Students answer, learn
+                instantly whether they are right, then get coached with leading questions and smaller
+                steps until the question is within reach.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Button asChild size="lg">
+                  <Link to="/auth" search={{ mode: "signup" }}>
+                    Create a teacher account
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="outline">
+                  <Link to="/auth">I have a class code</Link>
+                </Button>
+              </div>
             </div>
-          </div>
 
-          <div className="ink-panel p-6 shadow-lift">
-            <p className="text-xs uppercase tracking-[0.2em] opacity-70">Live coaching</p>
-            <div className="mt-4 space-y-3 text-sm">
-              <div className="rounded-lg bg-primary-foreground/10 p-3">
-                <p className="opacity-70">Question · 4 marks</p>
-                <p className="mt-1">Explain why the rate of reaction decreases over time.</p>
-              </div>
-              <div className="rounded-lg bg-primary-foreground/10 p-3">
-                <p className="opacity-70">Student</p>
-                <p className="mt-1">Because the reaction gets colder.</p>
-              </div>
-              <div className="rounded-lg bg-accent p-3 text-accent-foreground">
-                <p className="text-xs font-semibold uppercase tracking-wide">
-                  1 / 4 · keep going
-                </p>
-                <p className="mt-1">
-                  What happens to the number of reactant particles in the flask as the reaction
-                  proceeds?
-                </p>
+            <div className="ink-panel p-6 shadow-lift">
+              <p className="text-xs uppercase tracking-[0.2em] opacity-70">Live coaching</p>
+              <div className="mt-4 space-y-3 text-sm">
+                <div className="rounded-lg bg-primary-foreground/10 p-3">
+                  <p className="opacity-70">Question · 4 marks</p>
+                  <p className="mt-1">Explain why the rate of reaction decreases over time.</p>
+                </div>
+                <div className="rounded-lg bg-primary-foreground/10 p-3">
+                  <p className="opacity-70">Student</p>
+                  <p className="mt-1">Because the reaction gets colder.</p>
+                </div>
+                <div className="rounded-lg bg-accent p-3 text-accent-foreground">
+                  <p className="text-xs font-semibold uppercase tracking-wide">
+                    1 / 4 · keep going
+                  </p>
+                  <p className="mt-1">
+                    What happens to the number of reactant particles in the flask as the reaction
+                    proceeds?
+                  </p>
+                </div>
               </div>
             </div>
           </div>

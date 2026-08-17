@@ -1,4 +1,16 @@
 import { DateTime24Input } from "@/components/assignments/DateTime24Input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  statusBadgeVariant,
+  statusLabels,
+  type AssignmentStatusKey,
+} from "@/lib/assignment-status";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
@@ -169,64 +181,11 @@ function ClassPage() {
               </TabsList>
 
               <TabsContent value="assignments" className="mt-4 space-y-3">
-                {overview.data.assignments.length === 0 ? (
-                  <div className="paper p-8 text-center text-muted-foreground">
-                    No assignments yet. Add past-paper questions with their mark schemes.
-                  </div>
-                ) : (
-                  overview.data.assignments.map((assignment) => (
-                    <div key={assignment.id} className="paper flex flex-wrap items-center justify-between gap-4 p-5">
-                      <div>
-                        <h2 className="text-xl">{assignment.title}</h2>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {assignment.questionCount} questions · {assignment.totalMarks} marks
-                          {assignment.dueAt ? ` · due ${formatDueDate(assignment.dueAt)}` : ""}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">
-                          {assignment.submittedCount} submitted
-                        </Badge>
-                        <Button variant="outline" size="sm" asChild>
-                          <Link
-                            to="/assignments/$assignmentId/preview"
-                            params={{ assignmentId: assignment.id }}
-                          >
-                            <Eye className="size-4" />
-                            Student view
-                          </Link>
-                        </Button>
-
-                        <QuestionEditorDialog
-                          classId={classId}
-                          assignmentId={assignment.id}
-                          trigger={
-                            <Button variant="outline" size="sm">
-                              <Pencil className="size-4" />
-                              Question editor
-                            </Button>
-                          }
-                        />
-
-                        <AccessControlsDialog
-                          classId={classId}
-                          assignmentId={assignment.id}
-                          trigger={
-                            <Button variant="outline" size="sm">
-                              <CalendarClock className="size-4" />
-                              Due Date &amp; Answer Release
-                            </Button>
-                          }
-                        />
-                        <DeleteAssignmentButton
-                          classId={classId}
-                          assignmentId={assignment.id}
-                          title={assignment.title}
-                        />
-                      </div>
-                    </div>
-                  ))
-                )}
+                <AssignmentList
+                  classId={classId}
+                  assignments={overview.data.assignments}
+                  studentCount={overview.data.students.length}
+                />
               </TabsContent>
 
               <TabsContent value="gradebook" className="mt-4">
@@ -323,6 +282,161 @@ function ClassPage() {
     </div>
   );
 }
+
+type TeacherAssignment = {
+  id: string;
+  title: string;
+  questionCount: number;
+  totalMarks: number;
+  dueAt: string | null;
+  submittedCount: number;
+  pastDue: boolean;
+  behindCount: number;
+};
+
+function AssignmentList({
+  classId,
+  assignments,
+  studentCount,
+}: {
+  classId: string;
+  assignments: TeacherAssignment[];
+  studentCount: number;
+}) {
+  const [filter, setFilter] = useState<"all" | AssignmentStatusKey>("all");
+  const [sort, setSort] = useState<"due" | "title">("due");
+
+  const tagged = assignments.map((a) => {
+    const behindAll = studentCount > 0 && a.behindCount >= studentCount;
+    const key: AssignmentStatusKey = !a.pastDue ? "active" : behindAll ? "past_due" : "closed";
+    return { ...a, statusKey: key };
+  });
+
+  const counts = {
+    all: tagged.length,
+    active: tagged.filter((a) => a.statusKey === "active").length,
+    closed: tagged.filter((a) => a.statusKey === "closed").length,
+    past_due: tagged.filter((a) => a.statusKey === "past_due").length,
+  };
+
+  const visible = tagged
+    .filter((a) => (filter === "all" ? true : a.statusKey === filter))
+    .sort((a, b) => {
+      if (sort === "title") return a.title.localeCompare(b.title);
+      const at = a.dueAt ? new Date(a.dueAt).getTime() : Number.POSITIVE_INFINITY;
+      const bt = b.dueAt ? new Date(b.dueAt).getTime() : Number.POSITIVE_INFINITY;
+      return at - bt;
+    });
+
+  if (assignments.length === 0) {
+    return (
+      <div className="paper p-8 text-center text-muted-foreground">
+        No assignments yet. Add past-paper questions with their mark schemes.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          {(["all", "active", "closed", "past_due"] as const).map((key) => (
+            <Button
+              key={key}
+              size="sm"
+              variant={filter === key ? "default" : "outline"}
+              onClick={() => setFilter(key)}
+            >
+              {key === "all" ? "All" : statusLabels[key]} ({counts[key]})
+            </Button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Sort by</span>
+          <Select value={sort} onValueChange={(v) => setSort(v as "due" | "title")}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="due">Due date</SelectItem>
+              <SelectItem value="title">Title</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {visible.length === 0 ? (
+        <div className="paper p-8 text-center text-muted-foreground">
+          No {statusLabels[filter as AssignmentStatusKey].toLowerCase()} assignments.
+        </div>
+      ) : (
+        visible.map((assignment) => (
+          <div
+            key={assignment.id}
+            className="paper flex flex-wrap items-center justify-between gap-4 p-5"
+          >
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl">{assignment.title}</h2>
+                <Badge variant={statusBadgeVariant[assignment.statusKey]}>
+                  {statusLabels[assignment.statusKey]}
+                </Badge>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {assignment.questionCount} questions · {assignment.totalMarks} marks
+                {assignment.dueAt ? ` · due ${formatDueDate(assignment.dueAt)}` : ""}
+                {assignment.pastDue && assignment.behindCount > 0
+                  ? ` · ${assignment.behindCount} student${assignment.behindCount === 1 ? "" : "s"} under 50%`
+                  : ""}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">{assignment.submittedCount} submitted</Badge>
+              <Button variant="outline" size="sm" asChild>
+                <Link
+                  to="/assignments/$assignmentId/preview"
+                  params={{ assignmentId: assignment.id }}
+                >
+                  <Eye className="size-4" />
+                  Student view
+                </Link>
+              </Button>
+
+              <QuestionEditorDialog
+                classId={classId}
+                assignmentId={assignment.id}
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <Pencil className="size-4" />
+                    Question editor
+                  </Button>
+                }
+              />
+
+              <AccessControlsDialog
+                classId={classId}
+                assignmentId={assignment.id}
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <CalendarClock className="size-4" />
+                    Due Date &amp; Answer Release
+                  </Button>
+                }
+              />
+              <DeleteAssignmentButton
+                classId={classId}
+                assignmentId={assignment.id}
+                title={assignment.title}
+              />
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+
 
 function AssignmentDialog({
   classId,

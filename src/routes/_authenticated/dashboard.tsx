@@ -6,6 +6,12 @@ import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
 import { formatDueDate } from "@/lib/datetime";
+import {
+  assignmentStatus,
+  statusBadgeVariant,
+  statusLabels,
+  type AssignmentStatusKey,
+} from "@/lib/assignment-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -293,6 +299,7 @@ function StudentHome() {
   const work = useQuery({ queryKey: ["student-work"], queryFn: useServerFn(listStudentWork) });
   const join = useServerFn(joinClass);
   const [code, setCode] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | AssignmentStatusKey>("all");
 
   const mutation = useMutation({
     mutationFn: () => join({ data: { code } }),
@@ -338,8 +345,32 @@ function StudentHome() {
         </div>
       ) : (
         <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {(["all", "active", "closed", "past_due"] as const).map((key) => {
+              const count = (work.data?.assignments ?? []).filter((a) =>
+                key === "all" ? true : assignmentStatus(a) === key,
+              ).length;
+              return (
+                <Button
+                  key={key}
+                  size="sm"
+                  variant={statusFilter === key ? "default" : "outline"}
+                  onClick={() => setStatusFilter(key)}
+                >
+                  {key === "all" ? "All" : statusLabels[key]} ({count})
+                </Button>
+              );
+            })}
+          </div>
           {(work.data?.classes ?? []).map((klass) => {
-            const items = (work.data?.assignments ?? []).filter((a) => a.classId === klass.id);
+            const items = (work.data?.assignments ?? [])
+              .filter((a) => a.classId === klass.id)
+              .filter((a) => (statusFilter === "all" ? true : assignmentStatus(a) === statusFilter))
+              .sort((a, b) => {
+                const at = a.dueAt ? new Date(a.dueAt).getTime() : Number.POSITIVE_INFINITY;
+                const bt = b.dueAt ? new Date(b.dueAt).getTime() : Number.POSITIVE_INFINITY;
+                return at - bt;
+              });
             return (
               <section key={klass.id} className="paper p-5">
                 <div className="flex flex-wrap items-baseline justify-between gap-2 border-b pb-3">
@@ -364,7 +395,12 @@ function StudentHome() {
                         className="flex flex-wrap items-center justify-between gap-4 py-4 transition-colors hover:text-primary"
                       >
                         <div>
-                          <h3 className="text-lg">{assignment.title}</h3>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-lg">{assignment.title}</h3>
+                            <Badge variant={statusBadgeVariant[assignmentStatus(assignment)]}>
+                              {statusLabels[assignmentStatus(assignment)]}
+                            </Badge>
+                          </div>
                           <p className="mt-1 text-sm text-muted-foreground">
                             {assignment.questionCount} questions · {assignment.totalMarks} marks
                             {assignment.dueAt ? ` · due ${formatDueDate(assignment.dueAt)}` : ""}

@@ -10,7 +10,7 @@
  */
 
 @theme inline {
-  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-display: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
 
   --radius-sm: calc(var(--radius) - 4px);
@@ -152,12 +152,8 @@
   h3,
   .font-display {
     font-family: var(--font-display);
-    font-weight: 600;
-    letter-spacing: -0.015em;
-    /* Fraunces ships quirky "wonk" letterforms (notably f, g, y) and
-       decorative ligatures; turn them off for clean, readable headings. */
-    font-variation-settings: "SOFT" 0, "WONK" 0;
-    font-feature-settings: "liga" 0, "dlig" 0, "clig" 0;
+    font-weight: 700;
+    letter-spacing: 0;
   }
 }
 

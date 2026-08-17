@@ -1355,7 +1355,7 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: assignmentRow } = await db
       .from("assignments")
-      .select("id, title, subject, curriculum, instructions, due_at, class_id")
+      .select("id, title, subject, curriculum, instructions, due_at, class_id, mark_scheme_revealed")
       .eq("id", data.assignmentId)
       .single();
     const assignment = assignmentRow!;
@@ -1366,9 +1366,13 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
       .maybeSingle();
     const { data: questions } = await db
       .from("questions")
-      .select("id, position, question_text, marks, image_paths")
+      .select("id, position, question_text, marks, image_paths, mark_scheme")
       .eq("assignment_id", data.assignmentId)
       .order("position");
+
+    const pastDue = Boolean(
+      assignment.due_at && new Date(assignment.due_at).getTime() < Date.now(),
+    );
 
     return {
       assignment: {
@@ -1379,16 +1383,24 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
         curriculum: assignment.curriculum,
         instructions: assignment.instructions,
         dueAt: assignment.due_at,
+        pastDue,
+        markSchemeRevealed: Boolean(assignment.mark_scheme_revealed),
         className: klass?.name ?? "",
       },
       questions: await Promise.all(
         (questions ?? []).map(async (q) => ({
-          ...q,
+          id: q.id,
+          position: q.position,
+          question_text: q.question_text,
+          marks: q.marks,
+          image_paths: q.image_paths,
+          markScheme: assignment.mark_scheme_revealed ? q.mark_scheme : null,
           imageUrls: await signPaperPages(db, q.image_paths ?? []),
         })),
       ),
     };
   });
+
 
 /** Teacher-only trial marking: runs the real AI marker but saves nothing. */
 export const previewGradeAnswer = createServerFn({ method: "POST" })

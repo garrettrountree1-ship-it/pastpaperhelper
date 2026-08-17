@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
-import { isCalculationQuestion, needsPhotoAnswer } from "@/lib/needs-photo";
+import { isPhotoOnlyQuestion, needsPhotoAnswer } from "@/lib/needs-photo";
 import {
   getAssignmentPreview,
   previewGradeAnswer,
@@ -91,11 +91,13 @@ function groupByPage(questions: Question[]) {
 
 function PreviewPage() {
   const { assignmentId } = Route.useParams();
+  const [flags, setFlags] = useState(0);
   const preview = useQuery({
     queryKey: ["assignment-preview", assignmentId],
     queryFn: () => getAssignmentPreview({ data: { assignmentId } }),
     retry: 2,
   });
+
 
   const data = preview.data;
   const totalMarks = data?.questions.reduce((sum, q) => sum + q.marks, 0) ?? 0;
@@ -144,7 +146,16 @@ function PreviewPage() {
                 <Badge variant="secondary">{data.questions.length} questions</Badge>
                 <Badge>{totalMarks} marks</Badge>
               </div>
+              {flags > 0 ? (
+                <p className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                  {flags >= 4
+                    ? "Locked: a fourth AI-generated or copied answer was detected. A student would now need their teacher to unlock this homework."
+                    : `Warning ${flags} of 3: AI-generated or copied answers detected in this preview session. A fourth locks the homework.`}
+                </p>
+              ) : null}
             </div>
+
+
 
             <div className="mt-8 space-y-6">
               {groupByPage(data.questions).map((group) => (
@@ -173,8 +184,11 @@ function PreviewPage() {
                       key={question.id}
                       assignmentId={assignmentId}
                       question={question}
+                      flags={flags}
+                      onFlag={() => setFlags((count) => count + 1)}
                     />
                   ))}
+
                 </div>
               ))}
             </div>
@@ -193,13 +207,17 @@ You can test any question here — the AI marks it exactly as it would for a stu
 function PreviewQuestion({
   assignmentId,
   question,
+  flags,
+  onFlag,
 }: {
   assignmentId: string;
   question: Question;
+  flags: number;
+  onFlag: () => void;
 }) {
   const [answer, setAnswer] = useState("");
   const requiresPhoto = needsPhotoAnswer(question.question_text);
-  const photoOnly = isCalculationQuestion(question.question_text);
+  const photoOnly = isPhotoOnlyQuestion(question.question_text);
   const [showPhoto, setShowPhoto] = useState(requiresPhoto);
   const [photos, setPhotos] = useState<string[]>([]);
   const [reply, setReply] = useState("");
@@ -215,8 +233,12 @@ function PreviewQuestion({
           questionId: question.id,
           answerText: answer,
           imageDataUrls: photos,
+          priorFlags: flags,
         },
       });
+    },
+    onError: (error: Error) => {
+      if (/AI-generated or copied|locked/i.test(error.message)) onFlag();
     },
     onSuccess: (result) => {
       setAttempts((count) => count + 1);
@@ -224,6 +246,7 @@ function PreviewQuestion({
       setThread(opener ? [{ role: "tutor", content: opener }] : []);
     },
   });
+
   const result = check.data;
 
   const tutor = useMutation({

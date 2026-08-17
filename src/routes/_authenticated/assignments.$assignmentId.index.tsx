@@ -3,7 +3,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { isCalculationQuestion, needsPhotoAnswer } from "@/lib/needs-photo";
+import { isPhotoOnlyQuestion, needsPhotoAnswer } from "@/lib/needs-photo";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 
 
@@ -132,7 +132,7 @@ function AssignmentPage() {
                   <p className="font-medium">This homework is locked and marked as a fail.</p>
                   <p className="mt-1 text-muted-foreground">
                     {data.submission.locked_reason ??
-                      "AI-generated or copied answers were detected three times."}{" "}
+                      "A fourth AI-generated or copied answer was detected."}{" "}
                     Speak to your teacher — only they can unlock it and give you another chance.
                   </p>
                 </div>
@@ -143,8 +143,8 @@ function AssignmentPage() {
                     were rejected.
                   </p>
                   <p className="mt-1 text-muted-foreground">
-                    Answers must be your own words. After 3 warnings this homework locks and is
-                    marked as a fail until your teacher unlocks it.
+                    Answers must be your own words. A fourth AI answer locks this homework and
+                    marks it as a fail until your teacher unlocks it.
                   </p>
                 </div>
               ) : null}
@@ -287,7 +287,7 @@ function QuestionCard({
   const [reply, setReply] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
   const requiresPhoto = needsPhotoAnswer(question.question_text);
-  const photoOnly = isCalculationQuestion(question.question_text);
+  const photoOnly = isPhotoOnlyQuestion(question.question_text);
   const [showPhoto, setShowPhoto] = useState(requiresPhoto);
   const secondsRef = useRef(0);
 

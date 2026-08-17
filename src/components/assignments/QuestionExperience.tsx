@@ -128,10 +128,12 @@ export function QuestionExperience({
       <div className="mt-4 space-y-3">
         {photoOnly ? (
           <p className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
-            This is a calculation question — do the full working on paper and upload a clear photo.
-            Your working is marked step by step, so you can still earn partial marks.
+            This question must be done on paper — draw or work it out by hand and upload a clear
+            photo. Your drawing and working are marked step by step, so you can still earn partial
+            marks.
           </p>
         ) : (
+
           <Textarea
             value={draft}
             onChange={(event) => {
@@ -209,10 +211,11 @@ export function QuestionExperience({
             {requiresPhoto ? (
               <p className="mt-2 text-xs text-muted-foreground">
                 {photoOnly
-                  ? "Photograph every line of your working — marks are given for the method as well as the final answer."
+                  ? "Photograph your full drawing or working — marks are given for the method as well as the final answer."
                   : "This question asks you to draw, circle or plot — upload a photo of your work so it can be marked."}
               </p>
             ) : null}
+
 
           </div>
         ) : (

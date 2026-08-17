@@ -105,8 +105,8 @@ const steps = [
   },
   {
     step: "2",
-    title: "Upload the paper",
-    body: "Add the past paper and mark scheme, check the questions, then publish the homework.",
+    title: "Upload a paper or write questions",
+    body: "Add the past paper and mark scheme, or write your own questions and mark schemes, then publish.",
   },
   {
     step: "3",

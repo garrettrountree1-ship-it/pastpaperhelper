@@ -1204,7 +1204,8 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       .single();
     const assignment = assignmentRow!;
 
-    // Same integrity check students face, but no strikes are recorded here.
+    // Same integrity check students face; strikes are counted in the preview
+    // session only (nothing is written to the real submission).
     const { detectAiAnswer } = await import("./ai-detect.server");
     const previewDetection = await detectAiAnswer({
       question: question.question_text,
@@ -1212,10 +1213,13 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       marks: question.marks,
     });
     if (previewDetection.isAi) {
+      const strikes = (data.priorFlags ?? 0) + 1;
+      if (strikes >= 4) throw new Error(LOCKED_MESSAGE);
       throw new Error(
-        "This answer looks AI-generated or copied, so it was not accepted. Write it in your own words. Warning 1 of 3 — after 3 warnings a student's homework is locked and marked as a fail until a teacher unlocks it.",
+        `This answer looks AI-generated or copied, so it was not accepted. Write it in your own words. Warning ${strikes} of 3 — a fourth AI answer locks the homework and marks it as a fail until a teacher unlocks it.`,
       );
     }
+
 
 
     const { markStudentAnswer } = await import("./marking.server");

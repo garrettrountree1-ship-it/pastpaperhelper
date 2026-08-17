@@ -197,6 +197,12 @@ function AuthPage() {
                     </label>
                   </RadioGroup>
                 </div>
+                <p className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+                  <strong className="text-foreground">Email verification is required.</strong> Both
+                  students and teachers get a confirmation link by email after creating an account —
+                  click it, then come back and sign in. Use at least 6 characters and avoid common
+                  passwords.
+                </p>
                 <Button type="submit" className="w-full" disabled={busy}>
                   Create account
                 </Button>

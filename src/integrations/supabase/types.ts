@@ -130,6 +130,41 @@ export type Database = {
           },
         ]
       }
+      class_announcements: {
+        Row: {
+          author_id: string
+          body: string
+          class_id: string
+          created_at: string
+          id: string
+          title: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          class_id: string
+          created_at?: string
+          id?: string
+          title?: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          class_id?: string
+          created_at?: string
+          id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_announcements_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_members: {
         Row: {
           class_id: string
@@ -155,6 +190,67 @@ export type Database = {
             columns: ["class_id"]
             isOneToOne: false
             referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      class_messages: {
+        Row: {
+          assignment_id: string | null
+          body: string
+          class_id: string
+          created_at: string
+          id: string
+          question_id: string | null
+          sender_id: string
+          sender_role: string
+          student_id: string
+          topic: string
+        }
+        Insert: {
+          assignment_id?: string | null
+          body: string
+          class_id: string
+          created_at?: string
+          id?: string
+          question_id?: string | null
+          sender_id: string
+          sender_role?: string
+          student_id: string
+          topic?: string
+        }
+        Update: {
+          assignment_id?: string | null
+          body?: string
+          class_id?: string
+          created_at?: string
+          id?: string
+          question_id?: string | null
+          sender_id?: string
+          sender_role?: string
+          student_id?: string
+          topic?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_messages_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_messages_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_messages_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
             referencedColumns: ["id"]
           },
         ]

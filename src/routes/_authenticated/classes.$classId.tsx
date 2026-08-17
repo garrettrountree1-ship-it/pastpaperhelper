@@ -10,6 +10,7 @@ import {
   Plus,
   RefreshCw,
   ListChecks,
+  CalendarClock,
   Settings,
   Trash2,
   Unlock,
@@ -19,6 +20,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
+import { AccessControlsDialog } from "@/components/assignments/AccessControlsDialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -43,6 +45,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { formatDueDate, fromLocalInput, toLocalInput } from "@/lib/datetime";
 import {
   createAssignment,
   creditQuestionForAll,
@@ -176,9 +179,7 @@ function ClassPage() {
                         <h2 className="text-xl">{assignment.title}</h2>
                         <p className="mt-1 text-sm text-muted-foreground">
                           {assignment.questionCount} questions · {assignment.totalMarks} marks
-                          {assignment.dueAt
-                            ? ` · due ${new Date(assignment.dueAt).toLocaleDateString()}`
-                            : ""}
+                          {assignment.dueAt ? ` · due ${formatDueDate(assignment.dueAt)}` : ""}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -202,6 +203,17 @@ function ClassPage() {
                             <Button variant="outline" size="sm">
                               <ListChecks className="size-4" />
                               Questions
+                            </Button>
+                          }
+                        />
+
+                        <AccessControlsDialog
+                          classId={classId}
+                          assignmentId={assignment.id}
+                          trigger={
+                            <Button variant="outline" size="sm">
+                              <CalendarClock className="size-4" />
+                              Due &amp; answers
                             </Button>
                           }
                         />
@@ -254,6 +266,20 @@ function ClassPage() {
                                       title="Manage questions"
                                     >
                                       <ListChecks className="size-4" />
+                                    </Button>
+                                  }
+                                />
+                                <AccessControlsDialog
+                                  classId={classId}
+                                  assignmentId={assignment.id}
+                                  trigger={
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="size-7"
+                                      title="Due date & mark scheme"
+                                    >
+                                      <CalendarClock className="size-4" />
                                     </Button>
                                   }
                                 />

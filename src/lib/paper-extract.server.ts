@@ -306,14 +306,35 @@ async function runDetail(
             .filter((n) => Number.isFinite(n) && n > 0)
         : [];
       return {
-        questionText: normaliseSymbols(questionText),
+        questionText: scrubIdentifiers(normaliseSymbols(questionText)),
         markScheme: normaliseSymbols(String(item["markScheme"] ?? "").trim()),
         marks: Math.max(1, Math.round(Number(item["marks"]) || match?.marks || 1)),
         pages: match?.pages?.length ? match.pages : [...new Set(pagesFromModel)].slice(0, 3),
       };
+
     })
     .filter((item) => item.questionText.length > 0);
 }
+
+/**
+ * Removes anything a student could search on (year, exam board, session and
+ * paper codes, copyright and website lines) from extracted question text.
+ */
+export function scrubIdentifiers(input: string): string {
+  return input
+    .replace(/©[^\n]*/g, "")
+    .replace(/\b(UCLES|Cambridge Assessment|Cambridge International|CAIE|Edexcel|Pearson|AQA|OCR|WJEC|International Baccalaureate|IBO)\b[^\n]*/gi, "")
+    .replace(/\b(?:May|June|October|November|January|February|March)\s*\/?\s*(?:19|20)\d{2}\b/gi, "")
+    .replace(/\b\d{4}\/\d{2}\/[A-Z]\/[A-Z]\/[A-Z]{2}\b/g, "")
+    .replace(/\b\d{4}\/\d{2}\b/g, "")
+    .replace(/\b(?:19|20)\d{2}\b(?!\s*(?:cm|mm|m|km|g|kg|s|ml|cm3|J|N|K|°))/g, "")
+    .replace(/\b(?:https?:\/\/|www\.)\S+/gi, "")
+    .replace(/\b(?:Turn over|BLANK PAGE|For Examiner'?s Use|Candidate (?:Name|Number)|Centre Number|Syllabus (?:code|number)|Paper \d+)\b[^\n]*/gi, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 
 function dedupe(items: ExtractedQuestion[]): ExtractedQuestion[] {
   const seen = new Set<string>();

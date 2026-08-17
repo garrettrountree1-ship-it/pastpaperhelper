@@ -97,14 +97,15 @@ export async function detectAiAnswer(input: {
   }
 
   const system = [
-    "You detect whether a school student's exam answer was written by the student or copied from an AI chatbot (ChatGPT, Gemini, DeepSeek) or a web page.",
-    "A copied answer can be ONE short sentence. Do not treat brevity as proof that it is original. Judge whether the exact wording resembles a Google AI Overview, featured snippet, revision website, textbook answer, model answer, or chatbot response.",
-    "Signals of copied AI/web text: polished textbook or teacher prose; complete instructional sentences; a compact sequence such as 'Use X. Add Y and observe Z'; wording that sounds ready to publish; essay-length answers beyond the marks available; markdown; hedging; generic framing; connective scaffolding; perfect punctuation; or restating the question.",
+    "You are a plagiarism and AI-detection examiner. Decide whether a school student's exam answer is original student writing, or non-original text copied from any source: an AI chatbot (ChatGPT, Gemini, DeepSeek, Copilot), a Google AI Overview or featured snippet, a revision or homework-help website (Save My Exams, BYJU'S, Quizlet, Course Hero, Chegg, Brainly, Physics & Maths Tutor), a textbook, a published mark scheme or model answer, a teacher's notes, or another student.",
+    "A copied answer can be ONE short sentence. Do not treat brevity as proof that it is original. Judge whether the exact wording reads as published prose rather than a student's own words.",
+    "Signals of non-original text: polished textbook or teacher prose; complete instructional sentences; a compact sequence such as 'Use X. Add Y and observe Z'; definition-style phrasing ('X is the process by which…'); wording that sounds ready to publish; essay-length answers beyond the marks available; markdown; hedging; generic framing; connective scaffolding; perfect punctuation and grammar throughout; or restating the question.",
     "Signals of genuine student work: exam shorthand, terse mark-scheme style points, small slips, abbreviations, units written inline, working shown, informal wording.",
-    "This school uses a deliberately strict policy because suspected copied work must be rewritten. Flag likely copied wording decisively even when it is only 5-25 words and has no explicit chatbot phrase. A polished full-sentence answer should not pass merely because it is concise.",
+    "This school uses a deliberately strict policy because suspected copied work must be rewritten. Flag likely non-original wording decisively even when it is only 5-25 words and has no explicit chatbot phrase. A polished full-sentence answer should not pass merely because it is concise.",
     "Pass genuinely terse exam shorthand, rough student phrasing, letters, numbers, formulae, chemical equations, brief labels, and handwriting-transcribed maths working. Never flag an answer merely for being correct; flag its source-like wording and presentation.",
-    'Reply with ONLY raw JSON: {"isAi":boolean,"confidence":0-1,"reason":"one short sentence for the teacher"}',
+    'Reply with ONLY raw JSON: {"isAi":boolean,"confidence":0-1,"reason":"one short sentence for the teacher naming the likely source type"}',
   ].join(" ");
+
 
   const prompt = [
     `Marks available: ${input.marks}`,

@@ -79,8 +79,17 @@ function AuthPage() {
       return;
     }
     if (!data.session) {
+      const alreadyRegistered = data.user?.identities?.length === 0;
       setPendingEmail(email);
-      toast.success("Confirmation email sent — click the link, then sign in.");
+      if (alreadyRegistered) {
+        toast.info(
+          "This email already has an account. No new email was sent — sign in below, or use “Forgot password”.",
+        );
+      } else {
+        toast.success(
+          "Confirmation email sent — check your inbox and spam/junk folder, then sign in.",
+        );
+      }
       setTab("signin");
       return;
     }

@@ -56,9 +56,17 @@ function AuthPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) {
+      if (/not confirmed/i.test(error.message)) {
+        setPendingEmail(email);
+        toast.error(
+          "This email is not verified yet. Click the link in the confirmation email first — or resend it below.",
+        );
+        return;
+      }
       toast.error(error.message);
       return;
     }
+
     navigate({ to: "/dashboard", replace: true });
   }
 
@@ -96,6 +104,43 @@ function AuthPage() {
     navigate({ to: "/dashboard", replace: true });
   }
 
+  async function handleForgotPassword() {
+    if (!email) {
+      toast.error("Enter your email first, then tap “Send reset link”.");
+      return;
+    }
+    setBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Password reset link sent — check your inbox and spam folder.");
+  }
+
+  async function handleResendConfirmation() {
+    const target = pendingEmail ?? email;
+    if (!target) {
+      toast.error("Enter your email first.");
+      return;
+    }
+    setBusy(true);
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: target,
+      options: { emailRedirectTo: window.location.origin },
+    });
+    setBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Verification email sent again — check your inbox and spam folder.");
+  }
+
   async function handleGoogle() {
     setBusy(true);
     const result = await lovable.auth.signInWithOAuth("google", {
@@ -109,6 +154,7 @@ function AuthPage() {
     if (result.redirected) return;
     navigate({ to: "/dashboard", replace: true });
   }
+
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -127,13 +173,22 @@ function AuthPage() {
 
           {pendingEmail ? (
             <div className="mt-4 rounded-lg border border-primary/40 bg-primary/5 p-3 text-sm">
-              <p className="font-medium">Verify your email to finish</p>
+              <p className="font-medium">Not verified yet — check your email</p>
               <p className="mt-1 text-muted-foreground">
-                We sent a confirmation link to {pendingEmail}. Click it, then sign in below. Check
-                the spam folder if it does not arrive.
+                A confirmation link was sent to {pendingEmail}. Your account stays unverified until
+                you click that link. Check the spam/junk folder, then sign in below.
               </p>
+              <button
+                type="button"
+                onClick={handleResendConfirmation}
+                disabled={busy}
+                className="mt-2 text-xs font-medium text-primary underline-offset-2 hover:underline"
+              >
+                Resend verification email
+              </button>
             </div>
           ) : null}
+
 
           <Tabs value={tab} onValueChange={(value) => setTab(value as "signin" | "signup")}>
             <TabsList className="mt-6 grid w-full grid-cols-2">
@@ -154,7 +209,17 @@ function AuthPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signin-password">Password</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="signin-password">Password</Label>
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      disabled={busy}
+                      className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
                   <Input
                     id="signin-password"
                     type="password"
@@ -166,6 +231,15 @@ function AuthPage() {
                 <Button type="submit" className="w-full" disabled={busy}>
                   Sign in
                 </Button>
+                <button
+                  type="button"
+                  onClick={handleResendConfirmation}
+                  disabled={busy}
+                  className="w-full text-xs text-muted-foreground underline-offset-2 hover:underline"
+                >
+                  Didn’t get the verification email? Send it again
+                </button>
+
               </form>
             </TabsContent>
 

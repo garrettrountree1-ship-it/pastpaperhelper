@@ -55,6 +55,7 @@ export function QuestionExperience({
   draft,
   onDraftChange,
   requiresPhoto,
+  photoOnly = false,
   showPhoto,
   onShowPhoto,
   photoCount,
@@ -78,6 +79,8 @@ export function QuestionExperience({
   draft: string;
   onDraftChange: (value: string) => void;
   requiresPhoto: boolean;
+  /** Calculation question — worked on paper, marked from the photo only. */
+  photoOnly?: boolean;
   showPhoto: boolean;
   onShowPhoto: () => void;
   photoCount: number;
@@ -100,7 +103,7 @@ export function QuestionExperience({
   const verdict = result?.verdict ?? null;
   const answerGuard = useOriginalTypingGuard();
   const tutorGuard = useOriginalTypingGuard();
-  const bulletTarget = bulletTargetFor(question.marks, requiresPhoto);
+  const bulletTarget = photoOnly ? 0 : bulletTargetFor(question.marks, requiresPhoto);
   const hasWrittenAnswer = stripBullets(draft).trim().length > 0;
 
   // Seed the marks checklist so the student sees how many points are expected.
@@ -123,31 +126,39 @@ export function QuestionExperience({
       <p className="mt-3 whitespace-pre-wrap">{questionBody(question.question_text)}</p>
 
       <div className="mt-4 space-y-3">
-        <Textarea
-          value={draft}
-          onChange={(event) => {
-            if (answerGuard.flagged) answerGuard.clearFlag();
-            onDraftChange(
-              bulletTarget > 0
-                ? normaliseBullets(event.target.value, bulletTarget)
-                : event.target.value,
-            );
-          }}
-          {...answerGuard.guardProps}
-          disabled={locked}
-          placeholder={
-            requiresPhoto
-              ? "Describe what you drew (and upload a photo of it below)"
-              : "Write your answer in English"
-          }
-          rows={Math.max(4, bulletTarget + 1)}
-        />
+        {photoOnly ? (
+          <p className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
+            This is a calculation question — do the full working on paper and upload a clear photo.
+            Your working is marked step by step, so you can still earn partial marks.
+          </p>
+        ) : (
+          <Textarea
+            value={draft}
+            onChange={(event) => {
+              if (answerGuard.flagged) answerGuard.clearFlag();
+              onDraftChange(
+                bulletTarget > 0
+                  ? normaliseBullets(event.target.value, bulletTarget)
+                  : event.target.value,
+              );
+            }}
+            {...answerGuard.guardProps}
+            disabled={locked}
+            placeholder={
+              requiresPhoto
+                ? "Describe what you drew (and upload a photo of it below)"
+                : "Write your answer in English"
+            }
+            rows={Math.max(4, bulletTarget + 1)}
+          />
+        )}
         {bulletTarget > 0 ? (
           <p className="text-xs text-muted-foreground">
             {bulletTarget} marks means {bulletTarget} separate points — write one point on each
             bullet. The bullets stay put; add extra lines if you need them.
           </p>
         ) : null}
+
         {answerGuard.flagged ? (
           <p className="text-sm text-destructive">{NO_PASTE_MESSAGE}</p>
         ) : null}
@@ -156,7 +167,7 @@ export function QuestionExperience({
           <p className="text-sm text-destructive">{ENGLISH_ONLY_MESSAGE}</p>
         ) : null}
 
-        {showPhoto ? (
+        {showPhoto || photoOnly ? (
           <div className="rounded-lg border border-dashed border-border p-3">
             <Label
               htmlFor={`photo-${question.id}`}
@@ -197,10 +208,12 @@ export function QuestionExperience({
             ) : null}
             {requiresPhoto ? (
               <p className="mt-2 text-xs text-muted-foreground">
-                This question asks you to draw, circle or plot — upload a photo of your work so it
-                can be marked.
+                {photoOnly
+                  ? "Photograph every line of your working — marks are given for the method as well as the final answer."
+                  : "This question asks you to draw, circle or plot — upload a photo of your work so it can be marked."}
               </p>
             ) : null}
+
           </div>
         ) : (
           <Button
@@ -221,11 +234,24 @@ export function QuestionExperience({
           <Button
             onClick={onCheck}
             disabled={
-              locked || (!hasWrittenAnswer && photoCount === 0) || checking || !isEnglishOnly(draft)
+              locked ||
+              checking ||
+              (photoOnly
+                ? photoCount === 0
+                : (!hasWrittenAnswer && photoCount === 0) || !isEnglishOnly(draft))
             }
           >
-            {locked ? "Locked" : checking ? "Marking..." : result ? "Re-check answer" : "Check answer"}
+            {locked
+              ? "Locked"
+              : checking
+                ? "Marking..."
+                : result
+                  ? "Re-check answer"
+                  : photoOnly
+                    ? "Mark my working"
+                    : "Check answer"}
           </Button>
+
         </div>
         {checkError ? <p className="text-sm text-destructive">{checkError}</p> : null}
       </div>

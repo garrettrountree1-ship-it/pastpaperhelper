@@ -216,8 +216,13 @@ export function QuestionExperience({
               </p>
             ) : null}
 
-
+            {onAddDrawing ? (
+              <div className="mt-3">
+                <DrawingPad disabled={locked} onAttach={onAddDrawing} />
+              </div>
+            ) : null}
           </div>
+
         ) : (
 
           <Button

@@ -9,6 +9,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  ListChecks,
   Settings,
   Trash2,
   Unlock,
@@ -44,7 +45,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   createAssignment,
+  creditQuestionForAll,
   deleteAssignment,
+  deleteQuestion,
+  getAssignmentQuestionControls,
+  setQuestionExclusion,
   extractPaperQuestions,
   getAssignmentForEdit,
   getClassOverview,
@@ -54,7 +59,7 @@ import {
   updateClass,
 } from "@/lib/app.functions";
 import { filesToPages } from "@/lib/pdf-pages";
-import { questionLabel } from "@/lib/question-label";
+import { questionBody, questionLabel } from "@/lib/question-label";
 
 export const Route = createFileRoute("/_authenticated/classes/$classId")({
   head: () => ({
@@ -190,6 +195,17 @@ function ClassPage() {
                           </Link>
                         </Button>
 
+                        <QuestionControlsDialog
+                          classId={classId}
+                          assignmentId={assignment.id}
+                          trigger={
+                            <Button variant="outline" size="sm">
+                              <ListChecks className="size-4" />
+                              Questions
+                            </Button>
+                          }
+                        />
+
                         <AssignmentDialog
                           classId={classId}
                           assignmentId={assignment.id}
@@ -224,7 +240,25 @@ function ClassPage() {
                           <TableHead className="w-10" />
                           <TableHead>Student</TableHead>
                           {overview.data.assignments.map((assignment) => (
-                            <TableHead key={assignment.id}>{assignment.title}</TableHead>
+                            <TableHead key={assignment.id}>
+                              <div className="flex items-center gap-1">
+                                <span>{assignment.title}</span>
+                                <QuestionControlsDialog
+                                  classId={classId}
+                                  assignmentId={assignment.id}
+                                  trigger={
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="size-7"
+                                      title="Manage questions"
+                                    >
+                                      <ListChecks className="size-4" />
+                                    </Button>
+                                  }
+                                />
+                              </div>
+                            </TableHead>
                           ))}
                           <TableHead>Average</TableHead>
                         </TableRow>
@@ -636,6 +670,204 @@ function AssignmentDialog({
             {mutation.isPending ? "Saving..." : editing ? "Save changes" : "Set homework"}
           </Button>
         </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function QuestionControlsDialog({
+  classId,
+  assignmentId,
+  trigger,
+}: {
+  classId: string;
+  assignmentId: string;
+  trigger: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const load = useServerFn(getAssignmentQuestionControls);
+  const credit = useServerFn(creditQuestionForAll);
+  const remove = useServerFn(deleteQuestion);
+  const exclude = useServerFn(setQuestionExclusion);
+
+  const controls = useQuery({
+    queryKey: ["question-controls", assignmentId],
+    queryFn: () => load({ data: { assignmentId } }),
+    enabled: open,
+  });
+
+  function refresh() {
+    queryClient.invalidateQueries({ queryKey: ["question-controls", assignmentId] });
+    queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });
+  }
+
+  const creditAll = useMutation({
+    mutationFn: (questionId: string) => credit({ data: { questionId } }),
+    onSuccess: (result) => {
+      toast.success(`Full credit given to ${result.credited} student(s)`);
+      refresh();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const deleteOne = useMutation({
+    mutationFn: (questionId: string) => remove({ data: { questionId } }),
+    onSuccess: () => {
+      toast.success("Question deleted");
+      refresh();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const toggleExclusion = useMutation({
+    mutationFn: (vars: { questionId: string; studentId: string; excluded: boolean }) =>
+      exclude({ data: vars }),
+    onSuccess: () => refresh(),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const isExcluded = (questionId: string, studentId: string) =>
+    (controls.data?.exclusions ?? []).some(
+      (e) => e.questionId === questionId && e.studentId === studentId,
+    );
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Question controls</DialogTitle>
+        </DialogHeader>
+
+        {controls.isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        ) : controls.error ? (
+          <div className="space-y-3 text-sm">
+            <p className="text-destructive">{(controls.error as Error).message}</p>
+            <Button size="sm" onClick={() => controls.refetch()}>
+              Retry
+            </Button>
+          </div>
+        ) : controls.data ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              If a question is faulty you can give every student full marks for it, or delete it
+              from the assignment. Unassigning is optional and only affects the student you pick —
+              the question disappears for them and no longer counts toward their total.
+            </p>
+
+            {controls.data.questions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">This assignment has no questions.</p>
+            ) : (
+              controls.data.questions.map((question, index) => {
+                const label = questionLabel(question.questionText, index);
+                const excludedCount = (controls.data?.exclusions ?? []).filter(
+                  (e) => e.questionId === question.id,
+                ).length;
+                return (
+                  <div key={question.id} className="rounded-md border border-border p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium">
+                          Question {label} · {question.marks} mark
+                          {question.marks === 1 ? "" : "s"}
+                        </p>
+                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                          {questionBody(question.questionText)}
+                        </p>
+                        {excludedCount > 0 ? (
+                          <Badge variant="secondary" className="mt-2">
+                            Unassigned for {excludedCount} student
+                            {excludedCount === 1 ? "" : "s"}
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={creditAll.isPending}
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                `Give every student full marks (${question.marks}) for question ${label}?`,
+                              )
+                            )
+                              creditAll.mutate(question.id);
+                          }}
+                        >
+                          Credit all students
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setExpanded((current) => (current === question.id ? null : question.id))
+                          }
+                        >
+                          {expanded === question.id ? "Hide students" : "Unassign per student"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={deleteOne.isPending}
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                `Delete question ${label} and every student answer to it?`,
+                              )
+                            )
+                              deleteOne.mutate(question.id);
+                          }}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {expanded === question.id ? (
+                      <div className="mt-4 space-y-2 border-t border-border pt-3">
+                        {controls.data.students.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">
+                            No students have joined this class yet.
+                          </p>
+                        ) : (
+                          controls.data.students.map((student) => (
+                            <label
+                              key={student.id}
+                              className="flex items-center gap-2 text-sm"
+                            >
+                              <Checkbox
+                                checked={isExcluded(question.id, student.id)}
+                                disabled={toggleExclusion.isPending}
+                                onCheckedChange={(checked) =>
+                                  toggleExclusion.mutate({
+                                    questionId: question.id,
+                                    studentId: student.id,
+                                    excluded: checked === true,
+                                  })
+                                }
+                              />
+                              <span>{student.name}</span>
+                            </label>
+                          ))
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          Ticked students skip this question entirely.
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        ) : null}
       </DialogContent>
     </Dialog>
   );

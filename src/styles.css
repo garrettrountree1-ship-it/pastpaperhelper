@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design system: "Mars Colony" — dusty terracotta, warm sand, rust red.
+ * Design system: warm academic paper — off-white surfaces, rust-red accents.
  * All colors are oklch semantic tokens. Never hardcode colors in components.
  */
 
@@ -145,28 +145,6 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-  }
-
-  /* Mars photo backdrop: real imagery, clear in the background, with only a whisper of dark scrim so the white cards remain crisp. */
-  .mars-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-  }
-
-  .mars-backdrop::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      to bottom,
-      oklch(0.15 0.03 25 / 0.05),
-      oklch(0.15 0.03 25 / 0.08)
-    );
   }
 
   h1,

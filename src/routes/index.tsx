@@ -40,9 +40,10 @@ export const Route = createFileRoute("/")({
 const features = [
   {
     icon: ClipboardList,
-    title: "Upload past papers and mark schemes",
-    body: "Drop in the paper and the mark scheme as PDFs — combined or separate — and the questions, marks and diagrams are lined up into a ready assignment. Or paste a single question by hand.",
+    title: "Upload past papers — or write your own questions",
+    body: "Drop in the paper and the mark scheme as PDFs — combined or separate — and the questions, marks and diagrams are lined up into a ready assignment. Prefer your own material? Type any question with your own mark scheme and marks by hand, and mix it with past-paper questions in the same homework.",
   },
+
   {
     icon: BookOpenCheck,
     title: "Marked point by point",

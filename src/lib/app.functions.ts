@@ -1034,21 +1034,28 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     if (guardSubmission.locked_at) throw new Error(LOCKED_MESSAGE);
 
 
-    /* ---- academic integrity: reject copied AI / web answers ---- */
-    const { detectAiAnswer } = await import("./ai-detect.server");
-    const detection = await detectAiAnswer({
-      question: question.question_text,
-      answer: data.answerText,
-      marks: question.marks,
-    });
-    if (detection.isAi) {
+    /* ---- academic integrity: reject copied AI / web / peer answers ---- */
+    const [{ detectAiAnswer }, { findCopiedFromPeers }] = await Promise.all([
+      import("./ai-detect.server"),
+      import("./originality.server"),
+    ]);
+    const [detection, peerCopy] = await Promise.all([
+      detectAiAnswer({
+        question: question.question_text,
+        answer: data.answerText,
+        marks: question.marks,
+      }),
+      findCopiedFromPeers(db, data.questionId, guardSubmission.id, data.answerText),
+    ]);
+    const violation = peerCopy ?? (detection.isAi ? detection : null);
+    if (violation) {
       const strikes = (guardSubmission.ai_flag_count ?? 0) + 1;
       await db.from("integrity_flags").insert({
         submission_id: guardSubmission.id,
         question_id: data.questionId,
-        reason: detection.reason,
+        reason: violation.reason,
         excerpt: data.answerText.slice(0, 600),
-        confidence: detection.confidence,
+        confidence: violation.confidence,
       });
       const locked = strikes >= 4;
       await db
@@ -1058,7 +1065,8 @@ export const gradeAnswer = createServerFn({ method: "POST" })
           ...(locked
             ? {
                 locked_at: new Date().toISOString(),
-                locked_reason: "A fourth answer was detected as AI-generated or copied.",
+                locked_reason:
+                  "A fourth answer was detected as AI-generated, copied or plagiarised.",
               }
             : {}),
         })
@@ -1068,10 +1076,11 @@ export const gradeAnswer = createServerFn({ method: "POST" })
         throw new Error(LOCKED_MESSAGE);
       }
       throw new Error(
-        `This answer looks AI-generated or copied, so it was not accepted. Write it in your own words. Warning ${strikes} of 3 — a fourth AI answer locks this homework and marks it as a fail until your teacher unlocks it.`,
+        `${violation.reason} This answer was not accepted — write it in your own words. Warning ${strikes} of 3 — a fourth copied answer locks this homework and marks it as a fail until your teacher unlocks it.`,
       );
 
     }
+
 
     const imageUrls = await signWorkImages(db, imagePaths);
 

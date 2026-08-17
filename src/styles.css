@@ -145,11 +145,12 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    background-image: radial-gradient(
-      oklch(0.32 0.055 248 / 0.05) 1px,
-      transparent 1px
-    );
-    background-size: 22px 22px;
+    background-image:
+      radial-gradient(oklch(0.5 0.08 30 / 0.07) 1px, transparent 1px),
+      linear-gradient(to bottom, oklch(0.94 0.02 55 / 0.6), oklch(0.88 0.03 35 / 0.25));
+    background-size: 22px 22px, 100% 100%;
+    background-attachment: fixed, fixed;
+    background-repeat: repeat, no-repeat;
   }
 
   h1,

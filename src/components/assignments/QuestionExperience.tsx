@@ -77,6 +77,8 @@ export function QuestionExperience({
   onSend,
   locked = false,
   markScheme = null,
+  headerAction = null,
+
 
 }: {
   question: { id: string; question_text: string; marks: number };

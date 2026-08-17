@@ -1294,8 +1294,8 @@ export const previewTutorMessage = createServerFn({ method: "POST" })
       markScheme: question.mark_scheme,
       marks: question.marks,
       studentAnswer: data.studentAnswer,
-      awardedMarks: data.awardedMarks,
-      markBreakdown: data.markBreakdown,
+      ...(data.awardedMarks != null ? { awardedMarks: data.awardedMarks } : {}),
+      ...(data.markBreakdown ? { markBreakdown: data.markBreakdown } : {}),
       history: data.history,
       latestMessage: data.message,
     });

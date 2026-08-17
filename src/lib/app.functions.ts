@@ -911,13 +911,21 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
       .maybeSingle();
 
     // Mark schemes are deliberately excluded here.
-    const { data: questions } = await db
+    const { data: allQuestions } = await db
       .from("questions")
       .select("id, position, question_text, marks, image_paths")
       .eq("assignment_id", data.assignmentId)
       .order("position");
 
+    const { data: exemptions } = await db
+      .from("question_exclusions")
+      .select("question_id")
+      .eq("student_id", userId);
+    const exemptIds = new Set((exemptions ?? []).map((e) => e.question_id));
+    const questions = (allQuestions ?? []).filter((q) => !exemptIds.has(q.id));
+
     const submission = await ensureSubmission(db, data.assignmentId, userId);
+    await recalcSubmission(db, submission.id);
 
     const { data: answers } = await db
       .from("answers")

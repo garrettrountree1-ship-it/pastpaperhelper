@@ -48,9 +48,27 @@ function wordCount(text: string) {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+const PROCEDURE_VERBS =
+  "add|apply|choose|combine|compare|connect|describe|explain|heat|identify|insert|measure|mix|observe|place|pour|record|remove|select|state|test|use|write";
+
 /**
- * Detects answers copied out of a chatbot or search result. Short answers
- * (a letter, number or one-liner) are never flagged — they cannot be judged.
+ * Short search-result answers often omit chatbot catchphrases but retain a
+ * polished, instructional sequence (for example, "Use … . Add … ."). That
+ * style is unusual in a student's terse exam response and is safe to reject
+ * under this app's deliberately strict integrity policy.
+ */
+function looksLikeCopiedShortProcedure(answer: string, words: number) {
+  if (words < 8) return false;
+  const imperative = new RegExp(`(?:^|[.!?]\\s+)(?:${PROCEDURE_VERBS})\\b`, "gi");
+  const commands = answer.match(imperative)?.length ?? 0;
+  const sentences = answer.split(/[.!?]+(?:\s+|$)/).filter((part) => part.trim()).length;
+  return commands >= 2 || (commands >= 1 && sentences >= 2 && words >= 12);
+}
+
+/**
+ * Detects answers copied out of a chatbot or search result. Irreducibly short
+ * answers (a letter, number, formula or a few words) pass because authorship
+ * cannot be judged from them; complete one-sentence answers are still checked.
  */
 export async function detectAiAnswer(input: {
   question: string;
@@ -59,7 +77,7 @@ export async function detectAiAnswer(input: {
 }): Promise<AiDetection> {
   const answer = input.answer.trim();
   const words = wordCount(answer);
-  if (words < 8) return { isAi: false, confidence: 0, reason: "" };
+  if (words < 5) return { isAi: false, confidence: 0, reason: "" };
 
   const hard = HARD_PATTERNS.find((pattern) => pattern.test(answer));
   if (hard) {
@@ -70,12 +88,21 @@ export async function detectAiAnswer(input: {
     };
   }
 
+  if (looksLikeCopiedShortProcedure(answer, words)) {
+    return {
+      isAi: true,
+      confidence: 0.92,
+      reason: "The answer uses polished, search-result-style instructional steps rather than student exam wording.",
+    };
+  }
+
   const system = [
     "You detect whether a school student's exam answer was written by the student or copied from an AI chatbot (ChatGPT, Gemini, DeepSeek) or a web page.",
-    "Signals of copied AI/web text: essay-length answers far beyond the marks available, polished textbook prose, markdown headings/bold/bulleted lists, hedging phrases, generic definitions and framing not asked for, 'firstly/moreover/in conclusion' scaffolding, perfect spelling and punctuation with em dashes, restating the question before answering.",
+    "A copied answer can be ONE short sentence. Do not treat brevity as proof that it is original. Judge whether the exact wording resembles a Google AI Overview, featured snippet, revision website, textbook answer, model answer, or chatbot response.",
+    "Signals of copied AI/web text: polished textbook or teacher prose; complete instructional sentences; a compact sequence such as 'Use X. Add Y and observe Z'; wording that sounds ready to publish; essay-length answers beyond the marks available; markdown; hedging; generic framing; connective scaffolding; perfect punctuation; or restating the question.",
     "Signals of genuine student work: exam shorthand, terse mark-scheme style points, small slips, abbreviations, units written inline, working shown, informal wording.",
-    "Flag copied text decisively: a teacher-quality, textbook-style or web-encyclopaedia-style paragraph is copied even if only two or three signals are present. Students under exam conditions do not write fluent tutorial prose, do not define terms they were not asked to define, and do not use em dashes or connective scaffolding.",
-    "Only genuinely short, terse, exam-shorthand answers should pass. Never flag a short factual answer just for being correct, and never flag handwriting-transcribed maths working.",
+    "This school uses a deliberately strict policy because suspected copied work must be rewritten. Flag likely copied wording decisively even when it is only 5-25 words and has no explicit chatbot phrase. A polished full-sentence answer should not pass merely because it is concise.",
+    "Pass genuinely terse exam shorthand, rough student phrasing, letters, numbers, formulae, chemical equations, brief labels, and handwriting-transcribed maths working. Never flag an answer merely for being correct; flag its source-like wording and presentation.",
     'Reply with ONLY raw JSON: {"isAi":boolean,"confidence":0-1,"reason":"one short sentence for the teacher"}',
   ].join(" ");
 
@@ -92,7 +119,7 @@ export async function detectAiAnswer(input: {
     const parsed = schema.parse(JSON.parse(text.slice(start >= 0 ? start : 0, end + 1)));
     const confidence = Math.max(0, Math.min(1, parsed.confidence));
     return {
-      isAi: parsed.isAi && confidence >= 0.55,
+      isAi: parsed.isAi && confidence >= 0.4,
       confidence,
       reason: parsed.reason.trim(),
     };

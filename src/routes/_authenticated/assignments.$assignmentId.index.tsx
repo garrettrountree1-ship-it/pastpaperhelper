@@ -143,7 +143,8 @@ function AssignmentPage() {
                     were rejected.
                   </p>
                   <p className="mt-1 text-muted-foreground">
-                    Answers must be your own words. A fourth AI answer locks this homework and it is                    marked as a fail until your teacher unlocks it.
+                    Answers must be your own words. A fourth AI answer locks this homework and
+                    marks it as a fail until your teacher unlocks it.
                   </p>
                 </div>
               ) : null}

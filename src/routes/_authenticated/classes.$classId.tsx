@@ -1174,7 +1174,7 @@ function ClassSettingsDialog({
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => deleteClass({ data: { classId } }),
+    mutationFn: () => deleteClassFn({ data: { classId } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["teacher-classes"] });
       toast.success("Class deleted");

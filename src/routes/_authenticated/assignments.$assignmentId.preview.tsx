@@ -307,6 +307,12 @@ function PreviewQuestion({
       photoCount={photos.length}
       photoUrls={photos}
       onPhotosChange={(files) => void addPhotos(files)}
+      onAddDrawing={(file) => {
+        const reader = new FileReader();
+        reader.onload = () =>
+          setPhotos((prev) => [...prev, String(reader.result)].slice(0, 3));
+        reader.readAsDataURL(file);
+      }}
       result={result ?? null}
       attempts={attempts}
       checking={check.isPending}

@@ -125,7 +125,7 @@ function PreviewPage() {
           </div>
         ) : data ? (
           <>
-            <div className="mt-4">
+            <div className="paper mt-4 p-5">
               <Badge variant="secondary" className="mb-3">
                 Student view (preview — nothing is saved)
               </Badge>

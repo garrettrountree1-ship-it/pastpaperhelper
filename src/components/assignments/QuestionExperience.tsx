@@ -273,6 +273,9 @@ export function QuestionExperience({
                 {tutoring ? "Thinking..." : "Send"}
               </Button>
             </div>
+            {tutorGuard.flagged ? (
+              <p className="text-sm text-destructive">{NO_PASTE_MESSAGE}</p>
+            ) : null}
             {reply && !isEnglishOnly(reply) ? (
               <p className="text-sm text-destructive">Please ask your question in English.</p>
             ) : null}

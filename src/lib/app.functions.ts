@@ -1169,6 +1169,7 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
         questionId: z.string().uuid(),
         answerText: z.string(),
         imageDataUrls: z.array(z.string().startsWith("data:image/").max(8_000_000)).max(3).optional(),
+        priorFlags: z.number().int().min(0).max(50).optional(),
       })
       .parse(input),
   )

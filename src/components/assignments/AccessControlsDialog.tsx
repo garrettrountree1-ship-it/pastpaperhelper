@@ -1,3 +1,4 @@
+import { DateTime24Input } from "@/components/assignments/DateTime24Input";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -111,13 +112,12 @@ export function AccessControlsDialog({
               </p>
               <div className="mt-3 flex flex-wrap items-end gap-3">
                 <div>
-                  <Label htmlFor="class-due">Due date &amp; time</Label>
-                  <Input
+                  <Label htmlFor="class-due">Due date &amp; time (24h)</Label>
+                  <DateTime24Input
                     id="class-due"
-                    type="datetime-local"
                     className="mt-1"
                     value={classDueValue}
-                    onChange={(event) => setClassDue(event.target.value)}
+                    onChange={setClassDue}
                   />
                 </div>
                 <Button
@@ -209,12 +209,7 @@ function StudentRow({
         <Badge variant="secondary">Due: {formatDueDate(effective)}</Badge>
       </div>
       <div className="mt-2 flex flex-wrap items-end gap-2">
-        <Input
-          type="datetime-local"
-          className="w-56"
-          value={value}
-          onChange={(event) => setDue(event.target.value)}
-        />
+        <DateTime24Input value={value} onChange={setDue} />
         <Button
           size="sm"
           variant="outline"

@@ -1025,7 +1025,7 @@ export const sendTutorMessage = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: answerRow } = await db
       .from("answers")
-      .select("id, answer_text, question_id, submission_id")
+      .select("id, answer_text, question_id, submission_id, awarded_marks, mark_breakdown")
       .eq("id", data.answerId)
       .single();
     const answer = answerRow!;
@@ -1066,6 +1066,10 @@ export const sendTutorMessage = createServerFn({ method: "POST" })
       markScheme: question.mark_scheme,
       marks: question.marks,
       studentAnswer: answer.answer_text,
+      awardedMarks: answer.awarded_marks ?? 0,
+      markBreakdown: Array.isArray(answer.mark_breakdown)
+        ? (answer.mark_breakdown as Array<{ point: string; marks: number; awarded: boolean }>)
+        : [],
       history: (history ?? []).map((m) => ({
         role: m.role === "tutor" ? ("tutor" as const) : ("student" as const),
         content: m.content,
@@ -1243,6 +1247,11 @@ export const previewTutorMessage = createServerFn({ method: "POST" })
         questionId: z.string().uuid(),
         studentAnswer: z.string().default(""),
         message: z.string().min(1).max(2000),
+        awardedMarks: z.number().optional(),
+        markBreakdown: z
+          .array(z.object({ point: z.string(), marks: z.number(), awarded: z.boolean() }))
+          .max(30)
+          .optional(),
         history: z
           .array(z.object({ role: z.enum(["tutor", "student"]), content: z.string() }))
           .max(40)
@@ -1283,6 +1292,8 @@ export const previewTutorMessage = createServerFn({ method: "POST" })
       markScheme: question.mark_scheme,
       marks: question.marks,
       studentAnswer: data.studentAnswer,
+      awardedMarks: data.awardedMarks,
+      markBreakdown: data.markBreakdown,
       history: data.history,
       latestMessage: data.message,
     });

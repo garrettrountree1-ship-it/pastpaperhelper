@@ -192,7 +192,17 @@ function AuthPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signin-password">Password</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="signin-password">Password</Label>
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      disabled={busy}
+                      className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
                   <Input
                     id="signin-password"
                     type="password"
@@ -204,6 +214,15 @@ function AuthPage() {
                 <Button type="submit" className="w-full" disabled={busy}>
                   Sign in
                 </Button>
+                <button
+                  type="button"
+                  onClick={handleResendConfirmation}
+                  disabled={busy}
+                  className="w-full text-xs text-muted-foreground underline-offset-2 hover:underline"
+                >
+                  Didn’t get the verification email? Send it again
+                </button>
+
               </form>
             </TabsContent>
 

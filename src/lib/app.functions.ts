@@ -1025,10 +1025,17 @@ export const sendTutorMessage = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: answerRow } = await db
       .from("answers")
-      .select("id, answer_text, question_id")
+      .select("id, answer_text, question_id, submission_id")
       .eq("id", data.answerId)
       .single();
     const answer = answerRow!;
+    const { data: ownerSubmission } = await db
+      .from("submissions")
+      .select("locked_at")
+      .eq("id", answer.submission_id)
+      .maybeSingle();
+    if (ownerSubmission?.locked_at) throw new Error(LOCKED_MESSAGE);
+
     const { data: questionRow } = await db
       .from("questions")
       .select("question_text, mark_scheme, marks, assignment_id")

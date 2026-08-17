@@ -1234,8 +1234,10 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       totalMarks: question.marks,
       feedback: result.feedback,
       leadingQuestion: result.leadingQuestion ?? "",
+      markBreakdown: result.markBreakdown ?? [],
     };
   });
+
 
 /** Teacher-only trial tutor chat: same Socratic tutor, nothing saved. */
 export const previewTutorMessage = createServerFn({ method: "POST" })

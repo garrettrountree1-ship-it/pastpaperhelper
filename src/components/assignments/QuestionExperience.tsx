@@ -2,6 +2,7 @@ import { Camera, CheckCircle2, CircleDashed, Sparkles, XCircle } from "lucide-re
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { CameraCapture } from "@/components/assignments/CameraCapture";
 import { DrawingPad } from "@/components/assignments/DrawingPad";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -153,10 +154,11 @@ export function QuestionExperience({
             disabled={locked}
             placeholder={
               requiresPhoto
-                ? "Describe what you drew (and upload a photo of it below)"
+                ? "Describe what you drew (then add a photo or use the writing pad below)"
                 : "Write your answer in English"
             }
             rows={Math.max(4, bulletTarget + 1)}
+
           />
         )}
         {bulletTarget > 0 ? (
@@ -181,19 +183,27 @@ export function QuestionExperience({
               className="flex items-center gap-2 text-sm font-medium"
             >
               <Camera className="size-4" />
-              Photo of your working or diagram
+              Your working or diagram
               {requiresPhoto ? <Badge variant="secondary">needed here</Badge> : null}
             </Label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Upload a photo, take one with your device camera, or write it on the pad below —
+              whichever is easiest.
+            </p>
             <Input
               id={`photo-${question.id}`}
               type="file"
               accept="image/*"
-              capture="environment"
               multiple
               className="mt-2"
               disabled={locked}
               onChange={(event) => onPhotosChange(event.target.files)}
             />
+            {onAddDrawing ? (
+              <div className="mt-2">
+                <CameraCapture disabled={locked} onCapture={onAddDrawing} />
+              </div>
+            ) : null}
             {photoCount > 0 ? (
               <p className="mt-2 text-xs text-muted-foreground">
                 {photoCount} photo{photoCount === 1 ? "" : "s"} ready — they&apos;ll be marked
@@ -216,8 +226,8 @@ export function QuestionExperience({
             {requiresPhoto ? (
               <p className="mt-2 text-xs text-muted-foreground">
                 {photoOnly
-                  ? "Photograph your full drawing or working — marks are given for the method as well as the final answer."
-                  : "This question asks you to draw, circle or plot — upload a photo of your work so it can be marked."}
+                  ? "Show your full drawing or working — marks are given for the method as well as the final answer."
+                  : "This question asks you to draw, circle or plot — add a photo or use the writing pad so it can be marked."}
               </p>
             ) : null}
 
@@ -237,9 +247,10 @@ export function QuestionExperience({
             onClick={onShowPhoto}
           >
             <Camera className="mr-2 size-4" />
-            Add a photo of your working or diagram
+            Add a photo, camera shot or written working
           </Button>
         )}
+
 
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs text-muted-foreground">

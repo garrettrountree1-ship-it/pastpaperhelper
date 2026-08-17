@@ -41,6 +41,8 @@ import {
   setOAuthRole,
 } from "@/lib/app.functions";
 import { switchDemoRole } from "@/lib/demo.functions";
+import { listStudentBulletins } from "@/lib/messaging.functions";
+import { MessageTeacherDialog } from "@/components/messaging/MessageTeacherDialog";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -297,6 +299,10 @@ function TeacherHome() {
 function StudentHome() {
   const queryClient = useQueryClient();
   const work = useQuery({ queryKey: ["student-work"], queryFn: useServerFn(listStudentWork) });
+  const bulletins = useQuery({
+    queryKey: ["student-bulletins"],
+    queryFn: useServerFn(listStudentBulletins),
+  });
   const join = useServerFn(joinClass);
   const [code, setCode] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | AssignmentStatusKey>("all");
@@ -375,11 +381,24 @@ function StudentHome() {
               <section key={klass.id} className="paper p-5">
                 <div className="flex flex-wrap items-baseline justify-between gap-2 border-b pb-3">
                   <h2 className="font-display text-2xl">{klass.name}</h2>
-                  <p className="text-sm text-muted-foreground">
-                    {[klass.subject, klass.curriculum].filter(Boolean).join(" · ")} ·{" "}
-                    {items.length} {items.length === 1 ? "assignment" : "assignments"}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <p className="text-sm text-muted-foreground">
+                      {[klass.subject, klass.curriculum].filter(Boolean).join(" · ")} ·{" "}
+                      {items.length} {items.length === 1 ? "assignment" : "assignments"}
+                    </p>
+                    <MessageTeacherDialog
+                      classId={klass.id}
+                      className={klass.name}
+                      assignmentOptions={(work.data?.assignments ?? [])
+                        .filter((a) => a.classId === klass.id)
+                        .map((a) => ({ id: a.id, title: a.title }))}
+                    />
+                  </div>
                 </div>
+
+                <ClassBulletin
+                  posts={(bulletins.data ?? []).filter((post) => post.class_id === klass.id)}
+                />
 
                 {items.length === 0 ? (
                   <p className="pt-4 text-sm text-muted-foreground">
@@ -429,6 +448,29 @@ function StudentHome() {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Read-only bulletin board: teacher posts for the whole class. */
+function ClassBulletin({
+  posts,
+}: {
+  posts: Array<{ id: string; title: string; body: string; created_at: string }>;
+}) {
+  if (posts.length === 0) return null;
+  return (
+    <div className="mt-4 space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-4">
+      <p className="text-sm font-medium">Class bulletin</p>
+      {posts.map((post) => (
+        <div key={post.id} className="rounded-md bg-card p-3">
+          {post.title ? <p className="font-medium">{post.title}</p> : null}
+          <p className="mt-1 whitespace-pre-wrap text-sm">{post.body}</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {formatDueDate(post.created_at)}
+          </p>
+        </div>
+      ))}
     </div>
   );
 }

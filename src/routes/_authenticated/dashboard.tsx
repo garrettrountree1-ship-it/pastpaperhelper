@@ -40,7 +40,7 @@ import {
   listTeacherClasses,
   setOAuthRole,
 } from "@/lib/app.functions";
-import { switchDemoRole } from "@/lib/demo.functions";
+import { useDemoView } from "@/lib/demo-view";
 import { listStudentBulletins } from "@/lib/messaging.functions";
 import { MessageTeacherDialog } from "@/components/messaging/MessageTeacherDialog";
 
@@ -111,11 +111,15 @@ function Dashboard() {
     }
   }, [me.isPending, me.data?.role, roleMutation]);
 
+  const isDemo = Boolean(me.data?.isDemo);
+  const { view, setDemoView } = useDemoView(isDemo, me.data?.role ?? "student");
+  const effectiveRole = isDemo ? view : me.data?.role;
+
   return (
     <div className="min-h-screen">
-      <AppHeader name={me.data?.fullName || me.data?.email} role={me.data?.role} />
+      <AppHeader name={me.data?.fullName || me.data?.email} role={effectiveRole} />
       <main className="mx-auto max-w-6xl px-4 py-8">
-        {me.data?.isDemo ? <DemoViewSwitcher role={me.data.role} /> : null}
+        {isDemo ? <DemoViewSwitcher role={view} onSwitch={setDemoView} /> : null}
         {me.isPending ? (
           <Skeleton className="h-40 w-full" />
         ) : me.isError ? (
@@ -125,7 +129,7 @@ function Dashboard() {
             </p>
             <Button onClick={() => me.refetch()}>Retry</Button>
           </div>
-        ) : me.data?.role === "teacher" ? (
+        ) : effectiveRole === "teacher" ? (
           <TeacherHome />
         ) : (
           <StudentHome />
@@ -135,17 +139,19 @@ function Dashboard() {
   );
 }
 
-function DemoViewSwitcher({ role }: { role: "teacher" | "student" }) {
+function DemoViewSwitcher({
+  role,
+  onSwitch,
+}: {
+  role: "teacher" | "student";
+  onSwitch: (next: "teacher" | "student") => void;
+}) {
   const queryClient = useQueryClient();
-  const switchRole = useServerFn(switchDemoRole);
-  const mutation = useMutation({
-    mutationFn: (next: "teacher" | "student") => switchRole({ data: { role: next } }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries();
-      toast.success("View switched");
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
+  const switchRole = (next: "teacher" | "student") => {
+    onSwitch(next);
+    queryClient.invalidateQueries();
+    toast.success(next === "teacher" ? "Teacher view" : "Student view");
+  };
 
   return (
     <div className="paper mb-6 flex flex-wrap items-center justify-between gap-3 p-4">
@@ -159,18 +165,10 @@ function DemoViewSwitcher({ role }: { role: "teacher" | "student" }) {
         </p>
       </div>
       <div className="flex gap-2">
-        <Button
-          variant={role === "teacher" ? "default" : "outline"}
-          disabled={mutation.isPending}
-          onClick={() => role !== "teacher" && mutation.mutate("teacher")}
-        >
+        <Button variant={role === "teacher" ? "default" : "outline"} onClick={() => switchRole("teacher")}>
           Teacher view
         </Button>
-        <Button
-          variant={role === "student" ? "default" : "outline"}
-          disabled={mutation.isPending}
-          onClick={() => role !== "student" && mutation.mutate("student")}
-        >
+        <Button variant={role === "student" ? "default" : "outline"} onClick={() => switchRole("student")}>
           Student view
         </Button>
       </div>

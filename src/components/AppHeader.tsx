@@ -9,7 +9,7 @@ export function Brand({ className = "" }: { className?: string }) {
   return (
     <span className={`inline-flex items-center gap-2 font-display text-lg ${className}`}>
       <GraduationCap className="size-5 text-accent" />
-      AI Homework Hero
+      STEM Homework AI
     </span>
   );
 }

@@ -11,15 +11,15 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
     meta: [
-      { title: "Set a new password · AI Homework Hero" },
+      { title: "Set a new password · STEM Homework AI" },
       {
         name: "description",
-        content: "Choose a new AI Homework Hero password after requesting a reset link by email.",
+        content: "Choose a new STEM Homework AI password after requesting a reset link by email.",
       },
-      { property: "og:title", content: "Set a new password · AI Homework Hero" },
+      { property: "og:title", content: "Set a new password · STEM Homework AI" },
       {
         property: "og:description",
-        content: "Choose a new password for your AI Homework Hero teacher or student account.",
+        content: "Choose a new password for your STEM Homework AI teacher or student account.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

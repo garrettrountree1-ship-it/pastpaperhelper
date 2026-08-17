@@ -45,9 +45,9 @@ import { switchDemoRole } from "@/lib/demo.functions";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard · AI Homework Hero" },
+      { title: "Dashboard · STEM Homework AI" },
       { name: "description", content: "Your classes, assignments and homework grades." },
-      { property: "og:title", content: "Dashboard · AI Homework Hero" },
+      { property: "og:title", content: "Dashboard · STEM Homework AI" },
       { property: "og:description", content: "Your classes, assignments and homework grades." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

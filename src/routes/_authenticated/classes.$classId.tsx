@@ -80,9 +80,9 @@ import { questionBody, questionLabel } from "@/lib/question-label";
 export const Route = createFileRoute("/_authenticated/classes/$classId")({
   head: () => ({
     meta: [
-      { title: "Class · AI Homework Hero" },
+      { title: "Class · STEM Homework AI" },
       { name: "description", content: "Class assignments, students and homework grades." },
-      { property: "og:title", content: "Class · AI Homework Hero" },
+      { property: "og:title", content: "Class · STEM Homework AI" },
       { property: "og:description", content: "Class assignments, students and homework grades." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

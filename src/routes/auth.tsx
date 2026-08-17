@@ -42,6 +42,7 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<"student" | "teacher">("student");
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -78,7 +79,8 @@ function AuthPage() {
       return;
     }
     if (!data.session) {
-      toast.success("Check your email to confirm your account, then sign in.");
+      setPendingEmail(email);
+      toast.success("Confirmation email sent — click the link, then sign in.");
       setTab("signin");
       return;
     }
@@ -113,6 +115,16 @@ function AuthPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Teachers set the homework. Students work through it with a tutor beside them.
           </p>
+
+          {pendingEmail ? (
+            <div className="mt-4 rounded-lg border border-primary/40 bg-primary/5 p-3 text-sm">
+              <p className="font-medium">Verify your email to finish</p>
+              <p className="mt-1 text-muted-foreground">
+                We sent a confirmation link to {pendingEmail}. Click it, then sign in below. Check
+                the spam folder if it does not arrive.
+              </p>
+            </div>
+          ) : null}
 
           <Tabs value={tab} onValueChange={(value) => setTab(value as "signin" | "signup")}>
             <TabsList className="mt-6 grid w-full grid-cols-2">
@@ -195,6 +207,12 @@ function AuthPage() {
                     </label>
                   </RadioGroup>
                 </div>
+                <p className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+                  <strong className="text-foreground">Email verification is required.</strong> Both
+                  students and teachers get a confirmation link by email after creating an account —
+                  click it, then come back and sign in. Use at least 6 characters and avoid common
+                  passwords.
+                </p>
                 <Button type="submit" className="w-full" disabled={busy}>
                   Create account
                 </Button>

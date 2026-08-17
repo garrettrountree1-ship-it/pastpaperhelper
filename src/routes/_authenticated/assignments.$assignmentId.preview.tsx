@@ -91,11 +91,13 @@ function groupByPage(questions: Question[]) {
 
 function PreviewPage() {
   const { assignmentId } = Route.useParams();
+  const [flags, setFlags] = useState(0);
   const preview = useQuery({
     queryKey: ["assignment-preview", assignmentId],
     queryFn: () => getAssignmentPreview({ data: { assignmentId } }),
     retry: 2,
   });
+
 
   const data = preview.data;
   const totalMarks = data?.questions.reduce((sum, q) => sum + q.marks, 0) ?? 0;

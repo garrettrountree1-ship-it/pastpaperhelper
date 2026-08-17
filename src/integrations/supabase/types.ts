@@ -252,6 +252,38 @@ export type Database = {
         }
         Relationships: []
       }
+      question_exclusions: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          question_id: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          question_id: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          question_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_exclusions_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       questions: {
         Row: {
           assignment_id: string

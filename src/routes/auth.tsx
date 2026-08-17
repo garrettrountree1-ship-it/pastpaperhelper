@@ -79,7 +79,8 @@ function AuthPage() {
       return;
     }
     if (!data.session) {
-      toast.success("Check your email to confirm your account, then sign in.");
+      setPendingEmail(email);
+      toast.success("Confirmation email sent — click the link, then sign in.");
       setTab("signin");
       return;
     }

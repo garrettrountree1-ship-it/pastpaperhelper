@@ -1326,6 +1326,9 @@ export const submitAssignment = createServerFn({ method: "POST" })
       .eq("student_id", userId)
       .maybeSingle();
     if (current?.locked_at) throw new Error(LOCKED_MESSAGE);
+    const submitAccess = await studentAccess(db, data.assignmentId, userId);
+    if (submitAccess.pastDue) throw new Error(PAST_DUE_MESSAGE);
+
 
     const { error } = await supabase
       .from("submissions")

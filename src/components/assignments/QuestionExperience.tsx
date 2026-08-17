@@ -2,6 +2,7 @@ import { Camera, CheckCircle2, CircleDashed, Sparkles, XCircle } from "lucide-re
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { DrawingPad } from "@/components/assignments/DrawingPad";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +62,7 @@ export function QuestionExperience({
   photoCount,
   photoUrls = [],
   onPhotosChange,
+  onAddDrawing,
   result,
   attempts,
   checking,
@@ -86,6 +88,8 @@ export function QuestionExperience({
   photoCount: number;
   photoUrls?: string[];
   onPhotosChange: (files: FileList | null) => void;
+  /** Attach an on-screen (stylus) working sheet as an image. */
+  onAddDrawing?: (file: File) => void;
   result: Result | null;
   attempts: number;
   checking: boolean;

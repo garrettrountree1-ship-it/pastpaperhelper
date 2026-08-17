@@ -105,7 +105,7 @@ function AssignmentPage() {
           </div>
         ) : data ? (
           <>
-            <div className="mt-4">
+            <div className="paper mt-4 p-5">
               <h1 className="text-3xl">{data.assignment.title}</h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 {data.assignment.className} · {data.assignment.curriculum}

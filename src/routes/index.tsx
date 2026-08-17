@@ -14,7 +14,6 @@ import {
 
 import { Brand } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
-import marsBg from "@/assets/mars-bg.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -139,17 +138,8 @@ function Landing() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 pb-20">
-        <section className="relative -mx-4 overflow-hidden rounded-3xl sm:mx-0">
-          <img
-            src={marsBg}
-            alt="Mars surface landscape"
-            className="absolute inset-0 h-full w-full object-cover"
-            width={1792}
-            height={1024}
-            loading="eager"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/75 to-background/40" />
-          <div className="relative grid items-center gap-10 px-4 py-12 lg:grid-cols-[1.1fr_0.9fr] lg:py-20">
+        <section className="-mx-4 sm:mx-0">
+          <div className="grid items-center gap-10 px-4 py-12 lg:grid-cols-[1.1fr_0.9fr] lg:py-20">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 IGCSE · A-Level · IB
@@ -223,7 +213,7 @@ function Landing() {
         <section className="mt-14">
           <h2 className="text-2xl sm:text-3xl">What StepWise does</h2>
           <p className="mt-2 max-w-2xl text-muted-foreground">
-            Everything a science or maths teacher needs to set past-paper homework that actually
+            Everything a teacher needs to set past-paper homework that actually
             teaches — and to trust that the work is the student&apos;s own.
           </p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">

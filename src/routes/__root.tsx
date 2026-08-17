@@ -13,7 +13,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 import appCss from "../styles.css?url";
-import marsBackdrop from "@/assets/mars-space-bg.jpg";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
@@ -145,11 +144,6 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div
-        className="mars-backdrop"
-        style={{ backgroundImage: `url(${marsBackdrop})` }}
-        aria-hidden="true"
-      />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <Toaster />

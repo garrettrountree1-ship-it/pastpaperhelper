@@ -49,6 +49,40 @@ export const getMe = createServerFn({ method: "GET" })
     };
   });
 
+export const setOAuthRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ role: z.enum(["teacher", "student"]) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: user, error: userError } = await supabase.auth.getUser();
+    if (userError || !user.user) throw new Error("Could not verify user.");
+
+    const isOAuth = user.user.identities?.some((identity) => identity.provider !== "email") ?? false;
+    if (!isOAuth) throw new Error("Role can only be set after OAuth sign-in.");
+
+    const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+    const hasTeacher = roles?.some((r) => r.role === "teacher");
+    const hasStudent = roles?.some((r) => r.role === "student");
+
+    if (data.role === "teacher") {
+      if (hasTeacher) return { ok: true };
+      if (!hasStudent) throw new Error("Role can only be set once after first sign-in.");
+
+      const adminClient = await admin();
+      await adminClient.from("user_roles").delete().eq("user_id", userId).eq("role", "student");
+      const { error } = await adminClient.from("user_roles").insert({ user_id: userId, role: "teacher" });
+      if (error) throw new Error(error.message);
+    } else {
+      if (hasStudent) return { ok: true };
+      const adminClient = await admin();
+      const { error } = await adminClient.from("user_roles").insert({ user_id: userId, role: "student" });
+      if (error) throw new Error(error.message);
+    }
+
+    return { ok: true };
+  });
+
 /* --------------------------------------------------------------- teacher --- */
 
 export const listTeacherClasses = createServerFn({ method: "GET" })

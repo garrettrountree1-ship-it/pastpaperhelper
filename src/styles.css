@@ -154,6 +154,10 @@
     font-family: var(--font-display);
     font-weight: 600;
     letter-spacing: -0.015em;
+    /* Fraunces ships quirky "wonk" letterforms (notably f, g, y) and
+       decorative ligatures; turn them off for clean, readable headings. */
+    font-variation-settings: "SOFT" 0, "WONK" 0;
+    font-feature-settings: "liga" 0, "dlig" 0, "clig" 0;
   }
 }
 

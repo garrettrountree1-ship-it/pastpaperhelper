@@ -196,13 +196,13 @@ function ClassPage() {
                           </Link>
                         </Button>
 
-                        <QuestionControlsDialog
+                        <QuestionEditorDialog
                           classId={classId}
                           assignmentId={assignment.id}
                           trigger={
                             <Button variant="outline" size="sm">
-                              <ListChecks className="size-4" />
-                              Questions
+                              <Pencil className="size-4" />
+                              Question editor
                             </Button>
                           }
                         />
@@ -213,18 +213,7 @@ function ClassPage() {
                           trigger={
                             <Button variant="outline" size="sm">
                               <CalendarClock className="size-4" />
-                              Due &amp; answers
-                            </Button>
-                          }
-                        />
-
-                        <AssignmentDialog
-                          classId={classId}
-                          assignmentId={assignment.id}
-                          trigger={
-                            <Button variant="outline" size="sm">
-                              <Pencil className="size-4" />
-                              Edit
+                              Due Date &amp; Answer Release
                             </Button>
                           }
                         />
@@ -255,7 +244,7 @@ function ClassPage() {
                             <TableHead key={assignment.id}>
                               <div className="flex items-center gap-1">
                                 <span>{assignment.title}</span>
-                                <QuestionControlsDialog
+                                <QuestionEditorDialog
                                   classId={classId}
                                   assignmentId={assignment.id}
                                   trigger={
@@ -263,7 +252,7 @@ function ClassPage() {
                                       variant="ghost"
                                       size="icon"
                                       className="size-7"
-                                      title="Manage questions"
+                                      title="Question editor"
                                     >
                                       <ListChecks className="size-4" />
                                     </Button>
@@ -277,7 +266,7 @@ function ClassPage() {
                                       variant="ghost"
                                       size="icon"
                                       className="size-7"
-                                      title="Due date & mark scheme"
+                                      title="Due date & answer release"
                                     >
                                       <CalendarClock className="size-4" />
                                     </Button>
@@ -338,17 +327,19 @@ function AssignmentDialog({
   classId,
   assignmentId,
   trigger,
+  asPanel,
 }: {
   classId: string;
   assignmentId?: string;
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
+  asPanel?: boolean;
 }) {
   const queryClient = useQueryClient();
   const create = useServerFn(createAssignment);
   const update = useServerFn(updateAssignment);
   const extract = useServerFn(extractPaperQuestions);
   const loadForEdit = useServerFn(getAssignmentForEdit);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(Boolean(asPanel));
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
   const [instructions, setInstructions] = useState("");
@@ -455,7 +446,7 @@ function AssignmentDialog({
     },
     onSuccess: () => {
       toast.success(editing ? "Assignment updated" : "Assignment set");
-      setOpen(false);
+      if (!asPanel) setOpen(false);
       if (!editing) {
         setTitle("");
         setSubject("");
@@ -482,15 +473,9 @@ function AssignmentDialog({
     setQuestions((prev) => prev.map((q, i) => (i === index ? { ...q, ...patch } : q)));
   }
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {editing ? "Edit past-paper homework" : "Set past-paper homework"}
-          </DialogTitle>
-        </DialogHeader>
+  const body = (
+    <>
+
 
         {loadingExisting && !existing.isError ? (
           <Skeleton className="h-64 w-full" />
@@ -689,8 +674,29 @@ function AssignmentDialog({
             </Button>
           </div>
         </div>
-        )}
+      )}
+      {asPanel ? (
+        <div className="mt-4 flex justify-end">
+          <Button onClick={() => mutation.mutate()} disabled={!valid || mutation.isPending}>
+            {mutation.isPending ? "Saving..." : editing ? "Save changes" : "Set homework"}
+          </Button>
+        </div>
+      ) : null}
+    </>
+  );
 
+  if (asPanel) return body;
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {editing ? "Edit past-paper homework" : "Set past-paper homework"}
+          </DialogTitle>
+        </DialogHeader>
+        {body}
         <DialogFooter>
           <Button onClick={() => mutation.mutate()} disabled={!valid || mutation.isPending}>
             {mutation.isPending ? "Saving..." : editing ? "Save changes" : "Set homework"}
@@ -705,12 +711,14 @@ function QuestionControlsDialog({
   classId,
   assignmentId,
   trigger,
+  asPanel,
 }: {
   classId: string;
   assignmentId: string;
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
+  asPanel?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(Boolean(asPanel));
   const [expanded, setExpanded] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const load = useServerFn(getAssignmentQuestionControls);
@@ -759,13 +767,8 @@ function QuestionControlsDialog({
       (e) => e.questionId === questionId && e.studentId === studentId,
     );
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Question controls</DialogTitle>
-        </DialogHeader>
+  const body = (
+    <>
 
         {controls.isLoading ? (
           <div className="space-y-2">
@@ -893,7 +896,63 @@ function QuestionControlsDialog({
               })
             )}
           </div>
-        ) : null}
+      ) : null}
+    </>
+  );
+
+  if (asPanel) return body;
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Question controls</DialogTitle>
+        </DialogHeader>
+        {body}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * One place for everything about an assignment's questions: editing the paper
+ * itself and the per-question controls (credit all, delete, unassign).
+ */
+function QuestionEditorDialog({
+  classId,
+  assignmentId,
+  trigger,
+}: {
+  classId: string;
+  assignmentId: string;
+  trigger: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Question editor</DialogTitle>
+        </DialogHeader>
+        <Tabs defaultValue="edit">
+          <TabsList>
+            <TabsTrigger value="edit">Edit questions</TabsTrigger>
+            <TabsTrigger value="controls">Credit, delete &amp; unassign</TabsTrigger>
+          </TabsList>
+          <TabsContent value="edit" className="mt-4">
+            {open ? (
+              <AssignmentDialog classId={classId} assignmentId={assignmentId} asPanel />
+            ) : null}
+          </TabsContent>
+          <TabsContent value="controls" className="mt-4">
+            {open ? (
+              <QuestionControlsDialog classId={classId} assignmentId={assignmentId} asPanel />
+            ) : null}
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

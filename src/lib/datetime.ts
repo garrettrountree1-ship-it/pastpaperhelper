@@ -16,12 +16,17 @@ export function fromLocalInput(value: string): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
+/** Always rendered on a 24-hour clock (e.g. "17 Aug 2026, 18:30"). */
 export function formatDueDate(iso: string | null | undefined): string {
   if (!iso) return "No due date";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "No due date";
-  return date.toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
+  return date.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
   });
 }

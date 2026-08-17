@@ -1,3 +1,4 @@
+import { formatDueDate } from "@/lib/datetime";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
@@ -111,7 +112,7 @@ function AssignmentPage() {
                 {data.assignment.className} · {data.assignment.curriculum}
                 {data.assignment.subject ? ` · ${data.assignment.subject}` : ""}
                 {data.assignment.dueAt
-                  ? ` · due ${new Date(data.assignment.dueAt).toLocaleString()}`
+                  ? ` · due ${formatDueDate(data.assignment.dueAt)}`
                   : ""}
               </p>
               {data.assignment.instructions ? (

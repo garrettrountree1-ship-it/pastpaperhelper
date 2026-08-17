@@ -1938,11 +1938,11 @@ export const setAssignmentAccess = createServerFn({ method: "POST" })
     });
     if (!allowed) throw new Error("Not allowed.");
 
-    const patch: Record<string, unknown> = {};
-    if (data.dueAt !== undefined) patch["due_at"] = data.dueAt;
-    if (data.markSchemeRevealed !== undefined)
-      patch["mark_scheme_revealed"] = data.markSchemeRevealed;
+    const patch: { due_at?: string | null; mark_scheme_revealed?: boolean } = {};
+    if (data.dueAt !== undefined) patch.due_at = data.dueAt;
+    if (data.markSchemeRevealed !== undefined) patch.mark_scheme_revealed = data.markSchemeRevealed;
     if (Object.keys(patch).length === 0) return { ok: true };
+
 
     const db = await admin();
     const { error } = await db.from("assignments").update(patch).eq("id", data.assignmentId);

@@ -583,8 +583,43 @@ export const getSubmissionDetail = createServerFn({ method: "POST" })
       submission,
       answers: withImages,
       messages: tutorMessages ?? [],
+      integrityFlags: integrityFlags ?? [],
     };
   });
+
+/** Teacher-only: clears AI strikes and unlocks a locked homework submission. */
+export const unlockSubmission = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ assignmentId: z.string().uuid(), studentId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: allowed } = await supabase.rpc("can_teach_assignment", {
+      _assignment_id: data.assignmentId,
+      _user_id: userId,
+    });
+    if (!allowed) throw new Error("Not allowed.");
+
+    const db = await admin();
+    const { data: submission } = await db
+      .from("submissions")
+      .select("id")
+      .eq("assignment_id", data.assignmentId)
+      .eq("student_id", data.studentId)
+      .maybeSingle();
+    if (!submission) throw new Error("No submission to unlock.");
+
+    const { error } = await db
+      .from("submissions")
+      .update({ ai_flag_count: 0, locked_at: null, locked_reason: null })
+      .eq("id", submission.id);
+    if (error) throw new Error(error.message);
+
+    await recalcSubmission(db, submission.id);
+    return { ok: true };
+  });
+
 
 /* --------------------------------------------------------------- student --- */
 

@@ -173,8 +173,11 @@ function PreviewPage() {
                       key={question.id}
                       assignmentId={assignmentId}
                       question={question}
+                      flags={flags}
+                      onFlag={() => setFlags((count) => count + 1)}
                     />
                   ))}
+
                 </div>
               ))}
             </div>

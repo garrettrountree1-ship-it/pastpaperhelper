@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import type { Json } from "@/integrations/supabase/types";
+
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { LOCKED_MESSAGE } from "@/lib/integrity";
@@ -1037,7 +1039,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       .maybeSingle();
 
     const history = Array.isArray(existing?.attempt_history)
-      ? (existing!.attempt_history as unknown[])
+      ? (existing!.attempt_history as Record<string, unknown>[])
       : [];
     const attemptEntry = {
       at: new Date().toISOString(),
@@ -1050,7 +1052,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
 
     const payload = {
       submission_id: submission.id,
-      attempt_history: [...history, attemptEntry].slice(-30),
+      attempt_history: [...history, attemptEntry].slice(-30) as unknown as Json,
       question_id: data.questionId,
       answer_text: data.answerText,
       image_paths: imagePaths,

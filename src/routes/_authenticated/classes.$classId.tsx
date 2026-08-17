@@ -169,64 +169,11 @@ function ClassPage() {
               </TabsList>
 
               <TabsContent value="assignments" className="mt-4 space-y-3">
-                {overview.data.assignments.length === 0 ? (
-                  <div className="paper p-8 text-center text-muted-foreground">
-                    No assignments yet. Add past-paper questions with their mark schemes.
-                  </div>
-                ) : (
-                  overview.data.assignments.map((assignment) => (
-                    <div key={assignment.id} className="paper flex flex-wrap items-center justify-between gap-4 p-5">
-                      <div>
-                        <h2 className="text-xl">{assignment.title}</h2>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {assignment.questionCount} questions · {assignment.totalMarks} marks
-                          {assignment.dueAt ? ` · due ${formatDueDate(assignment.dueAt)}` : ""}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">
-                          {assignment.submittedCount} submitted
-                        </Badge>
-                        <Button variant="outline" size="sm" asChild>
-                          <Link
-                            to="/assignments/$assignmentId/preview"
-                            params={{ assignmentId: assignment.id }}
-                          >
-                            <Eye className="size-4" />
-                            Student view
-                          </Link>
-                        </Button>
-
-                        <QuestionEditorDialog
-                          classId={classId}
-                          assignmentId={assignment.id}
-                          trigger={
-                            <Button variant="outline" size="sm">
-                              <Pencil className="size-4" />
-                              Question editor
-                            </Button>
-                          }
-                        />
-
-                        <AccessControlsDialog
-                          classId={classId}
-                          assignmentId={assignment.id}
-                          trigger={
-                            <Button variant="outline" size="sm">
-                              <CalendarClock className="size-4" />
-                              Due Date &amp; Answer Release
-                            </Button>
-                          }
-                        />
-                        <DeleteAssignmentButton
-                          classId={classId}
-                          assignmentId={assignment.id}
-                          title={assignment.title}
-                        />
-                      </div>
-                    </div>
-                  ))
-                )}
+                <AssignmentList
+                  classId={classId}
+                  assignments={overview.data.assignments}
+                  studentCount={overview.data.students.length}
+                />
               </TabsContent>
 
               <TabsContent value="gradebook" className="mt-4">

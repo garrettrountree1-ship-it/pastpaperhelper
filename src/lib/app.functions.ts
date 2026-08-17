@@ -487,12 +487,12 @@ export const getClassOverview = createServerFn({ method: "POST" })
       : { data: [] };
 
     const submissionIds = (submissions ?? []).map((s) => s.id);
-    const { data: answerRows } = submissionIds.length
-      ? await db.from("answers").select("submission_id, answer_text, image_paths").in("id", []).or("id.is.null")
-      : { data: [] };
     const { data: answers } = submissionIds.length
-      ? await db.from("answers").select("submission_id, answer_text, image_paths").in("submission_id", submissionIds)
-      : { data: answerRows ?? [] };
+      ? await db
+          .from("answers")
+          .select("submission_id, answer_text, image_paths")
+          .in("submission_id", submissionIds)
+      : { data: [] as { submission_id: string; answer_text: string; image_paths: string[] }[] };
 
     const answeredFor = (submissionId: string | undefined) =>
       submissionId

@@ -40,7 +40,7 @@ import {
   listTeacherClasses,
   setOAuthRole,
 } from "@/lib/app.functions";
-import { switchDemoRole } from "@/lib/demo.functions";
+import { useDemoView } from "@/lib/demo-view";
 import { listStudentBulletins } from "@/lib/messaging.functions";
 import { MessageTeacherDialog } from "@/components/messaging/MessageTeacherDialog";
 

@@ -1198,6 +1198,20 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       .single();
     const assignment = assignmentRow!;
 
+    // Same integrity check students face, but no strikes are recorded here.
+    const { detectAiAnswer } = await import("./ai-detect.server");
+    const previewDetection = await detectAiAnswer({
+      question: question.question_text,
+      answer: data.answerText,
+      marks: question.marks,
+    });
+    if (previewDetection.isAi) {
+      throw new Error(
+        "This answer looks AI-generated or copied, so it was not accepted. Write it in your own words. Warning 1 of 3 — after 3 warnings a student's homework is locked and marked as a fail until a teacher unlocks it.",
+      );
+    }
+
+
     const { markStudentAnswer } = await import("./marking.server");
     const result = await markStudentAnswer({
       curriculum: assignment.curriculum,

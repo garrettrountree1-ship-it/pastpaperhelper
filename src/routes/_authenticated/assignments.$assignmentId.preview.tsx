@@ -146,7 +146,16 @@ function PreviewPage() {
                 <Badge variant="secondary">{data.questions.length} questions</Badge>
                 <Badge>{totalMarks} marks</Badge>
               </div>
+              {flags > 0 ? (
+                <p className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                  {flags >= 4
+                    ? "Locked: a fourth AI-generated or copied answer was detected. A student would now need their teacher to unlock this homework."
+                    : `Warning ${flags} of 3: AI-generated or copied answers detected in this preview session. A fourth locks the homework.`}
+                </p>
+              ) : null}
             </div>
+
+
 
             <div className="mt-8 space-y-6">
               {groupByPage(data.questions).map((group) => (

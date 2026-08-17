@@ -89,6 +89,7 @@ export type Database = {
           due_at: string | null
           id: string
           instructions: string | null
+          mark_scheme_revealed: boolean
           published: boolean
           subject: string
           title: string
@@ -101,6 +102,7 @@ export type Database = {
           due_at?: string | null
           id?: string
           instructions?: string | null
+          mark_scheme_revealed?: boolean
           published?: boolean
           subject?: string
           title: string
@@ -113,6 +115,7 @@ export type Database = {
           due_at?: string | null
           id?: string
           instructions?: string | null
+          mark_scheme_revealed?: boolean
           published?: boolean
           subject?: string
           title?: string
@@ -318,6 +321,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "questions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_assignment_settings: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          due_at: string | null
+          id: string
+          mark_scheme_revealed: boolean
+          student_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          due_at?: string | null
+          id?: string
+          mark_scheme_revealed?: boolean
+          student_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          due_at?: string | null
+          id?: string
+          mark_scheme_revealed?: boolean
+          student_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_assignment_settings_assignment_id_fkey"
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "assignments"

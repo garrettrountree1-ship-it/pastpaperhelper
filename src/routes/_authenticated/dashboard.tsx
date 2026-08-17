@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
@@ -25,7 +25,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { createClass, getMe, joinClass, listStudentWork, listTeacherClasses } from "@/lib/app.functions";
+import {
+  createClass,
+  getMe,
+  joinClass,
+  listStudentWork,
+  listTeacherClasses,
+  setOAuthRole,
+} from "@/lib/app.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -61,8 +68,38 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   notFoundComponent: () => <div className="p-8 text-center">Page not found.</div>,
 });
 
+const PENDING_OAUTH_ROLE_KEY = "pendingOAuthRole";
+
 function Dashboard() {
   const me = useQuery({ queryKey: ["me"], queryFn: useServerFn(getMe), retry: 2 });
+  const queryClient = useQueryClient();
+  const setRole = useServerFn(setOAuthRole);
+  const roleMutation = useMutation({
+    mutationFn: async (role: "teacher" | "student") => {
+      const result = await setRole({ data: { role } });
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  useEffect(() => {
+    if (me.isPending) return;
+    try {
+      const pendingRole = localStorage.getItem(PENDING_OAUTH_ROLE_KEY) as "teacher" | "student" | null;
+      if (!pendingRole) return;
+      localStorage.removeItem(PENDING_OAUTH_ROLE_KEY);
+      if (pendingRole !== me.data?.role) {
+        roleMutation.mutate(pendingRole);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [me.isPending, me.data?.role, roleMutation]);
 
   return (
     <div className="min-h-screen">

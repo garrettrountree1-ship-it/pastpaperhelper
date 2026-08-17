@@ -772,6 +772,47 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       .single();
     const assignment = assignmentRow!;
 
+    const guardSubmission = await ensureSubmission(db, data.assignmentId, userId);
+    if (guardSubmission.locked_at) throw new Error(LOCKED_MESSAGE);
+
+    /* ---- academic integrity: reject copied AI / web answers ---- */
+    const { detectAiAnswer } = await import("./ai-detect.server");
+    const detection = await detectAiAnswer({
+      question: question.question_text,
+      answer: data.answerText,
+      marks: question.marks,
+    });
+    if (detection.isAi) {
+      const strikes = (guardSubmission.ai_flag_count ?? 0) + 1;
+      await db.from("integrity_flags").insert({
+        submission_id: guardSubmission.id,
+        question_id: data.questionId,
+        reason: detection.reason,
+        excerpt: data.answerText.slice(0, 600),
+        confidence: detection.confidence,
+      });
+      const locked = strikes >= 3;
+      await db
+        .from("submissions")
+        .update({
+          ai_flag_count: strikes,
+          ...(locked
+            ? {
+                locked_at: new Date().toISOString(),
+                locked_reason: "Three answers were detected as AI-generated or copied.",
+              }
+            : {}),
+        })
+        .eq("id", guardSubmission.id);
+      if (locked) {
+        await recalcSubmission(db, guardSubmission.id);
+        throw new Error(LOCKED_MESSAGE);
+      }
+      throw new Error(
+        `This answer looks AI-generated or copied, so it was not accepted. Write it in your own words. Warning ${strikes} of 3 — after 3 warnings this homework is locked and marked as a fail until your teacher unlocks it.`,
+      );
+    }
+
     const imageUrls = await signWorkImages(db, imagePaths);
 
     const { markStudentAnswer } = await import("./marking.server");
@@ -785,6 +826,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       imageUrls,
       questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
     });
+
 
     const submission = await ensureSubmission(db, data.assignmentId, userId);
     const { data: existing } = await db

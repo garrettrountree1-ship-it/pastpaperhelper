@@ -41,11 +41,14 @@ export const getMe = createServerFn({ method: "GET" })
       supabase.from("user_roles").select("role").eq("user_id", userId),
     ]);
     const role = roles?.some((r) => r.role === "teacher") ? "teacher" : "student";
+    const { data: authUser } = await supabase.auth.getUser();
+    const email = authUser.user?.email ?? profile?.email ?? "";
     return {
       id: userId,
       fullName: profile?.full_name ?? "",
-      email: profile?.email ?? "",
+      email,
       role: role as "teacher" | "student",
+      isDemo: isDemoEmail(email),
     };
   });
 

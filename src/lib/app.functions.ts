@@ -440,7 +440,9 @@ export const getClassOverview = createServerFn({ method: "POST" })
     const { data: submissions } = assignmentIds.length
       ? await db
           .from("submissions")
-          .select("id, assignment_id, student_id, status, awarded_marks, submitted_at")
+          .select(
+            "id, assignment_id, student_id, status, awarded_marks, submitted_at, locked_at, ai_flag_count, penalty_percent",
+          )
           .in("assignment_id", assignmentIds)
       : { data: [] };
 
@@ -469,6 +471,9 @@ export const getClassOverview = createServerFn({ method: "POST" })
           status: sub?.status ?? "not_started",
           awardedMarks: sub ? Number(sub.awarded_marks) : null,
           totalMarks: a.totalMarks,
+          locked: Boolean(sub?.locked_at),
+          aiFlagCount: sub?.ai_flag_count ?? 0,
+          penaltyPercent: Number(sub?.penalty_percent ?? 0),
         };
       });
       const marked = grades.filter((g) => g.awardedMarks !== null && g.status === "submitted");
@@ -591,7 +596,13 @@ export const getSubmissionDetail = createServerFn({ method: "POST" })
 export const unlockSubmission = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ assignmentId: z.string().uuid(), studentId: z.string().uuid() }).parse(input),
+    z
+      .object({
+        assignmentId: z.string().uuid(),
+        studentId: z.string().uuid(),
+        penaltyPercent: z.number().min(0).max(100).optional(),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -612,7 +623,12 @@ export const unlockSubmission = createServerFn({ method: "POST" })
 
     const { error } = await db
       .from("submissions")
-      .update({ ai_flag_count: 0, locked_at: null, locked_reason: null })
+      .update({
+        ai_flag_count: 0,
+        locked_at: null,
+        locked_reason: null,
+        penalty_percent: data.penaltyPercent ?? 0,
+      })
       .eq("id", submission.id);
     if (error) throw new Error(error.message);
 
@@ -879,13 +895,26 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     const submission = await ensureSubmission(db, data.assignmentId, userId);
     const { data: existing } = await db
       .from("answers")
-      .select("id, attempts, time_spent_seconds")
+      .select("id, attempts, time_spent_seconds, attempt_history")
       .eq("submission_id", submission.id)
       .eq("question_id", data.questionId)
       .maybeSingle();
 
+    const history = Array.isArray(existing?.attempt_history)
+      ? (existing!.attempt_history as unknown[])
+      : [];
+    const attemptEntry = {
+      at: new Date().toISOString(),
+      answer_text: data.answerText,
+      image_paths: imagePaths,
+      verdict: result.verdict,
+      awarded_marks: result.awardedMarks,
+      feedback: result.feedback,
+    };
+
     const payload = {
       submission_id: submission.id,
+      attempt_history: [...history, attemptEntry].slice(-30),
       question_id: data.questionId,
       answer_text: data.answerText,
       image_paths: imagePaths,
@@ -1343,11 +1372,17 @@ async function ensureSubmission(db: AnyClient, assignmentId: string, studentId: 
 async function recalcSubmission(db: AnyClient, submissionId: string) {
   const [{ data: answers }, { data: submission }] = await Promise.all([
     db.from("answers").select("awarded_marks").eq("submission_id", submissionId),
-    db.from("submissions").select("locked_at").eq("id", submissionId).maybeSingle(),
+    db
+      .from("submissions")
+      .select("locked_at, penalty_percent")
+      .eq("id", submissionId)
+      .maybeSingle(),
   ]);
+  const raw = (answers ?? []).reduce((sum, a) => sum + Number(a.awarded_marks), 0);
+  const penalty = Number(submission?.penalty_percent ?? 0);
   const awarded = submission?.locked_at
     ? 0
-    : (answers ?? []).reduce((sum, a) => sum + Number(a.awarded_marks), 0);
+    : Math.round(raw * (1 - penalty / 100) * 100) / 100;
   await db.from("submissions").update({ awarded_marks: awarded }).eq("id", submissionId);
 }
 

@@ -34,6 +34,7 @@ import {
   listTeacherClasses,
   setOAuthRole,
 } from "@/lib/app.functions";
+import { switchDemoRole } from "@/lib/demo.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -106,6 +107,7 @@ function Dashboard() {
     <div className="min-h-screen">
       <AppHeader name={me.data?.fullName || me.data?.email} role={me.data?.role} />
       <main className="mx-auto max-w-6xl px-4 py-8">
+        {me.data?.isDemo ? <DemoViewSwitcher role={me.data.role} /> : null}
         {me.isPending ? (
           <Skeleton className="h-40 w-full" />
         ) : me.isError ? (
@@ -121,6 +123,46 @@ function Dashboard() {
           <StudentHome />
         )}
       </main>
+    </div>
+  );
+}
+
+function DemoViewSwitcher({ role }: { role: "teacher" | "student" }) {
+  const queryClient = useQueryClient();
+  const switchRole = useServerFn(switchDemoRole);
+  const mutation = useMutation({
+    mutationFn: (next: "teacher" | "student") => switchRole({ data: { role: next } }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries();
+      toast.success("View switched");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <div className="paper mb-6 flex flex-wrap items-center justify-between gap-3 p-4">
+      <div>
+        <p className="font-display text-lg">Demo account</p>
+        <p className="text-sm text-muted-foreground">
+          Switch freely between the teacher and student experience.
+        </p>
+      </div>
+      <div className="flex gap-2">
+        <Button
+          variant={role === "teacher" ? "default" : "outline"}
+          disabled={mutation.isPending}
+          onClick={() => role !== "teacher" && mutation.mutate("teacher")}
+        >
+          Teacher view
+        </Button>
+        <Button
+          variant={role === "student" ? "default" : "outline"}
+          disabled={mutation.isPending}
+          onClick={() => role !== "student" && mutation.mutate("student")}
+        >
+          Student view
+        </Button>
+      </div>
     </div>
   );
 }
@@ -290,45 +332,65 @@ function StudentHome() {
 
       {work.isLoading ? (
         <Skeleton className="h-32 w-full" />
-      ) : (work.data?.assignments ?? []).length === 0 ? (
+      ) : (work.data?.classes ?? []).length === 0 ? (
         <div className="paper p-8 text-center text-muted-foreground">
           No homework yet. Join your class with the code your teacher gave you.
         </div>
       ) : (
-        <div className="space-y-3">
-          {(work.data?.assignments ?? []).map((assignment) => (
-            <Link
-              key={assignment.id}
-              to="/assignments/$assignmentId"
-              params={{ assignmentId: assignment.id }}
-              className="paper flex flex-wrap items-center justify-between gap-4 p-5 transition-shadow hover:shadow-lift"
-            >
-              <div>
-                <h2 className="text-xl">{assignment.title}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {assignment.className} · {assignment.questionCount} questions ·{" "}
-                  {assignment.totalMarks} marks
-                  {assignment.dueAt
-                    ? ` · due ${formatDueDate(assignment.dueAt)}`
-                    : ""}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                {assignment.awardedMarks !== null && assignment.status !== "not_started" ? (
-                  <span className="font-display text-lg">
-                    {assignment.awardedMarks}/{assignment.totalMarks}
-                  </span>
-                ) : null}
-                <Badge variant={assignment.status === "submitted" ? "default" : "secondary"}>
-                  {assignment.status === "submitted"
-                    ? "Submitted"
-                    : assignment.status === "in_progress"
-                      ? "In progress"
-                      : "Not started"}
-                </Badge>
-              </div>
-            </Link>
-          ))}
+        <div className="space-y-4">
+          {(work.data?.classes ?? []).map((klass) => {
+            const items = (work.data?.assignments ?? []).filter((a) => a.classId === klass.id);
+            return (
+              <section key={klass.id} className="paper p-5">
+                <div className="flex flex-wrap items-baseline justify-between gap-2 border-b pb-3">
+                  <h2 className="font-display text-2xl">{klass.name}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {[klass.subject, klass.curriculum].filter(Boolean).join(" · ")} ·{" "}
+                    {items.length} {items.length === 1 ? "assignment" : "assignments"}
+                  </p>
+                </div>
+
+                {items.length === 0 ? (
+                  <p className="pt-4 text-sm text-muted-foreground">
+                    No homework set for this class yet.
+                  </p>
+                ) : (
+                  <div className="divide-y">
+                    {items.map((assignment) => (
+                      <Link
+                        key={assignment.id}
+                        to="/assignments/$assignmentId"
+                        params={{ assignmentId: assignment.id }}
+                        className="flex flex-wrap items-center justify-between gap-4 py-4 transition-colors hover:text-primary"
+                      >
+                        <div>
+                          <h3 className="text-lg">{assignment.title}</h3>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {assignment.questionCount} questions · {assignment.totalMarks} marks
+                            {assignment.dueAt ? ` · due ${formatDueDate(assignment.dueAt)}` : ""}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {assignment.awardedMarks !== null && assignment.status !== "not_started" ? (
+                            <span className="font-display text-lg">
+                              {assignment.awardedMarks}/{assignment.totalMarks}
+                            </span>
+                          ) : null}
+                          <Badge variant={assignment.status === "submitted" ? "default" : "secondary"}>
+                            {assignment.status === "submitted"
+                              ? "Submitted"
+                              : assignment.status === "in_progress"
+                                ? "In progress"
+                                : "Not started"}
+                          </Badge>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
         </div>
       )}
     </div>

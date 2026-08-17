@@ -6,6 +6,7 @@ import type { Json } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { LOCKED_MESSAGE } from "@/lib/integrity";
+import { isDemoEmail } from "@/lib/demo";
 
 
 async function admin() {
@@ -41,11 +42,14 @@ export const getMe = createServerFn({ method: "GET" })
       supabase.from("user_roles").select("role").eq("user_id", userId),
     ]);
     const role = roles?.some((r) => r.role === "teacher") ? "teacher" : "student";
+    const { data: authUser } = await supabase.auth.getUser();
+    const email = authUser.user?.email ?? profile?.email ?? "";
     return {
       id: userId,
       fullName: profile?.full_name ?? "",
-      email: profile?.email ?? "",
+      email,
       role: role as "teacher" | "student",
+      isDemo: isDemoEmail(email),
     };
   });
 
@@ -874,6 +878,7 @@ export const listStudentWork = createServerFn({ method: "GET" })
           title: a.title,
           subject: a.subject,
           dueAt: a.due_at,
+          classId: a.class_id,
           className: (classes ?? []).find((c) => c.id === a.class_id)?.name ?? "",
           questionCount: (questions ?? []).filter((q) => q.assignment_id === a.id).length,
           totalMarks: (questions ?? [])

@@ -1024,7 +1024,9 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
         dueOverridden: access.dueOverridden,
         pastDue: access.pastDue,
         markSchemeRevealed: access.markSchemeRevealed,
+        classId: assignment.class_id,
         className: klass?.name ?? "",
+
       },
       questions: await Promise.all(
         (questions ?? []).map(async (q) => ({

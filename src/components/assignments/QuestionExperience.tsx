@@ -132,11 +132,12 @@ export function QuestionExperience({
       <div className="mt-4 space-y-3">
         {photoOnly ? (
           <p className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
-            This question must be done on paper — draw or work it out by hand and upload a clear
-            photo. Your drawing and working are marked step by step, so you can still earn partial
-            marks.
+            Work this one out by hand — either write it on the pad below, take a photo with your
+            device camera, or upload a photo of your paper. Your drawing and working are marked step
+            by step, so you can still earn partial marks.
           </p>
         ) : (
+
 
           <Textarea
             value={draft}

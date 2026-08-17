@@ -165,13 +165,22 @@ function AuthPage() {
 
           {pendingEmail ? (
             <div className="mt-4 rounded-lg border border-primary/40 bg-primary/5 p-3 text-sm">
-              <p className="font-medium">Verify your email to finish</p>
+              <p className="font-medium">Not verified yet — check your email</p>
               <p className="mt-1 text-muted-foreground">
-                We sent a confirmation link to {pendingEmail}. Click it, then sign in below. Check
-                the spam folder if it does not arrive.
+                A confirmation link was sent to {pendingEmail}. Your account stays unverified until
+                you click that link. Check the spam/junk folder, then sign in below.
               </p>
+              <button
+                type="button"
+                onClick={handleResendConfirmation}
+                disabled={busy}
+                className="mt-2 text-xs font-medium text-primary underline-offset-2 hover:underline"
+              >
+                Resend verification email
+              </button>
             </div>
           ) : null}
+
 
           <Tabs value={tab} onValueChange={(value) => setTab(value as "signin" | "signup")}>
             <TabsList className="mt-6 grid w-full grid-cols-2">

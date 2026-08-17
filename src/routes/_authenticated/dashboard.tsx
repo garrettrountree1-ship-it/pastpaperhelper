@@ -106,6 +106,7 @@ function Dashboard() {
     <div className="min-h-screen">
       <AppHeader name={me.data?.fullName || me.data?.email} role={me.data?.role} />
       <main className="mx-auto max-w-6xl px-4 py-8">
+        {me.data?.isDemo ? <DemoViewSwitcher role={me.data.role} /> : null}
         {me.isPending ? (
           <Skeleton className="h-40 w-full" />
         ) : me.isError ? (
@@ -121,6 +122,46 @@ function Dashboard() {
           <StudentHome />
         )}
       </main>
+    </div>
+  );
+}
+
+function DemoViewSwitcher({ role }: { role: "teacher" | "student" }) {
+  const queryClient = useQueryClient();
+  const switchRole = useServerFn(switchDemoRole);
+  const mutation = useMutation({
+    mutationFn: (next: "teacher" | "student") => switchRole({ data: { role: next } }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries();
+      toast.success("View switched");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <div className="paper mb-6 flex flex-wrap items-center justify-between gap-3 p-4">
+      <div>
+        <p className="font-display text-lg">Demo account</p>
+        <p className="text-sm text-muted-foreground">
+          Switch freely between the teacher and student experience.
+        </p>
+      </div>
+      <div className="flex gap-2">
+        <Button
+          variant={role === "teacher" ? "default" : "outline"}
+          disabled={mutation.isPending}
+          onClick={() => role !== "teacher" && mutation.mutate("teacher")}
+        >
+          Teacher view
+        </Button>
+        <Button
+          variant={role === "student" ? "default" : "outline"}
+          disabled={mutation.isPending}
+          onClick={() => role !== "student" && mutation.mutate("student")}
+        >
+          Student view
+        </Button>
+      </div>
     </div>
   );
 }

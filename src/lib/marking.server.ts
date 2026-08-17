@@ -159,7 +159,6 @@ function extractJson(text: string): string {
 
 type TutorTurn = { role: "tutor" | "student"; content: string };
 
-type MarkPoint = { point: string; marks: number; awarded: boolean };
 
 type TutorInput = {
   curriculum: string;

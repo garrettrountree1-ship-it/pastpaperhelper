@@ -1972,15 +1972,22 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
     if (!allowed) throw new Error("Not allowed.");
 
     const db = await admin();
-    const patch: Record<string, unknown> = {
+    const patch: {
+      assignment_id: string;
+      student_id: string;
+      updated_by: string;
+      updated_at: string;
+      due_at?: string | null;
+      mark_scheme_revealed?: boolean;
+    } = {
       assignment_id: data.assignmentId,
       student_id: data.studentId,
       updated_by: userId,
       updated_at: new Date().toISOString(),
     };
-    if (data.dueAt !== undefined) patch["due_at"] = data.dueAt;
-    if (data.markSchemeRevealed !== undefined)
-      patch["mark_scheme_revealed"] = data.markSchemeRevealed;
+    if (data.dueAt !== undefined) patch.due_at = data.dueAt;
+    if (data.markSchemeRevealed !== undefined) patch.mark_scheme_revealed = data.markSchemeRevealed;
+
 
     const { error } = await db
       .from("student_assignment_settings")

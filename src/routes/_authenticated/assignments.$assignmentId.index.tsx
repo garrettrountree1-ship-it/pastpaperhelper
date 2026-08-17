@@ -4,12 +4,15 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { MessageSquare } from "lucide-react";
+import { questionLabel } from "@/lib/question-label";
 import { isPhotoOnlyQuestion, needsPhotoAnswer } from "@/lib/needs-photo";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 
 
 import { AppHeader } from "@/components/AppHeader";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
+import { MessageTeacherDialog } from "@/components/messaging/MessageTeacherDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -193,6 +196,9 @@ function AssignmentPage() {
                     <QuestionCard
                       key={question.id}
                       assignmentId={assignmentId}
+                      classId={data.assignment.classId}
+                      className={data.assignment.className}
+                      assignmentTitle={data.assignment.title}
                       index={index}
                       question={question}
                       locked={Boolean(data.submission.locked_at) || data.assignment.pastDue}
@@ -285,6 +291,9 @@ function groupByPage(questions: Question[]) {
 
 function QuestionCard({
   assignmentId,
+  classId,
+  className,
+  assignmentTitle,
   index,
   question,
   answer,
@@ -293,6 +302,9 @@ function QuestionCard({
   locked,
 }: {
   assignmentId: string;
+  classId: string;
+  className: string;
+  assignmentTitle: string;
   index: number;
   question: Question;
   answer: Answer | null;
@@ -412,6 +424,23 @@ function QuestionCard({
       onSend={() => tutorMutation.mutate()}
       locked={locked}
       markScheme={question.markScheme ?? null}
+      headerAction={
+        <MessageTeacherDialog
+          classId={classId}
+          className={className}
+          preset={{
+            assignmentId,
+            questionId: question.id,
+            topic: `${assignmentTitle} · Question ${questionLabel(question.question_text, index)}`,
+          }}
+          trigger={
+            <Button variant="ghost" size="sm">
+              <MessageSquare className="mr-1 size-4" />
+              Ask teacher
+            </Button>
+          }
+        />
+      }
 
     />
   );

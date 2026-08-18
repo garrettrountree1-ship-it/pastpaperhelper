@@ -21,6 +21,7 @@ import { Route as AuthenticatedGamesRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedHomeworkRouteImport } from './routes/_authenticated/homework'
 import { Route as AuthenticatedMaterialsRouteImport } from './routes/_authenticated/materials'
 import { Route as AuthenticatedQuizzesRouteImport } from './routes/_authenticated/quizzes'
+import { Route as AuthenticatedWagerRoundRouteImport } from './routes/_authenticated/wager-round'
 import { Route as AuthenticatedAssignmentsAssignmentIdRouteImport } from './routes/_authenticated/assignments.$assignmentId'
 import { Route as AuthenticatedChallengeMatchIdRouteImport } from './routes/_authenticated/challenge.$matchId'
 import { Route as AuthenticatedClassesClassIdRouteImport } from './routes/_authenticated/classes.$classId'
@@ -90,6 +91,11 @@ const AuthenticatedQuizzesRoute = AuthenticatedQuizzesRouteImport.update({
   path: '/quizzes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedWagerRoundRoute = AuthenticatedWagerRoundRouteImport.update({
+  id: '/wager-round',
+  path: '/wager-round',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAssignmentsAssignmentIdRoute =
   AuthenticatedAssignmentsAssignmentIdRouteImport.update({
     id: '/assignments/$assignmentId',
@@ -144,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/homework': typeof AuthenticatedHomeworkRoute
   '/materials': typeof AuthenticatedMaterialsRoute
   '/quizzes': typeof AuthenticatedQuizzesRoute
+  '/wager-round': typeof AuthenticatedWagerRoundRoute
   '/assignments/$assignmentId': typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
   '/challenge/$matchId': typeof AuthenticatedChallengeMatchIdRoute
   '/classes/$classId': typeof AuthenticatedClassesClassIdRoute
@@ -164,6 +171,7 @@ export interface FileRoutesByTo {
   '/homework': typeof AuthenticatedHomeworkRoute
   '/materials': typeof AuthenticatedMaterialsRoute
   '/quizzes': typeof AuthenticatedQuizzesRoute
+  '/wager-round': typeof AuthenticatedWagerRoundRoute
   '/challenge/$matchId': typeof AuthenticatedChallengeMatchIdRoute
   '/classes/$classId': typeof AuthenticatedClassesClassIdRoute
   '/quiz/$quizId': typeof AuthenticatedQuizQuizIdRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/_authenticated/homework': typeof AuthenticatedHomeworkRoute
   '/_authenticated/materials': typeof AuthenticatedMaterialsRoute
   '/_authenticated/quizzes': typeof AuthenticatedQuizzesRoute
+  '/_authenticated/wager-round': typeof AuthenticatedWagerRoundRoute
   '/_authenticated/assignments/$assignmentId': typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
   '/_authenticated/challenge/$matchId': typeof AuthenticatedChallengeMatchIdRoute
   '/_authenticated/classes/$classId': typeof AuthenticatedClassesClassIdRoute
@@ -207,6 +216,7 @@ export interface FileRouteTypes {
     | '/homework'
     | '/materials'
     | '/quizzes'
+    | '/wager-round'
     | '/assignments/$assignmentId'
     | '/challenge/$matchId'
     | '/classes/$classId'
@@ -227,6 +237,7 @@ export interface FileRouteTypes {
     | '/homework'
     | '/materials'
     | '/quizzes'
+    | '/wager-round'
     | '/challenge/$matchId'
     | '/classes/$classId'
     | '/quiz/$quizId'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '/_authenticated/homework'
     | '/_authenticated/materials'
     | '/_authenticated/quizzes'
+    | '/_authenticated/wager-round'
     | '/_authenticated/assignments/$assignmentId'
     | '/_authenticated/challenge/$matchId'
     | '/_authenticated/classes/$classId'
@@ -349,6 +361,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedQuizzesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/wager-round': {
+      id: '/_authenticated/wager-round'
+      path: '/wager-round'
+      fullPath: '/wager-round'
+      preLoaderRoute: typeof AuthenticatedWagerRoundRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/assignments/$assignmentId': {
       id: '/_authenticated/assignments/$assignmentId'
       path: '/assignments/$assignmentId'
@@ -428,6 +447,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHomeworkRoute: typeof AuthenticatedHomeworkRoute
   AuthenticatedMaterialsRoute: typeof AuthenticatedMaterialsRoute
   AuthenticatedQuizzesRoute: typeof AuthenticatedQuizzesRoute
+  AuthenticatedWagerRoundRoute: typeof AuthenticatedWagerRoundRoute
   AuthenticatedAssignmentsAssignmentIdRoute: typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
   AuthenticatedChallengeMatchIdRoute: typeof AuthenticatedChallengeMatchIdRoute
   AuthenticatedClassesClassIdRoute: typeof AuthenticatedClassesClassIdRoute
@@ -444,6 +464,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHomeworkRoute: AuthenticatedHomeworkRoute,
   AuthenticatedMaterialsRoute: AuthenticatedMaterialsRoute,
   AuthenticatedQuizzesRoute: AuthenticatedQuizzesRoute,
+  AuthenticatedWagerRoundRoute: AuthenticatedWagerRoundRoute,
   AuthenticatedAssignmentsAssignmentIdRoute:
     AuthenticatedAssignmentsAssignmentIdRouteWithChildren,
   AuthenticatedChallengeMatchIdRoute: AuthenticatedChallengeMatchIdRoute,

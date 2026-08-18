@@ -29,14 +29,15 @@ async function assignmentContext(
     .single();
   if (!assignment) throw new Error("Homework not found.");
 
-  const { effectiveTutorSettings } = await import("./tutor-settings.server");
-  const settings = await effectiveTutorSettings(
-    db,
-    assignment.class_id as string,
-    canStudy ? userId : null,
-  );
+  const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
+  const settings = await tutorSettingsForAssignment(db, assignmentId, canStudy ? userId : null);
 
   return { db, assignment, settings };
+}
+
+/** Strips translations when the teacher turned them off for this homework. */
+function applyTranslationToggle(items: VocabItem[], enabled: boolean): VocabItem[] {
+  return enabled ? items : items.map((item) => ({ ...item, translation: "" }));
 }
 
 /** Vocabulary list for the whole homework, translated into the teacher's language. */
@@ -52,7 +53,8 @@ export const getAssignmentVocab = createServerFn({ method: "POST" })
       userId,
       data.assignmentId,
     );
-    const language = settings.language;
+    const language = settings.vocabLanguage;
+    const translationEnabled = settings.vocabTranslation;
 
     const { data: cached } = await db
       .from("assignment_vocab")
@@ -64,8 +66,9 @@ export const getAssignmentVocab = createServerFn({ method: "POST" })
     if (cached && Array.isArray(cached.terms) && cached.terms.length > 0) {
       return {
         language,
+        translationEnabled,
         level: settings.level,
-        items: cached.terms as unknown as VocabItem[],
+        items: applyTranslationToggle(cached.terms as unknown as VocabItem[], translationEnabled),
       };
     }
 
@@ -77,7 +80,12 @@ export const getAssignmentVocab = createServerFn({ method: "POST" })
 
     const texts = (questions ?? []).map((q: { question_text: string }) => q.question_text);
     if (texts.length === 0) {
-      return { language, level: settings.level, items: [] as VocabItem[] };
+      return {
+        language,
+        translationEnabled,
+        level: settings.level,
+        items: [] as VocabItem[],
+      };
     }
 
     const { assignmentVocab } = await import("./vocab.server");
@@ -91,8 +99,14 @@ export const getAssignmentVocab = createServerFn({ method: "POST" })
           { onConflict: "assignment_id,language" },
         );
     }
-    return { language, level: settings.level, items };
+    return {
+      language,
+      translationEnabled,
+      level: settings.level,
+      items: applyTranslationToggle(items, translationEnabled),
+    };
   });
+
 
 /** In-depth explanation of one term, with illustrative pictures. */
 export const explainVocabTerm = createServerFn({ method: "POST" })
@@ -109,7 +123,7 @@ export const explainVocabTerm = createServerFn({ method: "POST" })
       userId,
       data.assignmentId,
     );
-    const language = settings.language;
+    const language = settings.vocabLanguage;
     const term = data.term.trim();
 
     const { data: cached } = await db
@@ -124,7 +138,7 @@ export const explainVocabTerm = createServerFn({ method: "POST" })
       return {
         term,
         language,
-        translation: cached.translation as string,
+        translation: settings.vocabTranslation ? (cached.translation as string) : "",
         explanation: cached.explanation as string,
         imageUrls: (cached.image_urls as string[]) ?? [],
       };
@@ -150,5 +164,11 @@ export const explainVocabTerm = createServerFn({ method: "POST" })
       { onConflict: "assignment_id,term,language" },
     );
 
-    return { term, language, ...result };
+    return {
+      term,
+      language,
+      ...result,
+      translation: settings.vocabTranslation ? result.translation : "",
+    };
+
   });

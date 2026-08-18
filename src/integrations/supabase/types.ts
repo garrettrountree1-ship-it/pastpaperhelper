@@ -145,11 +145,14 @@ export type Database = {
           due_at: string | null
           id: string
           instructions: string | null
+          keyword_translation: boolean | null
           mark_scheme_revealed: boolean
           photo_mode: string
           published: boolean
           subject: string
           title: string
+          vocab_language: string | null
+          vocab_translation: boolean
         }
         Insert: {
           class_id: string
@@ -159,11 +162,14 @@ export type Database = {
           due_at?: string | null
           id?: string
           instructions?: string | null
+          keyword_translation?: boolean | null
           mark_scheme_revealed?: boolean
           photo_mode?: string
           published?: boolean
           subject?: string
           title: string
+          vocab_language?: string | null
+          vocab_translation?: boolean
         }
         Update: {
           class_id?: string
@@ -173,11 +179,14 @@ export type Database = {
           due_at?: string | null
           id?: string
           instructions?: string | null
+          keyword_translation?: boolean | null
           mark_scheme_revealed?: boolean
           photo_mode?: string
           published?: boolean
           subject?: string
           title?: string
+          vocab_language?: string | null
+          vocab_translation?: boolean
         }
         Relationships: [
           {
@@ -319,6 +328,7 @@ export type Database = {
           class_id: string
           created_at: string
           id: string
+          keyword_translation: boolean | null
           student_can_change_level: boolean | null
           student_id: string
           tutor_language: string | null
@@ -330,6 +340,7 @@ export type Database = {
           class_id: string
           created_at?: string
           id?: string
+          keyword_translation?: boolean | null
           student_can_change_level?: boolean | null
           student_id: string
           tutor_language?: string | null
@@ -341,6 +352,7 @@ export type Database = {
           class_id?: string
           created_at?: string
           id?: string
+          keyword_translation?: boolean | null
           student_can_change_level?: boolean | null
           student_id?: string
           tutor_language?: string | null
@@ -1055,6 +1067,7 @@ export type Database = {
           created_at: string
           due_at: string | null
           id: string
+          keyword_translation: boolean | null
           mark_scheme_revealed: boolean
           photo_mode: string | null
           student_id: string
@@ -1066,6 +1079,7 @@ export type Database = {
           created_at?: string
           due_at?: string | null
           id?: string
+          keyword_translation?: boolean | null
           mark_scheme_revealed?: boolean
           photo_mode?: string | null
           student_id: string
@@ -1077,6 +1091,7 @@ export type Database = {
           created_at?: string
           due_at?: string | null
           id?: string
+          keyword_translation?: boolean | null
           mark_scheme_revealed?: boolean
           photo_mode?: string | null
           student_id?: string

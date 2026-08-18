@@ -2184,7 +2184,9 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: assignment } = await db
       .from("assignments")
-      .select("id, title, class_id, due_at, mark_scheme_revealed, photo_mode")
+      .select(
+        "id, title, class_id, due_at, mark_scheme_revealed, photo_mode, keyword_translation, vocab_translation, vocab_language",
+      )
       .eq("id", data.assignmentId)
       .single();
 
@@ -2200,7 +2202,7 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
         : Promise.resolve({ data: [] as Array<{ id: string; full_name: string; email: string | null }> }),
       db
         .from("student_assignment_settings")
-        .select("student_id, due_at, mark_scheme_revealed, photo_mode")
+        .select("student_id, due_at, mark_scheme_revealed, photo_mode, keyword_translation")
         .eq("assignment_id", data.assignmentId),
     ]);
 
@@ -2209,6 +2211,9 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
       dueAt: assignment!.due_at as string | null,
       markSchemeRevealed: Boolean(assignment!.mark_scheme_revealed),
       photoMode: isPhotoMode(assignment!.photo_mode) ? assignment!.photo_mode : "auto",
+      keywordTranslation: (assignment!.keyword_translation as boolean | null) ?? null,
+      vocabTranslation: assignment!.vocab_translation !== false,
+      vocabLanguage: (assignment!.vocab_language as string | null) ?? null,
       students: studentIds.map((id) => {
         const profile = (profiles ?? []).find((p) => p.id === id);
         const setting = (settings ?? []).find((s) => s.student_id === id);
@@ -2218,6 +2223,7 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
           dueAt: (setting?.due_at as string | null) ?? null,
           markSchemeRevealed: Boolean(setting?.mark_scheme_revealed),
           photoMode: isPhotoMode(setting?.photo_mode) ? setting!.photo_mode : null,
+          keywordTranslation: (setting?.keyword_translation as boolean | null) ?? null,
         };
       }),
     };
@@ -2234,6 +2240,9 @@ export const setAssignmentAccess = createServerFn({ method: "POST" })
         dueAt: z.string().nullable().optional(),
         markSchemeRevealed: z.boolean().optional(),
         photoMode: z.enum(["auto", "on", "off"]).optional(),
+        keywordTranslation: z.boolean().nullable().optional(),
+        vocabTranslation: z.boolean().optional(),
+        vocabLanguage: z.string().max(60).nullable().optional(),
       })
       .parse(input),
   )
@@ -2245,10 +2254,20 @@ export const setAssignmentAccess = createServerFn({ method: "POST" })
     });
     if (!allowed) throw new Error("Not allowed.");
 
-    const patch: { due_at?: string | null; mark_scheme_revealed?: boolean; photo_mode?: string } = {};
+    const patch: {
+      due_at?: string | null;
+      mark_scheme_revealed?: boolean;
+      photo_mode?: string;
+      keyword_translation?: boolean | null;
+      vocab_translation?: boolean;
+      vocab_language?: string | null;
+    } = {};
     if (data.dueAt !== undefined) patch.due_at = data.dueAt;
     if (data.markSchemeRevealed !== undefined) patch.mark_scheme_revealed = data.markSchemeRevealed;
     if (data.photoMode !== undefined) patch.photo_mode = data.photoMode;
+    if (data.keywordTranslation !== undefined) patch.keyword_translation = data.keywordTranslation;
+    if (data.vocabTranslation !== undefined) patch.vocab_translation = data.vocabTranslation;
+    if (data.vocabLanguage !== undefined) patch.vocab_language = data.vocabLanguage;
     if (Object.keys(patch).length === 0) return { ok: true };
 
 
@@ -2269,6 +2288,7 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
         dueAt: z.string().nullable().optional(),
         markSchemeRevealed: z.boolean().optional(),
         photoMode: z.enum(["auto", "on", "off"]).nullable().optional(),
+        keywordTranslation: z.boolean().nullable().optional(),
       })
       .parse(input),
   )
@@ -2289,6 +2309,7 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
       due_at?: string | null;
       mark_scheme_revealed?: boolean;
       photo_mode?: string | null;
+      keyword_translation?: boolean | null;
     } = {
       assignment_id: data.assignmentId,
       student_id: data.studentId,
@@ -2298,7 +2319,7 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
     if (data.dueAt !== undefined) patch.due_at = data.dueAt;
     if (data.markSchemeRevealed !== undefined) patch.mark_scheme_revealed = data.markSchemeRevealed;
     if (data.photoMode !== undefined) patch.photo_mode = data.photoMode;
-
+    if (data.keywordTranslation !== undefined) patch.keyword_translation = data.keywordTranslation;
 
     const { error } = await db
       .from("student_assignment_settings")

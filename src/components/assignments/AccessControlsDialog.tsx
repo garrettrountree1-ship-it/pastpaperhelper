@@ -25,6 +25,46 @@ import {
 import { formatDueDate, fromLocalInput, toLocalInput } from "@/lib/datetime";
 import { PhotoModeControl } from "@/components/assignments/PhotoModeControl";
 import type { PhotoMode } from "@/lib/photo-mode";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { TUTOR_LANGUAGES } from "@/lib/tutor-settings";
+
+const INHERIT = "__inherit__";
+
+/** Class default / On / Off picker for the key-word hover translation. */
+function HoverTranslationControl({
+  value,
+  inheritLabel,
+  disabled,
+  onChange,
+}: {
+  value: boolean | null;
+  inheritLabel: string;
+  disabled?: boolean;
+  onChange: (next: boolean | null) => void;
+}) {
+  return (
+    <Select
+      value={value === null ? INHERIT : value ? "on" : "off"}
+      disabled={disabled === true}
+      onValueChange={(next) => onChange(next === INHERIT ? null : next === "on")}
+    >
+      <SelectTrigger className="w-56">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={INHERIT}>{inheritLabel}</SelectItem>
+        <SelectItem value="on">Hover translation on</SelectItem>
+        <SelectItem value="off">Hover translation off</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
 
 /**
  * Teacher control panel for an assignment's due date (class-wide or per student)
@@ -63,6 +103,9 @@ export function AccessControlsDialog({
       dueAt?: string | null;
       markSchemeRevealed?: boolean;
       photoMode?: PhotoMode;
+      keywordTranslation?: boolean | null;
+      vocabTranslation?: boolean;
+      vocabLanguage?: string | null;
     }) =>
       saveClass({ data: { assignmentId, ...input } }),
     onSuccess: () => {
@@ -78,6 +121,7 @@ export function AccessControlsDialog({
       dueAt?: string | null;
       markSchemeRevealed?: boolean;
       photoMode?: PhotoMode | null;
+      keywordTranslation?: boolean | null;
     }) => saveStudent({ data: { assignmentId, ...input } }),
     onSuccess: () => {
       toast.success("Saved for that student");
@@ -176,6 +220,61 @@ export function AccessControlsDialog({
                   />
                 </div>
               </div>
+
+              <div className="mt-4 border-t border-border pt-3">
+                <Label className="text-sm">Key-word hover translation for this homework</Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Class default follows the class Tutor &amp; language setting. Only single key words
+                  are glossed — never whole questions.
+                </p>
+                <div className="mt-2">
+                  <HoverTranslationControl
+                    value={data.keywordTranslation}
+                    inheritLabel="Class default"
+                    disabled={classMutation.isPending}
+                    onChange={(next) => classMutation.mutate({ keywordTranslation: next })}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 border-t border-border pt-3">
+                <Label className="text-sm">Vocab list translations</Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Controls the translations shown in the student&apos;s Vocab list for this homework.
+                  Turn them off to show English hints only.
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={data.vocabTranslation}
+                      disabled={classMutation.isPending}
+                      onCheckedChange={(checked) =>
+                        classMutation.mutate({ vocabTranslation: checked === true })
+                      }
+                    />
+                    Translate vocab words
+                  </label>
+                  <Select
+                    value={data.vocabLanguage ?? INHERIT}
+                    disabled={classMutation.isPending || !data.vocabTranslation}
+                    onValueChange={(next) =>
+                      classMutation.mutate({ vocabLanguage: next === INHERIT ? null : next })
+                    }
+                  >
+                    <SelectTrigger className="w-56">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={INHERIT}>Class tutor language</SelectItem>
+                      {TUTOR_LANGUAGES.map((language) => (
+                        <SelectItem key={language} value={language}>
+                          {language}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </section>
 
 
@@ -196,6 +295,7 @@ export function AccessControlsDialog({
                       classDueAt={data.dueAt}
                       classRevealed={data.markSchemeRevealed}
                       classPhotoMode={data.photoMode}
+                      assignmentKeywordTranslation={data.keywordTranslation}
                       saving={studentMutation.isPending}
                       onSave={(input) => studentMutation.mutate({ studentId: student.id, ...input })}
                     />
@@ -215,6 +315,7 @@ function StudentRow({
   classDueAt,
   classRevealed,
   classPhotoMode,
+  assignmentKeywordTranslation,
   saving,
   onSave,
 }: {
@@ -224,15 +325,18 @@ function StudentRow({
     dueAt: string | null;
     markSchemeRevealed: boolean;
     photoMode: PhotoMode | null;
+    keywordTranslation: boolean | null;
   };
   classDueAt: string | null;
   classRevealed: boolean;
   classPhotoMode: PhotoMode;
+  assignmentKeywordTranslation: boolean | null;
   saving: boolean;
   onSave: (input: {
     dueAt?: string | null;
     markSchemeRevealed?: boolean;
     photoMode?: PhotoMode | null;
+    keywordTranslation?: boolean | null;
   }) => void;
 }) {
   const [due, setDue] = useState<string | null>(null);
@@ -290,6 +394,25 @@ function StudentRow({
             allowInherit
             disabled={saving}
             onChange={(next) => onSave({ photoMode: next })}
+          />
+        </div>
+      </div>
+      <div className="mt-2">
+        <Label className="text-xs text-muted-foreground">
+          Key-word hover translation (homework setting:{" "}
+          {assignmentKeywordTranslation === null
+            ? "class default"
+            : assignmentKeywordTranslation
+              ? "on"
+              : "off"}
+          )
+        </Label>
+        <div className="mt-1">
+          <HoverTranslationControl
+            value={student.keywordTranslation}
+            inheritLabel="Homework setting"
+            disabled={saving}
+            onChange={(next) => onSave({ keywordTranslation: next })}
           />
         </div>
       </div>

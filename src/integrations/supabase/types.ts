@@ -331,6 +331,47 @@ export type Database = {
           },
         ]
       }
+      class_units: {
+        Row: {
+          class_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          position: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          position?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          position?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_units_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classes: {
         Row: {
           created_at: string
@@ -640,6 +681,69 @@ export type Database = {
             columns: ["answer_id"]
             isOneToOne: false
             referencedRelation: "answers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      unit_materials: {
+        Row: {
+          class_id: string
+          content_type: string | null
+          created_at: string
+          created_by: string
+          external_url: string | null
+          file_name: string | null
+          file_size: number | null
+          id: string
+          kind: string
+          position: number
+          storage_path: string | null
+          title: string
+          unit_id: string
+        }
+        Insert: {
+          class_id: string
+          content_type?: string | null
+          created_at?: string
+          created_by: string
+          external_url?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          kind?: string
+          position?: number
+          storage_path?: string | null
+          title: string
+          unit_id: string
+        }
+        Update: {
+          class_id?: string
+          content_type?: string | null
+          created_at?: string
+          created_by?: string
+          external_url?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          kind?: string
+          position?: number
+          storage_path?: string | null
+          title?: string
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unit_materials_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unit_materials_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "class_units"
             referencedColumns: ["id"]
           },
         ]

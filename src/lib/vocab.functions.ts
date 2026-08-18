@@ -164,5 +164,11 @@ export const explainVocabTerm = createServerFn({ method: "POST" })
       { onConflict: "assignment_id,term,language" },
     );
 
-    return { term, language, ...result };
+    return {
+      term,
+      language,
+      ...result,
+      translation: settings.vocabTranslation ? result.translation : "",
+    };
+
   });

@@ -1673,10 +1673,16 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
 
     const { data: assignmentRow } = await db
       .from("assignments")
-      .select("subject, curriculum")
+      .select("subject, curriculum, class_id")
       .eq("id", data.assignmentId)
       .single();
     const assignment = assignmentRow!;
+    const { data: previewClass } = await db
+      .from("classes")
+      .select("ai_warning_limit")
+      .eq("id", assignment.class_id)
+      .maybeSingle();
+    const previewLimit = previewClass?.ai_warning_limit ?? 3;
 
     // Same integrity check students face; strikes are counted in the preview
     // session only (nothing is written to the real submission).
@@ -1688,9 +1694,9 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
     });
     if (previewDetection.isAi) {
       const strikes = (data.priorFlags ?? 0) + 1;
-      if (strikes >= 4) throw new Error(LOCKED_MESSAGE);
+      if (strikes > previewLimit) throw new Error(LOCKED_MESSAGE);
       throw new Error(
-        `This answer looks AI-generated or copied, so it was not accepted. Write it in your own words. Warning ${strikes} of 3 — a fourth AI answer locks the homework and marks it as a fail until a teacher unlocks it.`,
+        `This answer looks AI-generated or copied, so it was not accepted. Write it in your own words. Warning ${strikes} of ${previewLimit} — one more AI answer locks the homework and marks it as a fail until a teacher unlocks it.`,
       );
     }
 

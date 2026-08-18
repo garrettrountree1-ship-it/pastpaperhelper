@@ -13,7 +13,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GlossaryText } from "@/components/assignments/GlossaryText";
 import { explainVocabTerm, getAssignmentVocab } from "@/lib/vocab.functions";
+
 
 type VocabItem = {
   term: string;
@@ -119,9 +121,12 @@ export function VocabSheet({ assignmentId }: { assignmentId: string }) {
                       ))}
                     </div>
                   ) : null}
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {explain.data.explanation}
-                  </p>
+                  <GlossaryText
+                    text={explain.data.explanation}
+                    terms={explain.data.glossary ?? []}
+                    className="whitespace-pre-wrap text-sm leading-relaxed"
+                  />
+
                   <p className="text-xs text-muted-foreground">
                     Pictures come from Wikimedia. This explains the idea only — you still write
                     your own answer in English.

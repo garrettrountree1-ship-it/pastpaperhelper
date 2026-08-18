@@ -20,7 +20,7 @@ export type EffectiveTutorSettings = {
 };
 
 export const CLASS_SETTINGS_FIELDS =
-  "tutor_language, tutor_level, protect_questions, keyword_translation, student_can_change_level";
+  "tutor_language, tutor_level, protect_questions, keyword_translation, student_can_change_level, vocab_translation, vocab_language";
 
 /** Class defaults with the per-student override applied. */
 export async function effectiveTutorSettings(
@@ -42,6 +42,7 @@ export async function effectiveTutorSettings(
   const row = override?.data ?? null;
   const level = row?.tutor_level ?? klass?.tutor_level ?? DEFAULT_TUTOR_LEVEL;
   const language = row?.tutor_language ?? klass?.tutor_language ?? DEFAULT_TUTOR_LANGUAGE;
+  const vocabTranslation = klass?.vocab_translation !== false;
   return {
     language,
     level: isTutorLevel(level) ? level : DEFAULT_TUTOR_LEVEL,
@@ -50,16 +51,17 @@ export async function effectiveTutorSettings(
     ),
     protectQuestions: Boolean(klass?.protect_questions),
     keywordTranslation: Boolean(row?.keyword_translation ?? klass?.keyword_translation ?? false),
-    vocabTranslation: true,
-    vocabLanguage: language,
+    vocabTranslation,
+    vocabLanguage: (klass?.vocab_language as string | null) || language,
   };
 }
+
 
 /**
  * Same, resolved from an assignment id, with the assignment-level and
  * per-student-per-assignment overrides applied on top of the class defaults.
  * Precedence for keyword hover translation:
- * student+assignment → student (overall) → assignment. There is no class-wide toggle.
+ * student+assignment → student (overall) → assignment → class default.
  */
 export async function tutorSettingsForAssignment(
   db: Db,
@@ -107,14 +109,16 @@ export async function tutorSettingsForAssignment(
     studentOverride?.data?.keyword_translation,
     classOverride?.data?.keyword_translation,
     assignment.keyword_translation,
+    base.keywordTranslation,
   ] as Array<boolean | null | undefined>;
   const keywordTranslation = Boolean(chain.find((value) => value === true || value === false));
 
   return {
     ...base,
     keywordTranslation,
-
-    vocabTranslation: assignment.vocab_translation !== false,
-    vocabLanguage: (assignment.vocab_language as string | null) ?? base.language,
+    // Class switch is the default; a homework can only turn translations further off.
+    vocabTranslation: base.vocabTranslation && assignment.vocab_translation !== false,
+    vocabLanguage: (assignment.vocab_language as string | null) ?? base.vocabLanguage,
   };
+
 }

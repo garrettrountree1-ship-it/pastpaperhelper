@@ -230,7 +230,7 @@ export function AccessControlsDialog({
                 <div className="mt-2">
                   <HoverTranslationControl
                     value={data.keywordTranslation}
-                    inheritLabel="Off unless set per student"
+                    inheritLabel="Use class setting"
                     disabled={classMutation.isPending}
                     onChange={(next) => classMutation.mutate({ keywordTranslation: next })}
                   />

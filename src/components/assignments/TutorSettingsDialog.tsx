@@ -53,7 +53,10 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
       protectQuestions?: boolean;
       keywordTranslation?: boolean;
       studentCanChangeLevel?: boolean;
+      vocabTranslation?: boolean;
+      vocabLanguage?: string;
     }) => saveClass({ data: input }),
+
     onSuccess: () => {
       toast.success("Class settings saved");
       queryClient.invalidateQueries({ queryKey });
@@ -185,6 +188,60 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
                     </span>
                   </span>
                 </label>
+
+                <label className="flex items-start gap-3 text-sm">
+                  <Checkbox
+                    checked={klass.keywordTranslation}
+                    onCheckedChange={(checked) =>
+                      classMutation.mutate({ classId, keywordTranslation: checked === true })
+                    }
+                  />
+                  <span>
+                    Hover translation of key words
+                    <span className="block text-xs text-muted-foreground">
+                      Underlines key words in questions, tutor replies and vocab definitions so
+                      students can hover for a short {klass.tutorLanguage} meaning. Turn it off for
+                      individual students below.
+                    </span>
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-3 text-sm">
+                  <Checkbox
+                    checked={klass.vocabTranslation}
+                    onCheckedChange={(checked) =>
+                      classMutation.mutate({ classId, vocabTranslation: checked === true })
+                    }
+                  />
+                  <span>
+                    Translate vocabulary terms in the vocab list
+                    <span className="block text-xs text-muted-foreground">
+                      Only the term itself is translated — definitions and examples stay in simple
+                      English at the class tutor level.
+                    </span>
+                  </span>
+                </label>
+
+                <div className="max-w-xs space-y-2">
+                  <Label>Vocabulary translation language</Label>
+                  <Select
+                    value={klass.vocabLanguage}
+                    onValueChange={(value) =>
+                      classMutation.mutate({ classId, vocabLanguage: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TUTOR_LANGUAGES.map((language) => (
+                        <SelectItem key={language} value={language}>
+                          {language}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </section>
 
@@ -192,10 +249,11 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
               <h3 className="font-display text-lg">Individual students</h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 Differentiate for key students. “Class default” means they follow the settings
-                above. Key-word hover translation is set per student here (it applies to every class of
-                theirs) or per homework in that assignment&apos;s Due date &amp; answer release
-                panel — there is no whole-class switch.
+                above, including hover translation — set a student to “Hover: off” to switch it off
+                just for them, or override it for one homework in that assignment&apos;s Due date
+                &amp; answer release panel.
               </p>
+
 
               {settings.data.students.length === 0 ? (
                 <p className="mt-4 text-sm text-muted-foreground">No students have joined yet.</p>
@@ -277,7 +335,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={INHERIT}>Hover: per homework</SelectItem>
+                          <SelectItem value={INHERIT}>Hover: class default</SelectItem>
                           <SelectItem value="on">Hover: on</SelectItem>
                           <SelectItem value="off">Hover: off</SelectItem>
                         </SelectContent>

@@ -28,10 +28,11 @@ export const getClassTutorSettings = createServerFn({ method: "POST" })
     const { data: klass } = await db
       .from("classes")
       .select(
-        "tutor_language, tutor_level, protect_questions, keyword_translation, student_can_change_level",
+        "tutor_language, tutor_level, protect_questions, keyword_translation, student_can_change_level, vocab_translation, vocab_language",
       )
       .eq("id", data.classId)
       .single();
+
 
     const { data: members } = await db
       .from("class_members")
@@ -64,7 +65,11 @@ export const getClassTutorSettings = createServerFn({ method: "POST" })
         protectQuestions: Boolean(klass!.protect_questions),
         keywordTranslation: Boolean(klass!.keyword_translation),
         studentCanChangeLevel: Boolean(klass!.student_can_change_level),
+        vocabTranslation: (klass as any).vocab_translation !== false,
+        vocabLanguage:
+          ((klass as any).vocab_language as string | null) || (klass!.tutor_language as string),
       },
+
       students: (profiles ?? [])
         .map((p: any) => {
           const o = overrideMap.get(p.id);
@@ -94,6 +99,8 @@ export const setClassTutorSettings = createServerFn({ method: "POST" })
         protectQuestions: z.boolean().optional(),
         keywordTranslation: z.boolean().optional(),
         studentCanChangeLevel: z.boolean().optional(),
+        vocabTranslation: z.boolean().optional(),
+        vocabLanguage: languageEnum.optional(),
       })
       .parse(input),
   )
@@ -111,7 +118,10 @@ export const setClassTutorSettings = createServerFn({ method: "POST" })
       protect_questions?: boolean;
       keyword_translation?: boolean;
       student_can_change_level?: boolean;
+      vocab_translation?: boolean;
+      vocab_language?: string;
     } = {};
+
     if (data.tutorLanguage !== undefined) patch["tutor_language"] = data.tutorLanguage;
     if (data.tutorLevel !== undefined) patch["tutor_level"] = data.tutorLevel;
     if (data.protectQuestions !== undefined) patch["protect_questions"] = data.protectQuestions;
@@ -119,6 +129,8 @@ export const setClassTutorSettings = createServerFn({ method: "POST" })
       patch["keyword_translation"] = data.keywordTranslation;
     if (data.studentCanChangeLevel !== undefined)
       patch["student_can_change_level"] = data.studentCanChangeLevel;
+    if (data.vocabTranslation !== undefined) patch["vocab_translation"] = data.vocabTranslation;
+    if (data.vocabLanguage !== undefined) patch["vocab_language"] = data.vocabLanguage;
     if (Object.keys(patch).length === 0) return { ok: true };
 
     const db = await admin();
@@ -126,6 +138,7 @@ export const setClassTutorSettings = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
 
 /** Teacher sets one student's override. `null` clears it back to the class default. */
 export const setStudentTutorSettings = createServerFn({ method: "POST" })

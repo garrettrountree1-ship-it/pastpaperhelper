@@ -162,6 +162,7 @@ export const updateClass = createServerFn({ method: "POST" })
         subject: z.string(),
         joinCode: z.string().trim().min(4).max(10).optional(),
         regenerateJoinCode: z.boolean().optional(),
+        aiWarningLimit: z.number().int().min(0).max(10).optional(),
       })
       .parse(input),
   )
@@ -185,13 +186,14 @@ export const updateClass = createServerFn({ method: "POST" })
       curriculum: data.curriculum,
       subject: data.subject,
       ...(joinCode ? { join_code: joinCode } : {}),
+      ...(data.aiWarningLimit === undefined ? {} : { ai_warning_limit: data.aiWarningLimit }),
     };
 
     const { data: updated, error } = await supabase
       .from("classes")
       .update(patch)
       .eq("id", data.classId)
-      .select("id, name, curriculum, subject, join_code")
+      .select("id, name, curriculum, subject, join_code, ai_warning_limit")
       .single();
     if (error) {
       if (error.code === "23505" || error.message.includes("duplicate")) {
@@ -574,7 +576,7 @@ export const getClassOverview = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: klass, error } = await supabase
       .from("classes")
-      .select("id, name, curriculum, subject, join_code, teacher_id")
+      .select("id, name, curriculum, subject, join_code, teacher_id, ai_warning_limit")
       .eq("id", data.classId)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -1220,10 +1222,16 @@ export const gradeAnswer = createServerFn({ method: "POST" })
 
     const { data: assignmentRow } = await db
       .from("assignments")
-      .select("subject, curriculum")
+      .select("subject, curriculum, class_id")
       .eq("id", data.assignmentId)
       .single();
     const assignment = assignmentRow!;
+    const { data: classRow } = await db
+      .from("classes")
+      .select("ai_warning_limit")
+      .eq("id", assignment.class_id)
+      .maybeSingle();
+    const warningLimit = classRow?.ai_warning_limit ?? 3;
 
     const access = await studentAccess(db, data.assignmentId, userId);
     if (access.pastDue) throw new Error(PAST_DUE_MESSAGE);
@@ -1255,7 +1263,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
         excerpt: data.answerText.slice(0, 600),
         confidence: violation.confidence,
       });
-      const locked = strikes >= 4;
+      const locked = strikes > warningLimit;
       await db
         .from("submissions")
         .update({
@@ -1263,8 +1271,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
           ...(locked
             ? {
                 locked_at: new Date().toISOString(),
-                locked_reason:
-                  "A fourth answer was detected as AI-generated, copied or plagiarised.",
+                locked_reason: `Answer ${strikes} was detected as AI-generated, copied or plagiarised (class limit: ${warningLimit} warning${warningLimit === 1 ? "" : "s"}).`,
               }
             : {}),
         })
@@ -1274,7 +1281,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
         throw new Error(LOCKED_MESSAGE);
       }
       throw new Error(
-        `${violation.reason} This answer was not accepted — write it in your own words. Warning ${strikes} of 3 — a fourth copied answer locks this homework and marks it as a fail until your teacher unlocks it.`,
+        `${violation.reason} This answer was not accepted — write it in your own words. Warning ${strikes} of ${warningLimit} — one more copied answer locks this homework and marks it as a fail until your teacher unlocks it.`,
       );
 
     }
@@ -1666,10 +1673,16 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
 
     const { data: assignmentRow } = await db
       .from("assignments")
-      .select("subject, curriculum")
+      .select("subject, curriculum, class_id")
       .eq("id", data.assignmentId)
       .single();
     const assignment = assignmentRow!;
+    const { data: previewClass } = await db
+      .from("classes")
+      .select("ai_warning_limit")
+      .eq("id", assignment.class_id)
+      .maybeSingle();
+    const previewLimit = previewClass?.ai_warning_limit ?? 3;
 
     // Same integrity check students face; strikes are counted in the preview
     // session only (nothing is written to the real submission).
@@ -1681,9 +1694,9 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
     });
     if (previewDetection.isAi) {
       const strikes = (data.priorFlags ?? 0) + 1;
-      if (strikes >= 4) throw new Error(LOCKED_MESSAGE);
+      if (strikes > previewLimit) throw new Error(LOCKED_MESSAGE);
       throw new Error(
-        `This answer looks AI-generated or copied, so it was not accepted. Write it in your own words. Warning ${strikes} of 3 — a fourth AI answer locks the homework and marks it as a fail until a teacher unlocks it.`,
+        `This answer looks AI-generated or copied, so it was not accepted. Write it in your own words. Warning ${strikes} of ${previewLimit} — one more AI answer locks the homework and marks it as a fail until a teacher unlocks it.`,
       );
     }
 

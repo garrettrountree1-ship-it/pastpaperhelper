@@ -162,8 +162,8 @@ function PreviewPage() {
               {flags > 0 ? (
                 <p className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                   {flags >= 4
-                    ? "Locked: a fourth AI-generated or copied answer was detected. A student would now need their teacher to unlock this homework."
-                    : `Warning ${flags} of 3: AI-generated or copied answers detected in this preview session. A fourth locks the homework.`}
+                    ? "Locked: too many AI-generated or copied answers were detected. A student would now need their teacher to unlock this homework."
+                    : `Warning ${flags}: AI-generated or copied answers detected in this preview session. Passing the class warning limit locks the homework.`}
                 </p>
               ) : null}
             </div>

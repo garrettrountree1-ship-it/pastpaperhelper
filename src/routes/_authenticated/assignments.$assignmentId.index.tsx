@@ -162,18 +162,18 @@ function AssignmentPage() {
                   <p className="font-medium">This homework is locked and marked as a fail.</p>
                   <p className="mt-1 text-muted-foreground">
                     {data.submission.locked_reason ??
-                      "A fourth AI-generated or copied answer was detected."}{" "}
+                      "Too many AI-generated or copied answers were detected."}{" "}
                     Speak to your teacher — only they can unlock it and give you another chance.
                   </p>
                 </div>
               ) : (data.submission.ai_flag_count ?? 0) > 0 ? (
                 <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm">
                   <p className="font-medium">
-                    Warning {data.submission.ai_flag_count} of 3: AI-generated or copied answers
+                    Warning {data.submission.ai_flag_count}: AI-generated or copied answers
                     were rejected.
                   </p>
                   <p className="mt-1 text-muted-foreground">
-                    Answers must be your own words. A fourth AI answer locks this homework and
+                    Answers must be your own words. Passing your class warning limit locks this homework and
                     marks it as a fail until your teacher unlocks it.
                   </p>
                 </div>

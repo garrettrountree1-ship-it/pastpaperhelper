@@ -451,6 +451,7 @@ export type Database = {
       }
       classes: {
         Row: {
+          ai_warning_limit: number
           created_at: string
           curriculum: string
           id: string
@@ -467,6 +468,7 @@ export type Database = {
           vocab_translation: boolean
         }
         Insert: {
+          ai_warning_limit?: number
           created_at?: string
           curriculum?: string
           id?: string
@@ -483,6 +485,7 @@ export type Database = {
           vocab_translation?: boolean
         }
         Update: {
+          ai_warning_limit?: number
           created_at?: string
           curriculum?: string
           id?: string

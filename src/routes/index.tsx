@@ -85,7 +85,7 @@ const integrity = [
   {
     icon: History,
     title: "Three warnings, then locked",
-    body: "Each flagged answer adds a warning. On the fourth the homework locks and is marked as a fail until you unlock it — with an optional percentage deduction of your choosing.",
+    body: "Each flagged answer adds a warning. You choose how many warnings students get per class — once the limit is passed the homework locks and is marked as a fail until you unlock it, with an optional percentage deduction.",
   },
 ];
 

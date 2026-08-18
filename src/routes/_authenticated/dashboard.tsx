@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { BookOpen, Gamepad2, NotebookPen, Timer } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -13,7 +13,6 @@ import { listMaterialClasses } from "@/lib/materials.functions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDemoView } from "@/lib/demo-view";
-import { SECTIONS, type SectionKey } from "@/lib/sections";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -57,12 +56,6 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 const PENDING_OAUTH_ROLE_KEY = "pendingOAuthRole";
 
-const icons: Record<SectionKey, typeof BookOpen> = {
-  materials: BookOpen,
-  homework: NotebookPen,
-  quizzes: Timer,
-  games: Gamepad2,
-};
 
 function Dashboard() {
   const me = useQuery({ queryKey: ["me"], queryFn: useServerFn(getMe), retry: 2 });

@@ -2,8 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { DAILY_TOKEN_CAP, DEMO_LEADERBOARD, uniqueAlias } from "@/lib/game-alias";
-import { isDemoEmail } from "@/lib/demo";
+import { DAILY_TOKEN_CAP, uniqueAlias } from "@/lib/game-alias";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 
 async function admin() {
@@ -175,8 +174,7 @@ async function resolveMatch(db: AnyDb, matchId: string) {
 export const getGamesOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabase, userId, claims } = context;
-    const isDemo = isDemoEmail((claims as { email?: string }).email ?? null);
+    const { supabase, userId } = context;
     const db = await admin();
 
     const [{ data: taught }, { data: memberships }] = await Promise.all([
@@ -257,14 +255,6 @@ export const getGamesOverview = createServerFn({ method: "GET" })
               tokens: p.tokens,
               demo: false,
             })),
-          ...(isDemo
-            ? DEMO_LEADERBOARD.map((d) => ({
-                studentId: `demo-${d.alias}`,
-                alias: d.alias,
-                tokens: d.tokens,
-                demo: true,
-              }))
-            : []),
         ].sort((a, b) => b.tokens - a.tokens),
       })),
       studentClasses: studentClasses.map((c) => {
@@ -284,14 +274,6 @@ export const getGamesOverview = createServerFn({ method: "GET" })
                 isYou: p.student_id === userId,
                 demo: false,
               })),
-            ...(isDemo
-              ? DEMO_LEADERBOARD.map((d) => ({
-                  alias: d.alias,
-                  tokens: d.tokens,
-                  isYou: false,
-                  demo: true,
-                }))
-              : []),
           ].sort((a, b) => b.tokens - a.tokens),
         };
       }),
@@ -419,7 +401,7 @@ export const adjustTokens = createServerFn({ method: "POST" })
         classId: z.string().uuid(),
         studentId: z.string().uuid(),
         delta: z.number().int().min(-50).max(50),
-        reason: z.string().default(""),
+        reason: z.string().trim().min(1).max(500),
       })
       .parse(input),
   )
@@ -432,15 +414,26 @@ export const adjustTokens = createServerFn({ method: "POST" })
     if (!isTeacher) throw new Error("You do not teach this class.");
     if (data.delta === 0) throw new Error("Choose a token amount.");
     const db = await admin();
-    await awardTokens(db, {
+    const applied = await awardTokens(db, {
       classId: data.classId,
       studentId: data.studentId,
       delta: data.delta,
-      reason: data.reason || "Teacher adjustment",
+      reason: data.reason,
       createdBy: userId,
       capped: false,
     });
-    return { ok: true };
+
+    // Always tell the student why their token total changed.
+    await db.from("class_messages").insert({
+      class_id: data.classId,
+      student_id: data.studentId,
+      sender_id: userId,
+      sender_role: "teacher",
+      topic: "Tokens updated",
+      body: `${applied > 0 ? `+${applied}` : applied} token${Math.abs(applied) === 1 ? "" : "s"}: ${data.reason}`,
+    });
+
+    return { ok: true, applied };
   });
 
 export const getTokenHistory = createServerFn({ method: "POST" })

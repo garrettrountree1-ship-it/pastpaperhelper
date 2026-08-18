@@ -1,0 +1,2 @@
+ALTER TABLE public.classes ADD COLUMN IF NOT EXISTS ai_warning_limit integer NOT NULL DEFAULT 3;
+ALTER TABLE public.classes ADD CONSTRAINT classes_ai_warning_limit_range CHECK (ai_warning_limit BETWEEN 0 AND 10);

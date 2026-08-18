@@ -173,11 +173,26 @@ type TutorInput = {
   latestMessage: string;
   awardedMarks?: number;
   markBreakdown?: MarkPoint[];
+  /** Differentiation level chosen by the teacher (or the student, if allowed). */
+  level?: "beginner" | "medium" | "advanced";
+  /** Language the tutor replies in. */
+  language?: string;
+};
+
+const LEVEL_STYLE: Record<string, string> = {
+  beginner:
+    "The student is a beginner English-language learner. Use very simple, short sentences (CEFR A2-B1), no idioms, no long clauses. Keep the whole reply under 55 words. Explain only ONE idea, in the smallest possible step, and define any technical word in three or four easy words. Ask one very short question.",
+  medium:
+    "Use clear, plain classroom English. Keep the reply under 90 words, no lists longer than 3 items, and ask exactly one question at the end.",
+  advanced:
+    "The student is confident. Use accurate subject terminology, expect independent reasoning, and probe the underlying principle rather than the wording. You may use up to 140 words and connect the missing mark to the wider concept, but still reveal nothing from the mark scheme, and finish with one demanding question.",
 };
 
 export async function tutorStep(input: TutorInput): Promise<string> {
   const missed = (input.markBreakdown ?? []).filter((p) => !p.awarded);
   const earned = (input.markBreakdown ?? []).filter((p) => p.awarded);
+  const level = input.level ?? "medium";
+  const language = input.language?.trim() || "English";
 
   const system = [
     "You are a subject expert tutor for IGCSE, A-Level and IB students, coaching one student toward full marks on one exam question.",
@@ -185,7 +200,11 @@ export async function tutorStep(input: TutorInput): Promise<string> {
     "Every reply must do three things, in this order: (1) name precisely which marking point is still missing, in exam terms (e.g. 'you have the observation mark but not the explanation mark: nothing yet links the change to bond strength'); (2) teach the science or maths behind that specific mark in one or two plain sentences, so the student learns the idea, not the wording; (3) ask one short question that makes the student produce that missing point themselves.",
     "Also tell the student what a full-mark response needs structurally — how many distinct points, and what type each one is (statement, reason, comparison, unit, working step) — without supplying their content.",
     "Confirm briefly what they already earned so they do not delete correct work.",
-    "Keep replies under 90 words, plain English, no markdown headings, no lists longer than 3 items, exactly one question at the end.",
+    "No markdown headings.",
+    LEVEL_STYLE[level] ?? LEVEL_STYLE["medium"]!,
+    language.toLowerCase().startsWith("english")
+      ? "Reply in English."
+      : `Reply in ${language}. Keep subject-specific exam terms in English inside brackets after the translated term, because the student must write their exam answer in English.`,
     "When their reasoning finally covers the missing point, say so and tell them to add it to their answer and press Re-check answer.",
   ].join(" ");
 

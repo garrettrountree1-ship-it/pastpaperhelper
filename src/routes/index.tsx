@@ -1,14 +1,21 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import {
   BookOpenCheck,
+  BotMessageSquare,
   Camera,
-  ClipboardList,
+  Clock,
   Eye,
-  History,
-  MessageCircleQuestion,
-  ScanSearch,
+  FileText,
+  FolderArchive,
+  Gamepad2,
+  GraduationCap,
+  Languages,
+  Lock,
+  MessageSquare,
+  PenTool,
   ShieldAlert,
   Sparkles,
+  Upload,
   Users,
 } from "lucide-react";
 
@@ -22,13 +29,13 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Upload past papers and mark schemes. Students are marked point by point, coached by an AI tutor, and copy-paste plus AI-written answers are detected and blocked.",
+          "Upload past papers and mark schemes. AI marks against the mark scheme, coaches every student with a built-in tutor, and blocks copied or AI-written work.",
       },
       { property: "og:title", content: "STEM Homework AI — Past-paper homework that teaches" },
       {
         property: "og:description",
         content:
-          "Mark-scheme accurate marking, a built-in AI tutor, AI-copying detection, and a full history of every student answer for teachers.",
+          "AI marking, a Socratic tutor, anti-copying controls, quizzes, games and class materials — all built for IGCSE, A-Level and IB teachers.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -37,76 +44,93 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
-const features = [
+const pillars = [
   {
-    icon: ClipboardList,
-    title: "Upload past papers — or write your own questions",
-    body: "Drop in the paper and the mark scheme as PDFs — combined or separate — and the questions, marks and diagrams are lined up into a ready assignment. Prefer your own material? Type any question with your own mark scheme and marks by hand, and mix it with past-paper questions in the same homework.",
+    icon: Upload,
+    title: "Upload past papers",
+    body: "Drop in the paper and mark scheme as combined or separate PDFs. AI aligns the questions, marks and diagrams into a ready assignment.",
   },
-
   {
     icon: BookOpenCheck,
-    title: "Marked point by point",
-    body: "Every answer is judged against your official mark scheme, mark by mark. Students see which points they earned and which they missed, never the wording of the answer.",
+    title: "Marked by the mark scheme",
+    body: "Every answer is checked point-by-point against the official mark scheme. Students see which marks they earned, not the answer wording.",
   },
   {
-    icon: Sparkles,
-    title: "A built-in AI tutor for every student",
-    body: "Wrong answers get a short, subject-specific explanation of the science — never the answer. Students can then ask the tutor as many follow-up questions as they need until it clicks.",
+    icon: BotMessageSquare,
+    title: "A built-in AI tutor",
+    body: "Wrong answers get Socratic leading questions and smaller steps. The tutor never reveals the answer, and students can ask follow-ups until it clicks.",
+  },
+];
+
+const sections = [
+  {
+    icon: FileText,
+    title: "Homework",
+    body: "Past-paper questions with AI marking, unlimited retries and full per-student history.",
   },
   {
-    icon: MessageCircleQuestion,
-    title: "Leading questions, not answers",
-    body: "The tutor works out where the misunderstanding sits, then breaks the question into smaller steps and guides the student to full marks in their own words.",
+    icon: Clock,
+    title: "Quizzes",
+    body: "Timed, in-class quizzes with no AI help. Release when the class is ready and review results instantly.",
+  },
+  {
+    icon: FolderArchive,
+    title: "Class materials",
+    body: "Organise units of slides, videos, PDFs and links for students to view or download.",
+  },
+  {
+    icon: Gamepad2,
+    title: "Games",
+    body: "Head-to-head challenges and the daily double with anonymous animal aliases, leaderboards and tokens.",
+  },
+];
+
+const studentTools = [
+  {
+    icon: Languages,
+    title: "Translated key vocabulary",
+    body: "Hover over a key word for a translation, or open the vocab sheet for a deeper explanation with images.",
   },
   {
     icon: Camera,
-    title: "Photos and a writing pad for working",
-    body: "Calculation and drawing questions are done on paper or on screen with a stylus. Working, graphs and diagrams are marked from the image, with partial credit for method.",
+    title: "Photo working",
+    body: "For calculations and diagrams, students upload a photo of their handwritten work or draw on a stylus pad.",
   },
   {
-    icon: Users,
-    title: "Teacher control, student logins",
-    body: "Teachers own the classes, assignments and gradebook across IGCSE, A-Level and IB. Students join with a class code and only ever see their own work.",
+    icon: PenTool,
+    title: "Drawing pad",
+    body: "Students can sketch graphs, diagrams and working directly on screen with a stylus or finger.",
   },
 ];
 
-const integrity = [
+const teacherControls = [
   {
     icon: ShieldAlert,
-    title: "No copy-paste, at all",
-    body: "Pasting, dragging text and bulk autofill are blocked in every answer box and in the tutor chat. Answers have to be typed by the student.",
+    title: "AI & plagiarism filter",
+    body: "Copy-paste, drag-and-drop and AI-written text are detected and rejected. After a set number of warnings, the homework auto-locks.",
   },
   {
-    icon: ScanSearch,
-    title: "AI detection built into marking",
-    body: "Every submission is screened for AI-written and web-copied phrasing before it is marked — even a single polished sentence lifted from a chatbot or a revision site is caught and rejected.",
+    icon: Lock,
+    title: "Lock and unlock",
+    body: "Teachers control when a cheating student can continue, and can apply a percentage deduction on re-entry.",
   },
   {
-    icon: History,
-    title: "Three warnings, then locked",
-    body: "Each flagged answer adds a warning. You choose how many warnings students get per class — once the limit is passed the homework locks and is marked as a fail until you unlock it, with an optional percentage deduction.",
+    icon: Eye,
+    title: "Full visibility",
+    body: "See every attempt, time spent, photo upload, tutor chat and integrity warning in the gradebook.",
   },
-];
-
-const visibility = [
-  "Every answer a student ever submitted, attempt by attempt, with the marks and feedback given each time",
-  "Every photo and stylus drawing they uploaded, saved and viewable full size",
-  "Every question they typed to the AI tutor, plus the tutor's replies, in full",
-  "Time spent per question, number of attempts, percentage score and class averages",
-  "Integrity warnings with the exact flagged text, and one-click unlock with a deduction",
 ];
 
 const steps = [
   {
     step: "1",
     title: "Create your class",
-    body: "Pick the curriculum and subject. Share the class code with your students.",
+    body: "Pick the curriculum and subject, then share the class code with students.",
   },
   {
     step: "2",
-    title: "Upload a paper or write questions",
-    body: "Add the past paper and mark scheme, or write your own questions and mark schemes, then publish.",
+    title: "Upload a paper",
+    body: "Add the past paper and mark scheme — or write your own questions — and publish.",
   },
   {
     step: "3",
@@ -115,11 +139,10 @@ const steps = [
   },
   {
     step: "4",
-    title: "Review the full picture",
-    body: "Open the gradebook for scores, timings, tutor chats, uploads and integrity flags.",
+    title: "Review and control",
+    body: "Open the gradebook, message students, adjust due dates and manage integrity flags.",
   },
 ];
-
 
 function Landing() {
   return (
@@ -146,20 +169,19 @@ function Landing() {
                 IGCSE · A-Level · IB
               </p>
               <h1 className="mt-4 text-4xl leading-[1.05] sm:text-5xl lg:text-6xl">
-                Homework that finds the <span className="highlight-underline">knowledge gap</span> and
-                closes it.
+                Homework that marks, teaches, and stays honest.
               </h1>
               <p className="mt-6 max-w-xl text-lg text-muted-foreground">
-                Teachers upload real past papers with their mark schemes. Students answer, learn
-                instantly whether they are right, then get coached by a built-in AI tutor with
-                leading questions and smaller steps until they can earn the marks themselves.
+                Upload real past papers with their mark schemes. Students answer and get instant,
+                point-by-point AI marking. A built-in tutor then coaches them with leading questions
+                until they can earn the marks themselves.
               </p>
               <ul className="mt-6 flex flex-wrap gap-2 text-sm">
                 {[
-                  "Mark-scheme accurate marking",
-                  "Built-in AI tutor",
+                  "AI marking",
+                  "Socratic tutor",
                   "Copy-paste blocked",
-                  "AI-copying detected",
+                  "AI & plagiarism detection",
                   "Full student history",
                 ].map((chip) => (
                   <li
@@ -194,17 +216,11 @@ function Landing() {
                   <p className="mt-1">Because the reaction gets colder.</p>
                 </div>
                 <div className="rounded-lg bg-accent p-3 text-accent-foreground">
-                  <p className="text-xs font-semibold uppercase tracking-wide">
-                    1 / 4 · keep going
-                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-wide">1 / 4 · keep going</p>
                   <p className="mt-1">
                     What happens to the number of reactant particles in the flask as the reaction
                     proceeds?
                   </p>
-                </div>
-                <div className="rounded-lg bg-primary-foreground/10 p-3">
-                  <p className="opacity-70">Student asks the tutor</p>
-                  <p className="mt-1">Why does that slow the reaction down?</p>
                 </div>
               </div>
             </div>
@@ -212,15 +228,18 @@ function Landing() {
         </section>
 
         <section className="mt-14">
-          <h2 className="text-2xl sm:text-3xl">What STEM Homework AI does</h2>
-          <p className="mt-2 max-w-2xl text-muted-foreground">
-            Everything a teacher needs to set past-paper homework that actually
-            teaches — and to trust that the work is the student&apos;s own.
-          </p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            {features.map((feature) => (
-              <article key={feature.title} className="paper p-6">
-                <feature.icon className="size-6 text-accent" />
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-2xl sm:text-3xl">The core idea</h2>
+            <p className="mt-2 text-muted-foreground">
+              Three things that make every assignment teach, instead of just test.
+            </p>
+          </div>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            {pillars.map((feature) => (
+              <article key={feature.title} className="paper p-6 text-center">
+                <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-accent/60">
+                  <feature.icon className="size-6 text-accent-foreground" />
+                </div>
                 <h3 className="mt-4 text-xl">{feature.title}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{feature.body}</p>
               </article>
@@ -229,13 +248,51 @@ function Landing() {
         </section>
 
         <section className="mt-14">
-          <h2 className="text-2xl sm:text-3xl">Original work, enforced</h2>
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-2xl sm:text-3xl">Four sections, one class</h2>
+            <p className="mt-2 text-muted-foreground">
+              After logging in, teachers and students move between homework, quizzes, materials and games
+              from a single sidebar.
+            </p>
+          </div>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            {sections.map((section) => (
+              <article key={section.title} className="paper flex gap-4 p-5">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                  <section.icon className="size-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-xl">{section.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{section.body}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-14">
+          <h2 className="text-2xl sm:text-3xl">How students learn</h2>
           <p className="mt-2 max-w-2xl text-muted-foreground">
-            AI detection is built into the marking itself, so nothing reaches the gradebook without
-            being screened first.
+            The workspace is built for effort and understanding, not shortcuts.
+          </p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            {studentTools.map((tool) => (
+              <article key={tool.title} className="paper p-6">
+                <tool.icon className="size-6 text-accent" />
+                <h3 className="mt-4 text-lg">{tool.title}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{tool.body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-14">
+          <h2 className="text-2xl sm:text-3xl">You stay in control</h2>
+          <p className="mt-2 max-w-2xl text-muted-foreground">
+            Integrity and visibility are built in, not bolted on.
           </p>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
-            {integrity.map((item) => (
+            {teacherControls.map((item) => (
               <article key={item.title} className="paper border-destructive/30 p-6">
                 <item.icon className="size-6 text-destructive" />
                 <h3 className="mt-4 text-lg">{item.title}</h3>
@@ -243,62 +300,61 @@ function Landing() {
               </article>
             ))}
           </div>
+          <div className="paper mt-4 p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-secondary">
+                <MessageSquare className="size-6 text-secondary-foreground" />
+              </div>
+              <div>
+                <h3 className="text-lg">Announcements and one-to-one messaging</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Teachers post class bulletins, and students can message the teacher about a specific
+                  question. Students can never message each other.
+                </p>
+              </div>
+            </div>
+          </div>
         </section>
 
-        <section className="mt-14 grid gap-4 lg:grid-cols-2">
-          <div className="paper p-6">
-            <Eye className="size-6 text-accent" />
-            <h2 className="mt-4 text-2xl">You see the whole story</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Open any student in the gradebook and expand their row. Nothing is hidden — you get
-              the complete record of how they got to their answer.
-            </p>
-            <ul className="mt-4 space-y-2 text-sm">
-              {visibility.map((item) => (
-                <li key={item} className="flex gap-2">
-                  <span aria-hidden className="mt-1 size-1.5 shrink-0 rounded-full bg-accent" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="paper p-6">
-            <h2 className="text-2xl">How it works</h2>
-            <ol className="mt-4 space-y-4">
-              {steps.map((item) => (
-                <li key={item.step} className="flex gap-4">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary font-display text-primary-foreground">
-                    {item.step}
-                  </span>
-                  <div>
-                    <h3 className="text-lg leading-tight">{item.title}</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">{item.body}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
+        <section className="paper mt-14 p-6">
+          <h2 className="text-2xl sm:text-3xl">How it works</h2>
+          <ol className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {steps.map((item) => (
+              <li key={item.step} className="flex gap-4">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary font-display text-primary-foreground">
+                  {item.step}
+                </span>
+                <div>
+                  <h3 className="text-lg leading-tight">{item.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{item.body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
         </section>
 
         <section className="paper mt-14 p-8 text-center">
-          <h2 className="text-2xl sm:text-3xl">Set your first past paper today</h2>
-          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-            Create a teacher account, upload a paper with its mark scheme and share the class code.
-            Marking, tutoring and integrity checks are all built in.
-          </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <Button asChild size="lg">
-              <Link to="/auth" search={{ mode: "signup" }}>
-                Create a teacher account
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link to="/auth">Sign in</Link>
-            </Button>
+          <div className="mx-auto flex max-w-2xl flex-col items-center gap-4">
+            <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
+              <GraduationCap className="size-6 text-primary" />
+            </div>
+            <h2 className="text-2xl sm:text-3xl">Try it with a demo account</h2>
+            <p className="text-muted-foreground">
+              Sign in with the demo teacher account and switch to the student view at any time to see
+              exactly what your class will see.
+            </p>
+            <div className="mt-2 flex flex-wrap justify-center gap-3">
+              <Button asChild size="lg">
+                <Link to="/auth" search={{ mode: "signup" }}>
+                  Create a teacher account
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link to="/auth">Sign in</Link>
+              </Button>
+            </div>
           </div>
         </section>
-
       </main>
 
       <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">

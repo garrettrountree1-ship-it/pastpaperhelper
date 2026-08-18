@@ -119,11 +119,19 @@ function DailyDoublePage() {
               ))}
 
               {over ? (
-                <p className="mt-4 text-sm text-muted-foreground">
-                  {round.data.correct
-                    ? "Nice work — tokens are on the leaderboard."
-                    : "Today's chance is gone. A new question unlocks tomorrow."}
-                </p>
+                <>
+                  <p className="mt-4 text-sm text-muted-foreground">
+                    {round.data.correct
+                      ? "Nice work — tokens are on the leaderboard."
+                      : "Today's chance is gone. A new question unlocks tomorrow."}
+                  </p>
+                  {revealed ? (
+                    <div className="mt-4 rounded-md border bg-muted/40 p-4">
+                      <h2 className="font-display text-lg">Mark scheme answer</h2>
+                      <p className="mt-1 whitespace-pre-wrap text-sm">{revealed}</p>
+                    </div>
+                  ) : null}
+                </>
               ) : (
                 <div className="mt-4 space-y-2">
                   <Textarea

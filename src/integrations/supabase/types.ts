@@ -255,33 +255,92 @@ export type Database = {
           },
         ]
       }
+      class_student_settings: {
+        Row: {
+          class_id: string
+          created_at: string
+          id: string
+          student_can_change_level: boolean | null
+          student_id: string
+          tutor_language: string | null
+          tutor_level: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          id?: string
+          student_can_change_level?: boolean | null
+          student_id: string
+          tutor_language?: string | null
+          tutor_level?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          id?: string
+          student_can_change_level?: boolean | null
+          student_id?: string
+          tutor_language?: string | null
+          tutor_level?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_student_settings_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classes: {
         Row: {
           created_at: string
           curriculum: string
           id: string
           join_code: string
+          keyword_translation: boolean
           name: string
+          protect_questions: boolean
+          student_can_change_level: boolean
           subject: string
           teacher_id: string
+          tutor_language: string
+          tutor_level: string
         }
         Insert: {
           created_at?: string
           curriculum?: string
           id?: string
           join_code: string
+          keyword_translation?: boolean
           name: string
+          protect_questions?: boolean
+          student_can_change_level?: boolean
           subject?: string
           teacher_id: string
+          tutor_language?: string
+          tutor_level?: string
         }
         Update: {
           created_at?: string
           curriculum?: string
           id?: string
           join_code?: string
+          keyword_translation?: boolean
           name?: string
+          protect_questions?: boolean
+          student_can_change_level?: boolean
           subject?: string
           teacher_id?: string
+          tutor_language?: string
+          tutor_level?: string
         }
         Relationships: []
       }
@@ -389,6 +448,7 @@ export type Database = {
           created_at: string
           id: string
           image_paths: string[]
+          keyword_glossary: Json
           mark_scheme: string
           marks: number
           position: number
@@ -399,6 +459,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_paths?: string[]
+          keyword_glossary?: Json
           mark_scheme: string
           marks?: number
           position?: number
@@ -409,6 +470,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_paths?: string[]
+          keyword_glossary?: Json
           mark_scheme?: string
           marks?: number
           position?: number

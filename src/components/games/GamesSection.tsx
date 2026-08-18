@@ -140,18 +140,26 @@ function TeacherGames({ classes }: { classes: TeacherClass[] }) {
             ) : (
               klass.leaderboard.map((entry, index) => (
                 <div key={entry.studentId} className="flex items-center justify-between gap-3 py-2">
-                  <span className="text-sm">
-                    <span className="mr-2 text-muted-foreground">{index + 1}.</span>
+                  <span className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">{index + 1}.</span>
+                    <AliasAvatar alias={entry.alias} />
                     {entry.alias}
+                    {entry.demo ? (
+                      <Badge variant="outline" className="text-xs">
+                        demo
+                      </Badge>
+                    ) : null}
                   </span>
                   <div className="flex items-center gap-3">
                     <Badge variant="secondary">{entry.tokens} tokens</Badge>
-                    <AdjustTokensDialog
-                      classId={klass.id}
-                      studentId={entry.studentId}
-                      alias={entry.alias}
-                      onDone={refresh}
-                    />
+                    {entry.demo ? null : (
+                      <AdjustTokensDialog
+                        classId={klass.id}
+                        studentId={entry.studentId}
+                        alias={entry.alias}
+                        onDone={refresh}
+                      />
+                    )}
                   </div>
                 </div>
               ))

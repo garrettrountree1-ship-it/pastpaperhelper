@@ -23,45 +23,6 @@ import {
   setStudentAssignmentAccess,
 } from "@/lib/app.functions";
 import { formatDueDate, fromLocalInput, toLocalInput } from "@/lib/datetime";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-const INHERIT = "__inherit__";
-
-/** Class default / On / Off picker for the key-word hover translation. */
-function HoverTranslationControl({
-  value,
-  inheritLabel,
-  disabled,
-  onChange,
-}: {
-  value: boolean | null;
-  inheritLabel: string;
-  disabled?: boolean;
-  onChange: (next: boolean | null) => void;
-}) {
-  return (
-    <Select
-      value={value === null ? INHERIT : value ? "on" : "off"}
-      disabled={disabled === true}
-      onValueChange={(next) => onChange(next === INHERIT ? null : next === "on")}
-    >
-      <SelectTrigger className="w-56">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={INHERIT}>{inheritLabel}</SelectItem>
-        <SelectItem value="on">Hover translation on</SelectItem>
-        <SelectItem value="off">Hover translation off</SelectItem>
-      </SelectContent>
-    </Select>
-  );
-}
 
 /**
  * Teacher control panel for an assignment's due date (class-wide or per student)

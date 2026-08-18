@@ -4,6 +4,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { AppHeader } from "@/components/AppHeader";
+import { VocabSheet } from "@/components/assignments/VocabSheet";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -134,7 +135,10 @@ function PreviewPage() {
               <Badge variant="secondary" className="mb-3">
                 Student view (preview — nothing is saved)
               </Badge>
-              <h1 className="text-3xl">{data.assignment.title}</h1>
+              <div className="flex items-start justify-between gap-3">
+                <h1 className="text-3xl">{data.assignment.title}</h1>
+                <VocabSheet assignmentId={assignmentId} />
+              </div>
               <p className="mt-1 text-sm text-muted-foreground">
                 {data.assignment.className} · {data.assignment.curriculum}
                 {data.assignment.subject ? ` · ${data.assignment.subject}` : ""}

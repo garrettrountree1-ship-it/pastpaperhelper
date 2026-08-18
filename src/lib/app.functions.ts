@@ -1614,9 +1614,14 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
           marks: q.marks,
           image_paths: q.image_paths,
           markScheme: assignment.mark_scheme_revealed ? q.mark_scheme : null,
+          photoMode: resolvePhotoMode({
+            question: q.photo_mode as string | null,
+            assignment: assignment.photo_mode as string | null,
+          }),
           imageUrls: await signPaperPages(db, q.image_paths ?? []),
         })),
       ),
+
     };
   });
 

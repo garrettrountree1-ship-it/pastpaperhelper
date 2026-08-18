@@ -122,9 +122,11 @@ function TeacherGames({ classId, classes }: { classId: string; classes: TeacherC
           Students play under a permanent animal alias. Head-to-head wins pay 1 token, the daily
           double pays 2, and nobody can earn more than 3 tokens a day.
         </p>
+        <DemoSeedButton classId={classId} onSeeded={refresh} />
       </div>
 
       <GameRecordPanel classId={classId} />
+
 
       {classes.map((klass) => (
         <section key={klass.id} className="paper p-5">

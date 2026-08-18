@@ -388,10 +388,16 @@ function StudentGames({ data }: { data: StudentData }) {
           <div className="divide-y">
             {klass.leaderboard.map((entry, index) => (
               <div key={entry.alias} className="flex items-center justify-between gap-3 py-2">
-                <span className={`text-sm ${entry.isYou ? "font-medium" : ""}`}>
-                  <span className="mr-2 text-muted-foreground">{index + 1}.</span>
+                <span className={`flex items-center gap-2 text-sm ${entry.isYou ? "font-medium" : ""}`}>
+                  <span className="text-muted-foreground">{index + 1}.</span>
+                  <AliasAvatar alias={entry.alias} />
                   {entry.alias}
                   {entry.isYou ? " (you)" : ""}
+                  {entry.demo ? (
+                    <Badge variant="outline" className="text-xs">
+                      demo
+                    </Badge>
+                  ) : null}
                 </span>
                 <Badge variant="secondary">{entry.tokens}</Badge>
               </div>

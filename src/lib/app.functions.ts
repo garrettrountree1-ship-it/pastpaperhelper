@@ -1567,7 +1567,9 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: assignmentRow } = await db
       .from("assignments")
-      .select("id, title, subject, curriculum, instructions, due_at, class_id, mark_scheme_revealed")
+      .select(
+        "id, title, subject, curriculum, instructions, due_at, class_id, mark_scheme_revealed, photo_mode",
+      )
       .eq("id", data.assignmentId)
       .single();
     const assignment = assignmentRow!;
@@ -1578,9 +1580,10 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
       .maybeSingle();
     const { data: questions } = await db
       .from("questions")
-      .select("id, position, question_text, marks, image_paths, mark_scheme")
+      .select("id, position, question_text, marks, image_paths, mark_scheme, photo_mode")
       .eq("assignment_id", data.assignmentId)
       .order("position");
+
 
     const pastDue = Boolean(
       assignment.due_at && new Date(assignment.due_at).getTime() < Date.now(),

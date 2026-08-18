@@ -177,17 +177,29 @@ export const getGamesOverview = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const db = await admin();
 
-    const [{ data: taught }, { data: memberships }] = await Promise.all([
+    const [{ data: taught }, { data: memberships }, { data: authUser }] = await Promise.all([
       supabase.from("classes").select("id, name, subject").eq("teacher_id", userId),
       supabase
         .from("class_members")
         .select("class_id, classes(id, name, subject)")
         .eq("student_id", userId),
+      supabase.auth.getUser(),
     ]);
 
     const studentClasses = (memberships ?? [])
       .map((m) => m.classes)
       .filter((c): c is { id: string; name: string; subject: string } => Boolean(c));
+
+    // The shared demo account can flip to the student view, so its own classes
+    // must also be playable as a student.
+    const { isDemoEmail } = await import("@/lib/demo");
+    if (isDemoEmail(authUser.user?.email)) {
+      for (const klass of taught ?? []) {
+        if (!studentClasses.some((c) => c.id === klass.id)) studentClasses.push(klass);
+        await ensureProfile(db, klass.id, userId);
+      }
+    }
+
 
     // Aliases exist for every member so the leaderboard is complete.
     for (const klass of [...(taught ?? []), ...studentClasses]) {

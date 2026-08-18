@@ -19,7 +19,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getMe } from "@/lib/app.functions";
+import { addDemoStudents } from "@/lib/demo.functions";
 import { type GameKey } from "@/lib/game-catalog";
+
 import {
   adjustTokens,
   getGamesOverview,
@@ -122,9 +125,11 @@ function TeacherGames({ classId, classes }: { classId: string; classes: TeacherC
           Students play under a permanent animal alias. Head-to-head wins pay 1 token, the daily
           double pays 2, and nobody can earn more than 3 tokens a day.
         </p>
+        <DemoSeedButton classId={classId} onSeeded={refresh} />
       </div>
 
       <GameRecordPanel classId={classId} />
+
 
       {classes.map((klass) => (
         <section key={klass.id} className="paper p-5">
@@ -195,6 +200,40 @@ function TeacherGames({ classId, classes }: { classId: string; classes: TeacherC
     </div>
   );
 }
+
+/** Demo account only: put sample students in this class so games look real. */
+function DemoSeedButton({ classId, onSeeded }: { classId: string; onSeeded: () => void }) {
+  const me = useQuery({ queryKey: ["me"], queryFn: useServerFn(getMe) });
+  const seed = useServerFn(addDemoStudents);
+  const mutation = useMutation({
+    mutationFn: () => seed({ data: { classId } }),
+    onSuccess: (result) => {
+      toast.success(
+        result.added > 0
+          ? `Added ${result.added} sample student(s).`
+          : "All sample students are already in this class.",
+      );
+      onSeeded();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  if (!me.data?.isDemo) return null;
+
+  return (
+    <Button
+      className="mt-3"
+      variant="outline"
+      size="sm"
+      onClick={() => mutation.mutate()}
+      disabled={mutation.isPending}
+    >
+      {mutation.isPending ? "Adding…" : "Add sample students"}
+    </Button>
+  );
+}
+
+
 
 function AdjustTokensDialog({
   classId,

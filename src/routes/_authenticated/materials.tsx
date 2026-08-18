@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { SectionShell, SectionTabsMobile } from "@/components/SectionShell";
+import { MaterialsSection } from "@/components/materials/MaterialsSection";
+
 
 export const Route = createFileRoute("/_authenticated/materials")({
   head: () => ({

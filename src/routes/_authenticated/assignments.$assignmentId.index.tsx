@@ -325,6 +325,8 @@ function QuestionCard({
   messages,
   queryKey,
   locked,
+  keywordTranslation,
+  protectQuestions,
 }: {
   assignmentId: string;
   classId: string;
@@ -336,6 +338,8 @@ function QuestionCard({
   messages: Message[];
   queryKey: string[];
   locked: boolean;
+  keywordTranslation: boolean;
+  protectQuestions: boolean;
 }) {
   const queryClient = useQueryClient();
   const grade = useServerFn(gradeAnswer);
@@ -448,6 +452,8 @@ function QuestionCard({
       tutorError={tutorMutation.isError ? (tutorMutation.error as Error).message : undefined}
       onSend={() => tutorMutation.mutate()}
       locked={locked}
+      keywordTranslation={keywordTranslation}
+      protectQuestions={protectQuestions}
       markScheme={question.markScheme ?? null}
       headerAction={
         <MessageTeacherDialog

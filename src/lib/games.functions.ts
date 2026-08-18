@@ -680,15 +680,39 @@ export const startDailyDouble = createServerFn({ method: "POST" })
         .select("class_id")
         .eq("student_id", userId);
       const classIds = (memberships ?? []).map((m) => m.class_id).sort(() => Math.random() - 0.5);
+
+      // Never repeat a daily double, and prefer questions this student has not met in homework.
+      const { data: pastDoubles } = await db
+        .from("daily_doubles")
+        .select("question_id")
+        .eq("student_id", userId);
+      const usedBefore = new Set((pastDoubles ?? []).map((d) => d.question_id));
+
+      const { data: mySubs } = await db
+        .from("submissions")
+        .select("id")
+        .eq("student_id", userId);
+      const submissionIds = (mySubs ?? []).map((s) => s.id);
+      const { data: myAnswers } = submissionIds.length
+        ? await db.from("answers").select("question_id").in("submission_id", submissionIds)
+        : { data: [] as { question_id: string }[] };
+      const seenInHomework = new Set([
+        ...usedBefore,
+        ...(myAnswers ?? []).map((a) => a.question_id),
+      ]);
+
       let picked: { classId: string; questionId: string; marks: number } | null = null;
-      for (const classId of classIds) {
-        const question = await randomClassQuestion(db, classId);
-        if (question) {
-          picked = { classId, questionId: question.id, marks: question.marks };
-          break;
+      for (const exclude of [seenInHomework, usedBefore]) {
+        for (const classId of classIds) {
+          const question = await randomClassQuestion(db, classId, exclude);
+          if (question) {
+            picked = { classId, questionId: question.id, marks: question.marks };
+            break;
+          }
         }
+        if (picked) break;
       }
-      if (!picked) throw new Error("No homework questions available for a daily double yet.");
+      if (!picked) throw new Error("No new homework questions available for a daily double yet.");
       const { data: created, error } = await db
         .from("daily_doubles")
         .insert({
@@ -705,18 +729,29 @@ export const startDailyDouble = createServerFn({ method: "POST" })
 
     const { data: question } = await db
       .from("questions")
-      .select("id, question_text, marks, image_paths")
+      .select("id, question_text, mark_scheme, marks, image_paths")
       .eq("id", row.question_id)
       .single();
+
+    const expired = new Date(row.ends_at).getTime() <= Date.now();
+    if (expired && !row.finished_at) {
+      await db
+        .from("daily_doubles")
+        .update({ finished_at: new Date().toISOString() })
+        .eq("id", row.id);
+    }
+    const over = expired || Boolean(row.finished_at);
 
     return {
       id: row.id,
       questionText: question?.question_text ?? "",
       marks: question?.marks ?? 1,
       imageUrls: await signPaperPages(db, question?.image_paths ?? []),
-      done: Boolean(row.finished_at),
+      done: over,
       correct: row.correct,
       attempts: row.attempts,
+      // The round is over, so showing the mark scheme is teaching, not cheating.
+      markScheme: over ? (question?.mark_scheme ?? "") : null,
       secondsLeft: Math.max(0, Math.round((new Date(row.ends_at).getTime() - Date.now()) / 1000)),
     };
   });

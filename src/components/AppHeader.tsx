@@ -1,9 +1,12 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { GraduationCap, LogOut } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { GraduationCap, LogOut, ShieldCheck } from "lucide-react";
 
+import { SupportDialog } from "@/components/SupportDialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { getAdminStatus } from "@/lib/admin.functions";
 
 export function Brand({ className = "" }: { className?: string }) {
   return (

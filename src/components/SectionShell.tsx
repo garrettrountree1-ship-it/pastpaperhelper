@@ -47,12 +47,16 @@ export function SectionShell({
   const classes = useMyClasses();
   const klass = (classes.data ?? []).find((c) => c.id === classId) ?? null;
   const accountRole = (isDemo ? view : me.data?.role) ?? "student";
-  // Inside a class the role is what you actually are in that class.
-  const role: "teacher" | "student" = klass
-    ? klass.canManage
-      ? "teacher"
-      : "student"
-    : accountRole;
+  // Inside a class the role is what you actually are in that class — except on
+  // the demo account, where the chosen view always wins.
+  const role: "teacher" | "student" = isDemo
+    ? accountRole
+    : klass
+      ? klass.canManage
+        ? "teacher"
+        : "student"
+      : accountRole;
+
   const queryClient = useQueryClient();
   useSectionTime(current);
 

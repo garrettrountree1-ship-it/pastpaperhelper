@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { MessageSquare } from "lucide-react";
 import { questionLabel } from "@/lib/question-label";
-import { isPhotoOnlyQuestion, needsPhotoAnswer } from "@/lib/needs-photo";
+import type { PhotoMode } from "@/lib/photo-mode";
+import { photoAvailability } from "@/lib/photo-mode";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 
 
@@ -353,8 +354,10 @@ function QuestionCard({
   const [draft, setDraft] = useState(answer?.answer_text ?? "");
   const [reply, setReply] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
-  const requiresPhoto = needsPhotoAnswer(question.question_text);
-  const photoOnly = isPhotoOnlyQuestion(question.question_text);
+  const { requiresPhoto, photoOnly } = photoAvailability(
+    question.question_text,
+    question.photoMode ?? "auto",
+  );
   const [showPhoto, setShowPhoto] = useState(requiresPhoto);
   const secondsRef = useRef(0);
 

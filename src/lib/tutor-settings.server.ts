@@ -83,7 +83,7 @@ export async function tutorSettingsForAssignment(
     };
   }
 
-  const [base, studentOverride] = await Promise.all([
+  const [base, studentOverride, classOverride, klassRow] = await Promise.all([
     effectiveTutorSettings(db, assignment.class_id, studentId),
     studentId
       ? db
@@ -93,17 +93,29 @@ export async function tutorSettingsForAssignment(
           .eq("student_id", studentId)
           .maybeSingle()
       : Promise.resolve({ data: null }),
+    studentId
+      ? db
+          .from("class_student_settings")
+          .select("keyword_translation")
+          .eq("class_id", assignment.class_id)
+          .eq("student_id", studentId)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    db.from("classes").select("keyword_translation").eq("id", assignment.class_id).maybeSingle(),
   ]);
 
-  const perStudent = studentOverride?.data?.keyword_translation as boolean | null | undefined;
-  const perAssignment = assignment.keyword_translation as boolean | null | undefined;
+  const chain = [
+    studentOverride?.data?.keyword_translation,
+    classOverride?.data?.keyword_translation,
+    assignment.keyword_translation,
+    klassRow?.data?.keyword_translation,
+  ] as Array<boolean | null | undefined>;
+  const keywordTranslation = Boolean(chain.find((value) => value === true || value === false));
 
   return {
     ...base,
-    keywordTranslation:
-      perStudent ?? (perAssignment === null || perAssignment === undefined
-        ? base.keywordTranslation
-        : perAssignment),
+    keywordTranslation,
+
     vocabTranslation: assignment.vocab_translation !== false,
     vocabLanguage: (assignment.vocab_language as string | null) ?? base.language,
   };

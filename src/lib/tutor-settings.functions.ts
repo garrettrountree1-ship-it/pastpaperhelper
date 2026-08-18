@@ -46,7 +46,9 @@ export const getClassTutorSettings = createServerFn({ method: "POST" })
       ids.length
         ? db
             .from("class_student_settings")
-            .select("student_id, tutor_language, tutor_level, student_can_change_level")
+            .select(
+              "student_id, tutor_language, tutor_level, student_can_change_level, keyword_translation",
+            )
             .eq("class_id", data.classId)
         : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
     ]);
@@ -73,6 +75,7 @@ export const getClassTutorSettings = createServerFn({ method: "POST" })
             tutorLanguage: (o?.tutor_language as string | null) ?? null,
             tutorLevel: (o?.tutor_level as string | null) ?? null,
             studentCanChangeLevel: (o?.student_can_change_level as boolean | null) ?? null,
+            keywordTranslation: (o?.keyword_translation as boolean | null) ?? null,
           };
         })
         .sort((a, b) => a.name.localeCompare(b.name)),
@@ -135,6 +138,7 @@ export const setStudentTutorSettings = createServerFn({ method: "POST" })
         tutorLanguage: languageEnum.nullable().optional(),
         tutorLevel: levelEnum.nullable().optional(),
         studentCanChangeLevel: z.boolean().nullable().optional(),
+        keywordTranslation: z.boolean().nullable().optional(),
       })
       .parse(input),
   )
@@ -149,7 +153,7 @@ export const setStudentTutorSettings = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: existing } = await db
       .from("class_student_settings")
-      .select("id, tutor_language, tutor_level, student_can_change_level")
+      .select("id, tutor_language, tutor_level, student_can_change_level, keyword_translation")
       .eq("class_id", data.classId)
       .eq("student_id", data.studentId)
       .maybeSingle();
@@ -169,6 +173,10 @@ export const setStudentTutorSettings = createServerFn({ method: "POST" })
         data.studentCanChangeLevel !== undefined
           ? data.studentCanChangeLevel
           : ((existing?.student_can_change_level as boolean | null) ?? null),
+      keyword_translation:
+        data.keywordTranslation !== undefined
+          ? data.keywordTranslation
+          : ((existing?.keyword_translation as boolean | null) ?? null),
       updated_by: userId,
       updated_at: new Date().toISOString(),
     };

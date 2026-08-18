@@ -2189,7 +2189,7 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
 
   });
 
-/** Teacher-only: whole-class due date and/or mark-scheme reveal. */
+/** Teacher-only: whole-class due date, mark-scheme reveal and/or photo answers. */
 export const setAssignmentAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
@@ -2198,6 +2198,7 @@ export const setAssignmentAccess = createServerFn({ method: "POST" })
         assignmentId: z.string().uuid(),
         dueAt: z.string().nullable().optional(),
         markSchemeRevealed: z.boolean().optional(),
+        photoMode: z.enum(["auto", "on", "off"]).optional(),
       })
       .parse(input),
   )
@@ -2209,9 +2210,10 @@ export const setAssignmentAccess = createServerFn({ method: "POST" })
     });
     if (!allowed) throw new Error("Not allowed.");
 
-    const patch: { due_at?: string | null; mark_scheme_revealed?: boolean } = {};
+    const patch: { due_at?: string | null; mark_scheme_revealed?: boolean; photo_mode?: string } = {};
     if (data.dueAt !== undefined) patch.due_at = data.dueAt;
     if (data.markSchemeRevealed !== undefined) patch.mark_scheme_revealed = data.markSchemeRevealed;
+    if (data.photoMode !== undefined) patch.photo_mode = data.photoMode;
     if (Object.keys(patch).length === 0) return { ok: true };
 
 
@@ -2221,7 +2223,7 @@ export const setAssignmentAccess = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Teacher-only: per-student due date extension and/or mark-scheme reveal. */
+/** Teacher-only: per-student due date, mark-scheme reveal and/or photo answers. */
 export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
@@ -2231,6 +2233,7 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
         studentId: z.string().uuid(),
         dueAt: z.string().nullable().optional(),
         markSchemeRevealed: z.boolean().optional(),
+        photoMode: z.enum(["auto", "on", "off"]).nullable().optional(),
       })
       .parse(input),
   )
@@ -2250,6 +2253,7 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
       updated_at: string;
       due_at?: string | null;
       mark_scheme_revealed?: boolean;
+      photo_mode?: string | null;
     } = {
       assignment_id: data.assignmentId,
       student_id: data.studentId,
@@ -2258,6 +2262,7 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
     };
     if (data.dueAt !== undefined) patch.due_at = data.dueAt;
     if (data.markSchemeRevealed !== undefined) patch.mark_scheme_revealed = data.markSchemeRevealed;
+    if (data.photoMode !== undefined) patch.photo_mode = data.photoMode;
 
 
     const { error } = await db
@@ -2265,4 +2270,5 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
       .upsert(patch, { onConflict: "assignment_id,student_id" });
     if (error) throw new Error(error.message);
     return { ok: true };
+
   });

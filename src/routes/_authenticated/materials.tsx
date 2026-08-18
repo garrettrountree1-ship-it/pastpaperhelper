@@ -25,15 +25,8 @@ function MaterialsPage() {
       {(role) => (
         <>
           <SectionTabsMobile current="materials" />
-          <div className="paper p-8">
-            <h2 className="text-2xl">Units &amp; resources</h2>
-            <p className="mt-2 max-w-prose text-sm text-muted-foreground">
-              {role === "teacher"
-                ? "Create a unit for each topic and upload slides, lecture videos and resources your students can view or download."
-                : "Open any unit to view your teacher's slides, lecture videos and resources — view them in the app or download them."}
-            </p>
-            <p className="mt-4 text-sm text-muted-foreground">Coming next in this build.</p>
-          </div>
+          <MaterialsSection role={role} />
+
         </>
       )}
     </SectionShell>

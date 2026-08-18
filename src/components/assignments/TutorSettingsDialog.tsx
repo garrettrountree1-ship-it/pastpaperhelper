@@ -335,7 +335,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={INHERIT}>Hover: per homework</SelectItem>
+                          <SelectItem value={INHERIT}>Hover: class default</SelectItem>
                           <SelectItem value="on">Hover: on</SelectItem>
                           <SelectItem value="off">Hover: off</SelectItem>
                         </SelectContent>

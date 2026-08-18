@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { GamesSection } from "@/components/games/GamesSection";
 import { SectionShell, SectionTabsMobile } from "@/components/SectionShell";
 
-export const Route = createFileRoute("/_authenticated/games")({
+export const Route = createFileRoute("/_authenticated/classes/$classId/games")({
   head: () => ({
     meta: [
       { title: "Games · STEM Homework AI" },
@@ -22,12 +22,13 @@ export const Route = createFileRoute("/_authenticated/games")({
 });
 
 function GamesPage() {
+  const { classId } = Route.useParams();
   return (
-    <SectionShell current="games" title="Games">
+    <SectionShell classId={classId} current="games" title="Games">
       {(role) => (
         <>
-          <SectionTabsMobile current="games" />
-          <GamesSection role={role} />
+          <SectionTabsMobile classId={classId} current="games" />
+          <GamesSection classId={classId} role={role} />
         </>
       )}
     </SectionShell>

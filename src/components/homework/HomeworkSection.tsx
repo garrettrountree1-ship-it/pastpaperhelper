@@ -35,150 +35,17 @@ import { createClass, joinClass, listStudentWork, listTeacherClasses } from "@/l
 import { formatDueDate } from "@/lib/datetime";
 import { listStudentBulletins } from "@/lib/messaging.functions";
 
-export function HomeworkSection({ role }: { role: "teacher" | "student" }) {
-  return role === "teacher" ? <TeacherHome /> : <StudentHome />;
-}
-
-function TeacherHome() {
-  const queryClient = useQueryClient();
-  const classes = useQuery({
-    queryKey: ["teacher-classes"],
-    queryFn: useServerFn(listTeacherClasses),
-  });
-  const create = useServerFn(createClass);
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [subject, setSubject] = useState("");
-  const [curriculum, setCurriculum] = useState("IGCSE");
-
-  const mutation = useMutation({
-    mutationFn: () => create({ data: { name, curriculum, subject } }),
-    onSuccess: () => {
-      toast.success("Class created");
-      setOpen(false);
-      setName("");
-      setSubject("");
-      queryClient.invalidateQueries({ queryKey: ["teacher-classes"] });
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
-  return (
-    <div className="space-y-6">
-      <div className="paper flex flex-wrap items-end justify-between gap-4 p-5">
-        <div>
-          <h2 className="text-3xl">Your classes</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Create a class, share the join code, then set past-paper homework.
-          </p>
-        </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>New class</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>New class</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="class-name">Class name</Label>
-                <Input
-                  id="class-name"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="Year 11 Chemistry"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="class-subject">Subject</Label>
-                <Input
-                  id="class-subject"
-                  value={subject}
-                  onChange={(event) => setSubject(event.target.value)}
-                  placeholder="Chemistry"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Curriculum</Label>
-                <Select value={curriculum} onValueChange={setCurriculum}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="IGCSE">IGCSE</SelectItem>
-                    <SelectItem value="A-Level">A-Level</SelectItem>
-                    <SelectItem value="IB">IB</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                onClick={() => mutation.mutate()}
-                disabled={!name.trim() || mutation.isPending}
-              >
-                Create class
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {classes.isLoading ? (
-        <Skeleton className="h-32 w-full" />
-      ) : (classes.data ?? []).length === 0 ? (
-        <div className="paper p-8 text-center text-muted-foreground">
-          No classes yet. Create your first class to get started.
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {(classes.data ?? []).map((klass) => (
-            <Link
-              key={klass.id}
-              to="/classes/$classId"
-              params={{ classId: klass.id }}
-              className="paper block p-5 transition-shadow hover:shadow-lift"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="text-xl">{klass.name}</h3>
-                <Badge variant="secondary">{klass.curriculum}</Badge>
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">{klass.subject}</p>
-              <p className="mt-4 text-sm text-muted-foreground">
-                {klass.studentCount} students · {klass.assignmentCount} assignments
-              </p>
-              <p className="mt-3 font-mono text-sm">
-                Code: <span className="highlight-underline">{klass.join_code}</span>
-              </p>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function StudentHome() {
-  const queryClient = useQueryClient();
+/** Student homework list for one class. */
+export function StudentClassHomework({ classId }: { classId: string }) {
   const work = useQuery({ queryKey: ["student-work"], queryFn: useServerFn(listStudentWork) });
   const bulletins = useQuery({
     queryKey: ["student-bulletins"],
     queryFn: useServerFn(listStudentBulletins),
   });
-  const join = useServerFn(joinClass);
-  const [code, setCode] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | AssignmentStatusKey>("all");
 
-  const mutation = useMutation({
-    mutationFn: () => join({ data: { code } }),
-    onSuccess: (result) => {
-      toast.success(`Joined ${result.name}`);
-      setCode("");
-      queryClient.invalidateQueries({ queryKey: ["student-work"] });
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
+  const classAssignments = (work.data?.assignments ?? []).filter((a) => a.classId === classId);
+  const classes = (work.data?.classes ?? []).filter((klass) => klass.id === classId);
 
   return (
     <div className="space-y-6">
@@ -189,34 +56,19 @@ function StudentHome() {
             Answer each question, then work with the tutor on anything you get wrong.
           </p>
         </div>
-        <div className="flex items-end gap-2">
-          <div className="space-y-2">
-            <Label htmlFor="join-code">Class code</Label>
-            <Input
-              id="join-code"
-              value={code}
-              onChange={(event) => setCode(event.target.value.toUpperCase())}
-              placeholder="ABC123"
-              className="w-32 font-mono"
-            />
-          </div>
-          <Button onClick={() => mutation.mutate()} disabled={code.length < 4 || mutation.isPending}>
-            Join class
-          </Button>
-        </div>
       </div>
 
       {work.isLoading ? (
         <Skeleton className="h-32 w-full" />
-      ) : (work.data?.classes ?? []).length === 0 ? (
+      ) : classes.length === 0 ? (
         <div className="paper p-8 text-center text-muted-foreground">
-          No homework yet. Join your class with the code your teacher gave you.
+          This class isn&apos;t available to you.
         </div>
       ) : (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             {(["all", "active", "closed", "past_due"] as const).map((key) => {
-              const count = (work.data?.assignments ?? []).filter((a) =>
+              const count = classAssignments.filter((a) =>
                 key === "all" ? true : assignmentStatus(a) === key,
               ).length;
               return (
@@ -231,7 +83,8 @@ function StudentHome() {
               );
             })}
           </div>
-          {(work.data?.classes ?? []).map((klass) => {
+          {classes.map((klass) => {
+
             const items = (work.data?.assignments ?? [])
               .filter((a) => a.classId === klass.id)
               .filter((a) => (statusFilter === "all" ? true : assignmentStatus(a) === statusFilter))

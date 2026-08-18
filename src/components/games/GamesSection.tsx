@@ -27,7 +27,13 @@ import {
   resetLeaderboard,
 } from "@/lib/games.functions";
 
-export function GamesSection({ role }: { role: "teacher" | "student" }) {
+export function GamesSection({
+  classId,
+  role,
+}: {
+  classId: string;
+  role: "teacher" | "student";
+}) {
   const overview = useQuery({
     queryKey: ["games-overview"],
     queryFn: useServerFn(getGamesOverview),
@@ -42,12 +48,26 @@ export function GamesSection({ role }: { role: "teacher" | "student" }) {
     );
   }
 
-  return role === "teacher" ? (
-    <TeacherGames classes={overview.data?.teacherClasses ?? []} />
-  ) : (
-    <StudentGames data={overview.data!} />
+  if (role === "teacher") {
+    return (
+      <TeacherGames
+        classes={(overview.data?.teacherClasses ?? []).filter((c) => c.id === classId)}
+      />
+    );
+  }
+
+  const data = overview.data!;
+  return (
+    <StudentGames
+      data={{
+        ...data,
+        studentClasses: data.studentClasses.filter((c) => c.id === classId),
+        matches: data.matches.filter((m) => m.classId === classId),
+      }}
+    />
   );
 }
+
 
 /* ------------------------------------------------------------- teacher ---- */
 

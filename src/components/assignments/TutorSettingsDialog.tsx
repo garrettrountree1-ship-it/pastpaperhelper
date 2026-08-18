@@ -46,8 +46,14 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
   const saveStudent = useServerFn(setStudentTutorSettings);
 
   const classMutation = useMutation({
-    mutationFn: (input: Parameters<typeof setClassTutorSettings>[0]["data"]) =>
-      saveClass({ data: input }),
+    mutationFn: (input: {
+      classId: string;
+      tutorLanguage?: string;
+      tutorLevel?: string;
+      protectQuestions?: boolean;
+      keywordTranslation?: boolean;
+      studentCanChangeLevel?: boolean;
+    }) => saveClass({ data: input }),
     onSuccess: () => {
       toast.success("Class settings saved");
       queryClient.invalidateQueries({ queryKey });
@@ -56,8 +62,13 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
   });
 
   const studentMutation = useMutation({
-    mutationFn: (input: Parameters<typeof setStudentTutorSettings>[0]["data"]) =>
-      saveStudent({ data: input }),
+    mutationFn: (input: {
+      classId: string;
+      studentId: string;
+      tutorLanguage?: string | null;
+      tutorLevel?: string | null;
+      studentCanChangeLevel?: boolean | null;
+    }) => saveStudent({ data: input }),
     onSuccess: () => {
       toast.success("Student setting saved");
       queryClient.invalidateQueries({ queryKey });

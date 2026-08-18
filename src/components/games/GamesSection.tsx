@@ -19,7 +19,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getMe } from "@/lib/app.functions";
+import { addDemoStudents } from "@/lib/demo.functions";
 import { type GameKey } from "@/lib/game-catalog";
+
 import {
   adjustTokens,
   getGamesOverview,

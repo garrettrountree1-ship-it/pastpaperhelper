@@ -1172,7 +1172,44 @@ function DeleteAssignmentButton({
   );
 }
 
+/** Demo account only: fill the roster with sample students to explore teacher views. */
+function DemoStudentSeeder({ classId, onSeeded }: { classId: string; onSeeded: () => void }) {
+  const me = useQuery({ queryKey: ["me"], queryFn: () => getMe() });
+  const seed = useServerFn(addDemoStudents);
+  const mutation = useMutation({
+    mutationFn: () => seed({ data: { classId } }),
+    onSuccess: (result) => {
+      toast.success(
+        result.added > 0
+          ? `Added ${result.added} sample student(s).`
+          : "All sample students are already in this class.",
+      );
+      onSeeded();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  if (!me.data?.isDemo) return null;
+
+  return (
+    <div className="paper mb-3 flex flex-wrap items-center justify-between gap-3 p-4">
+      <p className="text-sm text-muted-foreground">
+        Demo account only — add sample students so you can try the roster, gradebook and
+        leaderboards without real sign-ups.
+      </p>
+      <Button
+        variant="outline"
+        onClick={() => mutation.mutate()}
+        disabled={mutation.isPending}
+      >
+        {mutation.isPending ? "Adding…" : "Add sample students"}
+      </Button>
+    </div>
+  );
+}
+
 function RemoveStudentButton({
+
   classId,
   studentId,
   studentName,

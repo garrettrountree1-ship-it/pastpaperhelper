@@ -127,11 +127,54 @@ function SectionRibbon({
   current: SectionKey;
   role: "teacher" | "student";
 }) {
+  const classes = useMyClasses();
+  const list = classes.data ?? [];
+  const active = list.find((c) => c.id === classId) ?? null;
+
   return (
     <nav
       aria-label="Class sections"
       className="paper sticky top-20 hidden h-fit w-14 shrink-0 flex-col items-center gap-1 p-2 md:flex lg:w-48 lg:items-stretch"
     >
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            title="Switch class"
+            className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground hover:bg-muted lg:px-3"
+          >
+            <ArrowLeftRight className="size-5 shrink-0" />
+            <span className="hidden min-w-0 flex-1 truncate text-left lg:inline">
+              {active ? active.name : "Switch class"}
+            </span>
+            <ChevronDown className="hidden size-4 shrink-0 text-muted-foreground lg:inline" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-56">
+          <DropdownMenuLabel>Your classes</DropdownMenuLabel>
+          {list.length === 0 ? (
+            <DropdownMenuItem disabled>No classes yet</DropdownMenuItem>
+          ) : (
+            list.map((klass) => (
+              <DropdownMenuItem key={klass.id} asChild>
+                <Link
+                  to={SECTIONS.find((s) => s.key === current)!.to}
+                  params={{ classId: klass.id }}
+                  className="flex w-full items-center justify-between gap-2"
+                >
+                  <span className="truncate">{klass.name}</span>
+                  {klass.id === classId ? <Check className="size-4 shrink-0" /> : null}
+                </Link>
+              </DropdownMenuItem>
+            ))
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link to="/dashboard">All classes</Link>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <div className="my-1 h-px w-full bg-border" />
       <Link
         to="/classes/$classId"
         params={{ classId }}
@@ -142,6 +185,7 @@ function SectionRibbon({
         <span className="hidden lg:inline">Class home</span>
       </Link>
       <div className="my-1 h-px w-full bg-border" />
+
       {SECTIONS.map((section) => {
         const Icon = icons[section.key];
         const active = section.key === current;

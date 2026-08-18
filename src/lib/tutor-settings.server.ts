@@ -59,7 +59,7 @@ export async function effectiveTutorSettings(
  * Same, resolved from an assignment id, with the assignment-level and
  * per-student-per-assignment overrides applied on top of the class defaults.
  * Precedence for keyword hover translation:
- * student+assignment → student+class → assignment → class.
+ * student+assignment → student (overall) → assignment. There is no class-wide toggle.
  */
 export async function tutorSettingsForAssignment(
   db: Db,
@@ -83,7 +83,7 @@ export async function tutorSettingsForAssignment(
     };
   }
 
-  const [base, studentOverride, classOverride, klassRow] = await Promise.all([
+  const [base, studentOverride, classOverride] = await Promise.all([
     effectiveTutorSettings(db, assignment.class_id, studentId),
     studentId
       ? db
@@ -101,14 +101,12 @@ export async function tutorSettingsForAssignment(
           .eq("student_id", studentId)
           .maybeSingle()
       : Promise.resolve({ data: null }),
-    db.from("classes").select("keyword_translation").eq("id", assignment.class_id).maybeSingle(),
   ]);
 
   const chain = [
     studentOverride?.data?.keyword_translation,
     classOverride?.data?.keyword_translation,
     assignment.keyword_translation,
-    klassRow?.data?.keyword_translation,
   ] as Array<boolean | null | undefined>;
   const keywordTranslation = Boolean(chain.find((value) => value === true || value === false));
 

@@ -198,6 +198,40 @@ function TeacherGames({ classId, classes }: { classId: string; classes: TeacherC
   );
 }
 
+/** Demo account only: put sample students in this class so games look real. */
+function DemoSeedButton({ classId, onSeeded }: { classId: string; onSeeded: () => void }) {
+  const me = useQuery({ queryKey: ["me"], queryFn: useServerFn(getMe) });
+  const seed = useServerFn(addDemoStudents);
+  const mutation = useMutation({
+    mutationFn: () => seed({ data: { classId } }),
+    onSuccess: (result) => {
+      toast.success(
+        result.added > 0
+          ? `Added ${result.added} sample student(s).`
+          : "All sample students are already in this class.",
+      );
+      onSeeded();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  if (!me.data?.isDemo) return null;
+
+  return (
+    <Button
+      className="mt-3"
+      variant="outline"
+      size="sm"
+      onClick={() => mutation.mutate()}
+      disabled={mutation.isPending}
+    >
+      {mutation.isPending ? "Adding…" : "Add sample students"}
+    </Button>
+  );
+}
+
+
+
 function AdjustTokensDialog({
   classId,
   studentId,

@@ -10,27 +10,26 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { setMyTutorSettings } from "@/lib/tutor-settings.functions";
-import { TUTOR_LANGUAGES, TUTOR_LEVELS } from "@/lib/tutor-settings";
+import { TUTOR_LEVELS } from "@/lib/tutor-settings";
 
 /**
  * Shown only when the teacher allows students to pick their own tutor level:
- * lets the student choose how much help the AI tutor gives and in which language.
+ * lets the student choose how much help the AI tutor gives. The tutor language
+ * is always the teacher's choice — students cannot change it.
  */
 export function StudentTutorControls({
   classId,
   level,
-  language,
   onSaved,
 }: {
   classId: string;
   level: string;
-  language: string;
   onSaved: () => void;
 }) {
-  const [current, setCurrent] = useState({ level, language });
+  const [current, setCurrent] = useState({ level });
 
   const save = useMutation({
-    mutationFn: (input: { tutorLevel?: string; tutorLanguage?: string }) =>
+    mutationFn: (input: { tutorLevel?: string }) =>
       setMyTutorSettings({ data: { classId, ...input } }),
     onSuccess: () => {
       toast.success("Tutor settings updated");
@@ -69,30 +68,9 @@ export function StudentTutorControls({
             </SelectContent>
           </Select>
         </label>
-        <label className="block text-sm">
-          <span className="mb-1 block font-medium">Tutor language</span>
-          <Select
-            value={current.language}
-            onValueChange={(value) => {
-              setCurrent((prev) => ({ ...prev, language: value }));
-              save.mutate({ tutorLanguage: value });
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TUTOR_LANGUAGES.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {option}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </label>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Your answers must still be written in English — only the tutor&apos;s replies change.
+        Your answers must still be written in English. Your teacher chooses the tutor language.
       </p>
     </section>
   );

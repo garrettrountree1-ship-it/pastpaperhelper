@@ -48,7 +48,7 @@ export async function assignmentVocab(
       "You build a study vocabulary list for exam homework.",
       "Pick the key subject terms, command words (describe, explain, calculate, deduce) and the big concepts a student must understand to answer these questions.",
       "Items are single words or short phrases of at most 4 words. Never include sentences, never include any part of an answer, and never reveal answers.",
-      `Translate each item into ${language}. If ${language} is English, put a very simple English synonym in the translation field instead.`,
+      `Translate ONLY the term into ${language} (a word or two, never a sentence, never the hint). If ${language} is English, put a very simple English synonym instead.`,
       'Return JSON only: {"items":[{"term":"exact English term","translation":"...","kind":"word|concept","short":"max 12 word plain-English hint that does not give the answer"}]}',
       "Return at most 24 items, most important first, no duplicates.",
     ].join(" "),
@@ -127,10 +127,10 @@ export async function explainVocab(
     system: [
       "You explain one science/maths vocabulary word or concept to a student doing homework.",
       levelRule,
-      `Write the explanation in ${language}, but keep every subject term in English with the ${language} meaning in brackets after it.`,
+"Write the whole explanation in very simple English. Never translate the explanation, definition or examples — only the single term itself is translated.",
       "Never state the answer to any homework question — explain the idea only.",
       'Also give 1-3 short English search phrases for a diagram or photo that illustrates the idea (e.g. "photosynthesis diagram").',
-      'Return JSON only: {"translation":"the term in the target language","explanation":"...","imageQueries":["..."]}',
+      'Return JSON only: {"translation":"just the term itself in the target language, a few words at most","explanation":"simple English only","imageQueries":["..."]}',
     ].join(" "),
     prompt: `Subject: ${subject || "General science"}\nTerm: ${term}\nTarget language: ${language}`,
   });

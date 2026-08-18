@@ -184,7 +184,6 @@ function AssignmentPage() {
               <StudentTutorControls
                 classId={data.assignment.classId}
                 level={settings.level}
-                language={settings.language}
                 onSaved={() => workspace.refetch()}
               />
             ) : null}

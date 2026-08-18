@@ -65,7 +65,11 @@ export const getClassTutorSettings = createServerFn({ method: "POST" })
         protectQuestions: Boolean(klass!.protect_questions),
         keywordTranslation: Boolean(klass!.keyword_translation),
         studentCanChangeLevel: Boolean(klass!.student_can_change_level),
+        vocabTranslation: (klass as any).vocab_translation !== false,
+        vocabLanguage:
+          ((klass as any).vocab_language as string | null) || (klass!.tutor_language as string),
       },
+
       students: (profiles ?? [])
         .map((p: any) => {
           const o = overrideMap.get(p.id);

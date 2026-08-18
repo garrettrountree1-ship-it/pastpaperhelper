@@ -425,6 +425,8 @@ export type Database = {
           teacher_id: string
           tutor_language: string
           tutor_level: string
+          vocab_language: string | null
+          vocab_translation: boolean
         }
         Insert: {
           created_at?: string
@@ -439,6 +441,8 @@ export type Database = {
           teacher_id: string
           tutor_language?: string
           tutor_level?: string
+          vocab_language?: string | null
+          vocab_translation?: boolean
         }
         Update: {
           created_at?: string
@@ -453,6 +457,8 @@ export type Database = {
           teacher_id?: string
           tutor_language?: string
           tutor_level?: string
+          vocab_language?: string | null
+          vocab_translation?: boolean
         }
         Relationships: []
       }
@@ -1350,6 +1356,7 @@ export type Database = {
           id: string
           image_urls: string[]
           language: string
+          level: string
           term: string
           translation: string
         }
@@ -1360,6 +1367,7 @@ export type Database = {
           id?: string
           image_urls?: string[]
           language?: string
+          level?: string
           term: string
           translation?: string
         }
@@ -1370,6 +1378,7 @@ export type Database = {
           id?: string
           image_urls?: string[]
           language?: string
+          level?: string
           term?: string
           translation?: string
         }

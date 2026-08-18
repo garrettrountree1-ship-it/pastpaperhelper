@@ -2149,7 +2149,7 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: assignment } = await db
       .from("assignments")
-      .select("id, title, class_id, due_at, mark_scheme_revealed")
+      .select("id, title, class_id, due_at, mark_scheme_revealed, photo_mode")
       .eq("id", data.assignmentId)
       .single();
 
@@ -2165,7 +2165,7 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
         : Promise.resolve({ data: [] as Array<{ id: string; full_name: string; email: string | null }> }),
       db
         .from("student_assignment_settings")
-        .select("student_id, due_at, mark_scheme_revealed")
+        .select("student_id, due_at, mark_scheme_revealed, photo_mode")
         .eq("assignment_id", data.assignmentId),
     ]);
 
@@ -2173,6 +2173,7 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
       assignmentTitle: assignment!.title,
       dueAt: assignment!.due_at as string | null,
       markSchemeRevealed: Boolean(assignment!.mark_scheme_revealed),
+      photoMode: isPhotoMode(assignment!.photo_mode) ? assignment!.photo_mode : "auto",
       students: studentIds.map((id) => {
         const profile = (profiles ?? []).find((p) => p.id === id);
         const setting = (settings ?? []).find((s) => s.student_id === id);
@@ -2181,9 +2182,11 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
           name: profile?.full_name || profile?.email || "Student",
           dueAt: (setting?.due_at as string | null) ?? null,
           markSchemeRevealed: Boolean(setting?.mark_scheme_revealed),
+          photoMode: isPhotoMode(setting?.photo_mode) ? setting!.photo_mode : null,
         };
       }),
     };
+
   });
 
 /** Teacher-only: whole-class due date and/or mark-scheme reveal. */

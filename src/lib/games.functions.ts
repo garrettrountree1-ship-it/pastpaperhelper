@@ -175,8 +175,7 @@ async function resolveMatch(db: AnyDb, matchId: string) {
 export const getGamesOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabase, userId, claims } = context;
-    const isDemo = isDemoEmail((claims as { email?: string }).email ?? null);
+    const { supabase, userId } = context;
     const db = await admin();
 
     const [{ data: taught }, { data: memberships }] = await Promise.all([

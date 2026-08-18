@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   BookOpenCheck,
   BotMessageSquare,
@@ -18,9 +18,14 @@ import {
   Upload,
   Users,
 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { Brand } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { DEMO_EMAIL, DEMO_PASSWORD } from "@/lib/demo";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -145,8 +150,26 @@ const steps = [
 ];
 
 function Landing() {
+  const navigate = useNavigate();
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  async function handleDemoLogin() {
+    setDemoLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: DEMO_EMAIL,
+      password: DEMO_PASSWORD,
+    });
+    setDemoLoading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    navigate({ to: "/dashboard", replace: true });
+  }
+
   return (
     <div className="min-h-screen">
+
       <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
         <Brand />
         <div className="flex gap-2">
@@ -352,9 +375,18 @@ function Landing() {
               <Button asChild size="lg" variant="outline">
                 <Link to="/auth">Sign in</Link>
               </Button>
+              <Button
+                size="lg"
+                variant="secondary"
+                onClick={handleDemoLogin}
+                disabled={demoLoading}
+              >
+                {demoLoading ? "Signing in..." : "Try the demo"}
+              </Button>
             </div>
           </div>
         </section>
+
       </main>
 
       <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">

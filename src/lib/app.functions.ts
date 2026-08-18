@@ -1164,9 +1164,15 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
           marks: q.marks,
           image_paths: q.image_paths,
           markScheme: access.markSchemeRevealed ? q.mark_scheme : null,
+          photoMode: resolvePhotoMode({
+            student: access.studentPhotoMode,
+            question: q.photo_mode as string | null,
+            assignment: access.assignmentPhotoMode,
+          }),
           imageUrls: await signPaperPages(db, q.image_paths ?? []),
         })),
       ),
+
       submission,
       answers: answersWithImages,
       messages: messages ?? [],

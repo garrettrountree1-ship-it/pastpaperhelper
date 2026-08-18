@@ -72,62 +72,37 @@ function formatSize(bytes: number | null) {
   return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
-export function MaterialsSection({ role }: { role: "teacher" | "student" }) {
+export function MaterialsSection({
+  classId,
+  role,
+}: {
+  classId: string;
+  role: "teacher" | "student";
+}) {
   const classes = useQuery({
     queryKey: ["material-classes"],
     queryFn: useServerFn(listMaterialClasses),
   });
-  const [classId, setClassId] = useState<string | null>(null);
-  const list = classes.data ?? [];
-  const selectedId = classId ?? list[0]?.id ?? null;
-  const selected = list.find((c) => c.id === selectedId) ?? null;
+  const selected = (classes.data ?? []).find((c) => c.id === classId) ?? null;
 
   if (classes.isLoading) return <Skeleton className="h-48 w-full" />;
 
-  if (list.length === 0) {
-    return (
-      <div className="paper p-8 text-center text-muted-foreground">
-        {role === "teacher"
-          ? "Create a class in the Homework section first, then add units and resources here."
-          : "Join a class with your teacher's code to see class materials."}
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
-      <div className="paper flex flex-wrap items-end justify-between gap-4 p-5">
-        <div>
-          <h2 className="text-3xl">Class materials</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {role === "teacher"
-              ? "Group resources into units. Students can view them in the app or download them."
-              : "Open a unit to view slides, videos and resources from your teacher."}
-          </p>
-        </div>
-        <div className="min-w-52 space-y-2">
-          <Label>Class</Label>
-          <Select value={selectedId ?? ""} onValueChange={setClassId}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {list.map((klass) => (
-                <SelectItem key={klass.id} value={klass.id}>
-                  {klass.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="paper p-5">
+        <h2 className="text-3xl">Class materials</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {role === "teacher"
+            ? "Group this class's resources into units. Students can view them in the app or download them."
+            : "Open a unit to view slides, videos and resources from your teacher."}
+        </p>
       </div>
 
-      {selectedId ? (
-        <UnitList classId={selectedId} canManage={Boolean(selected?.canManage)} />
-      ) : null}
+      <UnitList classId={classId} canManage={Boolean(selected?.canManage)} />
     </div>
   );
 }
+
 
 function UnitList({ classId, canManage }: { classId: string; canManage: boolean }) {
   const queryClient = useQueryClient();

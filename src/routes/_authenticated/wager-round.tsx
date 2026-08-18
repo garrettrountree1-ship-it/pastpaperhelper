@@ -48,7 +48,7 @@ function WagerRoundPage() {
           <div className="paper p-8 text-center">
             <p className="mb-4 text-muted-foreground">{(round.error as Error).message}</p>
             <Button asChild variant="outline">
-              <Link to="/games">Back to games</Link>
+              <Link to="/dashboard">Back to your classes</Link>
             </Button>
           </div>
         ) : round.data?.stage === "wager" ? (
@@ -61,7 +61,7 @@ function WagerRoundPage() {
         ) : null}
 
         <Button asChild variant="outline" className="mt-4">
-          <Link to="/games">Back to games</Link>
+          <Link to="/dashboard">Back to your classes</Link>
         </Button>
       </main>
     </div>

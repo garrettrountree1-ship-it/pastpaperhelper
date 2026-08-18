@@ -38,19 +38,24 @@ import {
   releaseQuiz,
 } from "@/lib/quizzes.functions";
 
-export function QuizzesSection({ role }: { role: "teacher" | "student" }) {
-  return role === "teacher" ? <TeacherQuizzes /> : <StudentQuizzes />;
+export function QuizzesSection({
+  classId,
+  role,
+}: {
+  classId: string;
+  role: "teacher" | "student";
+}) {
+  return role === "teacher" ? (
+    <TeacherQuizzes classId={classId} />
+  ) : (
+    <StudentQuizzes classId={classId} />
+  );
 }
 
 /* ------------------------------------------------------------- teacher ---- */
 
-function TeacherQuizzes() {
-  const classes = useQuery({
-    queryKey: ["teacher-classes"],
-    queryFn: useServerFn(listTeacherClasses),
-  });
-  const [classId, setClassId] = useState<string>("");
-  const activeClassId = classId || classes.data?.[0]?.id || "";
+function TeacherQuizzes({ classId }: { classId: string }) {
+  const activeClassId = classId;
 
   const quizzes = useQuery({
     queryKey: ["quizzes", activeClassId],
@@ -58,6 +63,7 @@ function TeacherQuizzes() {
     enabled: Boolean(activeClassId),
   });
   const listQuizzesFn = useServerFn(listQuizzes);
+
 
   const queryClient = useQueryClient();
   const release = useServerFn(releaseQuiz);
@@ -102,35 +108,13 @@ function TeacherQuizzes() {
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
-          {(classes.data ?? []).length > 1 ? (
-            <div className="space-y-2">
-              <Label>Class</Label>
-              <Select value={activeClassId} onValueChange={setClassId}>
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(classes.data ?? []).map((klass) => (
-                    <SelectItem key={klass.id} value={klass.id}>
-                      {klass.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : null}
           {activeClassId ? <QuizDialog classId={activeClassId} onSaved={refresh} /> : null}
         </div>
       </div>
 
-      {classes.isLoading ? (
+      {quizzes.isLoading ? (
         <Skeleton className="h-32 w-full" />
-      ) : (classes.data ?? []).length === 0 ? (
-        <div className="paper p-8 text-center text-muted-foreground">
-          Create a class in Homework first, then build quizzes for it.
-        </div>
-      ) : quizzes.isLoading ? (
-        <Skeleton className="h-32 w-full" />
+
       ) : (quizzes.data ?? []).length === 0 ? (
         <div className="paper p-8 text-center text-muted-foreground">
           No quizzes in this class yet.
@@ -497,12 +481,14 @@ function QuizDialog({ classId, onSaved }: { classId: string; onSaved: () => void
 
 /* ------------------------------------------------------------- student ---- */
 
-function StudentQuizzes() {
+function StudentQuizzes({ classId }: { classId: string }) {
   const quizzes = useQuery({
     queryKey: ["student-quizzes"],
     queryFn: useServerFn(listStudentQuizzes),
     refetchInterval: 30_000,
   });
+
+  const classQuizzes = (quizzes.data?.quizzes ?? []).filter((q) => q.classId === classId);
 
   return (
     <div className="space-y-6">
@@ -516,17 +502,18 @@ function StudentQuizzes() {
 
       {quizzes.isLoading ? (
         <Skeleton className="h-32 w-full" />
-      ) : (quizzes.data?.quizzes ?? []).length === 0 ? (
+      ) : classQuizzes.length === 0 ? (
         <div className="paper p-8 text-center text-muted-foreground">
-          No quizzes released yet. Your teacher releases them in class.
+          No quizzes released in this class yet. Your teacher releases them in class.
         </div>
       ) : (
-        (quizzes.data?.classes ?? []).map((klass) => {
-          const items = (quizzes.data?.quizzes ?? []).filter((q) => q.classId === klass.id);
+        (quizzes.data?.classes ?? []).filter((klass) => klass.id === classId).map((klass) => {
+          const items = classQuizzes;
           if (items.length === 0) return null;
           return (
             <section key={klass.id} className="paper p-5">
               <h3 className="border-b pb-3 font-display text-2xl">{klass.name}</h3>
+
               <div className="divide-y">
                 {items.map((quiz) => (
                   <div key={quiz.id} className="flex flex-wrap items-center justify-between gap-3 py-3">

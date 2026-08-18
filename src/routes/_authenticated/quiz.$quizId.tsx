@@ -105,7 +105,7 @@ function QuizPage() {
           <div className="paper p-8 text-center">
             <p className="mb-4 text-muted-foreground">{(workspace.error as Error).message}</p>
             <Button asChild variant="outline">
-              <Link to="/quizzes">Back to quizzes</Link>
+              <Link to="/dashboard">Back to your classes</Link>
             </Button>
           </div>
         ) : workspace.data ? (
@@ -226,7 +226,7 @@ function QuizPage() {
 
             <div className="mt-6 flex justify-between gap-3">
               <Button asChild variant="outline">
-                <Link to="/quizzes">Back to quizzes</Link>
+                <Link to="/dashboard">Back to your classes</Link>
               </Button>
               {!finished ? (
                 <Button

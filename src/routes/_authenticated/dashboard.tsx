@@ -2,13 +2,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { BookOpen, Gamepad2, NotebookPen, Timer } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getMe, setOAuthRole } from "@/lib/app.functions";
+import { createClass, getMe, joinClass, setOAuthRole } from "@/lib/app.functions";
+import { listMaterialClasses } from "@/lib/materials.functions";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useDemoView } from "@/lib/demo-view";
 import { SECTIONS, type SectionKey } from "@/lib/sections";
 
@@ -117,33 +120,13 @@ function Dashboard() {
               {me.data?.fullName ? `Welcome back, ${me.data.fullName.split(" ")[0]}` : "Welcome back"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Pick a section to get started. Once you&apos;re inside, the sections stay on a ribbon
-              down the left so you can switch fast.
+              Pick a class first. Materials, homework, quizzes and games all live inside the class
+              you choose.
             </p>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              {SECTIONS.map((section) => {
-                const Icon = icons[section.key];
-                return (
-                  <Link
-                    key={section.key}
-                    to={section.to}
-                    className="paper group flex items-start gap-4 p-6 transition-shadow hover:shadow-lift"
-                  >
-                    <span className="rounded-xl bg-primary/10 p-3 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                      <Icon className="size-7" />
-                    </span>
-                    <span>
-                      <span className="block font-display text-2xl">{section.label}</span>
-                      <span className="mt-1 block text-sm text-muted-foreground">
-                        {role === "teacher" ? section.teacherBlurb : section.blurb}
-                      </span>
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
+            <ClassPicker role={role} />
           </>
+
         )}
       </main>
     </div>
@@ -163,6 +146,7 @@ function DemoViewSwitcher({
     queryClient.invalidateQueries();
     toast.success(next === "teacher" ? "Teacher view" : "Student view");
   };
+
 
   return (
     <div className="paper mb-6 flex flex-wrap items-center justify-between gap-3 p-4">
@@ -188,6 +172,144 @@ function DemoViewSwitcher({
           Student view
         </Button>
       </div>
+    </div>
+  );
+}
+
+function ClassPicker({ role }: { role: "teacher" | "student" }) {
+  const queryClient = useQueryClient();
+  const classes = useQuery({
+    queryKey: ["my-classes"],
+    queryFn: useServerFn(listMaterialClasses),
+  });
+  const create = useServerFn(createClass);
+  const join = useServerFn(joinClass);
+  const [name, setName] = useState("");
+  const [subject, setSubject] = useState("");
+  const [curriculum, setCurriculum] = useState("IGCSE");
+  const [code, setCode] = useState("");
+
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ["my-classes"] });
+
+  const createMutation = useMutation({
+    mutationFn: () => create({ data: { name, subject, curriculum } }),
+    onSuccess: () => {
+      toast.success("Class created");
+      setName("");
+      setSubject("");
+      refresh();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const joinMutation = useMutation({
+    mutationFn: () => join({ data: { code } }),
+    onSuccess: (result) => {
+      toast.success(`Joined ${result.name}`);
+      setCode("");
+      refresh();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const list = role === "teacher" ? (classes.data ?? []).filter((c) => c.canManage) : (classes.data ?? []);
+
+  return (
+    <div className="mt-6 space-y-6">
+      <div className="paper flex flex-wrap items-end gap-3 p-5">
+        {role === "teacher" ? (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="class-name">New class</Label>
+              <Input
+                id="class-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Year 11 Chemistry"
+                className="w-56"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="class-subject">Subject</Label>
+              <Input
+                id="class-subject"
+                value={subject}
+                onChange={(event) => setSubject(event.target.value)}
+                placeholder="Chemistry"
+                className="w-40"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="class-curriculum">Curriculum</Label>
+              <Input
+                id="class-curriculum"
+                value={curriculum}
+                onChange={(event) => setCurriculum(event.target.value)}
+                className="w-32"
+              />
+            </div>
+            <Button
+              onClick={() => createMutation.mutate()}
+              disabled={!name.trim() || !curriculum.trim() || createMutation.isPending}
+            >
+              Create class
+            </Button>
+          </>
+        ) : (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="join-code">Class code</Label>
+              <Input
+                id="join-code"
+                value={code}
+                onChange={(event) => setCode(event.target.value.toUpperCase())}
+                placeholder="ABC123"
+                className="w-32 font-mono"
+              />
+            </div>
+            <Button
+              onClick={() => joinMutation.mutate()}
+              disabled={code.length < 4 || joinMutation.isPending}
+            >
+              Join class
+            </Button>
+          </>
+        )}
+      </div>
+
+      {classes.isLoading ? (
+        <Skeleton className="h-32 w-full" />
+      ) : list.length === 0 ? (
+        <div className="paper p-8 text-center text-muted-foreground">
+          {role === "teacher"
+            ? "Create your first class above to start setting homework."
+            : "No classes yet. Join your class with the code your teacher gave you."}
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {list.map((klass) => (
+            <Link
+              key={klass.id}
+              to="/classes/$classId"
+              params={{ classId: klass.id }}
+              className="paper group flex items-start gap-4 p-6 transition-shadow hover:shadow-lift"
+            >
+              <span className="rounded-xl bg-primary/10 p-3 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                <BookOpen className="size-7" />
+              </span>
+              <span>
+                <span className="block font-display text-2xl">{klass.name}</span>
+                <span className="mt-1 block text-sm text-muted-foreground">
+                  {[klass.subject, klass.curriculum].filter(Boolean).join(" · ")}
+                </span>
+                <span className="mt-2 block text-sm text-muted-foreground">
+                  Materials · Homework · Quizzes · Games
+                </span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

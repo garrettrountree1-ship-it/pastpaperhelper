@@ -1,10 +1,16 @@
-/** The four top-level app sections shown as blocks after login and as a left ribbon inside a section. */
+/** The four class sections shown as blocks inside a class and as a left ribbon inside a section. */
 export type SectionKey = "materials" | "homework" | "quizzes" | "games";
+
+export type SectionPath =
+  | "/classes/$classId/materials"
+  | "/classes/$classId/homework"
+  | "/classes/$classId/quizzes"
+  | "/classes/$classId/games";
 
 export type SectionDef = {
   key: SectionKey;
   label: string;
-  to: "/materials" | "/homework" | "/quizzes" | "/games";
+  to: SectionPath;
   blurb: string;
   teacherBlurb: string;
 };
@@ -13,30 +19,30 @@ export const SECTIONS: SectionDef[] = [
   {
     key: "materials",
     label: "Class materials",
-    to: "/materials",
-    blurb: "Slides, lecture videos and unit resources.",
-    teacherBlurb: "Create units and upload slides, videos and resources.",
+    to: "/classes/$classId/materials",
+    blurb: "Slides, lecture videos and unit resources for this class.",
+    teacherBlurb: "Create units and upload slides, videos and resources for this class.",
   },
   {
     key: "homework",
     label: "Homework",
-    to: "/homework",
-    blurb: "Past-paper homework with marking and the AI tutor.",
-    teacherBlurb: "Set past-paper homework and review the gradebook.",
+    to: "/classes/$classId/homework",
+    blurb: "Past-paper homework for this class with marking and the AI tutor.",
+    teacherBlurb: "Set past-paper homework for this class and review the gradebook.",
   },
   {
     key: "quizzes",
     label: "Quizzes",
-    to: "/quizzes",
-    blurb: "Timed in-class quizzes released by your teacher.",
-    teacherBlurb: "Build timed quizzes and release them in class.",
+    to: "/classes/$classId/quizzes",
+    blurb: "Timed quizzes released by your teacher in this class.",
+    teacherBlurb: "Build timed quizzes and release them to this class.",
   },
   {
     key: "games",
     label: "Games",
-    to: "/games",
-    blurb: "Challenges, the daily double and the token leaderboard.",
-    teacherBlurb: "Run challenges and manage the token leaderboard.",
+    to: "/classes/$classId/games",
+    blurb: "Challenges, the daily double and this class's token leaderboard.",
+    teacherBlurb: "Run challenges and manage this class's token leaderboard.",
   },
 ];
 

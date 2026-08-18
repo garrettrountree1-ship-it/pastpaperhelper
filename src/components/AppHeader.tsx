@@ -53,6 +53,15 @@ export function AppHeader({
               {role ? ` · ${role === "teacher" ? "Teacher" : "Student"}` : ""}
             </span>
           ) : null}
+          {adminStatus.data?.isAdmin ? (
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/admin">
+                <ShieldCheck className="size-4" />
+                <span className="hidden sm:inline">Admin</span>
+              </Link>
+            </Button>
+          ) : null}
+          <SupportDialog />
           <Button variant="outline" size="sm" onClick={signOut}>
             <LogOut className="size-4" />
             Sign out

@@ -153,7 +153,24 @@ export function AccessControlsDialog({
                   Reveal the mark scheme answers to the whole class
                 </Label>
               </div>
+              <div className="mt-4 border-t border-border pt-3">
+                <Label className="text-sm">Photo answers for this assignment</Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Automatic keeps photo-only answers on drawing and calculation questions. Always on
+                  offers the camera and drawing pad everywhere. Off means students type every answer.
+                </p>
+                <div className="mt-2">
+                  <PhotoModeControl
+                    value={data.photoMode}
+                    disabled={classMutation.isPending}
+                    onChange={(next) =>
+                      next ? classMutation.mutate({ photoMode: next }) : undefined
+                    }
+                  />
+                </div>
+              </div>
             </section>
+
 
             <section className="rounded-lg border border-border p-4">
               <h3 className="font-medium">Individual students</h3>

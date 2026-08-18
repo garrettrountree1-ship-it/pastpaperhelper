@@ -21,6 +21,7 @@ import { Route as AuthenticatedGamesRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedHomeworkRouteImport } from './routes/_authenticated/homework'
 import { Route as AuthenticatedMaterialsRouteImport } from './routes/_authenticated/materials'
 import { Route as AuthenticatedQuizzesRouteImport } from './routes/_authenticated/quizzes'
+import { Route as AuthenticatedVocabBingoRouteImport } from './routes/_authenticated/vocab-bingo'
 import { Route as AuthenticatedWagerRoundRouteImport } from './routes/_authenticated/wager-round'
 import { Route as AuthenticatedAssignmentsAssignmentIdRouteImport } from './routes/_authenticated/assignments.$assignmentId'
 import { Route as AuthenticatedChallengeMatchIdRouteImport } from './routes/_authenticated/challenge.$matchId'
@@ -91,6 +92,11 @@ const AuthenticatedQuizzesRoute = AuthenticatedQuizzesRouteImport.update({
   path: '/quizzes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedVocabBingoRoute = AuthenticatedVocabBingoRouteImport.update({
+  id: '/vocab-bingo',
+  path: '/vocab-bingo',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedWagerRoundRoute = AuthenticatedWagerRoundRouteImport.update({
   id: '/wager-round',
   path: '/wager-round',
@@ -150,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/homework': typeof AuthenticatedHomeworkRoute
   '/materials': typeof AuthenticatedMaterialsRoute
   '/quizzes': typeof AuthenticatedQuizzesRoute
+  '/vocab-bingo': typeof AuthenticatedVocabBingoRoute
   '/wager-round': typeof AuthenticatedWagerRoundRoute
   '/assignments/$assignmentId': typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
   '/challenge/$matchId': typeof AuthenticatedChallengeMatchIdRoute
@@ -171,6 +178,7 @@ export interface FileRoutesByTo {
   '/homework': typeof AuthenticatedHomeworkRoute
   '/materials': typeof AuthenticatedMaterialsRoute
   '/quizzes': typeof AuthenticatedQuizzesRoute
+  '/vocab-bingo': typeof AuthenticatedVocabBingoRoute
   '/wager-round': typeof AuthenticatedWagerRoundRoute
   '/challenge/$matchId': typeof AuthenticatedChallengeMatchIdRoute
   '/classes/$classId': typeof AuthenticatedClassesClassIdRoute
@@ -193,6 +201,7 @@ export interface FileRoutesById {
   '/_authenticated/homework': typeof AuthenticatedHomeworkRoute
   '/_authenticated/materials': typeof AuthenticatedMaterialsRoute
   '/_authenticated/quizzes': typeof AuthenticatedQuizzesRoute
+  '/_authenticated/vocab-bingo': typeof AuthenticatedVocabBingoRoute
   '/_authenticated/wager-round': typeof AuthenticatedWagerRoundRoute
   '/_authenticated/assignments/$assignmentId': typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
   '/_authenticated/challenge/$matchId': typeof AuthenticatedChallengeMatchIdRoute
@@ -216,6 +225,7 @@ export interface FileRouteTypes {
     | '/homework'
     | '/materials'
     | '/quizzes'
+    | '/vocab-bingo'
     | '/wager-round'
     | '/assignments/$assignmentId'
     | '/challenge/$matchId'
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/homework'
     | '/materials'
     | '/quizzes'
+    | '/vocab-bingo'
     | '/wager-round'
     | '/challenge/$matchId'
     | '/classes/$classId'
@@ -258,6 +269,7 @@ export interface FileRouteTypes {
     | '/_authenticated/homework'
     | '/_authenticated/materials'
     | '/_authenticated/quizzes'
+    | '/_authenticated/vocab-bingo'
     | '/_authenticated/wager-round'
     | '/_authenticated/assignments/$assignmentId'
     | '/_authenticated/challenge/$matchId'
@@ -361,6 +373,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedQuizzesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/vocab-bingo': {
+      id: '/_authenticated/vocab-bingo'
+      path: '/vocab-bingo'
+      fullPath: '/vocab-bingo'
+      preLoaderRoute: typeof AuthenticatedVocabBingoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/wager-round': {
       id: '/_authenticated/wager-round'
       path: '/wager-round'
@@ -447,6 +466,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHomeworkRoute: typeof AuthenticatedHomeworkRoute
   AuthenticatedMaterialsRoute: typeof AuthenticatedMaterialsRoute
   AuthenticatedQuizzesRoute: typeof AuthenticatedQuizzesRoute
+  AuthenticatedVocabBingoRoute: typeof AuthenticatedVocabBingoRoute
   AuthenticatedWagerRoundRoute: typeof AuthenticatedWagerRoundRoute
   AuthenticatedAssignmentsAssignmentIdRoute: typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
   AuthenticatedChallengeMatchIdRoute: typeof AuthenticatedChallengeMatchIdRoute
@@ -464,6 +484,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHomeworkRoute: AuthenticatedHomeworkRoute,
   AuthenticatedMaterialsRoute: AuthenticatedMaterialsRoute,
   AuthenticatedQuizzesRoute: AuthenticatedQuizzesRoute,
+  AuthenticatedVocabBingoRoute: AuthenticatedVocabBingoRoute,
   AuthenticatedWagerRoundRoute: AuthenticatedWagerRoundRoute,
   AuthenticatedAssignmentsAssignmentIdRoute:
     AuthenticatedAssignmentsAssignmentIdRouteWithChildren,

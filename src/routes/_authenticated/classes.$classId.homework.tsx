@@ -1587,7 +1587,7 @@ function StudentReport({
           {assignment.locked ? (
             <p className="mt-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
               {assignment.lockedReason ??
-                "Locked automatically after a fourth AI-generated or copied answer."}
+                "Locked automatically after passing the class warning limit for AI-generated or copied answers."}
             </p>
           ) : null}
 

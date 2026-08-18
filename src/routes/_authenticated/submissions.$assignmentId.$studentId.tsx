@@ -169,8 +169,8 @@ function SubmissionPage() {
                       <p className="text-sm text-muted-foreground">
                         {submission?.locked_at
                           ? submission.locked_reason ??
-                            "Locked after a fourth AI-generated or copied answer."
-                          : `${submission?.ai_flag_count ?? flags.length} warning(s) recorded — locks on the 4th.`}
+                            "Locked after passing the class warning limit for AI-generated or copied answers."
+                          : `${submission?.ai_flag_count ?? flags.length} warning(s) recorded — locks once the class warning limit is passed.`}
                       </p>
                     </div>
                     {submission?.locked_at ? (

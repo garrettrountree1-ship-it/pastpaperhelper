@@ -640,6 +640,78 @@ export type Database = {
           },
         ]
       }
+      game_rounds: {
+        Row: {
+          answer_text: string
+          attempts: number
+          awarded: number
+          class_id: string
+          correct: boolean
+          day: string
+          ends_at: string
+          finished_at: string | null
+          id: string
+          kind: string
+          payload: Json
+          question_id: string | null
+          started_at: string
+          state: Json
+          student_id: string
+          wager: number
+        }
+        Insert: {
+          answer_text?: string
+          attempts?: number
+          awarded?: number
+          class_id: string
+          correct?: boolean
+          day?: string
+          ends_at: string
+          finished_at?: string | null
+          id?: string
+          kind: string
+          payload?: Json
+          question_id?: string | null
+          started_at?: string
+          state?: Json
+          student_id: string
+          wager?: number
+        }
+        Update: {
+          answer_text?: string
+          attempts?: number
+          awarded?: number
+          class_id?: string
+          correct?: boolean
+          day?: string
+          ends_at?: string
+          finished_at?: string | null
+          id?: string
+          kind?: string
+          payload?: Json
+          question_id?: string | null
+          started_at?: string
+          state?: Json
+          student_id?: string
+          wager?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_rounds_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_rounds_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integrity_flags: {
         Row: {
           confidence: number

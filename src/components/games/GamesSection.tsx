@@ -353,7 +353,41 @@ function StudentGames({ data }: { data: StudentData }) {
             ))}
           </div>
         </div>
+
+        <div className="paper p-5">
+          <h3 className="font-display text-xl">Vocab bingo</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            A nine-word card from your homework vocabulary. Match each meaning to the right word and
+            complete any row, column or diagonal for 1 token.
+          </p>
+          <Button asChild className="mt-3" variant="outline">
+            <Link to="/vocab-bingo">Play vocab bingo</Link>
+          </Button>
+        </div>
+
+        <div className="paper p-5">
+          <h3 className="font-display text-xl">Boss question</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            The hardest past-paper question of the day, twelve minutes on the clock. Only full marks
+            beats it — worth 3 tokens.
+          </p>
+          <Button asChild className="mt-3" variant="outline">
+            <Link to="/boss-question">Face the boss</Link>
+          </Button>
+        </div>
+
+        <div className="paper p-5">
+          <h3 className="font-display text-xl">Wager round</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Stake 1 or 2 tokens before you see the question. Full marks doubles your stake, anything
+            less loses it. One submission, once a day.
+          </p>
+          <Button asChild className="mt-3" variant="outline">
+            <Link to="/wager-round">Place a wager</Link>
+          </Button>
+        </div>
       </div>
+
 
       {openMatches.length > 0 ? (
         <section className="paper p-5">

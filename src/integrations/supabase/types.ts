@@ -233,6 +233,44 @@ export type Database = {
           },
         ]
       }
+      class_game_settings: {
+        Row: {
+          class_id: string
+          created_at: string
+          enabled: boolean
+          game_key: string
+          id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          enabled?: boolean
+          game_key: string
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          enabled?: boolean
+          game_key?: string
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_game_settings_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_members: {
         Row: {
           class_id: string

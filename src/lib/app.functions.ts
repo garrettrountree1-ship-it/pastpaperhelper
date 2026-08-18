@@ -162,6 +162,7 @@ export const updateClass = createServerFn({ method: "POST" })
         subject: z.string(),
         joinCode: z.string().trim().min(4).max(10).optional(),
         regenerateJoinCode: z.boolean().optional(),
+        aiWarningLimit: z.number().int().min(0).max(10).optional(),
       })
       .parse(input),
   )

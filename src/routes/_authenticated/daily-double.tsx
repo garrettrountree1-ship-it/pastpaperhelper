@@ -40,10 +40,12 @@ function DailyDoublePage() {
   const [answer, setAnswer] = useState("");
   const [seconds, setSeconds] = useState(0);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState<string | null>(null);
 
   useEffect(() => {
     if (!round.data) return;
     setSeconds(round.data.secondsLeft);
+    if (round.data.markScheme) setRevealed(round.data.markScheme);
   }, [round.data]);
 
   const over = Boolean(round.data?.done) || (round.data ? seconds <= 0 : false);
@@ -54,10 +56,17 @@ function DailyDoublePage() {
     return () => window.clearInterval(timer);
   }, [over, seconds > 0]);
 
+  // When the clock runs out, refetch so the mark scheme comes back from the server.
+  useEffect(() => {
+    if (!round.data || round.data.done || seconds > 0 || revealed) return;
+    queryClient.invalidateQueries({ queryKey: ["daily-double"] });
+  }, [seconds, round.data, revealed, queryClient]);
+
   const mutation = useMutation({
     mutationFn: () => send({ data: { answerText: answer } }),
     onSuccess: (result) => {
       setFeedback(result.feedback);
+      if (result.markScheme) setRevealed(result.markScheme);
       if (result.correct) {
         toast.success(`Daily double won — ${result.awarded} token(s)`);
         queryClient.invalidateQueries({ queryKey: ["daily-double"] });
@@ -66,7 +75,10 @@ function DailyDoublePage() {
         toast.error("Not quite — keep trying while the clock runs.");
       }
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => {
+      toast.error(error.message);
+      queryClient.invalidateQueries({ queryKey: ["daily-double"] });
+    },
   });
 
   return (

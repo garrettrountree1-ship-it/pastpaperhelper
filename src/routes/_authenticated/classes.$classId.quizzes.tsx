@@ -19,12 +19,13 @@ export const Route = createFileRoute("/_authenticated/classes/$classId/quizzes")
 });
 
 function QuizzesPage() {
+  const { classId } = Route.useParams();
   return (
-    <SectionShell current="quizzes" title="Quizzes">
+    <SectionShell classId={classId} current="quizzes" title="Quizzes">
       {(role) => (
         <>
-          <SectionTabsMobile current="quizzes" />
-          <QuizzesSection role={role} />
+          <SectionTabsMobile classId={classId} current="quizzes" />
+          <QuizzesSection classId={classId} role={role} />
         </>
       )}
     </SectionShell>

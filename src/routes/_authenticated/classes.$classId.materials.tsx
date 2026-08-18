@@ -20,12 +20,13 @@ export const Route = createFileRoute("/_authenticated/classes/$classId/materials
 });
 
 function MaterialsPage() {
+  const { classId } = Route.useParams();
   return (
-    <SectionShell current="materials" title="Class materials">
+    <SectionShell classId={classId} current="materials" title="Class materials">
       {(role) => (
         <>
-          <SectionTabsMobile current="materials" />
-          <MaterialsSection role={role} />
+          <SectionTabsMobile classId={classId} current="materials" />
+          <MaterialsSection classId={classId} role={role} />
 
         </>
       )}

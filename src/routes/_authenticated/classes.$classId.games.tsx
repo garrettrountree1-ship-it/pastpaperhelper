@@ -22,12 +22,13 @@ export const Route = createFileRoute("/_authenticated/classes/$classId/games")({
 });
 
 function GamesPage() {
+  const { classId } = Route.useParams();
   return (
-    <SectionShell current="games" title="Games">
+    <SectionShell classId={classId} current="games" title="Games">
       {(role) => (
         <>
-          <SectionTabsMobile current="games" />
-          <GamesSection role={role} />
+          <SectionTabsMobile classId={classId} current="games" />
+          <GamesSection classId={classId} role={role} />
         </>
       )}
     </SectionShell>

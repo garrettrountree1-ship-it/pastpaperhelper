@@ -98,7 +98,10 @@ export function MaterialsSection({
         </p>
       </div>
 
-      <UnitList classId={classId} canManage={Boolean(selected?.canManage)} />
+      <UnitList
+        classId={classId}
+        canManage={role === "teacher" && Boolean(selected?.canManage)}
+      />
     </div>
   );
 }

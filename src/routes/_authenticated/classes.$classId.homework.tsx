@@ -29,6 +29,7 @@ import {
   Unlock,
   Wand2,
   ShieldAlert,
+  Languages,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";

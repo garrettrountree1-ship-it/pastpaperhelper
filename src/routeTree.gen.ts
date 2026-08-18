@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedBossQuestionRouteImport } from './routes/_authenticated/boss-question'
 import { Route as AuthenticatedDailyDoubleRouteImport } from './routes/_authenticated/daily-double'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedGamesRouteImport } from './routes/_authenticated/games'
@@ -52,6 +53,12 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBossQuestionRoute =
+  AuthenticatedBossQuestionRouteImport.update({
+    id: '/boss-question',
+    path: '/boss-question',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDailyDoubleRoute =
   AuthenticatedDailyDoubleRouteImport.update({
     id: '/daily-double',
@@ -130,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/boss-question': typeof AuthenticatedBossQuestionRoute
   '/daily-double': typeof AuthenticatedDailyDoubleRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/games': typeof AuthenticatedGamesRoute
@@ -149,6 +157,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/boss-question': typeof AuthenticatedBossQuestionRoute
   '/daily-double': typeof AuthenticatedDailyDoubleRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/games': typeof AuthenticatedGamesRoute
@@ -169,6 +178,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/boss-question': typeof AuthenticatedBossQuestionRoute
   '/_authenticated/daily-double': typeof AuthenticatedDailyDoubleRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/games': typeof AuthenticatedGamesRoute
@@ -190,6 +200,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/admin'
+    | '/boss-question'
     | '/daily-double'
     | '/dashboard'
     | '/games'
@@ -209,6 +220,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/admin'
+    | '/boss-question'
     | '/daily-double'
     | '/dashboard'
     | '/games'
@@ -228,6 +240,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/_authenticated/admin'
+    | '/_authenticated/boss-question'
     | '/_authenticated/daily-double'
     | '/_authenticated/dashboard'
     | '/_authenticated/games'
@@ -285,6 +298,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/boss-question': {
+      id: '/_authenticated/boss-question'
+      path: '/boss-question'
+      fullPath: '/boss-question'
+      preLoaderRoute: typeof AuthenticatedBossQuestionRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/daily-double': {
@@ -401,6 +421,7 @@ const AuthenticatedAssignmentsAssignmentIdRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedBossQuestionRoute: typeof AuthenticatedBossQuestionRoute
   AuthenticatedDailyDoubleRoute: typeof AuthenticatedDailyDoubleRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedGamesRoute: typeof AuthenticatedGamesRoute
@@ -416,6 +437,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedBossQuestionRoute: AuthenticatedBossQuestionRoute,
   AuthenticatedDailyDoubleRoute: AuthenticatedDailyDoubleRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedGamesRoute: AuthenticatedGamesRoute,

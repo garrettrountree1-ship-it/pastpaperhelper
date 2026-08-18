@@ -87,7 +87,7 @@ async function awardTokens(
   return delta;
 }
 
-async function randomClassQuestion(db: AnyDb, classId: string) {
+async function randomClassQuestion(db: AnyDb, classId: string, exclude?: Set<string>) {
   const { data: assignments } = await db
     .from("assignments")
     .select("id")
@@ -99,8 +99,9 @@ async function randomClassQuestion(db: AnyDb, classId: string) {
     .from("questions")
     .select("id, question_text, mark_scheme, marks, image_paths, assignment_id")
     .in("assignment_id", assignmentIds);
-  if (!questions || questions.length === 0) return null;
-  return questions[Math.floor(Math.random() * questions.length)];
+  const pool = (questions ?? []).filter((q) => !exclude || !exclude.has(q.id));
+  if (pool.length === 0) return null;
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 /** Homework average per student, used to pair students of similar ability. */

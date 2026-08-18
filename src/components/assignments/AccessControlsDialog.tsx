@@ -51,7 +51,7 @@ function HoverTranslationControl({
   return (
     <Select
       value={value === null ? INHERIT : value ? "on" : "off"}
-      disabled={disabled}
+      disabled={disabled === true}
       onValueChange={(next) => onChange(next === INHERIT ? null : next === "on")}
     >
       <SelectTrigger className="w-56">

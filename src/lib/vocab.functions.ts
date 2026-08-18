@@ -132,15 +132,25 @@ export const explainVocabTerm = createServerFn({ method: "POST" })
       .eq("assignment_id", data.assignmentId)
       .eq("term", term)
       .eq("language", language)
+      .eq("level", settings.level)
       .maybeSingle();
+
+    /** Hover glosses inside the definition itself, when hover translation is on. */
+    async function glossFor(text: string) {
+      if (!settings.keywordTranslation) return [] as Array<{ term: string; translation: string }>;
+      const { tutorGlossary } = await import("./glossary.server");
+      return tutorGlossary(text, (assignment.subject as string) ?? "", language);
+    }
 
     if (cached?.explanation) {
       return {
         term,
         language,
+        level: settings.level,
         translation: settings.vocabTranslation ? (cached.translation as string) : "",
         explanation: cached.explanation as string,
         imageUrls: (cached.image_urls as string[]) ?? [],
+        glossary: await glossFor(cached.explanation as string),
       };
     }
 
@@ -157,18 +167,21 @@ export const explainVocabTerm = createServerFn({ method: "POST" })
         assignment_id: data.assignmentId,
         term,
         language,
+        level: settings.level,
         explanation: result.explanation,
         translation: result.translation,
         image_urls: result.imageUrls,
       },
-      { onConflict: "assignment_id,term,language" },
+      { onConflict: "assignment_id,term,language,level" },
     );
 
     return {
       term,
       language,
+      level: settings.level,
       ...result,
       translation: settings.vocabTranslation ? result.translation : "",
+      glossary: await glossFor(result.explanation),
     };
-
   });
+

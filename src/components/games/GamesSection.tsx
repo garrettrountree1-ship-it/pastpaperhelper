@@ -173,14 +173,12 @@ function TeacherGames({ classes }: { classes: TeacherClass[] }) {
                   </span>
                   <div className="flex items-center gap-3">
                     <Badge variant="secondary">{entry.tokens} tokens</Badge>
-                    {entry.demo ? null : (
-                      <AdjustTokensDialog
-                        classId={klass.id}
-                        studentId={entry.studentId}
-                        alias={entry.alias}
-                        onDone={refresh}
-                      />
-                    )}
+                    <AdjustTokensDialog
+                      classId={klass.id}
+                      studentId={entry.studentId}
+                      alias={entry.alias}
+                      onDone={refresh}
+                    />
                   </div>
                 </div>
               ))
@@ -211,7 +209,7 @@ function AdjustTokensDialog({
   const mutation = useMutation({
     mutationFn: () => adjust({ data: { classId, studentId, delta, reason } }),
     onSuccess: () => {
-      toast.success("Tokens updated");
+      toast.success("Tokens updated — the student has been messaged");
       setOpen(false);
       setReason("");
       onDone();
@@ -241,17 +239,24 @@ function AdjustTokensDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="token-reason">Reason</Label>
+            <Label htmlFor="token-reason">Message to the student (required)</Label>
             <Input
               id="token-reason"
               value={reason}
               onChange={(event) => setReason(event.target.value)}
-              placeholder="Great effort in class"
+              placeholder="Great effort explaining rates of reaction today"
             />
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || delta === 0}>
+          <p className="text-xs text-muted-foreground">
+            This note is sent to the student as a message from you, so they know why their tokens
+            changed.
+          </p>
+          <Button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending || delta === 0 || !reason.trim()}
+          >
             Save
           </Button>
         </DialogFooter>

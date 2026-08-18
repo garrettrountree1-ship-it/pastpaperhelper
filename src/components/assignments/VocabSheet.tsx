@@ -136,8 +136,10 @@ export function VocabSheet({ assignmentId }: { assignmentId: string }) {
               <SheetTitle className="text-left">Vocab &amp; concepts</SheetTitle>
               <SheetDescription className="text-left">
                 Key words for this homework
-                {vocab.data?.language ? ` with ${vocab.data.language} meanings` : ""}. Tap any
-                word for a fuller explanation with pictures.
+                {vocab.data?.translationEnabled && vocab.data?.language
+                  ? ` with ${vocab.data.language} meanings`
+                  : ""}
+                . Tap any word for a fuller explanation with pictures.
               </SheetDescription>
             </SheetHeader>
 

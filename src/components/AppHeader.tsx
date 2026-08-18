@@ -26,6 +26,12 @@ export function AppHeader({
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const adminStatus = useQuery({
+    queryKey: ["admin-status"],
+    queryFn: useServerFn(getAdminStatus),
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
 
   async function signOut() {
     await queryClient.cancelQueries();

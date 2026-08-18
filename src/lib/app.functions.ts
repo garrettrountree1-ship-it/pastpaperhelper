@@ -1098,9 +1098,10 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     // Mark schemes are only sent once the teacher reveals them.
     const { data: allQuestions } = await db
       .from("questions")
-      .select("id, position, question_text, marks, image_paths, mark_scheme")
+      .select("id, position, question_text, marks, image_paths, mark_scheme, photo_mode")
       .eq("assignment_id", data.assignmentId)
       .order("position");
+
 
 
     const { data: exemptions } = await db

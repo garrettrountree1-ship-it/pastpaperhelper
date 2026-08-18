@@ -1263,7 +1263,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
         excerpt: data.answerText.slice(0, 600),
         confidence: violation.confidence,
       });
-      const locked = strikes >= 4;
+      const locked = strikes > warningLimit;
       await db
         .from("submissions")
         .update({
@@ -1271,8 +1271,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
           ...(locked
             ? {
                 locked_at: new Date().toISOString(),
-                locked_reason:
-                  "A fourth answer was detected as AI-generated, copied or plagiarised.",
+                locked_reason: `Answer ${strikes} was detected as AI-generated, copied or plagiarised (class limit: ${warningLimit} warning${warningLimit === 1 ? "" : "s"}).`,
               }
             : {}),
         })
@@ -1282,7 +1281,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
         throw new Error(LOCKED_MESSAGE);
       }
       throw new Error(
-        `${violation.reason} This answer was not accepted — write it in your own words. Warning ${strikes} of 3 — a fourth copied answer locks this homework and marks it as a fail until your teacher unlocks it.`,
+        `${violation.reason} This answer was not accepted — write it in your own words. Warning ${strikes} of ${warningLimit} — one more copied answer locks this homework and marks it as a fail until your teacher unlocks it.`,
       );
 
     }

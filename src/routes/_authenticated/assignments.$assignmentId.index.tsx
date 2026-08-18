@@ -268,7 +268,9 @@ type Question = {
   marks: number;
   imageUrls?: string[];
   markScheme?: string | null;
+  photoMode?: PhotoMode;
 };
+
 type Answer = {
   id: string;
   question_id: string;

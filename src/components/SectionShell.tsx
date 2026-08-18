@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useSectionTime } from "@/hooks/use-section-time";
 import { getMe } from "@/lib/app.functions";
 import { useDemoView } from "@/lib/demo-view";
 import { SECTIONS, type SectionKey } from "@/lib/sections";
@@ -37,6 +38,7 @@ export function SectionShell({
   const { view, setDemoView } = useDemoView(isDemo, me.data?.role ?? "student");
   const role = (isDemo ? view : me.data?.role) ?? "student";
   const queryClient = useQueryClient();
+  useSectionTime(current);
 
   return (
     <div className="min-h-screen">

@@ -54,7 +54,7 @@ type TeacherClass = {
   id: string;
   name: string;
   subject: string;
-  leaderboard: { studentId: string; alias: string; tokens: number }[];
+  leaderboard: { studentId: string; alias: string; tokens: number; demo: boolean }[];
 };
 
 function TeacherGames({ classes }: { classes: TeacherClass[] }) {

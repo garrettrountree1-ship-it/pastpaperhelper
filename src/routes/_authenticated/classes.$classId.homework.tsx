@@ -74,11 +74,14 @@ import {
   extractPaperQuestions,
   getAssignmentForEdit,
   getClassOverview,
+  getMe,
   getStudentClassReport,
   updateAssignment,
   unlockSubmission,
   updateClass,
 } from "@/lib/app.functions";
+import { addDemoStudents } from "@/lib/demo.functions";
+
 import {
   deleteAnnouncement,
   listClassBulletin,

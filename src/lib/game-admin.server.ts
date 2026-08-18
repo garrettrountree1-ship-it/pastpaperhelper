@@ -127,12 +127,22 @@ export async function loadClassGameRecord(classId: string): Promise<StudentGameR
     ]);
 
   const matchIds = (matches ?? []).map((m) => m.id);
-  const { data: attempts } = matchIds.length
-    ? await db
-        .from("game_attempts")
-        .select("match_id, student_id, correct, attempts, seconds, finished_at")
-        .in("match_id", matchIds)
-    : { data: [] as Record<string, never>[] };
+  type AttemptRow = {
+    match_id: string;
+    student_id: string;
+    correct: boolean;
+    attempts: number;
+    seconds: number | null;
+    finished_at: string | null;
+  };
+  const attempts: AttemptRow[] = matchIds.length
+    ? ((
+        await db
+          .from("game_attempts")
+          .select("match_id, student_id, correct, attempts, seconds, finished_at")
+          .in("match_id", matchIds)
+      ).data ?? []).map((row) => ({ ...row, seconds: row.seconds === null ? null : Number(row.seconds) }))
+    : [];
 
   const studentIds = new Set<string>([
     ...(members ?? []).map((m) => m.student_id),
@@ -179,12 +189,9 @@ export async function loadClassGameRecord(classId: string): Promise<StudentGameR
   for (const match of matches ?? []) {
     for (const studentId of [match.student_a, match.student_b]) {
       const opponent = studentId === match.student_a ? match.student_b : match.student_a;
-      const mine = (attempts ?? []).find(
-        (a: { match_id: string; student_id: string }) =>
-          a.match_id === match.id && a.student_id === studentId,
-      ) as
-        | { correct: boolean; attempts: number; seconds: number | null; finished_at: string | null }
-        | undefined;
+      const mine = attempts.find(
+        (a) => a.match_id === match.id && a.student_id === studentId,
+      );
       const outcome: GameEvent["outcome"] = !match.resolved_at
         ? "pending"
         : match.winner_id === studentId

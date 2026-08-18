@@ -34,6 +34,7 @@ import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
 import { AccessControlsDialog } from "@/components/assignments/AccessControlsDialog";
+import { TutorSettingsDialog } from "@/components/assignments/TutorSettingsDialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -174,6 +175,7 @@ function ClassPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <TutorSettingsDialog classId={classId} />
                 <ClassSettingsDialog
                   classId={classId}
                   klass={overview.data.klass}

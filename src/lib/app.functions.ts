@@ -1136,7 +1136,11 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
           .order("created_at")
       : { data: [] };
 
+    const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
+    const tutorSettings = await tutorSettingsForAssignment(db, data.assignmentId, userId);
+
     return {
+      tutorSettings,
       assignment: {
         id: assignment.id,
         title: assignment.title,
@@ -1481,8 +1485,13 @@ export const sendTutorMessage = createServerFn({ method: "POST" })
       .from("tutor_messages")
       .insert({ answer_id: data.answerId, role: "student", content: data.message });
 
+    const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
+    const tutorPrefs = await tutorSettingsForAssignment(db, question.assignment_id, userId);
+
     const { tutorStep } = await import("./marking.server");
     const reply = await tutorStep({
+      level: tutorPrefs.level,
+      language: tutorPrefs.language,
       curriculum: assignment.curriculum,
       subject: assignment.subject,
       question: question.question_text,
@@ -1568,7 +1577,11 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
       assignment.due_at && new Date(assignment.due_at).getTime() < Date.now(),
     );
 
+    const { effectiveTutorSettings } = await import("./tutor-settings.server");
+    const tutorSettings = await effectiveTutorSettings(db, assignment.class_id, null);
+
     return {
+      tutorSettings,
       assignment: {
         id: assignment.id,
         classId: assignment.class_id,
@@ -1701,6 +1714,8 @@ export const previewTutorMessage = createServerFn({ method: "POST" })
           .array(z.object({ role: z.enum(["tutor", "student"]), content: z.string() }))
           .max(40)
           .default([]),
+        level: z.enum(["beginner", "medium", "advanced"]).optional(),
+        language: z.string().max(60).optional(),
       })
       .parse(input),
   )
@@ -1729,8 +1744,13 @@ export const previewTutorMessage = createServerFn({ method: "POST" })
       .single();
     const assignment = assignmentRow!;
 
+    const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
+    const previewPrefs = await tutorSettingsForAssignment(db, data.assignmentId, null);
+
     const { tutorStep } = await import("./marking.server");
     const reply = await tutorStep({
+      level: data.level ?? previewPrefs.level,
+      language: data.language ?? previewPrefs.language,
       curriculum: assignment.curriculum,
       subject: assignment.subject,
       question: question.question_text,

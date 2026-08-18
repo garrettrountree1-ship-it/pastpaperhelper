@@ -192,6 +192,8 @@ function PreviewPage() {
                       assignmentId={assignmentId}
                       question={question}
                       flags={flags}
+                      keywordTranslation={Boolean(data.tutorSettings?.keywordTranslation)}
+                      protectQuestions={Boolean(data.tutorSettings?.protectQuestions)}
                       onFlag={() => setFlags((count) => count + 1)}
                     />
                   ))}
@@ -215,11 +217,15 @@ function PreviewQuestion({
   assignmentId,
   question,
   flags,
+  keywordTranslation,
+  protectQuestions,
   onFlag,
 }: {
   assignmentId: string;
   question: Question;
   flags: number;
+  keywordTranslation: boolean;
+  protectQuestions: boolean;
   onFlag: () => void;
 }) {
   const [answer, setAnswer] = useState("");
@@ -326,6 +332,8 @@ function PreviewQuestion({
       checkError={check.isError ? (check.error as Error).message : undefined}
       onCheck={() => check.mutate()}
       markScheme={question.markScheme ?? null}
+      keywordTranslation={keywordTranslation}
+      protectQuestions={protectQuestions}
       thread={thread}
       reply={reply}
       onReplyChange={setReply}

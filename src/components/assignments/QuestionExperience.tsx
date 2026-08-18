@@ -1,6 +1,10 @@
+import { useQuery } from "@tanstack/react-query";
 import { Camera, CheckCircle2, CircleDashed, Sparkles, XCircle } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+
+import { GlossaryText } from "@/components/assignments/GlossaryText";
+import { getQuestionGlossary } from "@/lib/tutor-settings.functions";
 
 import { CameraCapture } from "@/components/assignments/CameraCapture";
 import { DrawingPad } from "@/components/assignments/DrawingPad";
@@ -78,6 +82,8 @@ export function QuestionExperience({
   locked = false,
   markScheme = null,
   headerAction = null,
+  keywordTranslation = false,
+  protectQuestions = false,
 
 
 }: {
@@ -112,8 +118,18 @@ export function QuestionExperience({
   markScheme?: string | null;
   /** Optional action shown in the question header (e.g. message the teacher). */
   headerAction?: ReactNode;
+  /** Show a Chinese gloss on key words when hovered. */
+  keywordTranslation?: boolean;
+  /** Block copying/selecting the question text. */
+  protectQuestions?: boolean;
 }) {
   const verdict = result?.verdict ?? null;
+  const glossary = useQuery({
+    queryKey: ["question-glossary", question.id],
+    queryFn: () => getQuestionGlossary({ data: { questionId: question.id } }),
+    enabled: keywordTranslation,
+    staleTime: Infinity,
+  });
   const answerGuard = useOriginalTypingGuard();
   const tutorGuard = useOriginalTypingGuard();
   const bulletTarget = photoOnly ? 0 : bulletTargetFor(question.marks, requiresPhoto);
@@ -140,7 +156,22 @@ export function QuestionExperience({
         </div>
       </div>
 
-      <p className="mt-3 whitespace-pre-wrap">{questionBody(question.question_text)}</p>
+      <div
+        className={protectQuestions ? "select-none [-webkit-touch-callout:none]" : undefined}
+        onCopy={protectQuestions ? (event) => event.preventDefault() : undefined}
+        onContextMenu={protectQuestions ? (event) => event.preventDefault() : undefined}
+      >
+        <GlossaryText
+          className="mt-3 whitespace-pre-wrap"
+          text={questionBody(question.question_text)}
+          terms={keywordTranslation ? (glossary.data?.terms ?? []) : []}
+        />
+        {keywordTranslation && (glossary.data?.terms?.length ?? 0) > 0 ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Hover (or tap and hold) an underlined word to see it in Chinese.
+          </p>
+        ) : null}
+      </div>
 
       {markScheme ? (
         <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">

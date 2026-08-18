@@ -375,9 +375,18 @@ function Landing() {
               <Button asChild size="lg" variant="outline">
                 <Link to="/auth">Sign in</Link>
               </Button>
+              <Button
+                size="lg"
+                variant="secondary"
+                onClick={handleDemoLogin}
+                disabled={demoLoading}
+              >
+                {demoLoading ? "Signing in..." : "Try the demo"}
+              </Button>
             </div>
           </div>
         </section>
+
       </main>
 
       <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">

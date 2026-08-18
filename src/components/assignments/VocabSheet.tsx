@@ -13,7 +13,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GlossaryText } from "@/components/assignments/GlossaryText";
 import { explainVocabTerm, getAssignmentVocab } from "@/lib/vocab.functions";
+
 
 type VocabItem = {
   term: string;

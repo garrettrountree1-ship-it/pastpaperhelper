@@ -53,7 +53,10 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
       protectQuestions?: boolean;
       keywordTranslation?: boolean;
       studentCanChangeLevel?: boolean;
+      vocabTranslation?: boolean;
+      vocabLanguage?: string;
     }) => saveClass({ data: input }),
+
     onSuccess: () => {
       toast.success("Class settings saved");
       queryClient.invalidateQueries({ queryKey });

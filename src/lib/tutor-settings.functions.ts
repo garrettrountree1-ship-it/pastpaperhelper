@@ -28,10 +28,11 @@ export const getClassTutorSettings = createServerFn({ method: "POST" })
     const { data: klass } = await db
       .from("classes")
       .select(
-        "tutor_language, tutor_level, protect_questions, keyword_translation, student_can_change_level",
+        "tutor_language, tutor_level, protect_questions, keyword_translation, student_can_change_level, vocab_translation, vocab_language",
       )
       .eq("id", data.classId)
       .single();
+
 
     const { data: members } = await db
       .from("class_members")

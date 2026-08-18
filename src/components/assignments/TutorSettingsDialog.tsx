@@ -68,6 +68,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
       tutorLanguage?: string | null;
       tutorLevel?: string | null;
       studentCanChangeLevel?: boolean | null;
+      keywordTranslation?: boolean | null;
     }) => saveStudent({ data: input }),
     onSuccess: () => {
       toast.success("Student setting saved");
@@ -207,7 +208,8 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
               <h3 className="font-display text-lg">Individual students</h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 Differentiate for key students. “Class default” means they follow the settings
-                above.
+                above. Hover translation can also be set per homework in that assignment&apos;s
+                Due date &amp; answer release panel.
               </p>
 
               {settings.data.students.length === 0 ? (
@@ -217,7 +219,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
                   {settings.data.students.map((student) => (
                     <div
                       key={student.id}
-                      className="grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-[1.2fr_1fr_1fr_auto] sm:items-center"
+                      className="grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-[1.2fr_1fr_1fr_1fr_auto] sm:items-center"
                     >
                       <div className="min-w-0">
                         <p className="truncate font-medium">{student.name}</p>
@@ -267,6 +269,32 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
                               {level.label}
                             </SelectItem>
                           ))}
+                        </SelectContent>
+                      </Select>
+
+                      <Select
+                        value={
+                          student.keywordTranslation === null
+                            ? INHERIT
+                            : student.keywordTranslation
+                              ? "on"
+                              : "off"
+                        }
+                        onValueChange={(value) =>
+                          studentMutation.mutate({
+                            classId,
+                            studentId: student.id,
+                            keywordTranslation: value === INHERIT ? null : value === "on",
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={INHERIT}>Hover: class default</SelectItem>
+                          <SelectItem value="on">Hover: on</SelectItem>
+                          <SelectItem value="off">Hover: off</SelectItem>
                         </SelectContent>
                       </Select>
 

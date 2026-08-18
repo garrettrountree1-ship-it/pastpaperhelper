@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { GlossaryText } from "@/components/assignments/GlossaryText";
-import { getQuestionGlossary } from "@/lib/tutor-settings.functions";
+import { getQuestionGlossary, getTutorGlossary } from "@/lib/tutor-settings.functions";
 
 import { CameraCapture } from "@/components/assignments/CameraCapture";
 import { DrawingPad } from "@/components/assignments/DrawingPad";
@@ -84,6 +84,7 @@ export function QuestionExperience({
   headerAction = null,
   keywordTranslation = false,
   protectQuestions = false,
+  assignmentId,
 
 
 }: {
@@ -122,6 +123,8 @@ export function QuestionExperience({
   keywordTranslation?: boolean;
   /** Block copying/selecting the question text. */
   protectQuestions?: boolean;
+  /** Needed to gloss the AI tutor's replies in the student's language. */
+  assignmentId?: string;
 }) {
   const verdict = result?.verdict ?? null;
   const glossary = useQuery({
@@ -130,6 +133,19 @@ export function QuestionExperience({
     enabled: keywordTranslation,
     staleTime: Infinity,
   });
+  const lastTutorMessage =
+    [...thread].reverse().find((message) => message.role === "tutor")?.content ?? "";
+  const tutorGlossary = useQuery({
+    queryKey: ["tutor-glossary", assignmentId, lastTutorMessage.slice(0, 240)],
+    queryFn: () =>
+      getTutorGlossary({ data: { assignmentId: assignmentId!, text: lastTutorMessage } }),
+    enabled: keywordTranslation && Boolean(assignmentId) && lastTutorMessage.length > 0,
+    staleTime: Infinity,
+  });
+  const tutorTerms = keywordTranslation
+    ? [...(glossary.data?.terms ?? []), ...(tutorGlossary.data?.terms ?? [])]
+    : [];
+
   const answerGuard = useOriginalTypingGuard();
   const tutorGuard = useOriginalTypingGuard();
   const bulletTarget = photoOnly ? 0 : bulletTargetFor(question.marks, requiresPhoto);
@@ -370,7 +386,15 @@ export function QuestionExperience({
                     {message.role === "tutor" ? <Sparkles className="size-3" /> : null}
                     {message.role === "tutor" ? "Tutor" : "You"}
                   </p>
-                  <p className="whitespace-pre-wrap">{message.content}</p>
+                  {message.role === "tutor" ? (
+                    <GlossaryText
+                      className="whitespace-pre-wrap"
+                      text={message.content}
+                      terms={tutorTerms}
+                    />
+                  ) : (
+                    <p className="whitespace-pre-wrap">{message.content}</p>
+                  )}
                 </div>
               ))}
             </div>

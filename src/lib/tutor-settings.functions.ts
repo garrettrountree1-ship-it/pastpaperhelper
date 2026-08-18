@@ -112,7 +112,16 @@ export const setClassTutorSettings = createServerFn({ method: "POST" })
     });
     if (!isTeacher) throw new Error("You do not own this class.");
 
-    const patch: Record<string, string | boolean> = {};
+    const patch: {
+      tutor_language?: string;
+      tutor_level?: string;
+      protect_questions?: boolean;
+      keyword_translation?: boolean;
+      student_can_change_level?: boolean;
+      vocab_translation?: boolean;
+      vocab_language?: string;
+    } = {};
+
     if (data.tutorLanguage !== undefined) patch["tutor_language"] = data.tutorLanguage;
     if (data.tutorLevel !== undefined) patch["tutor_level"] = data.tutorLevel;
     if (data.protectQuestions !== undefined) patch["protect_questions"] = data.protectQuestions;

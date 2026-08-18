@@ -186,13 +186,14 @@ export const updateClass = createServerFn({ method: "POST" })
       curriculum: data.curriculum,
       subject: data.subject,
       ...(joinCode ? { join_code: joinCode } : {}),
+      ...(data.aiWarningLimit === undefined ? {} : { ai_warning_limit: data.aiWarningLimit }),
     };
 
     const { data: updated, error } = await supabase
       .from("classes")
       .update(patch)
       .eq("id", data.classId)
-      .select("id, name, curriculum, subject, join_code")
+      .select("id, name, curriculum, subject, join_code, ai_warning_limit")
       .single();
     if (error) {
       if (error.code === "23505" || error.message.includes("duplicate")) {

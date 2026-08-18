@@ -2,6 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  assertClassTeacher,
+  assertMaterialTeacher,
+  assertUnitTeacher,
+} from "@/lib/materials.server";
 
 export const MATERIAL_KINDS = ["slides", "video", "document", "image", "link"] as const;
 export type MaterialKind = (typeof MATERIAL_KINDS)[number];
@@ -97,6 +102,7 @@ export const createUnit = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await assertClassTeacher(supabase, data.classId, userId);
     const { count } = await supabase
       .from("class_units")
       .select("id", { count: "exact", head: true })
@@ -129,6 +135,7 @@ export const updateUnit = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    await assertUnitTeacher(context.supabase, data.unitId, context.userId);
     const { error } = await context.supabase
       .from("class_units")
       .update({
@@ -145,7 +152,8 @@ export const deleteUnit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ unitId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    await assertUnitTeacher(supabase, data.unitId, userId);
     const { data: files } = await supabase
       .from("unit_materials")
       .select("storage_path")
@@ -182,6 +190,7 @@ export const addMaterial = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await assertClassTeacher(supabase, data.classId, userId);
 
     if (data.storagePath && !data.storagePath.startsWith(`${data.classId}/`)) {
       throw new Error("Invalid upload path.");
@@ -217,7 +226,8 @@ export const deleteMaterial = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ materialId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    await assertMaterialTeacher(supabase, data.materialId, userId);
     const { data: material } = await supabase
       .from("unit_materials")
       .select("storage_path")

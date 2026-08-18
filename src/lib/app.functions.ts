@@ -1222,10 +1222,16 @@ export const gradeAnswer = createServerFn({ method: "POST" })
 
     const { data: assignmentRow } = await db
       .from("assignments")
-      .select("subject, curriculum")
+      .select("subject, curriculum, class_id")
       .eq("id", data.assignmentId)
       .single();
     const assignment = assignmentRow!;
+    const { data: classRow } = await db
+      .from("classes")
+      .select("ai_warning_limit")
+      .eq("id", assignment.class_id)
+      .maybeSingle();
+    const warningLimit = classRow?.ai_warning_limit ?? 3;
 
     const access = await studentAccess(db, data.assignmentId, userId);
     if (access.pastDue) throw new Error(PAST_DUE_MESSAGE);

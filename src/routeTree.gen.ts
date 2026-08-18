@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedHomeworkRouteImport } from './routes/_authenticated/homework'
+import { Route as AuthenticatedQuizzesRouteImport } from './routes/_authenticated/quizzes'
 import { Route as AuthenticatedAssignmentsAssignmentIdRouteImport } from './routes/_authenticated/assignments.$assignmentId'
 import { Route as AuthenticatedClassesClassIdRouteImport } from './routes/_authenticated/classes.$classId'
 import { Route as AuthenticatedAssignmentsAssignmentIdIndexRouteImport } from './routes/_authenticated/assignments.$assignmentId.index'
@@ -48,6 +49,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
 const AuthenticatedHomeworkRoute = AuthenticatedHomeworkRouteImport.update({
   id: '/homework',
   path: '/homework',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedQuizzesRoute = AuthenticatedQuizzesRouteImport.update({
+  id: '/quizzes',
+  path: '/quizzes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAssignmentsAssignmentIdRoute =
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/homework': typeof AuthenticatedHomeworkRoute
+  '/quizzes': typeof AuthenticatedQuizzesRoute
   '/assignments/$assignmentId': typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
   '/classes/$classId': typeof AuthenticatedClassesClassIdRoute
   '/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/homework': typeof AuthenticatedHomeworkRoute
+  '/quizzes': typeof AuthenticatedQuizzesRoute
   '/classes/$classId': typeof AuthenticatedClassesClassIdRoute
   '/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
   '/submissions/$assignmentId/$studentId': typeof AuthenticatedSubmissionsAssignmentIdStudentIdRoute
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/homework': typeof AuthenticatedHomeworkRoute
+  '/_authenticated/quizzes': typeof AuthenticatedQuizzesRoute
   '/_authenticated/assignments/$assignmentId': typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
   '/_authenticated/classes/$classId': typeof AuthenticatedClassesClassIdRoute
   '/_authenticated/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/dashboard'
     | '/homework'
+    | '/quizzes'
     | '/assignments/$assignmentId'
     | '/classes/$classId'
     | '/assignments/$assignmentId/preview'
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/dashboard'
     | '/homework'
+    | '/quizzes'
     | '/classes/$classId'
     | '/assignments/$assignmentId/preview'
     | '/submissions/$assignmentId/$studentId'
@@ -150,6 +161,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/dashboard'
     | '/_authenticated/homework'
+    | '/_authenticated/quizzes'
     | '/_authenticated/assignments/$assignmentId'
     | '/_authenticated/classes/$classId'
     | '/_authenticated/assignments/$assignmentId/preview'
@@ -206,6 +218,13 @@ declare module '@tanstack/react-router' {
       path: '/homework'
       fullPath: '/homework'
       preLoaderRoute: typeof AuthenticatedHomeworkRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/quizzes': {
+      id: '/_authenticated/quizzes'
+      path: '/quizzes'
+      fullPath: '/quizzes'
+      preLoaderRoute: typeof AuthenticatedQuizzesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/assignments/$assignmentId': {
@@ -267,6 +286,7 @@ const AuthenticatedAssignmentsAssignmentIdRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHomeworkRoute: typeof AuthenticatedHomeworkRoute
+  AuthenticatedQuizzesRoute: typeof AuthenticatedQuizzesRoute
   AuthenticatedAssignmentsAssignmentIdRoute: typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
   AuthenticatedClassesClassIdRoute: typeof AuthenticatedClassesClassIdRoute
   AuthenticatedSubmissionsAssignmentIdStudentIdRoute: typeof AuthenticatedSubmissionsAssignmentIdStudentIdRoute
@@ -275,6 +295,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHomeworkRoute: AuthenticatedHomeworkRoute,
+  AuthenticatedQuizzesRoute: AuthenticatedQuizzesRoute,
   AuthenticatedAssignmentsAssignmentIdRoute:
     AuthenticatedAssignmentsAssignmentIdRouteWithChildren,
   AuthenticatedClassesClassIdRoute: AuthenticatedClassesClassIdRoute,

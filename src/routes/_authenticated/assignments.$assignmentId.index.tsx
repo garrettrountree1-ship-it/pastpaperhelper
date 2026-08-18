@@ -11,6 +11,8 @@ import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 
 
 import { AppHeader } from "@/components/AppHeader";
+import { StudentTutorControls } from "@/components/assignments/StudentTutorControls";
+import { useContentProtection } from "@/hooks/use-content-protection";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
 import { MessageTeacherDialog } from "@/components/messaging/MessageTeacherDialog";
 import { Badge } from "@/components/ui/badge";
@@ -86,6 +88,8 @@ function AssignmentPage() {
   });
 
   const data = workspace.data;
+  const settings = data?.tutorSettings;
+  const protection = useContentProtection(Boolean(settings?.protectQuestions));
   const answered = data
     ? data.questions.filter((q) => data.answers.some((a) => a.question_id === q.id)).length
     : 0;
@@ -171,7 +175,26 @@ function AssignmentPage() {
               ) : null}
             </div>
 
-            <div className="mt-8 space-y-6">
+            {settings?.studentCanChangeLevel ? (
+              <StudentTutorControls
+                classId={data.assignment.classId}
+                level={settings.level}
+                language={settings.language}
+                onSaved={() => workspace.refetch()}
+              />
+            ) : null}
+
+            <div
+              className={`mt-8 space-y-6 ${protection.protectedClassName} ${
+                protection.concealed ? "pointer-events-none blur-lg" : ""
+              }`}
+            >
+              {protection.concealed ? (
+                <p className="paper p-4 text-sm text-muted-foreground">
+                  Questions are hidden while this tab is not in focus — your teacher has turned on
+                  screenshot and copy protection.
+                </p>
+              ) : null}
               {groupByPage(data.questions).map((group) => (
                 <div key={group.key} className="space-y-4">
                   {group.imageUrls.length > 0 ? (
@@ -205,6 +228,8 @@ function AssignmentPage() {
                       answer={data.answers.find((a) => a.question_id === question.id) ?? null}
                       messages={data.messages}
                       queryKey={queryKey}
+                      keywordTranslation={Boolean(settings?.keywordTranslation)}
+                      protectQuestions={Boolean(settings?.protectQuestions)}
                     />
                   ))}
                 </div>

@@ -167,7 +167,9 @@ function Landing() {
     navigate({ to: "/dashboard", replace: true });
   }
 
+  return (
     <div className="min-h-screen">
+
       <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
         <Brand />
         <div className="flex gap-2">

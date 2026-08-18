@@ -181,7 +181,7 @@ type TutorInput = {
 
 const LEVEL_STYLE: Record<string, string> = {
   beginner:
-    "The student is a beginner English-language learner. Use very simple, short sentences (CEFR A2-B1), no idioms, no long clauses. Keep the whole reply under 55 words. Explain only ONE idea, in the smallest possible step, and define any technical word in three or four easy words. Ask one very short question.",
+    "The student is learning English AND the subject at the same time (CEFR A1-A2). Write like a friendly teacher talking to a beginner: only very common everyday words, one idea per sentence, maximum 8-10 words per sentence, present tense, active voice, no idioms, no passive voice, no long noun phrases, no semicolons, no brackets. Keep the whole reply under 40 words. Use a technical word only if the exam needs it, then put a 2-4 easy-word meaning right after it, like: 'soluble (it can mix into water)'. Never use two new technical words in one reply. End with ONE very short question of 8 words or fewer. Never write a paragraph longer than 3 short sentences.",
   medium:
     "Use clear, plain classroom English. Keep the reply under 90 words, no lists longer than 3 items, and ask exactly one question at the end.",
   advanced:

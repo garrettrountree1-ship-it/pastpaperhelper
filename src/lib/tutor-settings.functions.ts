@@ -295,9 +295,44 @@ export const getQuestionGlossary = createServerFn({ method: "POST" })
       .maybeSingle();
 
     const { keywordGlossary } = await import("./glossary.server");
-    const terms = await keywordGlossary(question!.question_text, assignment?.subject ?? "");
+    const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
+    const settings = await tutorSettingsForAssignment(db, question!.assignment_id, userId);
+    const terms = await keywordGlossary(
+      question!.question_text,
+      assignment?.subject ?? "",
+      settings.language,
+    );
     if (terms.length > 0) {
       await db.from("questions").update({ keyword_glossary: terms }).eq("id", question!.id);
     }
+    return { terms };
+  });
+
+/** Gloss for the key words the AI tutor used in one of its replies. */
+export const getTutorGlossary = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({ assignmentId: z.string().uuid(), text: z.string().min(1).max(4000) })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const [{ data: canStudy }, { data: canTeach }] = await Promise.all([
+      supabase.rpc("can_study_assignment", { _assignment_id: data.assignmentId, _user_id: userId }),
+      supabase.rpc("can_teach_assignment", { _assignment_id: data.assignmentId, _user_id: userId }),
+    ]);
+    if (!canStudy && !canTeach) throw new Error("Not available to you.");
+
+    const db = await admin();
+    const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
+    const [{ data: assignment }, settings] = await Promise.all([
+      db.from("assignments").select("subject").eq("id", data.assignmentId).maybeSingle(),
+      tutorSettingsForAssignment(db, data.assignmentId, userId),
+    ]);
+    if (!settings.keywordTranslation) return { terms: [] as Array<{ term: string; translation: string }> };
+
+    const { tutorGlossary } = await import("./glossary.server");
+    const terms = await tutorGlossary(data.text, assignment?.subject ?? "", settings.language);
     return { terms };
   });

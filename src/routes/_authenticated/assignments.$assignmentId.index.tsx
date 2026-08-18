@@ -462,6 +462,7 @@ function QuestionCard({
       onSend={() => tutorMutation.mutate()}
       locked={locked}
       keywordTranslation={keywordTranslation}
+      assignmentId={assignmentId}
       protectQuestions={protectQuestions}
       markScheme={question.markScheme ?? null}
       headerAction={

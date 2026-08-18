@@ -224,13 +224,13 @@ export function AccessControlsDialog({
               <div className="mt-4 border-t border-border pt-3">
                 <Label className="text-sm">Key-word hover translation for this homework</Label>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Class default follows the class Tutor &amp; language setting. Only single key words
-                  are glossed — never whole questions.
+                  Applies to the question text and to the AI tutor&apos;s replies. Only single key
+                  words are glossed — never whole questions or answers.
                 </p>
                 <div className="mt-2">
                   <HoverTranslationControl
                     value={data.keywordTranslation}
-                    inheritLabel="Class default"
+                    inheritLabel="Off unless set per student"
                     disabled={classMutation.isPending}
                     onChange={(next) => classMutation.mutate({ keywordTranslation: next })}
                   />
@@ -401,7 +401,7 @@ function StudentRow({
         <Label className="text-xs text-muted-foreground">
           Key-word hover translation (homework setting:{" "}
           {assignmentKeywordTranslation === null
-            ? "class default"
+            ? "off"
             : assignmentKeywordTranslation
               ? "on"
               : "off"}

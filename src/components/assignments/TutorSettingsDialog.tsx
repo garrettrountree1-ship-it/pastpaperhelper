@@ -173,22 +173,6 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
 
                 <label className="flex items-start gap-3 text-sm">
                   <Checkbox
-                    checked={klass.keywordTranslation}
-                    onCheckedChange={(checked) =>
-                      classMutation.mutate({ classId, keywordTranslation: checked === true })
-                    }
-                  />
-                  <span>
-                    Key-word Chinese translation on hover
-                    <span className="block text-xs text-muted-foreground">
-                      Only individual key words are translated — students hover (or tap and hold) a
-                      dotted word to see it in Chinese.
-                    </span>
-                  </span>
-                </label>
-
-                <label className="flex items-start gap-3 text-sm">
-                  <Checkbox
                     checked={klass.studentCanChangeLevel}
                     onCheckedChange={(checked) =>
                       classMutation.mutate({ classId, studentCanChangeLevel: checked === true })
@@ -208,8 +192,9 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
               <h3 className="font-display text-lg">Individual students</h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 Differentiate for key students. “Class default” means they follow the settings
-                above. Hover translation can also be set per homework in that assignment&apos;s
-                Due date &amp; answer release panel.
+                above. Key-word hover translation is set per student here (it applies to every class of
+                theirs) or per homework in that assignment&apos;s Due date &amp; answer release
+                panel — there is no whole-class switch.
               </p>
 
               {settings.data.students.length === 0 ? (
@@ -292,7 +277,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={INHERIT}>Hover: class default</SelectItem>
+                          <SelectItem value={INHERIT}>Hover: per homework</SelectItem>
                           <SelectItem value="on">Hover: on</SelectItem>
                           <SelectItem value="off">Hover: off</SelectItem>
                         </SelectContent>

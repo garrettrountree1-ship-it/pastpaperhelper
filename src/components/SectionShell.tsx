@@ -1,13 +1,31 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { BookOpen, Gamepad2, LayoutGrid, NotebookPen, Timer } from "lucide-react";
+import {
+  ArrowLeftRight,
+  BookOpen,
+  Check,
+  ChevronDown,
+  Gamepad2,
+  LayoutGrid,
+  NotebookPen,
+  Timer,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+
 import { useSectionTime } from "@/hooks/use-section-time";
 import { getMe } from "@/lib/app.functions";
 import { useDemoView } from "@/lib/demo-view";

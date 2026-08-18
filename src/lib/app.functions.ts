@@ -7,6 +7,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { LOCKED_MESSAGE } from "@/lib/integrity";
 import { isDemoEmail } from "@/lib/demo";
+import { isPhotoMode, resolvePhotoMode } from "@/lib/photo-mode";
+
 
 
 async function admin() {

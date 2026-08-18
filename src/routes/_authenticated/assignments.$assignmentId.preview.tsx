@@ -341,6 +341,7 @@ function PreviewQuestion({
       onCheck={() => check.mutate()}
       markScheme={question.markScheme ?? null}
       keywordTranslation={keywordTranslation}
+      assignmentId={assignmentId}
       protectQuestions={protectQuestions}
       thread={thread}
       reply={reply}

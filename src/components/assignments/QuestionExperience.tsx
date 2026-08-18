@@ -184,7 +184,7 @@ export function QuestionExperience({
         />
         {keywordTranslation && (glossary.data?.terms?.length ?? 0) > 0 ? (
           <p className="mt-1 text-xs text-muted-foreground">
-            Hover (or tap and hold) an underlined word to see it in Chinese.
+            Hover (or tap and hold) any underlined word — in the question or in the tutor’s replies — to see it translated.
           </p>
         ) : null}
       </div>

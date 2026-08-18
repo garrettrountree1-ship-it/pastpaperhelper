@@ -1,9 +1,12 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { GraduationCap, LogOut } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { GraduationCap, LogOut, ShieldCheck } from "lucide-react";
 
+import { SupportDialog } from "@/components/SupportDialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { getAdminStatus } from "@/lib/admin.functions";
 
 export function Brand({ className = "" }: { className?: string }) {
   return (
@@ -23,6 +26,12 @@ export function AppHeader({
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const adminStatus = useQuery({
+    queryKey: ["admin-status"],
+    queryFn: useServerFn(getAdminStatus),
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
 
   async function signOut() {
     await queryClient.cancelQueries();
@@ -44,6 +53,15 @@ export function AppHeader({
               {role ? ` · ${role === "teacher" ? "Teacher" : "Student"}` : ""}
             </span>
           ) : null}
+          {adminStatus.data?.isAdmin ? (
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/admin">
+                <ShieldCheck className="size-4" />
+                <span className="hidden sm:inline">Admin</span>
+              </Link>
+            </Button>
+          ) : null}
+          <SupportDialog />
           <Button variant="outline" size="sm" onClick={signOut}>
             <LogOut className="size-4" />
             Sign out

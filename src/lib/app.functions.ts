@@ -7,6 +7,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { LOCKED_MESSAGE } from "@/lib/integrity";
 import { isDemoEmail } from "@/lib/demo";
+import { isPhotoMode, resolvePhotoMode } from "@/lib/photo-mode";
+
 
 
 async function admin() {
@@ -1098,9 +1100,10 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     // Mark schemes are only sent once the teacher reveals them.
     const { data: allQuestions } = await db
       .from("questions")
-      .select("id, position, question_text, marks, image_paths, mark_scheme")
+      .select("id, position, question_text, marks, image_paths, mark_scheme, photo_mode")
       .eq("assignment_id", data.assignmentId)
       .order("position");
+
 
 
     const { data: exemptions } = await db
@@ -1163,9 +1166,15 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
           marks: q.marks,
           image_paths: q.image_paths,
           markScheme: access.markSchemeRevealed ? q.mark_scheme : null,
+          photoMode: resolvePhotoMode({
+            student: access.studentPhotoMode,
+            question: q.photo_mode as string | null,
+            assignment: access.assignmentPhotoMode,
+          }),
           imageUrls: await signPaperPages(db, q.image_paths ?? []),
         })),
       ),
+
       submission,
       answers: answersWithImages,
       messages: messages ?? [],
@@ -1558,7 +1567,9 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: assignmentRow } = await db
       .from("assignments")
-      .select("id, title, subject, curriculum, instructions, due_at, class_id, mark_scheme_revealed")
+      .select(
+        "id, title, subject, curriculum, instructions, due_at, class_id, mark_scheme_revealed, photo_mode",
+      )
       .eq("id", data.assignmentId)
       .single();
     const assignment = assignmentRow!;
@@ -1569,9 +1580,10 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
       .maybeSingle();
     const { data: questions } = await db
       .from("questions")
-      .select("id, position, question_text, marks, image_paths, mark_scheme")
+      .select("id, position, question_text, marks, image_paths, mark_scheme, photo_mode")
       .eq("assignment_id", data.assignmentId)
       .order("position");
+
 
     const pastDue = Boolean(
       assignment.due_at && new Date(assignment.due_at).getTime() < Date.now(),
@@ -1602,9 +1614,14 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
           marks: q.marks,
           image_paths: q.image_paths,
           markScheme: assignment.mark_scheme_revealed ? q.mark_scheme : null,
+          photoMode: resolvePhotoMode({
+            question: q.photo_mode as string | null,
+            assignment: assignment.photo_mode as string | null,
+          }),
           imageUrls: await signPaperPages(db, q.image_paths ?? []),
         })),
       ),
+
     };
   });
 
@@ -1898,7 +1915,7 @@ export const getAssignmentQuestionControls = createServerFn({ method: "POST" })
     const [{ data: questions }, { data: members }] = await Promise.all([
       db
         .from("questions")
-        .select("id, position, question_text, marks")
+        .select("id, position, question_text, marks, photo_mode")
         .eq("assignment_id", data.assignmentId)
         .order("position"),
       db.from("class_members").select("student_id").eq("class_id", assignment!.class_id),
@@ -1924,6 +1941,7 @@ export const getAssignmentQuestionControls = createServerFn({ method: "POST" })
         position: q.position,
         marks: q.marks,
         questionText: q.question_text,
+        photoMode: isPhotoMode(q.photo_mode) ? q.photo_mode : "auto",
       })),
       students: studentIds.map((id) => {
         const profile = (profiles ?? []).find((p) => p.id === id);
@@ -1935,6 +1953,40 @@ export const getAssignmentQuestionControls = createServerFn({ method: "POST" })
       })),
     };
   });
+
+/** Teacher-only: photo answers on/off/automatic for a single question. */
+export const setQuestionPhotoMode = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        questionId: z.string().uuid(),
+        photoMode: z.enum(["auto", "on", "off"]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const db = await admin();
+    const { data: question } = await db
+      .from("questions")
+      .select("assignment_id")
+      .eq("id", data.questionId)
+      .single();
+    const { data: allowed } = await supabase.rpc("can_teach_assignment", {
+      _assignment_id: question!.assignment_id,
+      _user_id: userId,
+    });
+    if (!allowed) throw new Error("Not allowed.");
+
+    const { error } = await db
+      .from("questions")
+      .update({ photo_mode: data.photoMode })
+      .eq("id", data.questionId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 
 /** Teacher-only: removes a question from an assignment along with every student answer to it. */
 export const deleteQuestion = createServerFn({ method: "POST" })
@@ -2080,6 +2132,9 @@ type StudentAccess = {
   dueOverridden: boolean;
   pastDue: boolean;
   markSchemeRevealed: boolean;
+  /** Assignment-level photo setting and the per-student override (if any). */
+  assignmentPhotoMode: string | null;
+  studentPhotoMode: string | null;
 };
 
 /** Effective due date + mark-scheme visibility for one student on one assignment. */
@@ -2091,12 +2146,12 @@ async function studentAccess(
   const [{ data: assignment }, { data: override }] = await Promise.all([
     db
       .from("assignments")
-      .select("due_at, mark_scheme_revealed")
+      .select("due_at, mark_scheme_revealed, photo_mode")
       .eq("id", assignmentId)
       .maybeSingle(),
     db
       .from("student_assignment_settings")
-      .select("due_at, mark_scheme_revealed")
+      .select("due_at, mark_scheme_revealed, photo_mode")
       .eq("assignment_id", assignmentId)
       .eq("student_id", studentId)
       .maybeSingle(),
@@ -2108,8 +2163,11 @@ async function studentAccess(
     dueOverridden,
     pastDue: Boolean(dueAt && new Date(dueAt).getTime() < Date.now()),
     markSchemeRevealed: Boolean(assignment?.mark_scheme_revealed || override?.mark_scheme_revealed),
+    assignmentPhotoMode: (assignment?.photo_mode as string | null) ?? "auto",
+    studentPhotoMode: (override?.photo_mode as string | null) ?? null,
   };
 }
+
 
 /** Teacher view of due dates and mark-scheme reveals for an assignment. */
 export const getAssignmentAccessControls = createServerFn({ method: "POST" })
@@ -2126,7 +2184,7 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: assignment } = await db
       .from("assignments")
-      .select("id, title, class_id, due_at, mark_scheme_revealed")
+      .select("id, title, class_id, due_at, mark_scheme_revealed, photo_mode")
       .eq("id", data.assignmentId)
       .single();
 
@@ -2142,7 +2200,7 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
         : Promise.resolve({ data: [] as Array<{ id: string; full_name: string; email: string | null }> }),
       db
         .from("student_assignment_settings")
-        .select("student_id, due_at, mark_scheme_revealed")
+        .select("student_id, due_at, mark_scheme_revealed, photo_mode")
         .eq("assignment_id", data.assignmentId),
     ]);
 
@@ -2150,6 +2208,7 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
       assignmentTitle: assignment!.title,
       dueAt: assignment!.due_at as string | null,
       markSchemeRevealed: Boolean(assignment!.mark_scheme_revealed),
+      photoMode: isPhotoMode(assignment!.photo_mode) ? assignment!.photo_mode : "auto",
       students: studentIds.map((id) => {
         const profile = (profiles ?? []).find((p) => p.id === id);
         const setting = (settings ?? []).find((s) => s.student_id === id);
@@ -2158,12 +2217,14 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
           name: profile?.full_name || profile?.email || "Student",
           dueAt: (setting?.due_at as string | null) ?? null,
           markSchemeRevealed: Boolean(setting?.mark_scheme_revealed),
+          photoMode: isPhotoMode(setting?.photo_mode) ? setting!.photo_mode : null,
         };
       }),
     };
+
   });
 
-/** Teacher-only: whole-class due date and/or mark-scheme reveal. */
+/** Teacher-only: whole-class due date, mark-scheme reveal and/or photo answers. */
 export const setAssignmentAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
@@ -2172,6 +2233,7 @@ export const setAssignmentAccess = createServerFn({ method: "POST" })
         assignmentId: z.string().uuid(),
         dueAt: z.string().nullable().optional(),
         markSchemeRevealed: z.boolean().optional(),
+        photoMode: z.enum(["auto", "on", "off"]).optional(),
       })
       .parse(input),
   )
@@ -2183,9 +2245,10 @@ export const setAssignmentAccess = createServerFn({ method: "POST" })
     });
     if (!allowed) throw new Error("Not allowed.");
 
-    const patch: { due_at?: string | null; mark_scheme_revealed?: boolean } = {};
+    const patch: { due_at?: string | null; mark_scheme_revealed?: boolean; photo_mode?: string } = {};
     if (data.dueAt !== undefined) patch.due_at = data.dueAt;
     if (data.markSchemeRevealed !== undefined) patch.mark_scheme_revealed = data.markSchemeRevealed;
+    if (data.photoMode !== undefined) patch.photo_mode = data.photoMode;
     if (Object.keys(patch).length === 0) return { ok: true };
 
 
@@ -2195,7 +2258,7 @@ export const setAssignmentAccess = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Teacher-only: per-student due date extension and/or mark-scheme reveal. */
+/** Teacher-only: per-student due date, mark-scheme reveal and/or photo answers. */
 export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
@@ -2205,6 +2268,7 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
         studentId: z.string().uuid(),
         dueAt: z.string().nullable().optional(),
         markSchemeRevealed: z.boolean().optional(),
+        photoMode: z.enum(["auto", "on", "off"]).nullable().optional(),
       })
       .parse(input),
   )
@@ -2224,6 +2288,7 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
       updated_at: string;
       due_at?: string | null;
       mark_scheme_revealed?: boolean;
+      photo_mode?: string | null;
     } = {
       assignment_id: data.assignmentId,
       student_id: data.studentId,
@@ -2232,6 +2297,7 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
     };
     if (data.dueAt !== undefined) patch.due_at = data.dueAt;
     if (data.markSchemeRevealed !== undefined) patch.mark_scheme_revealed = data.markSchemeRevealed;
+    if (data.photoMode !== undefined) patch.photo_mode = data.photoMode;
 
 
     const { error } = await db
@@ -2239,4 +2305,5 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
       .upsert(patch, { onConflict: "assignment_id,student_id" });
     if (error) throw new Error(error.message);
     return { ok: true };
+
   });

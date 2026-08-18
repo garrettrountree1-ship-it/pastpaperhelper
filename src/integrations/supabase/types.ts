@@ -122,6 +122,7 @@ export type Database = {
           id: string
           instructions: string | null
           mark_scheme_revealed: boolean
+          photo_mode: string
           published: boolean
           subject: string
           title: string
@@ -135,6 +136,7 @@ export type Database = {
           id?: string
           instructions?: string | null
           mark_scheme_revealed?: boolean
+          photo_mode?: string
           published?: boolean
           subject?: string
           title: string
@@ -148,6 +150,7 @@ export type Database = {
           id?: string
           instructions?: string | null
           mark_scheme_revealed?: boolean
+          photo_mode?: string
           published?: boolean
           subject?: string
           title?: string
@@ -524,6 +527,7 @@ export type Database = {
           keyword_glossary: Json
           mark_scheme: string
           marks: number
+          photo_mode: string
           position: number
           question_text: string
         }
@@ -535,6 +539,7 @@ export type Database = {
           keyword_glossary?: Json
           mark_scheme: string
           marks?: number
+          photo_mode?: string
           position?: number
           question_text: string
         }
@@ -546,6 +551,7 @@ export type Database = {
           keyword_glossary?: Json
           mark_scheme?: string
           marks?: number
+          photo_mode?: string
           position?: number
           question_text?: string
         }
@@ -566,6 +572,7 @@ export type Database = {
           due_at: string | null
           id: string
           mark_scheme_revealed: boolean
+          photo_mode: string | null
           student_id: string
           updated_at: string
           updated_by: string | null
@@ -576,6 +583,7 @@ export type Database = {
           due_at?: string | null
           id?: string
           mark_scheme_revealed?: boolean
+          photo_mode?: string | null
           student_id: string
           updated_at?: string
           updated_by?: string | null
@@ -586,6 +594,7 @@ export type Database = {
           due_at?: string | null
           id?: string
           mark_scheme_revealed?: boolean
+          photo_mode?: string | null
           student_id?: string
           updated_at?: string
           updated_by?: string | null

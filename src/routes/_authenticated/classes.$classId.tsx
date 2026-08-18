@@ -69,6 +69,7 @@ import {
 
   deleteQuestion,
   getAssignmentQuestionControls,
+  setQuestionPhotoMode,
   setQuestionExclusion,
   extractPaperQuestions,
   getAssignmentForEdit,
@@ -86,6 +87,8 @@ import {
   replyToStudent,
 } from "@/lib/messaging.functions";
 import { filesToPages } from "@/lib/pdf-pages";
+import { PhotoModeControl } from "@/components/assignments/PhotoModeControl";
+import type { PhotoMode } from "@/lib/photo-mode";
 import { questionBody, questionLabel } from "@/lib/question-label";
 
 export const Route = createFileRoute("/_authenticated/classes/$classId")({
@@ -866,6 +869,17 @@ function QuestionControlsDialog({
   const credit = useServerFn(creditQuestionForAll);
   const remove = useServerFn(deleteQuestion);
   const exclude = useServerFn(setQuestionExclusion);
+  const savePhotoMode = useServerFn(setQuestionPhotoMode);
+
+  const questionPhotoMode = useMutation({
+    mutationFn: (vars: { questionId: string; photoMode: PhotoMode }) =>
+      savePhotoMode({ data: vars }),
+    onSuccess: () => {
+      toast.success("Photo answer setting saved");
+      refresh();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   const controls = useQuery({
     queryKey: ["question-controls", assignmentId],
@@ -997,6 +1011,26 @@ function QuestionControlsDialog({
                         >
                           <Trash2 className="size-4" />
                         </Button>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 border-t border-border pt-3">
+                      <p className="text-xs text-muted-foreground">
+                        Photo answers for this question
+                      </p>
+                      <div className="mt-1">
+                        <PhotoModeControl
+                          value={question.photoMode}
+                          disabled={questionPhotoMode.isPending}
+                          onChange={(next) =>
+                            next
+                              ? questionPhotoMode.mutate({
+                                  questionId: question.id,
+                                  photoMode: next,
+                                })
+                              : undefined
+                          }
+                        />
                       </div>
                     </div>
 

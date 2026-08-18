@@ -23,6 +23,8 @@ import {
   setStudentAssignmentAccess,
 } from "@/lib/app.functions";
 import { formatDueDate, fromLocalInput, toLocalInput } from "@/lib/datetime";
+import { PhotoModeControl } from "@/components/assignments/PhotoModeControl";
+import type { PhotoMode } from "@/lib/photo-mode";
 
 /**
  * Teacher control panel for an assignment's due date (class-wide or per student)
@@ -57,7 +59,11 @@ export function AccessControlsDialog({
   }
 
   const classMutation = useMutation({
-    mutationFn: (input: { dueAt?: string | null; markSchemeRevealed?: boolean }) =>
+    mutationFn: (input: {
+      dueAt?: string | null;
+      markSchemeRevealed?: boolean;
+      photoMode?: PhotoMode;
+    }) =>
       saveClass({ data: { assignmentId, ...input } }),
     onSuccess: () => {
       toast.success("Saved for the whole class");
@@ -71,6 +77,7 @@ export function AccessControlsDialog({
       studentId: string;
       dueAt?: string | null;
       markSchemeRevealed?: boolean;
+      photoMode?: PhotoMode | null;
     }) => saveStudent({ data: { assignmentId, ...input } }),
     onSuccess: () => {
       toast.success("Saved for that student");
@@ -153,7 +160,24 @@ export function AccessControlsDialog({
                   Reveal the mark scheme answers to the whole class
                 </Label>
               </div>
+              <div className="mt-4 border-t border-border pt-3">
+                <Label className="text-sm">Photo answers for this assignment</Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Automatic keeps photo-only answers on drawing and calculation questions. Always on
+                  offers the camera and drawing pad everywhere. Off means students type every answer.
+                </p>
+                <div className="mt-2">
+                  <PhotoModeControl
+                    value={data.photoMode}
+                    disabled={classMutation.isPending}
+                    onChange={(next) =>
+                      next ? classMutation.mutate({ photoMode: next }) : undefined
+                    }
+                  />
+                </div>
+              </div>
             </section>
+
 
             <section className="rounded-lg border border-border p-4">
               <h3 className="font-medium">Individual students</h3>
@@ -171,6 +195,7 @@ export function AccessControlsDialog({
                       student={student}
                       classDueAt={data.dueAt}
                       classRevealed={data.markSchemeRevealed}
+                      classPhotoMode={data.photoMode}
                       saving={studentMutation.isPending}
                       onSave={(input) => studentMutation.mutate({ studentId: student.id, ...input })}
                     />
@@ -189,14 +214,26 @@ function StudentRow({
   student,
   classDueAt,
   classRevealed,
+  classPhotoMode,
   saving,
   onSave,
 }: {
-  student: { id: string; name: string; dueAt: string | null; markSchemeRevealed: boolean };
+  student: {
+    id: string;
+    name: string;
+    dueAt: string | null;
+    markSchemeRevealed: boolean;
+    photoMode: PhotoMode | null;
+  };
   classDueAt: string | null;
   classRevealed: boolean;
+  classPhotoMode: PhotoMode;
   saving: boolean;
-  onSave: (input: { dueAt?: string | null; markSchemeRevealed?: boolean }) => void;
+  onSave: (input: {
+    dueAt?: string | null;
+    markSchemeRevealed?: boolean;
+    photoMode?: PhotoMode | null;
+  }) => void;
 }) {
   const [due, setDue] = useState<string | null>(null);
   const value = due ?? toLocalInput(student.dueAt);
@@ -242,6 +279,19 @@ function StudentRow({
             ? "Mark scheme already revealed to the whole class"
             : "Reveal the mark scheme to this student"}
         </Label>
+      </div>
+      <div className="mt-2">
+        <Label className="text-xs text-muted-foreground">
+          Photo answers (assignment setting: {classPhotoMode})
+        </Label>
+        <div className="mt-1">
+          <PhotoModeControl
+            value={student.photoMode}
+            allowInherit
+            disabled={saving}
+            onChange={(next) => onSave({ photoMode: next })}
+          />
+        </div>
       </div>
     </div>
   );

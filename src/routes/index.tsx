@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   BookOpenCheck,
   BotMessageSquare,
@@ -18,9 +18,14 @@ import {
   Upload,
   Users,
 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { Brand } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { DEMO_EMAIL, DEMO_PASSWORD } from "@/lib/demo";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({

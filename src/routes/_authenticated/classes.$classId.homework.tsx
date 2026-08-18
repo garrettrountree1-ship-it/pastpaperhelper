@@ -1281,6 +1281,96 @@ function RemoveStudentButton({
   );
 }
 
+function AiWarningLimitDialog({
+  classId,
+  klass,
+  onSaved,
+}: {
+  classId: string;
+  klass: { name: string; curriculum: string; subject: string; ai_warning_limit?: number | null };
+  onSaved: () => void;
+}) {
+  const current = klass.ai_warning_limit ?? 3;
+  const [open, setOpen] = useState(false);
+  const [limit, setLimit] = useState(String(current));
+  const queryClient = useQueryClient();
+  const save = useServerFn(updateClass);
+
+  useEffect(() => {
+    if (open) setLimit(String(current));
+  }, [open, current]);
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      save({
+        data: {
+          classId,
+          name: klass.name,
+          curriculum: klass.curriculum,
+          subject: klass.subject,
+          aiWarningLimit: Number(limit),
+        },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });
+      onSaved();
+      toast.success("AI warning limit updated");
+      setOpen(false);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const parsed = Number(limit);
+  const valid = Number.isInteger(parsed) && parsed >= 0 && parsed <= 10;
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="secondary">
+          <ShieldAlert className="size-4" />
+          AI warnings: {current}
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>AI &amp; plagiarism warnings before lock</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Each answer flagged as AI-generated, copied or plagiarised adds one warning. Once a
+            student goes past this limit, their homework locks and is marked as a fail until you
+            unlock it.
+          </p>
+          <div>
+            <Label htmlFor="ai-warning-limit">Warnings allowed (0–10)</Label>
+            <Input
+              id="ai-warning-limit"
+              type="number"
+              min={0}
+              max={10}
+              value={limit}
+              onChange={(e) => setLimit(e.target.value)}
+              className="w-28"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              {valid
+                ? parsed === 0
+                  ? "The first flagged answer locks the homework immediately."
+                  : `Homework locks on flagged answer number ${parsed + 1}.`
+                : "Enter a whole number between 0 and 10."}
+            </p>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button disabled={!valid || mutation.isPending} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? "Saving…" : "Save limit"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ClassSettingsDialog({
 
   classId,

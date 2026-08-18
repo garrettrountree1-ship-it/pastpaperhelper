@@ -2,6 +2,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import type { VocabItem } from "./vocab.server";
+
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
@@ -60,7 +62,11 @@ export const getAssignmentVocab = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (cached && Array.isArray(cached.terms) && cached.terms.length > 0) {
-      return { language, level: settings.level, items: cached.terms as unknown[] };
+      return {
+        language,
+        level: settings.level,
+        items: cached.terms as unknown as VocabItem[],
+      };
     }
 
     const { data: questions } = await db
@@ -70,7 +76,9 @@ export const getAssignmentVocab = createServerFn({ method: "POST" })
       .order("position");
 
     const texts = (questions ?? []).map((q: { question_text: string }) => q.question_text);
-    if (texts.length === 0) return { language, level: settings.level, items: [] };
+    if (texts.length === 0) {
+      return { language, level: settings.level, items: [] as VocabItem[] };
+    }
 
     const { assignmentVocab } = await import("./vocab.server");
     const items = await assignmentVocab(texts, (assignment.subject as string) ?? "", language);

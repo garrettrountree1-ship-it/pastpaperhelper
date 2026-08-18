@@ -91,7 +91,7 @@ import { PhotoModeControl } from "@/components/assignments/PhotoModeControl";
 import type { PhotoMode } from "@/lib/photo-mode";
 import { questionBody, questionLabel } from "@/lib/question-label";
 
-export const Route = createFileRoute("/_authenticated/classes/$classId")({
+export const Route = createFileRoute("/_authenticated/classes/$classId/homework")({
   head: () => ({
     meta: [
       { title: "Class · STEM Homework AI" },

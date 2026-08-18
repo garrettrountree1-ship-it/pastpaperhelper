@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { QuizzesSection } from "@/components/quizzes/QuizzesSection";
 import { SectionShell, SectionTabsMobile } from "@/components/SectionShell";
 
-export const Route = createFileRoute("/_authenticated/quizzes")({
+export const Route = createFileRoute("/_authenticated/classes/$classId/quizzes")({
   head: () => ({
     meta: [
       { title: "Quizzes · STEM Homework AI" },

@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { GamesSection } from "@/components/games/GamesSection";
 import { SectionShell, SectionTabsMobile } from "@/components/SectionShell";
 
-export const Route = createFileRoute("/_authenticated/games")({
+export const Route = createFileRoute("/_authenticated/classes/$classId/games")({
   head: () => ({
     meta: [
       { title: "Games · STEM Homework AI" },

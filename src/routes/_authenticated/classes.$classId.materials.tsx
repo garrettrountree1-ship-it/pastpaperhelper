@@ -4,7 +4,7 @@ import { SectionShell, SectionTabsMobile } from "@/components/SectionShell";
 import { MaterialsSection } from "@/components/materials/MaterialsSection";
 
 
-export const Route = createFileRoute("/_authenticated/materials")({
+export const Route = createFileRoute("/_authenticated/classes/$classId/materials")({
   head: () => ({
     meta: [
       { title: "Class materials · STEM Homework AI" },

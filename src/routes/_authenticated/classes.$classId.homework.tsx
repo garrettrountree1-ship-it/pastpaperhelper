@@ -206,7 +206,12 @@ function ClassPageContent({ classId }: { classId: string }) {
             <span className="font-mono highlight-underline">{data.klass.join_code}</span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <AiWarningLimitDialog
+            classId={classId}
+            klass={data.klass}
+            onSaved={() => overview.refetch()}
+          />
           <TutorSettingsDialog classId={classId} />
           <ClassSettingsDialog
             classId={classId}

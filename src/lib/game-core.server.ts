@@ -45,12 +45,15 @@ export async function ensureProfile(db: GameDb, classId: string, studentId: stri
 export async function tokensEarnedToday(db: GameDb, studentId: string) {
   const { data } = await db
     .from("token_ledger")
-    .select("delta, created_at")
+    .select("delta, created_at, created_by")
     .eq("student_id", studentId)
     .gt("delta", 0)
+    // Only game winnings count toward the daily cap — teacher adjustments don't.
+    .is("created_by", null)
     .gte("created_at", `${today()}T00:00:00Z`);
   return (data ?? []).reduce((sum, row) => sum + row.delta, 0);
 }
+
 
 /** Awards (or deducts) tokens, respecting the daily cap when `capped`. */
 export async function awardTokens(

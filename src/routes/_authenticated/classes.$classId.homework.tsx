@@ -284,7 +284,9 @@ function ClassPage() {
 
 
               <TabsContent value="students" className="mt-4">
+                <DemoStudentSeeder classId={classId} onSeeded={() => overview.refetch()} />
                 <div className="paper divide-y divide-border">
+
                   {overview.data.students.length === 0 ? (
                     <p className="p-6 text-center text-muted-foreground">
                       Share the join code so students can add themselves.

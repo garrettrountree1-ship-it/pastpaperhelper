@@ -65,8 +65,9 @@ type Question = {
   marks: number;
   imageUrls?: string[];
   markScheme?: string | null;
-
+  photoMode?: PhotoMode;
 };
+
 
 /** Signed URLs carry a per-request token, so compare the storage path only. */
 function pageKey(url: string) {

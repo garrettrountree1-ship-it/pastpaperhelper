@@ -124,6 +124,8 @@ function TeacherGames({ classId, classes }: { classId: string; classes: TeacherC
         </p>
       </div>
 
+      <GameRecordPanel classId={classId} />
+
       {classes.map((klass) => (
         <section key={klass.id} className="paper p-5">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
@@ -346,6 +348,7 @@ function StudentGames({ data, disabled }: { data: StudentData; disabled: GameKey
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
+        {show("daily_double") ? (
         <div className="paper p-5">
           <h3 className="font-display text-xl">Daily double</h3>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -363,7 +366,9 @@ function StudentGames({ data, disabled }: { data: StudentData; disabled: GameKey
             </Button>
           )}
         </div>
+        ) : null}
 
+        {show("head_to_head") ? (
         <div className="paper p-5">
           <h3 className="font-display text-xl">Head-to-head</h3>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -383,7 +388,9 @@ function StudentGames({ data, disabled }: { data: StudentData; disabled: GameKey
             ))}
           </div>
         </div>
+        ) : null}
 
+        {show("vocab_bingo") ? (
         <div className="paper p-5">
           <h3 className="font-display text-xl">Vocab bingo</h3>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -394,7 +401,9 @@ function StudentGames({ data, disabled }: { data: StudentData; disabled: GameKey
             <Link to="/vocab-bingo">Play vocab bingo</Link>
           </Button>
         </div>
+        ) : null}
 
+        {show("boss_question") ? (
         <div className="paper p-5">
           <h3 className="font-display text-xl">Boss question</h3>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -405,7 +414,9 @@ function StudentGames({ data, disabled }: { data: StudentData; disabled: GameKey
             <Link to="/boss-question">Face the boss</Link>
           </Button>
         </div>
+        ) : null}
 
+        {show("wager_round") ? (
         <div className="paper p-5">
           <h3 className="font-display text-xl">Wager round</h3>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -416,8 +427,15 @@ function StudentGames({ data, disabled }: { data: StudentData; disabled: GameKey
             <Link to="/wager-round">Place a wager</Link>
           </Button>
         </div>
+        ) : null}
       </div>
 
+
+      {disabled.length === 5 ? (
+        <p className="paper p-5 text-sm text-muted-foreground">
+          Your teacher has turned every game off for this class for now.
+        </p>
+      ) : null}
 
       {openMatches.length > 0 ? (
         <section className="paper p-5">

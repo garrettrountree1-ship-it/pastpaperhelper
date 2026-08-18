@@ -174,6 +174,7 @@ function ClassPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <TutorSettingsDialog classId={classId} />
                 <ClassSettingsDialog
                   classId={classId}
                   klass={overview.data.klass}

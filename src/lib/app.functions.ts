@@ -2080,6 +2080,9 @@ type StudentAccess = {
   dueOverridden: boolean;
   pastDue: boolean;
   markSchemeRevealed: boolean;
+  /** Assignment-level photo setting and the per-student override (if any). */
+  assignmentPhotoMode: string | null;
+  studentPhotoMode: string | null;
 };
 
 /** Effective due date + mark-scheme visibility for one student on one assignment. */
@@ -2091,12 +2094,12 @@ async function studentAccess(
   const [{ data: assignment }, { data: override }] = await Promise.all([
     db
       .from("assignments")
-      .select("due_at, mark_scheme_revealed")
+      .select("due_at, mark_scheme_revealed, photo_mode")
       .eq("id", assignmentId)
       .maybeSingle(),
     db
       .from("student_assignment_settings")
-      .select("due_at, mark_scheme_revealed")
+      .select("due_at, mark_scheme_revealed, photo_mode")
       .eq("assignment_id", assignmentId)
       .eq("student_id", studentId)
       .maybeSingle(),
@@ -2108,8 +2111,11 @@ async function studentAccess(
     dueOverridden,
     pastDue: Boolean(dueAt && new Date(dueAt).getTime() < Date.now()),
     markSchemeRevealed: Boolean(assignment?.mark_scheme_revealed || override?.mark_scheme_revealed),
+    assignmentPhotoMode: (assignment?.photo_mode as string | null) ?? "auto",
+    studentPhotoMode: (override?.photo_mode as string | null) ?? null,
   };
 }
+
 
 /** Teacher view of due dates and mark-scheme reveals for an assignment. */
 export const getAssignmentAccessControls = createServerFn({ method: "POST" })

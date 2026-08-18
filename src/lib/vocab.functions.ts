@@ -123,7 +123,7 @@ export const explainVocabTerm = createServerFn({ method: "POST" })
       userId,
       data.assignmentId,
     );
-    const language = settings.language;
+    const language = settings.vocabLanguage;
     const term = data.term.trim();
 
     const { data: cached } = await db
@@ -138,7 +138,7 @@ export const explainVocabTerm = createServerFn({ method: "POST" })
       return {
         term,
         language,
-        translation: cached.translation as string,
+        translation: settings.vocabTranslation ? (cached.translation as string) : "",
         explanation: cached.explanation as string,
         imageUrls: (cached.image_urls as string[]) ?? [],
       };

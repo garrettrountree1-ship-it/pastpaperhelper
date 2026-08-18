@@ -244,9 +244,24 @@ export const getGamesOverview = createServerFn({ method: "GET" })
         id: c.id,
         name: c.name,
         subject: c.subject,
-        leaderboard: (profiles ?? [])
-          .filter((p) => p.class_id === c.id)
-          .map((p) => ({ studentId: p.student_id, alias: p.alias, tokens: p.tokens })),
+        leaderboard: [
+          ...(profiles ?? [])
+            .filter((p) => p.class_id === c.id)
+            .map((p) => ({
+              studentId: p.student_id,
+              alias: p.alias,
+              tokens: p.tokens,
+              demo: false,
+            })),
+          ...(isDemo
+            ? DEMO_LEADERBOARD.map((d) => ({
+                studentId: `demo-${d.alias}`,
+                alias: d.alias,
+                tokens: d.tokens,
+                demo: true,
+              }))
+            : []),
+        ].sort((a, b) => b.tokens - a.tokens),
       })),
       studentClasses: studentClasses.map((c) => {
         const mine = (profiles ?? []).find((p) => p.class_id === c.id && p.student_id === userId);
@@ -256,13 +271,24 @@ export const getGamesOverview = createServerFn({ method: "GET" })
           subject: c.subject,
           alias: mine?.alias ?? "",
           tokens: mine?.tokens ?? 0,
-          leaderboard: (profiles ?? [])
-            .filter((p) => p.class_id === c.id)
-            .map((p) => ({
-              alias: p.alias,
-              tokens: p.tokens,
-              isYou: p.student_id === userId,
-            })),
+          leaderboard: [
+            ...(profiles ?? [])
+              .filter((p) => p.class_id === c.id)
+              .map((p) => ({
+                alias: p.alias,
+                tokens: p.tokens,
+                isYou: p.student_id === userId,
+                demo: false,
+              })),
+            ...(isDemo
+              ? DEMO_LEADERBOARD.map((d) => ({
+                  alias: d.alias,
+                  tokens: d.tokens,
+                  isYou: false,
+                  demo: true,
+                }))
+              : []),
+          ].sort((a, b) => b.tokens - a.tokens),
         };
       }),
       matches: (matches ?? []).map((m) => {

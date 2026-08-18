@@ -13,13 +13,17 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedDailyDoubleRouteImport } from './routes/_authenticated/daily-double'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedGamesRouteImport } from './routes/_authenticated/games'
 import { Route as AuthenticatedHomeworkRouteImport } from './routes/_authenticated/homework'
 import { Route as AuthenticatedMaterialsRouteImport } from './routes/_authenticated/materials'
 import { Route as AuthenticatedQuizzesRouteImport } from './routes/_authenticated/quizzes'
 import { Route as AuthenticatedAssignmentsAssignmentIdRouteImport } from './routes/_authenticated/assignments.$assignmentId'
+import { Route as AuthenticatedChallengeMatchIdRouteImport } from './routes/_authenticated/challenge.$matchId'
 import { Route as AuthenticatedClassesClassIdRouteImport } from './routes/_authenticated/classes.$classId'
+import { Route as AuthenticatedQuizQuizIdRouteImport } from './routes/_authenticated/quiz.$quizId'
 import { Route as AuthenticatedAssignmentsAssignmentIdIndexRouteImport } from './routes/_authenticated/assignments.$assignmentId.index'
 import { Route as AuthenticatedAssignmentsAssignmentIdPreviewRouteImport } from './routes/_authenticated/assignments.$assignmentId.preview'
 import { Route as AuthenticatedSubmissionsAssignmentIdStudentIdRouteImport } from './routes/_authenticated/submissions.$assignmentId.$studentId'
@@ -43,6 +47,17 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDailyDoubleRoute =
+  AuthenticatedDailyDoubleRouteImport.update({
+    id: '/daily-double',
+    path: '/daily-double',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -74,12 +89,23 @@ const AuthenticatedAssignmentsAssignmentIdRoute =
     path: '/assignments/$assignmentId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedChallengeMatchIdRoute =
+  AuthenticatedChallengeMatchIdRouteImport.update({
+    id: '/challenge/$matchId',
+    path: '/challenge/$matchId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedClassesClassIdRoute =
   AuthenticatedClassesClassIdRouteImport.update({
     id: '/classes/$classId',
     path: '/classes/$classId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedQuizQuizIdRoute = AuthenticatedQuizQuizIdRouteImport.update({
+  id: '/quiz/$quizId',
+  path: '/quiz/$quizId',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAssignmentsAssignmentIdIndexRoute =
   AuthenticatedAssignmentsAssignmentIdIndexRouteImport.update({
     id: '/',
@@ -103,13 +129,17 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/daily-double': typeof AuthenticatedDailyDoubleRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/games': typeof AuthenticatedGamesRoute
   '/homework': typeof AuthenticatedHomeworkRoute
   '/materials': typeof AuthenticatedMaterialsRoute
   '/quizzes': typeof AuthenticatedQuizzesRoute
   '/assignments/$assignmentId': typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
+  '/challenge/$matchId': typeof AuthenticatedChallengeMatchIdRoute
   '/classes/$classId': typeof AuthenticatedClassesClassIdRoute
+  '/quiz/$quizId': typeof AuthenticatedQuizQuizIdRoute
   '/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
   '/submissions/$assignmentId/$studentId': typeof AuthenticatedSubmissionsAssignmentIdStudentIdRoute
   '/assignments/$assignmentId/': typeof AuthenticatedAssignmentsAssignmentIdIndexRoute
@@ -118,12 +148,16 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/daily-double': typeof AuthenticatedDailyDoubleRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/games': typeof AuthenticatedGamesRoute
   '/homework': typeof AuthenticatedHomeworkRoute
   '/materials': typeof AuthenticatedMaterialsRoute
   '/quizzes': typeof AuthenticatedQuizzesRoute
+  '/challenge/$matchId': typeof AuthenticatedChallengeMatchIdRoute
   '/classes/$classId': typeof AuthenticatedClassesClassIdRoute
+  '/quiz/$quizId': typeof AuthenticatedQuizQuizIdRoute
   '/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
   '/submissions/$assignmentId/$studentId': typeof AuthenticatedSubmissionsAssignmentIdStudentIdRoute
   '/assignments/$assignmentId': typeof AuthenticatedAssignmentsAssignmentIdIndexRoute
@@ -134,13 +168,17 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/daily-double': typeof AuthenticatedDailyDoubleRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/games': typeof AuthenticatedGamesRoute
   '/_authenticated/homework': typeof AuthenticatedHomeworkRoute
   '/_authenticated/materials': typeof AuthenticatedMaterialsRoute
   '/_authenticated/quizzes': typeof AuthenticatedQuizzesRoute
   '/_authenticated/assignments/$assignmentId': typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
+  '/_authenticated/challenge/$matchId': typeof AuthenticatedChallengeMatchIdRoute
   '/_authenticated/classes/$classId': typeof AuthenticatedClassesClassIdRoute
+  '/_authenticated/quiz/$quizId': typeof AuthenticatedQuizQuizIdRoute
   '/_authenticated/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
   '/_authenticated/submissions/$assignmentId/$studentId': typeof AuthenticatedSubmissionsAssignmentIdStudentIdRoute
   '/_authenticated/assignments/$assignmentId/': typeof AuthenticatedAssignmentsAssignmentIdIndexRoute
@@ -151,13 +189,17 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/admin'
+    | '/daily-double'
     | '/dashboard'
     | '/games'
     | '/homework'
     | '/materials'
     | '/quizzes'
     | '/assignments/$assignmentId'
+    | '/challenge/$matchId'
     | '/classes/$classId'
+    | '/quiz/$quizId'
     | '/assignments/$assignmentId/preview'
     | '/submissions/$assignmentId/$studentId'
     | '/assignments/$assignmentId/'
@@ -166,12 +208,16 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/admin'
+    | '/daily-double'
     | '/dashboard'
     | '/games'
     | '/homework'
     | '/materials'
     | '/quizzes'
+    | '/challenge/$matchId'
     | '/classes/$classId'
+    | '/quiz/$quizId'
     | '/assignments/$assignmentId/preview'
     | '/submissions/$assignmentId/$studentId'
     | '/assignments/$assignmentId'
@@ -181,13 +227,17 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/reset-password'
+    | '/_authenticated/admin'
+    | '/_authenticated/daily-double'
     | '/_authenticated/dashboard'
     | '/_authenticated/games'
     | '/_authenticated/homework'
     | '/_authenticated/materials'
     | '/_authenticated/quizzes'
     | '/_authenticated/assignments/$assignmentId'
+    | '/_authenticated/challenge/$matchId'
     | '/_authenticated/classes/$classId'
+    | '/_authenticated/quiz/$quizId'
     | '/_authenticated/assignments/$assignmentId/preview'
     | '/_authenticated/submissions/$assignmentId/$studentId'
     | '/_authenticated/assignments/$assignmentId/'
@@ -229,6 +279,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/daily-double': {
+      id: '/_authenticated/daily-double'
+      path: '/daily-double'
+      fullPath: '/daily-double'
+      preLoaderRoute: typeof AuthenticatedDailyDoubleRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
@@ -272,11 +336,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAssignmentsAssignmentIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/challenge/$matchId': {
+      id: '/_authenticated/challenge/$matchId'
+      path: '/challenge/$matchId'
+      fullPath: '/challenge/$matchId'
+      preLoaderRoute: typeof AuthenticatedChallengeMatchIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/classes/$classId': {
       id: '/_authenticated/classes/$classId'
       path: '/classes/$classId'
       fullPath: '/classes/$classId'
       preLoaderRoute: typeof AuthenticatedClassesClassIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/quiz/$quizId': {
+      id: '/_authenticated/quiz/$quizId'
+      path: '/quiz/$quizId'
+      fullPath: '/quiz/$quizId'
+      preLoaderRoute: typeof AuthenticatedQuizQuizIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/assignments/$assignmentId/': {
@@ -322,17 +400,23 @@ const AuthenticatedAssignmentsAssignmentIdRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedDailyDoubleRoute: typeof AuthenticatedDailyDoubleRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedGamesRoute: typeof AuthenticatedGamesRoute
   AuthenticatedHomeworkRoute: typeof AuthenticatedHomeworkRoute
   AuthenticatedMaterialsRoute: typeof AuthenticatedMaterialsRoute
   AuthenticatedQuizzesRoute: typeof AuthenticatedQuizzesRoute
   AuthenticatedAssignmentsAssignmentIdRoute: typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
+  AuthenticatedChallengeMatchIdRoute: typeof AuthenticatedChallengeMatchIdRoute
   AuthenticatedClassesClassIdRoute: typeof AuthenticatedClassesClassIdRoute
+  AuthenticatedQuizQuizIdRoute: typeof AuthenticatedQuizQuizIdRoute
   AuthenticatedSubmissionsAssignmentIdStudentIdRoute: typeof AuthenticatedSubmissionsAssignmentIdStudentIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedDailyDoubleRoute: AuthenticatedDailyDoubleRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedGamesRoute: AuthenticatedGamesRoute,
   AuthenticatedHomeworkRoute: AuthenticatedHomeworkRoute,
@@ -340,7 +424,9 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedQuizzesRoute: AuthenticatedQuizzesRoute,
   AuthenticatedAssignmentsAssignmentIdRoute:
     AuthenticatedAssignmentsAssignmentIdRouteWithChildren,
+  AuthenticatedChallengeMatchIdRoute: AuthenticatedChallengeMatchIdRoute,
   AuthenticatedClassesClassIdRoute: AuthenticatedClassesClassIdRoute,
+  AuthenticatedQuizQuizIdRoute: AuthenticatedQuizQuizIdRoute,
   AuthenticatedSubmissionsAssignmentIdStudentIdRoute:
     AuthenticatedSubmissionsAssignmentIdStudentIdRoute,
 }

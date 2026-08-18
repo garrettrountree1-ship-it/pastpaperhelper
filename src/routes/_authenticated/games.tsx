@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { GamesSection } from "@/components/games/GamesSection";
 import { SectionShell, SectionTabsMobile } from "@/components/SectionShell";
 
 export const Route = createFileRoute("/_authenticated/games")({
@@ -26,15 +27,7 @@ function GamesPage() {
       {(role) => (
         <>
           <SectionTabsMobile current="games" />
-          <div className="paper p-8">
-            <h2 className="text-2xl">Challenges &amp; leaderboard</h2>
-            <p className="mt-2 max-w-prose text-sm text-muted-foreground">
-              {role === "teacher"
-                ? "Pair students for head-to-head past-paper challenges, watch the token leaderboard, and reset or adjust tokens for class rewards."
-                : "Face a classmate on a past-paper question, catch the daily double, and climb the leaderboard under your secret animal name."}
-            </p>
-            <p className="mt-4 text-sm text-muted-foreground">Coming next in this build.</p>
-          </div>
+          <GamesSection role={role} />
         </>
       )}
     </SectionShell>

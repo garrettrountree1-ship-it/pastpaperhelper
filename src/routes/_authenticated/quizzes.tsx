@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { QuizzesSection } from "@/components/quizzes/QuizzesSection";
 import { SectionShell, SectionTabsMobile } from "@/components/SectionShell";
 
 export const Route = createFileRoute("/_authenticated/quizzes")({
@@ -23,15 +24,7 @@ function QuizzesPage() {
       {(role) => (
         <>
           <SectionTabsMobile current="quizzes" />
-          <div className="paper p-8">
-            <h2 className="text-2xl">Timed quizzes</h2>
-            <p className="mt-2 max-w-prose text-sm text-muted-foreground">
-              {role === "teacher"
-                ? "Upload a past paper and mark scheme, set a time limit, then release the quiz when the class is ready. Marking runs only when the timer ends."
-                : "Your teacher will release timed quizzes here during class. Nothing is marked until the timer runs out."}
-            </p>
-            <p className="mt-4 text-sm text-muted-foreground">Coming next in this build.</p>
-          </div>
+          <QuizzesSection role={role} />
         </>
       )}
     </SectionShell>

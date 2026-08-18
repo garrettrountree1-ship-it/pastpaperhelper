@@ -240,9 +240,14 @@ export async function answerVocabBingo(studentId: string, cellIndex: number) {
     correct,
     correctTerm: payload.cells[expected]?.term ?? "",
     awardedNow,
+    newLines,
+    // A line was completed but the daily token cap was already reached.
+    cappedOut: newLines > 0 && awardedNow < newLines,
+    dailyCap: DAILY_TOKEN_CAP,
     lines: completedLines,
     finished,
   };
+
 }
 
 /* ------------------------------------------------------------ boss round -- */

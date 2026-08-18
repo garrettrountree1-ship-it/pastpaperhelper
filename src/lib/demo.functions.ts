@@ -18,3 +18,24 @@ export const switchDemoRole = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true, role: data.role };
   });
+
+export const addDemoStudents = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ classId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: user } = await supabase.auth.getUser();
+    if (!isDemoEmail(user.user?.email))
+      throw new Error("Sample students are only available in the demo account.");
+
+    const { data: klass } = await supabase
+      .from("classes")
+      .select("id, teacher_id")
+      .eq("id", data.classId)
+      .maybeSingle();
+    if (!klass || klass.teacher_id !== userId) throw new Error("Class not found.");
+
+    const { seedDemoStudents } = await import("@/lib/demo-students.server");
+    return seedDemoStudents(data.classId);
+  });
+

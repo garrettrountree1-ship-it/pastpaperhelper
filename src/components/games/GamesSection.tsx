@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { AliasAvatar } from "@/components/games/AliasAvatar";
+import { GameRecordPanel } from "@/components/games/GameRecordPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { type GameKey } from "@/lib/game-catalog";
 import {
   adjustTokens,
   getGamesOverview,
@@ -51,6 +53,7 @@ export function GamesSection({
   if (role === "teacher") {
     return (
       <TeacherGames
+        classId={classId}
         classes={(overview.data?.teacherClasses ?? []).filter((c) => c.id === classId)}
       />
     );
@@ -59,6 +62,7 @@ export function GamesSection({
   const data = overview.data!;
   return (
     <StudentGames
+      disabled={(data.disabledGames?.[classId] ?? []) as GameKey[]}
       data={{
         ...data,
         studentClasses: data.studentClasses.filter((c) => c.id === classId),
@@ -78,7 +82,7 @@ type TeacherClass = {
   leaderboard: { studentId: string; alias: string; tokens: number; demo: boolean }[];
 };
 
-function TeacherGames({ classes }: { classes: TeacherClass[] }) {
+function TeacherGames({ classId, classes }: { classId: string; classes: TeacherClass[] }) {
   const queryClient = useQueryClient();
   const pair = useServerFn(pairClassRandomly);
   const reset = useServerFn(resetLeaderboard);
@@ -119,6 +123,8 @@ function TeacherGames({ classes }: { classes: TeacherClass[] }) {
           double pays 2, and nobody can earn more than 3 tokens a day.
         </p>
       </div>
+
+      <GameRecordPanel classId={classId} />
 
       {classes.map((klass) => (
         <section key={klass.id} className="paper p-5">
@@ -312,7 +318,8 @@ function TokenHistoryDialog({ classId }: { classId: string }) {
 
 type StudentData = Awaited<ReturnType<typeof getGamesOverview>>;
 
-function StudentGames({ data }: { data: StudentData }) {
+function StudentGames({ data, disabled }: { data: StudentData; disabled: GameKey[] }) {
+  const show = (key: GameKey) => !disabled.includes(key);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const request = useServerFn(requestMatch);
@@ -341,6 +348,7 @@ function StudentGames({ data }: { data: StudentData }) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
+        {show("daily_double") ? (
         <div className="paper p-5">
           <h3 className="font-display text-xl">Daily double</h3>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -358,7 +366,9 @@ function StudentGames({ data }: { data: StudentData }) {
             </Button>
           )}
         </div>
+        ) : null}
 
+        {show("head_to_head") ? (
         <div className="paper p-5">
           <h3 className="font-display text-xl">Head-to-head</h3>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -378,7 +388,9 @@ function StudentGames({ data }: { data: StudentData }) {
             ))}
           </div>
         </div>
+        ) : null}
 
+        {show("vocab_bingo") ? (
         <div className="paper p-5">
           <h3 className="font-display text-xl">Vocab bingo</h3>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -389,7 +401,9 @@ function StudentGames({ data }: { data: StudentData }) {
             <Link to="/vocab-bingo">Play vocab bingo</Link>
           </Button>
         </div>
+        ) : null}
 
+        {show("boss_question") ? (
         <div className="paper p-5">
           <h3 className="font-display text-xl">Boss question</h3>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -400,7 +414,9 @@ function StudentGames({ data }: { data: StudentData }) {
             <Link to="/boss-question">Face the boss</Link>
           </Button>
         </div>
+        ) : null}
 
+        {show("wager_round") ? (
         <div className="paper p-5">
           <h3 className="font-display text-xl">Wager round</h3>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -411,8 +427,15 @@ function StudentGames({ data }: { data: StudentData }) {
             <Link to="/wager-round">Place a wager</Link>
           </Button>
         </div>
+        ) : null}
       </div>
 
+
+      {disabled.length === 5 ? (
+        <p className="paper p-5 text-sm text-muted-foreground">
+          Your teacher has turned every game off for this class for now.
+        </p>
+      ) : null}
 
       {openMatches.length > 0 ? (
         <section className="paper p-5">

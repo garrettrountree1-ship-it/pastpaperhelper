@@ -37,16 +37,23 @@ function shuffle<T>(items: T[]): T[] {
   return copy;
 }
 
-async function memberClasses(db: GameDb, studentId: string) {
+async function memberClasses(
+  db: GameDb,
+  studentId: string,
+  gameKey?: import("@/lib/game-catalog").GameKey,
+) {
   const { data } = await db
     .from("class_members")
     .select("class_id, classes(id, name, subject, tutor_language)")
     .eq("student_id", studentId);
-  return (data ?? [])
+  const classes = (data ?? [])
     .map((row) => row.classes)
     .filter(
       (c): c is { id: string; name: string; subject: string; tutor_language: string } => Boolean(c),
     );
+  if (!gameKey) return classes;
+  const { filterEnabledClasses } = await import("./game-admin.server");
+  return filterEnabledClasses(classes, gameKey);
 }
 
 /* ------------------------------------------------------------ vocab bingo -- */
@@ -110,8 +117,8 @@ async function buildBingoCard(db: GameDb, classId: string): Promise<BingoCell[]>
 
 export async function loadVocabBingo(studentId: string, classId?: string) {
   const db = await admin();
-  const classes = await memberClasses(db, studentId);
-  if (classes.length === 0) throw new Error("Join a class to play vocab bingo.");
+  const classes = await memberClasses(db, studentId, "vocab_bingo");
+  if (classes.length === 0) throw new Error("Vocab bingo is not available in your classes right now.");
 
   const { data: existing } = await db
     .from("game_rounds")
@@ -266,8 +273,9 @@ export async function loadBossQuestion(studentId: string) {
 
   let row = existing;
   if (!row) {
-    const classes = shuffle(await memberClasses(db, studentId));
-    if (classes.length === 0) throw new Error("Join a class to face the boss question.");
+    const classes = shuffle(await memberClasses(db, studentId, "boss_question"));
+    if (classes.length === 0)
+      throw new Error("The boss question is not available in your classes right now.");
     const seen = await seenQuestionIds(db, studentId);
 
     let picked: { classId: string; questionId: string } | null = null;
@@ -393,8 +401,9 @@ export const MAX_WAGER = 2;
 
 export async function loadWagerRound(studentId: string) {
   const db = await admin();
-  const classes = await memberClasses(db, studentId);
-  if (classes.length === 0) throw new Error("Join a class to play the wager round.");
+  const classes = await memberClasses(db, studentId, "wager_round");
+  if (classes.length === 0)
+    throw new Error("The wager round is not available in your classes right now.");
 
   const { data: row } = await db
     .from("game_rounds")
@@ -462,8 +471,9 @@ export async function loadWagerRound(studentId: string) {
 
 export async function startWagerRound(studentId: string, classId: string, wager: number) {
   const db = await admin();
-  const classes = await memberClasses(db, studentId);
-  if (!classes.some((c) => c.id === classId)) throw new Error("You are not in this class.");
+  const classes = await memberClasses(db, studentId, "wager_round");
+  if (!classes.some((c) => c.id === classId))
+    throw new Error("The wager round is not available in this class.");
 
   const { data: existing } = await db
     .from("game_rounds")

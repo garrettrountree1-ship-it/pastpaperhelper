@@ -114,11 +114,11 @@ function PreviewPage() {
       <main className="mx-auto max-w-3xl px-4 py-8">
         {data ? (
           <Link
-            to="/classes/$classId"
+            to="/classes/$classId/homework"
             params={{ classId: data.assignment.classId }}
             className="text-sm text-muted-foreground hover:underline"
           >
-            ← Back to class
+            ← Back to homework
           </Link>
         ) : null}
 

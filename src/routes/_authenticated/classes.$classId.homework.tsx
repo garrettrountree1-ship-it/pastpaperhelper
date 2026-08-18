@@ -29,12 +29,14 @@ import {
   Unlock,
   Wand2,
   ShieldAlert,
+  Languages,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { SectionShell, SectionTabsMobile } from "@/components/SectionShell";
 import { StudentClassHomework } from "@/components/homework/HomeworkSection";
+import { LanguageSettingsDialog } from "@/components/assignments/LanguageSettingsDialog";
 import { AccessControlsDialog } from "@/components/assignments/AccessControlsDialog";
 import { TutorSettingsDialog } from "@/components/assignments/TutorSettingsDialog";
 import { Badge } from "@/components/ui/badge";
@@ -484,6 +486,16 @@ function AssignmentList({
                   <Button variant="outline" size="sm">
                     <CalendarClock className="size-4" />
                     Due Date &amp; Answer Release
+                  </Button>
+                }
+              />
+              <LanguageSettingsDialog
+                classId={classId}
+                assignmentId={assignment.id}
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <Languages className="size-4" />
+                    HW Language Settings
                   </Button>
                 }
               />

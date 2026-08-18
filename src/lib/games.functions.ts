@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { DAILY_TOKEN_CAP, uniqueAlias } from "@/lib/game-alias";
+import { DAILY_TOKEN_CAP, DEMO_LEADERBOARD, uniqueAlias } from "@/lib/game-alias";
+import { isDemoEmail } from "@/lib/demo";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 
 async function admin() {
@@ -86,7 +87,7 @@ async function awardTokens(
   return delta;
 }
 
-async function randomClassQuestion(db: AnyDb, classId: string) {
+async function randomClassQuestion(db: AnyDb, classId: string, exclude?: Set<string>) {
   const { data: assignments } = await db
     .from("assignments")
     .select("id")
@@ -98,8 +99,9 @@ async function randomClassQuestion(db: AnyDb, classId: string) {
     .from("questions")
     .select("id, question_text, mark_scheme, marks, image_paths, assignment_id")
     .in("assignment_id", assignmentIds);
-  if (!questions || questions.length === 0) return null;
-  return questions[Math.floor(Math.random() * questions.length)];
+  const pool = (questions ?? []).filter((q) => !exclude || !exclude.has(q.id));
+  if (pool.length === 0) return null;
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 /** Homework average per student, used to pair students of similar ability. */
@@ -170,7 +172,8 @@ async function resolveMatch(db: AnyDb, matchId: string) {
 export const getGamesOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabase, userId } = context;
+    const { supabase, userId, claims } = context;
+    const isDemo = isDemoEmail((claims as { email?: string }).email ?? null);
     const db = await admin();
 
     const [{ data: taught }, { data: memberships }] = await Promise.all([
@@ -242,9 +245,24 @@ export const getGamesOverview = createServerFn({ method: "GET" })
         id: c.id,
         name: c.name,
         subject: c.subject,
-        leaderboard: (profiles ?? [])
-          .filter((p) => p.class_id === c.id)
-          .map((p) => ({ studentId: p.student_id, alias: p.alias, tokens: p.tokens })),
+        leaderboard: [
+          ...(profiles ?? [])
+            .filter((p) => p.class_id === c.id)
+            .map((p) => ({
+              studentId: p.student_id,
+              alias: p.alias,
+              tokens: p.tokens,
+              demo: false,
+            })),
+          ...(isDemo
+            ? DEMO_LEADERBOARD.map((d) => ({
+                studentId: `demo-${d.alias}`,
+                alias: d.alias,
+                tokens: d.tokens,
+                demo: true,
+              }))
+            : []),
+        ].sort((a, b) => b.tokens - a.tokens),
       })),
       studentClasses: studentClasses.map((c) => {
         const mine = (profiles ?? []).find((p) => p.class_id === c.id && p.student_id === userId);
@@ -254,13 +272,24 @@ export const getGamesOverview = createServerFn({ method: "GET" })
           subject: c.subject,
           alias: mine?.alias ?? "",
           tokens: mine?.tokens ?? 0,
-          leaderboard: (profiles ?? [])
-            .filter((p) => p.class_id === c.id)
-            .map((p) => ({
-              alias: p.alias,
-              tokens: p.tokens,
-              isYou: p.student_id === userId,
-            })),
+          leaderboard: [
+            ...(profiles ?? [])
+              .filter((p) => p.class_id === c.id)
+              .map((p) => ({
+                alias: p.alias,
+                tokens: p.tokens,
+                isYou: p.student_id === userId,
+                demo: false,
+              })),
+            ...(isDemo
+              ? DEMO_LEADERBOARD.map((d) => ({
+                  alias: d.alias,
+                  tokens: d.tokens,
+                  isYou: false,
+                  demo: true,
+                }))
+              : []),
+          ].sort((a, b) => b.tokens - a.tokens),
         };
       }),
       matches: (matches ?? []).map((m) => {
@@ -651,15 +680,39 @@ export const startDailyDouble = createServerFn({ method: "POST" })
         .select("class_id")
         .eq("student_id", userId);
       const classIds = (memberships ?? []).map((m) => m.class_id).sort(() => Math.random() - 0.5);
+
+      // Never repeat a daily double, and prefer questions this student has not met in homework.
+      const { data: pastDoubles } = await db
+        .from("daily_doubles")
+        .select("question_id")
+        .eq("student_id", userId);
+      const usedBefore = new Set((pastDoubles ?? []).map((d) => d.question_id));
+
+      const { data: mySubs } = await db
+        .from("submissions")
+        .select("id")
+        .eq("student_id", userId);
+      const submissionIds = (mySubs ?? []).map((s) => s.id);
+      const { data: myAnswers } = submissionIds.length
+        ? await db.from("answers").select("question_id").in("submission_id", submissionIds)
+        : { data: [] as { question_id: string }[] };
+      const seenInHomework = new Set([
+        ...usedBefore,
+        ...(myAnswers ?? []).map((a) => a.question_id),
+      ]);
+
       let picked: { classId: string; questionId: string; marks: number } | null = null;
-      for (const classId of classIds) {
-        const question = await randomClassQuestion(db, classId);
-        if (question) {
-          picked = { classId, questionId: question.id, marks: question.marks };
-          break;
+      for (const exclude of [seenInHomework, usedBefore]) {
+        for (const classId of classIds) {
+          const question = await randomClassQuestion(db, classId, exclude);
+          if (question) {
+            picked = { classId, questionId: question.id, marks: question.marks };
+            break;
+          }
         }
+        if (picked) break;
       }
-      if (!picked) throw new Error("No homework questions available for a daily double yet.");
+      if (!picked) throw new Error("No new homework questions available for a daily double yet.");
       const { data: created, error } = await db
         .from("daily_doubles")
         .insert({
@@ -676,18 +729,29 @@ export const startDailyDouble = createServerFn({ method: "POST" })
 
     const { data: question } = await db
       .from("questions")
-      .select("id, question_text, marks, image_paths")
+      .select("id, question_text, mark_scheme, marks, image_paths")
       .eq("id", row.question_id)
       .single();
+
+    const expired = new Date(row.ends_at).getTime() <= Date.now();
+    if (expired && !row.finished_at) {
+      await db
+        .from("daily_doubles")
+        .update({ finished_at: new Date().toISOString() })
+        .eq("id", row.id);
+    }
+    const over = expired || Boolean(row.finished_at);
 
     return {
       id: row.id,
       questionText: question?.question_text ?? "",
       marks: question?.marks ?? 1,
       imageUrls: await signPaperPages(db, question?.image_paths ?? []),
-      done: Boolean(row.finished_at),
+      done: over,
       correct: row.correct,
       attempts: row.attempts,
+      // The round is over, so showing the mark scheme is teaching, not cheating.
+      markScheme: over ? (question?.mark_scheme ?? "") : null,
       secondsLeft: Math.max(0, Math.round((new Date(row.ends_at).getTime() - Date.now()) / 1000)),
     };
   });
@@ -722,7 +786,7 @@ export const submitDailyDouble = createServerFn({ method: "POST" })
         .from("daily_doubles")
         .update({ attempts: row.attempts + 1, answer_text: data.answerText })
         .eq("id", row.id);
-      return { correct: false, awarded: 0, feedback: result.feedback };
+      return { correct: false, awarded: 0, feedback: result.feedback, markScheme: null };
     }
 
     const awarded = await awardTokens(db, {
@@ -743,7 +807,17 @@ export const submitDailyDouble = createServerFn({ method: "POST" })
         finished_at: new Date().toISOString(),
       })
       .eq("id", row.id);
-    return { correct: true, awarded, feedback: result.feedback };
+    const { data: question } = await db
+      .from("questions")
+      .select("mark_scheme")
+      .eq("id", row.question_id)
+      .single();
+    return {
+      correct: true,
+      awarded,
+      feedback: result.feedback,
+      markScheme: question?.mark_scheme ?? "",
+    };
   });
 
 /** Games are pass/fail only: full marks wins, and no answers are ever revealed. */

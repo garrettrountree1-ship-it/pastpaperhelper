@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { AliasAvatar } from "@/components/games/AliasAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,7 +55,7 @@ type TeacherClass = {
   id: string;
   name: string;
   subject: string;
-  leaderboard: { studentId: string; alias: string; tokens: number }[];
+  leaderboard: { studentId: string; alias: string; tokens: number; demo: boolean }[];
 };
 
 function TeacherGames({ classes }: { classes: TeacherClass[] }) {
@@ -140,18 +141,26 @@ function TeacherGames({ classes }: { classes: TeacherClass[] }) {
             ) : (
               klass.leaderboard.map((entry, index) => (
                 <div key={entry.studentId} className="flex items-center justify-between gap-3 py-2">
-                  <span className="text-sm">
-                    <span className="mr-2 text-muted-foreground">{index + 1}.</span>
+                  <span className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">{index + 1}.</span>
+                    <AliasAvatar alias={entry.alias} />
                     {entry.alias}
+                    {entry.demo ? (
+                      <Badge variant="outline" className="text-xs">
+                        demo
+                      </Badge>
+                    ) : null}
                   </span>
                   <div className="flex items-center gap-3">
                     <Badge variant="secondary">{entry.tokens} tokens</Badge>
-                    <AdjustTokensDialog
-                      classId={klass.id}
-                      studentId={entry.studentId}
-                      alias={entry.alias}
-                      onDone={refresh}
-                    />
+                    {entry.demo ? null : (
+                      <AdjustTokensDialog
+                        classId={klass.id}
+                        studentId={entry.studentId}
+                        alias={entry.alias}
+                        onDone={refresh}
+                      />
+                    )}
                   </div>
                 </div>
               ))
@@ -379,10 +388,16 @@ function StudentGames({ data }: { data: StudentData }) {
           <div className="divide-y">
             {klass.leaderboard.map((entry, index) => (
               <div key={entry.alias} className="flex items-center justify-between gap-3 py-2">
-                <span className={`text-sm ${entry.isYou ? "font-medium" : ""}`}>
-                  <span className="mr-2 text-muted-foreground">{index + 1}.</span>
+                <span className={`flex items-center gap-2 text-sm ${entry.isYou ? "font-medium" : ""}`}>
+                  <span className="text-muted-foreground">{index + 1}.</span>
+                  <AliasAvatar alias={entry.alias} />
                   {entry.alias}
                   {entry.isYou ? " (you)" : ""}
+                  {entry.demo ? (
+                    <Badge variant="outline" className="text-xs">
+                      demo
+                    </Badge>
+                  ) : null}
                 </span>
                 <Badge variant="secondary">{entry.tokens}</Badge>
               </div>

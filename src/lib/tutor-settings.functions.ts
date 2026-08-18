@@ -209,7 +209,7 @@ export const getMyTutorSettings = createServerFn({ method: "POST" })
     return effectiveTutorSettings(db, data.classId, userId);
   });
 
-/** Student changes their own tutor level/language, only when the teacher allowed it. */
+/** Student changes their own tutor level (never the language), when the teacher allowed it. */
 export const setMyTutorSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
@@ -217,7 +217,6 @@ export const setMyTutorSettings = createServerFn({ method: "POST" })
       .object({
         classId: z.string().uuid(),
         tutorLevel: levelEnum.optional(),
-        tutorLanguage: languageEnum.optional(),
       })
       .parse(input),
   )
@@ -245,7 +244,7 @@ export const setMyTutorSettings = createServerFn({ method: "POST" })
 
     const patch = {
       tutor_level: data.tutorLevel ?? current.level,
-      tutor_language: data.tutorLanguage ?? current.language,
+      tutor_language: current.language,
       updated_at: new Date().toISOString(),
     };
 

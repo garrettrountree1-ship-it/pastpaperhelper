@@ -133,6 +133,13 @@ function QuizPage() {
               )}
             </div>
 
+            {!finished ? (
+              <p className="mb-4 text-sm text-muted-foreground">
+                Quiz conditions: English only, no AI tutor, no vocab list and no hover
+                translations.
+              </p>
+            ) : null}
+
             <div className="space-y-4">
               {workspace.data.questions.map((question) => (
                 <section key={question.id} className="paper p-5">

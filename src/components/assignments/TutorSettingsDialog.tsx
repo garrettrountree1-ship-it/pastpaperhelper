@@ -179,7 +179,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
                     }
                   />
                   <span>
-                    Let students change their own tutor level and language
+                    Let students change their own tutor level
                     <span className="block text-xs text-muted-foreground">
                       You can still override any individual student below.
                     </span>

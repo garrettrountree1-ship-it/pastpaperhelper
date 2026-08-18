@@ -61,7 +61,7 @@ export async function effectiveTutorSettings(
  * Same, resolved from an assignment id, with the assignment-level and
  * per-student-per-assignment overrides applied on top of the class defaults.
  * Precedence for keyword hover translation:
- * student+assignment → student (overall) → assignment. There is no class-wide toggle.
+ * student+assignment → student (overall) → assignment → class default.
  */
 export async function tutorSettingsForAssignment(
   db: Db,
@@ -109,14 +109,16 @@ export async function tutorSettingsForAssignment(
     studentOverride?.data?.keyword_translation,
     classOverride?.data?.keyword_translation,
     assignment.keyword_translation,
+    base.keywordTranslation,
   ] as Array<boolean | null | undefined>;
   const keywordTranslation = Boolean(chain.find((value) => value === true || value === false));
 
   return {
     ...base,
     keywordTranslation,
-
-    vocabTranslation: assignment.vocab_translation !== false,
-    vocabLanguage: (assignment.vocab_language as string | null) ?? base.language,
+    // Class switch is the default; a homework can only turn translations further off.
+    vocabTranslation: base.vocabTranslation && assignment.vocab_translation !== false,
+    vocabLanguage: (assignment.vocab_language as string | null) ?? base.vocabLanguage,
   };
+
 }

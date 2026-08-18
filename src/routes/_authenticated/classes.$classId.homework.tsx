@@ -32,7 +32,8 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { AppHeader } from "@/components/AppHeader";
+import { SectionShell, SectionTabsMobile } from "@/components/SectionShell";
+import { StudentClassHomework } from "@/components/homework/HomeworkSection";
 import { AccessControlsDialog } from "@/components/assignments/AccessControlsDialog";
 import { TutorSettingsDialog } from "@/components/assignments/TutorSettingsDialog";
 import { Badge } from "@/components/ui/badge";
@@ -106,23 +107,8 @@ export const Route = createFileRoute("/_authenticated/classes/$classId/homework"
     ],
   }),
   component: ClassPage,
-  pendingComponent: () => (
-    <div className="min-h-screen">
-      <AppHeader role="teacher" />
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        <Skeleton className="h-64 w-full" />
-      </main>
-    </div>
-  ),
-  errorComponent: ({ error, reset }) => (
-    <div className="min-h-screen">
-      <AppHeader role="teacher" />
-      <main className="mx-auto max-w-6xl px-4 py-8 text-center">
-        <p className="mb-4 text-muted-foreground">We couldn&apos;t load this class. {error.message}</p>
-        <Button onClick={reset}>Try again</Button>
-      </main>
-    </div>
-  ),
+  pendingComponent: PendingClassPage,
+  errorComponent: ErrorClassPage,
   notFoundComponent: () => <div className="p-8 text-center">Class not found.</div>,
 });
 
@@ -144,179 +130,213 @@ const emptyQuestion = (): QuestionDraft => ({
   imageUrls: [],
 });
 
+function PendingClassPage() {
+  const { classId } = Route.useParams();
+  return (
+    <SectionShell classId={classId} current="homework" title="Homework">
+      {() => <Skeleton className="h-64 w-full" />}
+    </SectionShell>
+  );
+}
+
+function ErrorClassPage({ error, reset }: { error: Error; reset: () => void }) {
+  const { classId } = Route.useParams();
+  return (
+    <SectionShell classId={classId} current="homework" title="Homework">
+      {() => (
+        <div className="text-center">
+          <p className="mb-4 text-muted-foreground">
+            We couldn&apos;t load this class. {error.message}
+          </p>
+          <Button onClick={reset}>Try again</Button>
+        </div>
+      )}
+    </SectionShell>
+  );
+}
+
 function ClassPage() {
   const { classId } = Route.useParams();
+  return (
+    <SectionShell classId={classId} current="homework" title="Homework">
+      {(role) => (
+        <>
+          <SectionTabsMobile classId={classId} current="homework" />
+          {role === "student" ? (
+            <StudentClassHomework classId={classId} />
+          ) : (
+            <ClassPageContent classId={classId} />
+          )}
+        </>
+      )}
+    </SectionShell>
+  );
+}
+
+function ClassPageContent({ classId }: { classId: string }) {
   const overview = useQuery({
     queryKey: ["class-overview", classId],
     queryFn: () => getClassOverview({ data: { classId } }),
     retry: 2,
   });
 
+  if (overview.isPending) {
+    return <Skeleton className="h-64 w-full" />;
+  }
+  if (overview.isError) {
+    return (
+      <div className="text-center">
+        <p className="mb-4 text-muted-foreground">
+          We couldn&apos;t load this class. {(overview.error as Error).message}
+        </p>
+        <Button onClick={() => overview.refetch()}>Retry</Button>
+      </div>
+    );
+  }
+  if (!overview.data) return null;
+
+  const data = overview.data;
+
   return (
-    <div className="min-h-screen">
-      <AppHeader role="teacher" />
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        {overview.isPending ? (
-          <Skeleton className="mt-6 h-64 w-full" />
-        ) : overview.isError ? (
-          <div className="mt-6 text-center">
-            <p className="mb-4 text-muted-foreground">
-              We couldn&apos;t load this class. {(overview.error as Error).message}
-            </p>
-            <Button onClick={() => overview.refetch()}>Retry</Button>
-          </div>
-        ) : overview.data ? (
-          <div className="paper mt-4 p-5">
-            <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">
-              ← All classes
-            </Link>
-            <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <h1 className="text-3xl">{overview.data.klass.name}</h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {overview.data.klass.curriculum} · {overview.data.klass.subject} · join code{" "}
-                  <span className="font-mono highlight-underline">
-                    {overview.data.klass.join_code}
-                  </span>
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <TutorSettingsDialog classId={classId} />
-                <ClassSettingsDialog
-                  classId={classId}
-                  klass={overview.data.klass}
-                  onSaved={() => overview.refetch()}
-                />
-                <AssignmentDialog classId={classId} trigger={<Button>New assignment</Button>} />
-              </div>
+    <div className="paper p-5">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-sm text-muted-foreground">
+            {data.klass.curriculum} · {data.klass.subject} · join code{" "}
+            <span className="font-mono highlight-underline">{data.klass.join_code}</span>
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <TutorSettingsDialog classId={classId} />
+          <ClassSettingsDialog
+            classId={classId}
+            klass={data.klass}
+            onSaved={() => overview.refetch()}
+          />
+          <AssignmentDialog classId={classId} trigger={<Button>New assignment</Button>} />
+        </div>
+      </div>
+
+      <Tabs defaultValue="assignments" className="mt-6">
+        <TabsList>
+          <TabsTrigger value="assignments">Assignments</TabsTrigger>
+          <TabsTrigger value="gradebook">Gradebook</TabsTrigger>
+          <TabsTrigger value="students">Students</TabsTrigger>
+          <TabsTrigger value="bulletin">Bulletin &amp; Messages</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="assignments" className="mt-4 space-y-3">
+          <AssignmentList
+            classId={classId}
+            assignments={data.assignments}
+            studentCount={data.students.length}
+          />
+        </TabsContent>
+
+        <TabsContent value="bulletin" className="mt-4 space-y-6">
+          <BulletinPanel classId={classId} />
+          <MessagesPanel classId={classId} />
+        </TabsContent>
+
+        <TabsContent value="gradebook" className="mt-4">
+          {data.students.length === 0 ? (
+            <div className="paper p-8 text-center text-muted-foreground">
+              No students have joined yet.
             </div>
-
-            <Tabs defaultValue="assignments" className="mt-6">
-              <TabsList>
-                <TabsTrigger value="assignments">Assignments</TabsTrigger>
-                <TabsTrigger value="gradebook">Gradebook</TabsTrigger>
-                <TabsTrigger value="students">Students</TabsTrigger>
-                <TabsTrigger value="bulletin">Bulletin &amp; Messages</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="assignments" className="mt-4 space-y-3">
-                <AssignmentList
-                  classId={classId}
-                  assignments={overview.data.assignments}
-                  studentCount={overview.data.students.length}
-                />
-              </TabsContent>
-
-              <TabsContent value="bulletin" className="mt-4 space-y-6">
-                <BulletinPanel classId={classId} />
-                <MessagesPanel classId={classId} />
-              </TabsContent>
-
-              <TabsContent value="gradebook" className="mt-4">
-                {overview.data.students.length === 0 ? (
-                  <div className="paper p-8 text-center text-muted-foreground">
-                    No students have joined yet.
-                  </div>
-                ) : (
-                  <div className="paper overflow-x-auto p-2">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-10" />
-                          <TableHead>Student</TableHead>
-                          {overview.data.assignments.map((assignment) => (
-                            <TableHead key={assignment.id}>
-                              <div className="flex items-center gap-1">
-                                <span>{assignment.title}</span>
-                                <QuestionEditorDialog
-                                  classId={classId}
-                                  assignmentId={assignment.id}
-                                  trigger={
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="size-7"
-                                      title="Question editor"
-                                    >
-                                      <ListChecks className="size-4" />
-                                    </Button>
-                                  }
-                                />
-                                <AccessControlsDialog
-                                  classId={classId}
-                                  assignmentId={assignment.id}
-                                  trigger={
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="size-7"
-                                      title="Due date & answer release"
-                                    >
-                                      <CalendarClock className="size-4" />
-                                    </Button>
-                                  }
-                                />
-                              </div>
-                            </TableHead>
-                          ))}
-                          <TableHead>Average</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {overview.data.students.map((student) => (
-                          <GradebookRow
-                            key={student.id}
+          ) : (
+            <div className="paper overflow-x-auto p-2">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10" />
+                    <TableHead>Student</TableHead>
+                    {data.assignments.map((assignment) => (
+                      <TableHead key={assignment.id}>
+                        <div className="flex items-center gap-1">
+                          <span>{assignment.title}</span>
+                          <QuestionEditorDialog
                             classId={classId}
-                            student={student}
-                            columns={overview.data.assignments.length + 3}
-                            onChanged={() => overview.refetch()}
+                            assignmentId={assignment.id}
+                            trigger={
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-7"
+                                title="Question editor"
+                              >
+                                <ListChecks className="size-4" />
+                              </Button>
+                            }
                           />
-                        ))}
-                      </TableBody>
-                    </Table>
-                    <p className="p-3 text-xs text-muted-foreground">
-                      * still in progress. Click a score to review answers and adjust marks, or open
-                      a row to see time spent, tutor questions and every attempt.
-                    </p>
-                  </div>
-                )}
-              </TabsContent>
-
-
-              <TabsContent value="students" className="mt-4">
-                <DemoStudentSeeder classId={classId} onSeeded={() => overview.refetch()} />
-                <div className="paper divide-y divide-border">
-
-                  {overview.data.students.length === 0 ? (
-                    <p className="p-6 text-center text-muted-foreground">
-                      Share the join code so students can add themselves.
-                    </p>
-                  ) : (
-                    overview.data.students.map((student) => (
-                      <div
-                        key={student.id}
-                        className="flex flex-wrap items-center justify-between gap-3 p-4"
-                      >
-                        <span>{student.name}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm text-muted-foreground">{student.email}</span>
-                          <RemoveStudentButton
+                          <AccessControlsDialog
                             classId={classId}
-                            studentId={student.id}
-                            studentName={student.name || student.email}
-                            onRemoved={() => overview.refetch()}
+                            assignmentId={assignment.id}
+                            trigger={
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-7"
+                                title="Due date & answer release"
+                              >
+                                <CalendarClock className="size-4" />
+                              </Button>
+                            }
                           />
                         </div>
-                      </div>
-                    ))
+                      </TableHead>
+                    ))}
+                    <TableHead>Average</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.students.map((student) => (
+                    <GradebookRow
+                      key={student.id}
+                      classId={classId}
+                      student={student}
+                      columns={data.assignments.length + 3}
+                      onChanged={() => overview.refetch()}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+              <p className="p-3 text-xs text-muted-foreground">
+                * still in progress. Click a score to review answers and adjust marks, or open
+                a row to see time spent, tutor questions and every attempt.
+              </p>
+            </div>
+          )}
+        </TabsContent>
 
-                  )}
+        <TabsContent value="students" className="mt-4">
+          <DemoStudentSeeder classId={classId} onSeeded={() => overview.refetch()} />
+          <div className="paper divide-y divide-border">
+            {data.students.length === 0 ? (
+              <p className="p-6 text-center text-muted-foreground">
+                Share the join code so students can add themselves.
+              </p>
+            ) : (
+              data.students.map((student) => (
+                <div
+                  key={student.id}
+                  className="flex flex-wrap items-center justify-between gap-3 p-4"
+                >
+                  <span>{student.name}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-muted-foreground">{student.email}</span>
+                    <RemoveStudentButton
+                      classId={classId}
+                      studentId={student.id}
+                      studentName={student.name || student.email}
+                      onRemoved={() => overview.refetch()}
+                    />
+                  </div>
                 </div>
-              </TabsContent>
-            </Tabs>
+              ))
+            )}
           </div>
-        ) : null}
-      </main>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

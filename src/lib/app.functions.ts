@@ -1915,7 +1915,7 @@ export const getAssignmentQuestionControls = createServerFn({ method: "POST" })
     const [{ data: questions }, { data: members }] = await Promise.all([
       db
         .from("questions")
-        .select("id, position, question_text, marks")
+        .select("id, position, question_text, marks, photo_mode")
         .eq("assignment_id", data.assignmentId)
         .order("position"),
       db.from("class_members").select("student_id").eq("class_id", assignment!.class_id),
@@ -1941,6 +1941,7 @@ export const getAssignmentQuestionControls = createServerFn({ method: "POST" })
         position: q.position,
         marks: q.marks,
         questionText: q.question_text,
+        photoMode: isPhotoMode(q.photo_mode) ? q.photo_mode : "auto",
       })),
       students: studentIds.map((id) => {
         const profile = (profiles ?? []).find((p) => p.id === id);
@@ -1952,6 +1953,40 @@ export const getAssignmentQuestionControls = createServerFn({ method: "POST" })
       })),
     };
   });
+
+/** Teacher-only: photo answers on/off/automatic for a single question. */
+export const setQuestionPhotoMode = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        questionId: z.string().uuid(),
+        photoMode: z.enum(["auto", "on", "off"]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const db = await admin();
+    const { data: question } = await db
+      .from("questions")
+      .select("assignment_id")
+      .eq("id", data.questionId)
+      .single();
+    const { data: allowed } = await supabase.rpc("can_teach_assignment", {
+      _assignment_id: question!.assignment_id,
+      _user_id: userId,
+    });
+    if (!allowed) throw new Error("Not allowed.");
+
+    const { error } = await db
+      .from("questions")
+      .update({ photo_mode: data.photoMode })
+      .eq("id", data.questionId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 
 /** Teacher-only: removes a question from an assignment along with every student answer to it. */
 export const deleteQuestion = createServerFn({ method: "POST" })

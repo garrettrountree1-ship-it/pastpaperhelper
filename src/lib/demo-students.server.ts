@@ -5,11 +5,11 @@
  */
 
 const DEMO_STUDENTS = [
-  { email: "demo.student.mia@stemhomeworkai.app", name: "Mia Chen" },
-  { email: "demo.student.omar@stemhomeworkai.app", name: "Omar Haddad" },
-  { email: "demo.student.lena@stemhomeworkai.app", name: "Lena Novak" },
-  { email: "demo.student.jae@stemhomeworkai.app", name: "Jae-won Park" },
-  { email: "demo.student.ana@stemhomeworkai.app", name: "Ana Ferreira" },
+  { email: "demo.student.mia@stemhomeworkai.app", name: "Mia Chen", alias: "SwiftFalcon", tokens: 14 },
+  { email: "demo.student.omar@stemhomeworkai.app", name: "Omar Haddad", alias: "CleverOtter", tokens: 11 },
+  { email: "demo.student.lena@stemhomeworkai.app", name: "Lena Novak", alias: "BraveJaguar", tokens: 9 },
+  { email: "demo.student.jae@stemhomeworkai.app", name: "Jae-won Park", alias: "SunnyPanda", tokens: 7 },
+  { email: "demo.student.ana@stemhomeworkai.app", name: "Ana Ferreira", alias: "SteadyHeron", tokens: 5 },
 ];
 
 export async function seedDemoStudents(classId: string) {
@@ -46,12 +46,31 @@ export async function seedDemoStudents(classId: string) {
       .eq("class_id", classId)
       .eq("student_id", studentId)
       .maybeSingle();
-    if (member) continue;
 
-    const { error: joinError } = await supabaseAdmin
-      .from("class_members")
-      .insert({ class_id: classId, student_id: studentId });
-    if (!joinError) added += 1;
+    if (!member) {
+      const { error: joinError } = await supabaseAdmin
+        .from("class_members")
+        .insert({ class_id: classId, student_id: studentId });
+      if (joinError) continue;
+      added += 1;
+    }
+
+    // Give them a real game profile so they appear on the leaderboard and the
+    // teacher can adjust their tokens exactly like a real student's.
+    const { data: gameProfile } = await supabaseAdmin
+      .from("game_profiles")
+      .select("id")
+      .eq("class_id", classId)
+      .eq("student_id", studentId)
+      .maybeSingle();
+    if (!gameProfile) {
+      await supabaseAdmin.from("game_profiles").insert({
+        class_id: classId,
+        student_id: studentId,
+        alias: student.alias,
+        tokens: student.tokens,
+      });
+    }
   }
 
   return { added, total: DEMO_STUDENTS.length };

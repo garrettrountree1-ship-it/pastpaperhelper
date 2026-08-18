@@ -302,6 +302,10 @@ export const getGamesOverview = createServerFn({ method: "GET" })
         : { available: true, done: false, correct: false, awarded: 0 },
       tokensToday: await tokensEarnedToday(db, userId),
       dailyCap: DAILY_TOKEN_CAP,
+      disabledGames: await (async () => {
+        const { disabledGamesFor } = await import("./game-admin.server");
+        return disabledGamesFor(classIds);
+      })(),
     };
   });
 
@@ -480,6 +484,9 @@ export const requestMatch = createServerFn({ method: "POST" })
       _user_id: userId,
     });
     if (!isMember) throw new Error("You are not in this class.");
+
+    const { assertGameEnabled } = await import("./game-admin.server");
+    await assertGameEnabled(data.classId, "head_to_head");
 
     const db = await admin();
     const { data: members } = await db
@@ -675,7 +682,15 @@ export const startDailyDouble = createServerFn({ method: "POST" })
         .from("class_members")
         .select("class_id")
         .eq("student_id", userId);
-      const classIds = (memberships ?? []).map((m) => m.class_id).sort(() => Math.random() - 0.5);
+      const { disabledGamesFor } = await import("./game-admin.server");
+      const allClassIds = (memberships ?? []).map((m) => m.class_id);
+      const disabled = await disabledGamesFor(allClassIds);
+      const classIds = allClassIds
+        .filter((id) => !(disabled[id] ?? []).includes("daily_double"))
+        .sort(() => Math.random() - 0.5);
+      if (classIds.length === 0) {
+        throw new Error("The daily double is not available in your classes right now.");
+      }
 
       // Never repeat a daily double, and prefer questions this student has not met in homework.
       const { data: pastDoubles } = await db

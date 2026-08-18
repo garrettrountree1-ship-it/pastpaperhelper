@@ -59,9 +59,14 @@ function VocabBingoPage() {
     onSuccess: (result) => {
       setLast({ correct: result.correct, term: result.correctTerm });
       if (result.awardedNow > 0) toast.success(`Bingo line — +${result.awardedNow} token(s)`);
+      else if (result.cappedOut)
+        toast.info(
+          `Line complete! You've already hit today's ${result.dailyCap}-token cap, so no extra tokens — lines still count.`,
+        );
       queryClient.invalidateQueries({ queryKey: ["vocab-bingo"] });
       queryClient.invalidateQueries({ queryKey: ["games-overview"] });
     },
+
     onError: (error: Error) => {
       toast.error(error.message);
       queryClient.invalidateQueries({ queryKey: ["vocab-bingo"] });

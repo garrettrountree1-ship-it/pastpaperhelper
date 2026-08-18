@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { AliasAvatar } from "@/components/games/AliasAvatar";
+import { GameRecordPanel } from "@/components/games/GameRecordPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GAME_LABELS, type GameKey } from "@/lib/game-catalog";
 import {
   adjustTokens,
   getGamesOverview,
@@ -51,6 +53,7 @@ export function GamesSection({
   if (role === "teacher") {
     return (
       <TeacherGames
+        classId={classId}
         classes={(overview.data?.teacherClasses ?? []).filter((c) => c.id === classId)}
       />
     );
@@ -59,6 +62,7 @@ export function GamesSection({
   const data = overview.data!;
   return (
     <StudentGames
+      disabled={(data.disabledGames?.[classId] ?? []) as GameKey[]}
       data={{
         ...data,
         studentClasses: data.studentClasses.filter((c) => c.id === classId),
@@ -78,7 +82,7 @@ type TeacherClass = {
   leaderboard: { studentId: string; alias: string; tokens: number; demo: boolean }[];
 };
 
-function TeacherGames({ classes }: { classes: TeacherClass[] }) {
+function TeacherGames({ classId, classes }: { classId: string; classes: TeacherClass[] }) {
   const queryClient = useQueryClient();
   const pair = useServerFn(pairClassRandomly);
   const reset = useServerFn(resetLeaderboard);
@@ -312,7 +316,8 @@ function TokenHistoryDialog({ classId }: { classId: string }) {
 
 type StudentData = Awaited<ReturnType<typeof getGamesOverview>>;
 
-function StudentGames({ data }: { data: StudentData }) {
+function StudentGames({ data, disabled }: { data: StudentData; disabled: GameKey[] }) {
+  const show = (key: GameKey) => !disabled.includes(key);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const request = useServerFn(requestMatch);

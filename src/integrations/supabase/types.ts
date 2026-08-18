@@ -80,6 +80,38 @@ export type Database = {
           },
         ]
       }
+      assignment_vocab: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          id: string
+          language: string
+          terms: Json
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          id?: string
+          language?: string
+          terms?: Json
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          id?: string
+          language?: string
+          terms?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_vocab_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assignments: {
         Row: {
           class_id: string
@@ -629,6 +661,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      vocab_explanations: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          explanation: string
+          id: string
+          image_urls: string[]
+          language: string
+          term: string
+          translation: string
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          explanation?: string
+          id?: string
+          image_urls?: string[]
+          language?: string
+          term: string
+          translation?: string
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          explanation?: string
+          id?: string
+          image_urls?: string[]
+          language?: string
+          term?: string
+          translation?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vocab_explanations_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

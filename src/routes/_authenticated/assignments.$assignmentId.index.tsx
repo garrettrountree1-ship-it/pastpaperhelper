@@ -11,6 +11,7 @@ import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 
 
 import { AppHeader } from "@/components/AppHeader";
+import { VocabSheet } from "@/components/assignments/VocabSheet";
 import { StudentTutorControls } from "@/components/assignments/StudentTutorControls";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
@@ -114,7 +115,10 @@ function AssignmentPage() {
         ) : data ? (
           <>
             <div className="paper mt-4 p-5">
-              <h1 className="text-3xl">{data.assignment.title}</h1>
+              <div className="flex items-start justify-between gap-3">
+                <h1 className="text-3xl">{data.assignment.title}</h1>
+                <VocabSheet assignmentId={assignmentId} />
+              </div>
               <p className="mt-1 text-sm text-muted-foreground">
                 {data.assignment.className} · {data.assignment.curriculum}
                 {data.assignment.subject ? ` · ${data.assignment.subject}` : ""}

@@ -786,7 +786,7 @@ export const submitDailyDouble = createServerFn({ method: "POST" })
         .from("daily_doubles")
         .update({ attempts: row.attempts + 1, answer_text: data.answerText })
         .eq("id", row.id);
-      return { correct: false, awarded: 0, feedback: result.feedback };
+      return { correct: false, awarded: 0, feedback: result.feedback, markScheme: null };
     }
 
     const awarded = await awardTokens(db, {
@@ -807,7 +807,17 @@ export const submitDailyDouble = createServerFn({ method: "POST" })
         finished_at: new Date().toISOString(),
       })
       .eq("id", row.id);
-    return { correct: true, awarded, feedback: result.feedback };
+    const { data: question } = await db
+      .from("questions")
+      .select("mark_scheme")
+      .eq("id", row.question_id)
+      .single();
+    return {
+      correct: true,
+      awarded,
+      feedback: result.feedback,
+      markScheme: question?.mark_scheme ?? "",
+    };
   });
 
 /** Games are pass/fail only: full marks wins, and no answers are ever revealed. */

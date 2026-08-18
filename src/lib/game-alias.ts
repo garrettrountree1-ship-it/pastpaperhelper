@@ -63,3 +63,13 @@ export function uniqueAlias(taken: Set<string>): string {
 }
 
 export const DAILY_TOKEN_CAP = 3;
+
+/** Sample players shown on the shared demo account only, so the leaderboard looks alive. */
+export const DEMO_LEADERBOARD: { alias: string; tokens: number }[] = [
+  { alias: "SwiftFalcon", tokens: 14 },
+  { alias: "CleverOtter", tokens: 11 },
+  { alias: "BraveJaguar", tokens: 9 },
+  { alias: "SunnyPanda", tokens: 7 },
+  { alias: "SteadyHeron", tokens: 5 },
+  { alias: "LuckyGecko", tokens: 3 },
+];

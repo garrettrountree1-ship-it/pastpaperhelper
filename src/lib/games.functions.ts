@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { DAILY_TOKEN_CAP, uniqueAlias } from "@/lib/game-alias";
+import { DAILY_TOKEN_CAP, DEMO_LEADERBOARD, uniqueAlias } from "@/lib/game-alias";
+import { isDemoEmail } from "@/lib/demo";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 
 async function admin() {

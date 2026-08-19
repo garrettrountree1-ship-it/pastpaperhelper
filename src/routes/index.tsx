@@ -1,4 +1,4 @@
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import {
   BookOpenCheck,
   BotMessageSquare,
@@ -150,22 +150,41 @@ const steps = [
 ];
 
 function Landing() {
-  const navigate = useNavigate();
   const [demoLoading, setDemoLoading] = useState(false);
 
   async function handleDemoLogin() {
+    if (demoLoading) return;
     setDemoLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: DEMO_EMAIL,
-      password: DEMO_PASSWORD,
-    });
-    setDemoLoading(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      // Make sure a stale/partial session can't block the demo sign-in.
+      await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: DEMO_EMAIL,
+        password: DEMO_PASSWORD,
+      });
+      if (error || !data.session) {
+        toast.error(error?.message ?? "Could not open the demo account. Please try again.");
+        setDemoLoading(false);
+        return;
+      }
+
+      // Wait until the session is readable before entering the protected area,
+      // otherwise the auth gate can bounce back to the sign-in page.
+      for (let i = 0; i < 20; i += 1) {
+        const { data: current } = await supabase.auth.getSession();
+        if (current.session) break;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      window.location.assign("/dashboard");
+    } catch (err) {
+      console.error("[demo-login]", err);
+      toast.error("Could not open the demo account. Please try again.");
+      setDemoLoading(false);
     }
-    navigate({ to: "/dashboard", replace: true });
   }
+
 
   return (
     <div className="min-h-screen">

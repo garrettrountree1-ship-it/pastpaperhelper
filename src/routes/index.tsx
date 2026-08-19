@@ -1,4 +1,4 @@
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import {
   BookOpenCheck,
   BotMessageSquare,
@@ -150,7 +150,6 @@ const steps = [
 ];
 
 function Landing() {
-  const navigate = useNavigate();
   const [demoLoading, setDemoLoading] = useState(false);
 
   async function handleDemoLogin() {

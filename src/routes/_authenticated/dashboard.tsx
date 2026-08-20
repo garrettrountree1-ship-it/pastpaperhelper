@@ -1,14 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Settings, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { createClass, getMe, joinClass, setOAuthRole } from "@/lib/app.functions";
+import {
+  createClass,
+  deleteClass,
+  getMe,
+  joinClass,
+  setOAuthRole,
+  updateClass,
+} from "@/lib/app.functions";
+
 import { listMaterialClasses } from "@/lib/materials.functions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -281,28 +296,169 @@ function ClassPicker({ role }: { role: "teacher" | "student" }) {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {list.map((klass) => (
-            <Link
-              key={klass.id}
-              to="/classes/$classId"
-              params={{ classId: klass.id }}
-              className="paper group flex items-start gap-4 p-6 transition-shadow hover:shadow-lift"
-            >
-              <span className="rounded-xl bg-primary/10 p-3 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                <BookOpen className="size-7" />
-              </span>
-              <span>
-                <span className="block font-display text-2xl">{klass.name}</span>
-                <span className="mt-1 block text-sm text-muted-foreground">
-                  {[klass.subject, klass.curriculum].filter(Boolean).join(" · ")}
+            <div key={klass.id} className="paper group p-6 transition-shadow hover:shadow-lift">
+              <Link
+                to="/classes/$classId"
+                params={{ classId: klass.id }}
+                className="flex items-start gap-4"
+              >
+                <span className="rounded-xl bg-primary/10 p-3 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <BookOpen className="size-7" />
                 </span>
-                <span className="mt-2 block text-sm text-muted-foreground">
-                  Materials · Homework · Quizzes · Games
+                <span>
+                  <span className="block font-display text-2xl">{klass.name}</span>
+                  <span className="mt-1 block text-sm text-muted-foreground">
+                    {[klass.subject, klass.curriculum].filter(Boolean).join(" · ")}
+                  </span>
+                  <span className="mt-2 block text-sm text-muted-foreground">
+                    Materials · Homework · Quizzes · Games
+                  </span>
                 </span>
-              </span>
-            </Link>
+              </Link>
+              {role === "teacher" && klass.canManage ? (
+                <div className="mt-4 flex justify-end">
+                  <ManageClassDialog klass={klass} onChanged={refresh} />
+                </div>
+              ) : null}
+            </div>
           ))}
         </div>
       )}
     </div>
   );
 }
+
+function ManageClassDialog({
+  klass,
+  onChanged,
+}: {
+  klass: { id: string; name: string; subject: string | null; curriculum: string | null };
+  onChanged: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(klass.name);
+  const [subject, setSubject] = useState(klass.subject ?? "");
+  const [curriculum, setCurriculum] = useState(klass.curriculum ?? "");
+  const [confirm, setConfirm] = useState("");
+  const queryClient = useQueryClient();
+  const save = useServerFn(updateClass);
+  const remove = useServerFn(deleteClass);
+
+  useEffect(() => {
+    if (!open) return;
+    setName(klass.name);
+    setSubject(klass.subject ?? "");
+    setCurriculum(klass.curriculum ?? "");
+    setConfirm("");
+  }, [open, klass.name, klass.subject, klass.curriculum]);
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["my-classes"] });
+    queryClient.invalidateQueries({ queryKey: ["teacher-classes"] });
+    queryClient.invalidateQueries({ queryKey: ["class-overview", klass.id] });
+    onChanged();
+  };
+
+  const renameMutation = useMutation({
+    mutationFn: () =>
+      save({
+        data: {
+          classId: klass.id,
+          name: name.trim(),
+          curriculum: curriculum.trim() || "IGCSE",
+          subject: subject.trim(),
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Class updated");
+      invalidate();
+      setOpen(false);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => remove({ data: { classId: klass.id } }),
+    onSuccess: () => {
+      toast.success("Class deleted");
+      invalidate();
+      setOpen(false);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Settings className="size-4" />
+          Rename or delete
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Manage {klass.name}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor={`rename-${klass.id}`}>Class name</Label>
+            <Input
+              id={`rename-${klass.id}`}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor={`subject-${klass.id}`}>Subject</Label>
+              <Input
+                id={`subject-${klass.id}`}
+                value={subject}
+                onChange={(event) => setSubject(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`curriculum-${klass.id}`}>Curriculum</Label>
+              <Input
+                id={`curriculum-${klass.id}`}
+                value={curriculum}
+                onChange={(event) => setCurriculum(event.target.value)}
+              />
+            </div>
+          </div>
+          <Button
+            className="w-full"
+            onClick={() => renameMutation.mutate()}
+            disabled={!name.trim() || renameMutation.isPending}
+          >
+            Save changes
+          </Button>
+
+          <div className="rounded-xl border border-destructive/40 p-4">
+            <p className="font-medium text-destructive">Delete this class</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              This permanently removes the roster, homework, quizzes, games and materials for this
+              class. Type <span className="font-mono">DELETE</span> to confirm.
+            </p>
+            <Input
+              className="mt-3"
+              value={confirm}
+              onChange={(event) => setConfirm(event.target.value.toUpperCase())}
+              placeholder="DELETE"
+            />
+            <Button
+              variant="destructive"
+              className="mt-3 w-full"
+              disabled={confirm !== "DELETE" || deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate()}
+            >
+              <Trash2 className="size-4" />
+              Delete class permanently
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+

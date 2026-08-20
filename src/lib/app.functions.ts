@@ -315,13 +315,57 @@ export const deleteClass = createServerFn({ method: "POST" })
         .from("student_assignment_settings")
         .delete()
         .in("assignment_id", assignmentIds);
+      await supabaseAdmin.from("vocab_explanations").delete().in("assignment_id", assignmentIds);
+      await supabaseAdmin.from("assignment_vocab").delete().in("assignment_id", assignmentIds);
       await supabaseAdmin.from("questions").delete().in("assignment_id", assignmentIds);
     }
 
+    // quizzes
+    const { data: quizzes } = await supabaseAdmin
+      .from("quizzes")
+      .select("id")
+      .eq("class_id", data.classId);
+    const quizIds = (quizzes ?? []).map((q) => q.id);
+    if (quizIds.length > 0) {
+      const { data: attempts } = await supabaseAdmin
+        .from("quiz_attempts")
+        .select("id")
+        .in("quiz_id", quizIds);
+      const attemptIds = (attempts ?? []).map((a) => a.id);
+      if (attemptIds.length > 0) {
+        await supabaseAdmin.from("quiz_answers").delete().in("attempt_id", attemptIds);
+        await supabaseAdmin.from("quiz_attempts").delete().in("id", attemptIds);
+      }
+      await supabaseAdmin.from("quiz_questions").delete().in("quiz_id", quizIds);
+      await supabaseAdmin.from("quizzes").delete().in("id", quizIds);
+    }
+
+    // games
+    const { data: matches } = await supabaseAdmin
+      .from("game_matches")
+      .select("id")
+      .eq("class_id", data.classId);
+    const matchIds = (matches ?? []).map((m) => m.id);
+    if (matchIds.length > 0) {
+      await supabaseAdmin.from("game_attempts").delete().in("match_id", matchIds);
+      await supabaseAdmin.from("game_matches").delete().in("id", matchIds);
+    }
+    await supabaseAdmin.from("game_rounds").delete().eq("class_id", data.classId);
+    await supabaseAdmin.from("daily_doubles").delete().eq("class_id", data.classId);
+    await supabaseAdmin.from("token_ledger").delete().eq("class_id", data.classId);
+    await supabaseAdmin.from("game_profiles").delete().eq("class_id", data.classId);
+    await supabaseAdmin.from("class_game_settings").delete().eq("class_id", data.classId);
+
+    // materials
+    await supabaseAdmin.from("unit_materials").delete().eq("class_id", data.classId);
+    await supabaseAdmin.from("class_units").delete().eq("class_id", data.classId);
+
+    await supabaseAdmin.from("class_student_settings").delete().eq("class_id", data.classId);
     await supabaseAdmin.from("class_messages").delete().eq("class_id", data.classId);
     await supabaseAdmin.from("class_announcements").delete().eq("class_id", data.classId);
     await supabaseAdmin.from("assignments").delete().eq("class_id", data.classId);
     await supabaseAdmin.from("class_members").delete().eq("class_id", data.classId);
+
 
     const { error } = await supabaseAdmin.from("classes").delete().eq("id", data.classId);
     if (error) throw new Error(error.message);

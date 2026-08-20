@@ -223,7 +223,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
                 </label>
 
                 <div className="max-w-xs space-y-2">
-                  <Label>Vocabulary translation language</Label>
+                  <Label>Vocabulary &amp; hover translation language</Label>
                   <Select
                     value={klass.vocabLanguage}
                     onValueChange={(value) =>

@@ -620,7 +620,9 @@ export const getClassOverview = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: klass, error } = await supabase
       .from("classes")
-      .select("id, name, curriculum, subject, join_code, teacher_id, ai_warning_limit")
+      .select(
+        "id, name, curriculum, subject, join_code, teacher_id, ai_warning_limit, gradebook_detail",
+      )
       .eq("id", data.classId)
       .maybeSingle();
     if (error) throw new Error(error.message);

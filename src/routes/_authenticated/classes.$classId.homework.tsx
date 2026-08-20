@@ -184,6 +184,14 @@ function ClassPageContent({ classId }: { classId: string }) {
     retry: 2,
   });
 
+  const setDetail = useServerFn(setGradebookDetail);
+  const detailMutation = useMutation({
+    mutationFn: (input: { studentId?: string; enabled: boolean | null }) =>
+      setDetail({ data: { classId, ...input } }),
+    onSuccess: () => overview.refetch(),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   if (overview.isPending) {
     return <Skeleton className="h-64 w-full" />;
   }

@@ -1573,6 +1573,7 @@ type GradebookStudent = {
   name: string;
   email: string;
   average: number | null;
+  detailEnabled?: boolean;
   grades: Array<{
     assignmentId: string;
     status: string;
@@ -1581,6 +1582,7 @@ type GradebookStudent = {
     locked: boolean;
     aiFlagCount: number;
     penaltyPercent: number;
+    resultsReleased?: boolean;
   }>;
 };
 

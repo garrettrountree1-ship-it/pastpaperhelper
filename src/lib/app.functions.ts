@@ -709,11 +709,16 @@ export const getClassOverview = createServerFn({ method: "POST" })
         ).length,
         pastDue,
         behindCount,
+        /** Grades only appear in the gradebook once the deadline has passed. */
+        resultsReleased: a.due_at ? pastDue : true,
       };
     });
 
+    const classDetail = (klass as { gradebook_detail?: boolean | null }).gradebook_detail !== false;
+
     const students = studentIds.map((id) => {
       const profile = (profiles ?? []).find((p) => p.id === id);
+      const override = (detailOverrides ?? []).find((o) => o.student_id === id);
       const grades = assignmentRows.map((a) => {
         const sub = (submissions ?? []).find(
           (s) => s.assignment_id === a.id && s.student_id === id,
@@ -726,9 +731,12 @@ export const getClassOverview = createServerFn({ method: "POST" })
           locked: Boolean(sub?.locked_at),
           aiFlagCount: sub?.ai_flag_count ?? 0,
           penaltyPercent: Number(sub?.penalty_percent ?? 0),
+          resultsReleased: a.resultsReleased,
         };
       });
-      const marked = grades.filter((g) => g.awardedMarks !== null && g.status === "submitted");
+      const marked = grades.filter(
+        (g) => g.awardedMarks !== null && g.status === "submitted" && g.resultsReleased,
+      );
       const earned = marked.reduce((sum, g) => sum + (g.awardedMarks ?? 0), 0);
       const possible = marked.reduce((sum, g) => sum + g.totalMarks, 0);
       return {
@@ -737,6 +745,8 @@ export const getClassOverview = createServerFn({ method: "POST" })
         email: profile?.email ?? "",
         grades,
         average: possible > 0 ? Math.round((earned / possible) * 100) : null,
+        detailOverride: (override?.gradebook_detail ?? null) as boolean | null,
+        detailEnabled: override?.gradebook_detail ?? classDetail,
       };
     });
 

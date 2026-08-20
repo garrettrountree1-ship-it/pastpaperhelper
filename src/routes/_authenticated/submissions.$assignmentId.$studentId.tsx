@@ -24,9 +24,9 @@ function formatDuration(seconds: number) {
 export const Route = createFileRoute("/_authenticated/submissions/$assignmentId/$studentId")({
   head: () => ({
     meta: [
-      { title: "Review submission · STEM Homework AI" },
+      { title: "Review submission · PastPaperHelper.AI" },
       { name: "description", content: "Review a student's answers and adjust their marks." },
-      { property: "og:title", content: "Review submission · STEM Homework AI" },
+      { property: "og:title", content: "Review submission · PastPaperHelper.AI" },
       {
         property: "og:description",
         content: "Review a student's answers and adjust their marks.",

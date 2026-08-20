@@ -22,12 +22,12 @@ import {
 export const Route = createFileRoute("/_authenticated/assignments/$assignmentId/preview")({
   head: () => ({
     meta: [
-      { title: "Student view · STEM Homework AI" },
+      { title: "Student view · PastPaperHelper.AI" },
       {
         name: "description",
         content: "See a homework assignment exactly as your students will see it.",
       },
-      { property: "og:title", content: "Student view · STEM Homework AI" },
+      { property: "og:title", content: "Student view · PastPaperHelper.AI" },
       {
         property: "og:description",
         content: "See a homework assignment exactly as your students will see it.",

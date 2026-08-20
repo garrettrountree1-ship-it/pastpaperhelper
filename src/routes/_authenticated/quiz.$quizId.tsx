@@ -16,9 +16,9 @@ import { getQuizWorkspace, saveQuizAnswer, submitQuiz } from "@/lib/quizzes.func
 export const Route = createFileRoute("/_authenticated/quiz/$quizId")({
   head: () => ({
     meta: [
-      { title: "Timed quiz · STEM Homework AI" },
+      { title: "Timed quiz · PastPaperHelper.AI" },
       { name: "description", content: "Answer a timed quiz released by your teacher." },
-      { property: "og:title", content: "Timed quiz · STEM Homework AI" },
+      { property: "og:title", content: "Timed quiz · PastPaperHelper.AI" },
       { property: "og:description", content: "Answer a timed quiz released by your teacher." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

@@ -7,9 +7,9 @@ import { MaterialsSection } from "@/components/materials/MaterialsSection";
 export const Route = createFileRoute("/_authenticated/classes/$classId/materials")({
   head: () => ({
     meta: [
-      { title: "Class materials · STEM Homework AI" },
+      { title: "Class materials · PastPaperHelper.AI" },
       { name: "description", content: "Unit slides, lecture videos and class resources." },
-      { property: "og:title", content: "Class materials · STEM Homework AI" },
+      { property: "og:title", content: "Class materials · PastPaperHelper.AI" },
       { property: "og:description", content: "Unit slides, lecture videos and class resources." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

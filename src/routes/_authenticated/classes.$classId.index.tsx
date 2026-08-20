@@ -10,12 +10,12 @@ import { SECTIONS, type SectionKey } from "@/lib/sections";
 export const Route = createFileRoute("/_authenticated/classes/$classId/")({
   head: () => ({
     meta: [
-      { title: "Class home · STEM Homework AI" },
+      { title: "Class home · PastPaperHelper.AI" },
       {
         name: "description",
         content: "Class materials, homework, timed quizzes and games for this class.",
       },
-      { property: "og:title", content: "Class home · STEM Homework AI" },
+      { property: "og:title", content: "Class home · PastPaperHelper.AI" },
       {
         property: "og:description",
         content: "Class materials, homework, timed quizzes and games for this class.",

@@ -17,12 +17,12 @@ import { useDemoView } from "@/lib/demo-view";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard · STEM Homework AI" },
+      { title: "Dashboard · PastPaperHelper.AI" },
       {
         name: "description",
         content: "Jump into class materials, homework, timed quizzes or games.",
       },
-      { property: "og:title", content: "Dashboard · STEM Homework AI" },
+      { property: "og:title", content: "Dashboard · PastPaperHelper.AI" },
       {
         property: "og:description",
         content: "Jump into class materials, homework, timed quizzes or games.",
@@ -147,7 +147,7 @@ function DemoViewSwitcher({
         <p className="font-display text-lg">Demo account — teacher &amp; student in one</p>
         <p className="text-sm text-muted-foreground">
           You are currently in the <span className="font-medium text-foreground">{role} view</span>.
-          Switch back and forth to see both sides of STEM Homework AI. This dual view exists only in
+          Switch back and forth to see both sides of PastPaperHelper.AI. This dual view exists only in
           this demo account — real accounts are either a teacher or a student, never both.
         </p>
       </div>

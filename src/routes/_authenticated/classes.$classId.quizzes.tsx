@@ -6,9 +6,9 @@ import { SectionShell, SectionTabsMobile } from "@/components/SectionShell";
 export const Route = createFileRoute("/_authenticated/classes/$classId/quizzes")({
   head: () => ({
     meta: [
-      { title: "Quizzes · STEM Homework AI" },
+      { title: "Quizzes · PastPaperHelper.AI" },
       { name: "description", content: "Timed in-class quizzes built from past papers." },
-      { property: "og:title", content: "Quizzes · STEM Homework AI" },
+      { property: "og:title", content: "Quizzes · PastPaperHelper.AI" },
       { property: "og:description", content: "Timed in-class quizzes built from past papers." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

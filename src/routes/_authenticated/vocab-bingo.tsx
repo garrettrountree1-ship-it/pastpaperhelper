@@ -14,12 +14,12 @@ import { getVocabBingo, markBingoCell } from "@/lib/game-modes.functions";
 export const Route = createFileRoute("/_authenticated/vocab-bingo")({
   head: () => ({
     meta: [
-      { title: "Vocab bingo · STEM Homework AI" },
+      { title: "Vocab bingo · PastPaperHelper.AI" },
       {
         name: "description",
         content: "Match key homework vocabulary to its meaning and complete a line for tokens.",
       },
-      { property: "og:title", content: "Vocab bingo · STEM Homework AI" },
+      { property: "og:title", content: "Vocab bingo · PastPaperHelper.AI" },
       {
         property: "og:description",
         content: "Match key homework vocabulary to its meaning and complete a line for tokens.",

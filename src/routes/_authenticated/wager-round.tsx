@@ -15,12 +15,12 @@ import { getWagerRound, placeWager, submitWager } from "@/lib/game-modes.functio
 export const Route = createFileRoute("/_authenticated/wager-round")({
   head: () => ({
     meta: [
-      { title: "Wager round · STEM Homework AI" },
+      { title: "Wager round · PastPaperHelper.AI" },
       {
         name: "description",
         content: "Stake your tokens on a past-paper question before you see it.",
       },
-      { property: "og:title", content: "Wager round · STEM Homework AI" },
+      { property: "og:title", content: "Wager round · PastPaperHelper.AI" },
       {
         property: "og:description",
         content: "Stake your tokens on a past-paper question before you see it.",

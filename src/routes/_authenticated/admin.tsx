@@ -14,9 +14,9 @@ import { getAdminOverview, replySupportMessage } from "@/lib/admin.functions";
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [
-      { title: "Platform admin · STEM Homework AI" },
+      { title: "Platform admin · PastPaperHelper.AI" },
       { name: "description", content: "Accounts, email list and time spent in each section." },
-      { property: "og:title", content: "Platform admin · STEM Homework AI" },
+      { property: "og:title", content: "Platform admin · PastPaperHelper.AI" },
       {
         property: "og:description",
         content: "Accounts, email list and time spent in each section.",

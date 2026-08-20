@@ -6,7 +6,7 @@
  * clicking a link that points there sees an "Access denied" page. Email links
  * must always point at the published site.
  */
-export const PUBLIC_SITE_ORIGIN = "https://stemhomeworkai.lovable.app";
+export const PUBLIC_SITE_ORIGIN = "https://pastpaperhelperai.lovable.app";
 
 const GATED_HOST_PATTERNS = [
   "id-preview--",

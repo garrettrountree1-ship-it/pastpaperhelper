@@ -32,7 +32,7 @@ export function SupportDialog() {
   const mutation = useMutation({
     mutationFn: () => send({ data: { body } }),
     onSuccess: () => {
-      toast.success("Message sent to the STEM Homework AI team");
+      toast.success("Message sent to the PastPaperHelper.AI team");
       setBody("");
       queryClient.invalidateQueries({ queryKey: ["my-support-messages"] });
     },
@@ -49,7 +49,7 @@ export function SupportDialog() {
       </DialogTrigger>
       <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Contact the STEM Homework AI team</DialogTitle>
+          <DialogTitle>Contact the PastPaperHelper.AI team</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <Textarea

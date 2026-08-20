@@ -31,12 +31,12 @@ import {
 export const Route = createFileRoute("/_authenticated/assignments/$assignmentId/")({
   head: () => ({
     meta: [
-      { title: "Assignment · STEM Homework AI" },
+      { title: "Assignment · PastPaperHelper.AI" },
       {
         name: "description",
         content: "Answer past-paper questions and get step-by-step coaching.",
       },
-      { property: "og:title", content: "Assignment · STEM Homework AI" },
+      { property: "og:title", content: "Assignment · PastPaperHelper.AI" },
       {
         property: "og:description",
         content: "Answer past-paper questions and get step-by-step coaching.",

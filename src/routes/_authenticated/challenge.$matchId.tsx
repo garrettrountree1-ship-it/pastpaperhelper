@@ -15,9 +15,9 @@ import { getMatch, submitMatchAnswer } from "@/lib/games.functions";
 export const Route = createFileRoute("/_authenticated/challenge/$matchId")({
   head: () => ({
     meta: [
-      { title: "Head-to-head challenge · STEM Homework AI" },
+      { title: "Head-to-head challenge · PastPaperHelper.AI" },
       { name: "description", content: "Race a classmate to answer a past-paper question." },
-      { property: "og:title", content: "Head-to-head challenge · STEM Homework AI" },
+      { property: "og:title", content: "Head-to-head challenge · PastPaperHelper.AI" },
       { property: "og:description", content: "Race a classmate to answer a past-paper question." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

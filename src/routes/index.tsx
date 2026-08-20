@@ -30,13 +30,13 @@ import { DEMO_EMAIL, DEMO_PASSWORD } from "@/lib/demo";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "STEM Homework AI — Past-paper homework that teaches, for IG, A-Level & IB" },
+      { title: "PastPaperHelper.AI — Past-paper homework that teaches, for IG, A-Level & IB" },
       {
         name: "description",
         content:
           "Upload past papers and mark schemes. AI marks against the mark scheme, coaches every student with a built-in tutor, and blocks copied or AI-written work.",
       },
-      { property: "og:title", content: "STEM Homework AI — Past-paper homework that teaches" },
+      { property: "og:title", content: "PastPaperHelper.AI — Past-paper homework that teaches" },
       {
         property: "og:description",
         content:
@@ -409,7 +409,7 @@ function Landing() {
       </main>
 
       <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
-        STEM Homework AI · homework, marked and taught.
+        PastPaperHelper.AI · homework, marked and taught.
       </footer>
     </div>
   );

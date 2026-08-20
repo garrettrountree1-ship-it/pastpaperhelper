@@ -15,9 +15,9 @@ import { startDailyDouble, submitDailyDouble } from "@/lib/games.functions";
 export const Route = createFileRoute("/_authenticated/daily-double")({
   head: () => ({
     meta: [
-      { title: "Daily double · STEM Homework AI" },
+      { title: "Daily double · PastPaperHelper.AI" },
       { name: "description", content: "One bonus past-paper question a day, worth two tokens." },
-      { property: "og:title", content: "Daily double · STEM Homework AI" },
+      { property: "og:title", content: "Daily double · PastPaperHelper.AI" },
       {
         property: "og:description",
         content: "One bonus past-paper question a day, worth two tokens.",

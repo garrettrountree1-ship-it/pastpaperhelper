@@ -15,12 +15,12 @@ import { getBossQuestion, submitBoss } from "@/lib/game-modes.functions";
 export const Route = createFileRoute("/_authenticated/boss-question")({
   head: () => ({
     meta: [
-      { title: "Boss question · STEM Homework AI" },
+      { title: "Boss question · PastPaperHelper.AI" },
       {
         name: "description",
         content: "The hardest past-paper question of the day, worth three tokens.",
       },
-      { property: "og:title", content: "Boss question · STEM Homework AI" },
+      { property: "og:title", content: "Boss question · PastPaperHelper.AI" },
       {
         property: "og:description",
         content: "The hardest past-paper question of the day, worth three tokens.",

@@ -80,13 +80,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "STEM Homework AI — AI homework tutor for IGCSE, A-Level & IB" },
+      { title: "PastPaperHelper.AI — AI homework tutor for IGCSE, A-Level & IB" },
       {
         name: "description",
         content:
           "Set past-paper homework, mark it against the official mark scheme, and coach students step by step to close knowledge gaps.",
       },
-      { property: "og:title", content: "STEM Homework AI — AI homework tutor" },
+      { property: "og:title", content: "PastPaperHelper.AI — AI homework tutor" },
       {
         property: "og:description",
         content: "Past-paper homework marked against mark schemes, with Socratic coaching.",

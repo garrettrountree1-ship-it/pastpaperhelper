@@ -1599,26 +1599,31 @@ function GradebookRow({
   student,
   columns,
   onChanged,
+  onToggleDetail,
 }: {
   classId: string;
   student: GradebookStudent;
   columns: number;
   onChanged: () => void;
+  onToggleDetail: (enabled: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const detailEnabled = student.detailEnabled !== false;
 
   return (
     <>
       <TableRow>
         <TableCell className="w-10">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={open ? "Hide student detail" : "Show student detail"}
-            onClick={() => setOpen((value) => !value)}
-          >
-            {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
-          </Button>
+          {detailEnabled ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={open ? "Hide student detail" : "Show student detail"}
+              onClick={() => setOpen((value) => !value)}
+            >
+              {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+            </Button>
+          ) : null}
         </TableCell>
         <TableCell className="font-medium">
           {student.name}
@@ -1630,7 +1635,9 @@ function GradebookRow({
         </TableCell>
         {student.grades.map((grade) => (
           <TableCell key={grade.assignmentId}>
-            {grade.status === "not_started" ? (
+            {grade.resultsReleased === false ? (
+              <span className="text-muted-foreground">Pending</span>
+            ) : grade.status === "not_started" ? (
               <span className="text-muted-foreground">—</span>
             ) : (
               <Link
@@ -1650,8 +1657,18 @@ function GradebookRow({
         <TableCell className="font-display">
           {student.average === null ? "—" : `${student.average}%`}
         </TableCell>
+        <TableCell>
+          <Switch
+            checked={detailEnabled}
+            aria-label={`Detailed report for ${student.name}`}
+            onCheckedChange={(checked) => {
+              if (!checked) setOpen(false);
+              onToggleDetail(checked);
+            }}
+          />
+        </TableCell>
       </TableRow>
-      {open ? (
+      {open && detailEnabled ? (
         <TableRow>
           <TableCell colSpan={columns} className="bg-secondary/30 p-4">
             <StudentReport classId={classId} studentId={student.id} onChanged={onChanged} />

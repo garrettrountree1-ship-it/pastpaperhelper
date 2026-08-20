@@ -1,14 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Settings, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { createClass, getMe, joinClass, setOAuthRole } from "@/lib/app.functions";
+import {
+  createClass,
+  deleteClass,
+  getMe,
+  joinClass,
+  setOAuthRole,
+  updateClass,
+} from "@/lib/app.functions";
+
 import { listMaterialClasses } from "@/lib/materials.functions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

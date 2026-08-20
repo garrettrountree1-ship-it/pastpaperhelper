@@ -365,6 +365,7 @@ export type Database = {
         Row: {
           class_id: string
           created_at: string
+          gradebook_detail: boolean | null
           id: string
           keyword_translation: boolean | null
           student_can_change_level: boolean | null
@@ -377,6 +378,7 @@ export type Database = {
         Insert: {
           class_id: string
           created_at?: string
+          gradebook_detail?: boolean | null
           id?: string
           keyword_translation?: boolean | null
           student_can_change_level?: boolean | null
@@ -389,6 +391,7 @@ export type Database = {
         Update: {
           class_id?: string
           created_at?: string
+          gradebook_detail?: boolean | null
           id?: string
           keyword_translation?: boolean | null
           student_can_change_level?: boolean | null
@@ -454,6 +457,7 @@ export type Database = {
           ai_warning_limit: number
           created_at: string
           curriculum: string
+          gradebook_detail: boolean
           id: string
           join_code: string
           keyword_translation: boolean
@@ -471,6 +475,7 @@ export type Database = {
           ai_warning_limit?: number
           created_at?: string
           curriculum?: string
+          gradebook_detail?: boolean
           id?: string
           join_code: string
           keyword_translation?: boolean
@@ -488,6 +493,7 @@ export type Database = {
           ai_warning_limit?: number
           created_at?: string
           curriculum?: string
+          gradebook_detail?: boolean
           id?: string
           join_code?: string
           keyword_translation?: boolean

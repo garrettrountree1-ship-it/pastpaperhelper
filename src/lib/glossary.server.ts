@@ -13,6 +13,29 @@ const schema = z.object({
 });
 
 /**
+ * Keeps hover glosses to a plain translation: strips trailing definitions,
+ * bracketed notes and anything sentence-length that the model may add.
+ */
+function cleanTerms(terms: GlossaryTerm[]): GlossaryTerm[] {
+  return terms
+    .map((item) => {
+      let translation = item.translation
+        .replace(/[（(][^）)]*[）)]/g, "")
+        .split(/[;；]|\s[-–—]\s/)[0]!
+        .replace(/^\s*(?:means|meaning|definition)\s*[:：]?\s*/i, "")
+        .replace(/[。.]\s*$/, "")
+        .trim();
+      // A translation should never be a sentence-length explanation.
+      if (translation.split(/\s+/).length > 6 || translation.length > 40) {
+        translation = translation.split(/[,，]/)[0]!.trim();
+      }
+      return { term: item.term.trim(), translation };
+    })
+    .filter((item) => item.term.length > 0 && item.translation.length > 0)
+    .filter((item) => item.translation.split(/\s+/).length <= 6 && item.translation.length <= 40);
+}
+
+/**
  * Key subject words from an exam question with a short Chinese gloss.
  * Only individual words/short phrases — never a translation of the question,
  * so students cannot use it to bypass writing their own English answer.
@@ -28,7 +51,9 @@ export async function keywordGlossary(
       "You help English-language-learner students read exam questions in English.",
       "Pick only the words or two-word phrases in the question that are likely to block understanding: subject-specific terms and command words (describe, explain, calculate, state, deduce).",
       "Never translate whole sentences or clauses, never translate the answer, and never add words that are not in the question.",
-      `Return at most 10 items as JSON: {"terms":[{"term":"exact word from the question","translation":"very short gloss in ${language}"}]}`,
+      `The translation field must be ONLY the direct dictionary translation of that word into ${language} — the equivalent word or short phrase, nothing else.`,
+      "Never write a definition, description, explanation, example or extra English text in the translation field. No parentheses, no notes.",
+      `Return at most 10 items as JSON: {"terms":[{"term":"exact word from the question","translation":"the word in ${language} only"}]}`,
       "Return JSON only.",
     ].join(" "),
     prompt: `Subject: ${subject || "General science"}\nQuestion:\n${questionText}`,
@@ -40,7 +65,7 @@ export async function keywordGlossary(
   const end = source.lastIndexOf("}");
   const json = start >= 0 && end > start ? source.slice(start, end + 1) : source;
   try {
-    return schema.parse(JSON.parse(json)).terms;
+    return cleanTerms(schema.parse(JSON.parse(json)).terms);
   } catch {
     return [];
   }
@@ -62,7 +87,8 @@ export async function tutorGlossary(
       "You help English-language-learner students read a tutor's feedback written in English.",
       "Pick only single words or two-word phrases from the tutor text that a beginner English learner would not know: subject terms and academic verbs.",
       "Never translate sentences or clauses, never invent words that are not in the text, and never translate more than 8 items.",
-      `Return JSON only: {"terms":[{"term":"exact word from the text","translation":"very short gloss in ${language}"}]}`,
+      `The translation field must be ONLY the direct dictionary translation of that word into ${language} — the equivalent word or short phrase, never a definition, description or explanation, and no extra English text or parentheses.`,
+      `Return JSON only: {"terms":[{"term":"exact word from the text","translation":"the word in ${language} only"}]}`,
     ].join(" "),
     prompt: `Subject: ${subject || "General science"}\nTutor text:\n${tutorText}`,
   });
@@ -73,7 +99,7 @@ export async function tutorGlossary(
   const end = source.lastIndexOf("}");
   const json = start >= 0 && end > start ? source.slice(start, end + 1) : source;
   try {
-    return schema.parse(JSON.parse(json)).terms;
+    return cleanTerms(schema.parse(JSON.parse(json)).terms);
   } catch {
     return [];
   }

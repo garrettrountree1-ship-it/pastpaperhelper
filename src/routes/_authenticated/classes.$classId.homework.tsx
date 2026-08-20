@@ -54,6 +54,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { downloadXlsx } from "@/lib/xlsx-export";
 import {
   Table,
   TableBody,
@@ -81,6 +83,7 @@ import {
   getClassOverview,
   getMe,
   getStudentClassReport,
+  setGradebookDetail,
   updateAssignment,
   unlockSubmission,
   updateClass,
@@ -2109,4 +2112,31 @@ function MessagesPanel({ classId }: { classId: string }) {
       )}
     </section>
   );
+}
+
+/** Exports every student's grade for every assignment in the class. */
+function downloadGradebook(
+  className: string,
+  assignments: Array<{ id: string; title: string; totalMarks: number; dueAt: string | null }>,
+  students: GradebookStudent[],
+) {
+  const header = [
+    "Student",
+    "Email",
+    ...assignments.map((a) => `${a.title} (/${a.totalMarks})`),
+    "Average %",
+  ];
+  const rows = students.map((student) => [
+    student.name,
+    student.email,
+    ...student.grades.map((grade) =>
+      grade.resultsReleased === false
+        ? "Pending"
+        : grade.status === "not_started"
+          ? "Not started"
+          : (grade.awardedMarks ?? 0),
+    ),
+    student.average === null ? "" : student.average,
+  ]);
+  downloadXlsx(`${className} gradebook`, "Gradebook", [header, ...rows]);
 }

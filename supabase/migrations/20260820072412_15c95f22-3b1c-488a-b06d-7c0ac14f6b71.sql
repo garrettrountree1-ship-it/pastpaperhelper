@@ -1,0 +1,1 @@
+UPDATE public.questions SET keyword_glossary = '[]'::jsonb WHERE keyword_glossary IS NOT NULL AND keyword_glossary <> '[]'::jsonb;

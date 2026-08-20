@@ -345,6 +345,6 @@ export const getTutorGlossary = createServerFn({ method: "POST" })
     if (!settings.keywordTranslation) return { terms: [] as Array<{ term: string; translation: string }> };
 
     const { tutorGlossary } = await import("./glossary.server");
-    const terms = await tutorGlossary(data.text, assignment?.subject ?? "", settings.language);
+    const terms = await tutorGlossary(data.text, assignment?.subject ?? "", settings.vocabLanguage);
     return { terms };
   });

@@ -388,7 +388,7 @@ function Landing() {
             <div className="mt-2 flex flex-wrap justify-center gap-3">
               <Button asChild size="lg">
                 <Link to="/auth" search={{ mode: "signup" }}>
-                  Create a teacher account
+                  Create an account
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline">

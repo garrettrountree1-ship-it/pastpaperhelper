@@ -17,6 +17,7 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   ChevronDown,
   ChevronRight,
+  Download,
   Eye,
   Lock,
   Pencil,
@@ -53,6 +54,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { downloadXlsx } from "@/lib/xlsx-export";
 import {
   Table,
   TableBody,
@@ -80,6 +83,7 @@ import {
   getClassOverview,
   getMe,
   getStudentClassReport,
+  setGradebookDetail,
   updateAssignment,
   unlockSubmission,
   updateClass,
@@ -183,6 +187,14 @@ function ClassPageContent({ classId }: { classId: string }) {
     retry: 2,
   });
 
+  const setDetail = useServerFn(setGradebookDetail);
+  const detailMutation = useMutation({
+    mutationFn: (input: { studentId?: string; enabled: boolean | null }) =>
+      setDetail({ data: { classId, ...input } }),
+    onSuccess: () => overview.refetch(),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   if (overview.isPending) {
     return <Skeleton className="h-64 w-full" />;
   }
@@ -253,6 +265,26 @@ function ClassPageContent({ classId }: { classId: string }) {
             </div>
           ) : (
             <div className="paper overflow-x-auto p-2">
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="gradebook-detail"
+                    checked={data.klass.gradebook_detail !== false}
+                    onCheckedChange={(checked) => detailMutation.mutate({ enabled: checked })}
+                  />
+                  <Label htmlFor="gradebook-detail" className="text-sm">
+                    Detailed reports (time on task, tutor chats, every attempt)
+                  </Label>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    downloadGradebook(data.klass.name, data.assignments, data.students)
+                  }
+                >
+                  <Download className="size-4" /> Download .xlsx
+                </Button>
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -294,6 +326,7 @@ function ClassPageContent({ classId }: { classId: string }) {
                       </TableHead>
                     ))}
                     <TableHead>Average</TableHead>
+                    <TableHead className="whitespace-nowrap">Detail</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -302,15 +335,20 @@ function ClassPageContent({ classId }: { classId: string }) {
                       key={student.id}
                       classId={classId}
                       student={student}
-                      columns={data.assignments.length + 3}
+                      columns={data.assignments.length + 4}
+                      onToggleDetail={(enabled) =>
+                        detailMutation.mutate({ studentId: student.id, enabled })
+                      }
                       onChanged={() => overview.refetch()}
                     />
                   ))}
                 </TableBody>
               </Table>
               <p className="p-3 text-xs text-muted-foreground">
-                * still in progress. Click a score to review answers and adjust marks, or open
-                a row to see time spent, tutor questions and every attempt.
+                Scores appear once an assignment&apos;s deadline has passed. * still in progress.
+                Click a score to review answers and adjust marks. Turn detail on — for the class
+                above or per student in the last column — to see time spent, tutor questions and
+                every attempt.
               </p>
             </div>
           )}
@@ -1546,6 +1584,7 @@ type GradebookStudent = {
   name: string;
   email: string;
   average: number | null;
+  detailEnabled?: boolean;
   grades: Array<{
     assignmentId: string;
     status: string;
@@ -1554,6 +1593,7 @@ type GradebookStudent = {
     locked: boolean;
     aiFlagCount: number;
     penaltyPercent: number;
+    resultsReleased?: boolean;
   }>;
 };
 
@@ -1570,26 +1610,31 @@ function GradebookRow({
   student,
   columns,
   onChanged,
+  onToggleDetail,
 }: {
   classId: string;
   student: GradebookStudent;
   columns: number;
   onChanged: () => void;
+  onToggleDetail: (enabled: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const detailEnabled = student.detailEnabled !== false;
 
   return (
     <>
       <TableRow>
         <TableCell className="w-10">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={open ? "Hide student detail" : "Show student detail"}
-            onClick={() => setOpen((value) => !value)}
-          >
-            {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
-          </Button>
+          {detailEnabled ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={open ? "Hide student detail" : "Show student detail"}
+              onClick={() => setOpen((value) => !value)}
+            >
+              {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+            </Button>
+          ) : null}
         </TableCell>
         <TableCell className="font-medium">
           {student.name}
@@ -1601,7 +1646,9 @@ function GradebookRow({
         </TableCell>
         {student.grades.map((grade) => (
           <TableCell key={grade.assignmentId}>
-            {grade.status === "not_started" ? (
+            {grade.resultsReleased === false ? (
+              <span className="text-muted-foreground">Pending</span>
+            ) : grade.status === "not_started" ? (
               <span className="text-muted-foreground">—</span>
             ) : (
               <Link
@@ -1621,8 +1668,18 @@ function GradebookRow({
         <TableCell className="font-display">
           {student.average === null ? "—" : `${student.average}%`}
         </TableCell>
+        <TableCell>
+          <Switch
+            checked={detailEnabled}
+            aria-label={`Detailed report for ${student.name}`}
+            onCheckedChange={(checked) => {
+              if (!checked) setOpen(false);
+              onToggleDetail(checked);
+            }}
+          />
+        </TableCell>
       </TableRow>
-      {open ? (
+      {open && detailEnabled ? (
         <TableRow>
           <TableCell colSpan={columns} className="bg-secondary/30 p-4">
             <StudentReport classId={classId} studentId={student.id} onChanged={onChanged} />
@@ -2055,4 +2112,31 @@ function MessagesPanel({ classId }: { classId: string }) {
       )}
     </section>
   );
+}
+
+/** Exports every student's grade for every assignment in the class. */
+function downloadGradebook(
+  className: string,
+  assignments: Array<{ id: string; title: string; totalMarks: number; dueAt: string | null }>,
+  students: GradebookStudent[],
+) {
+  const header = [
+    "Student",
+    "Email",
+    ...assignments.map((a) => `${a.title} (/${a.totalMarks})`),
+    "Average %",
+  ];
+  const rows = students.map((student) => [
+    student.name,
+    student.email,
+    ...student.grades.map((grade) =>
+      grade.resultsReleased === false
+        ? "Pending"
+        : grade.status === "not_started"
+          ? "Not started"
+          : (grade.awardedMarks ?? 0),
+    ),
+    student.average === null ? "" : student.average,
+  ]);
+  downloadXlsx(`${className} gradebook`, "Gradebook", [header, ...rows]);
 }

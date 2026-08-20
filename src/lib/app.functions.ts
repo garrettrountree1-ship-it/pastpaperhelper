@@ -620,7 +620,9 @@ export const getClassOverview = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: klass, error } = await supabase
       .from("classes")
-      .select("id, name, curriculum, subject, join_code, teacher_id, ai_warning_limit")
+      .select(
+        "id, name, curriculum, subject, join_code, teacher_id, ai_warning_limit, gradebook_detail",
+      )
       .eq("id", data.classId)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -643,6 +645,13 @@ export const getClassOverview = createServerFn({ method: "POST" })
     const { data: profiles } = studentIds.length
       ? await db.from("profiles").select("id, full_name, email").in("id", studentIds)
       : { data: [] };
+
+    const { data: detailOverrides } = studentIds.length
+      ? await db
+          .from("class_student_settings")
+          .select("student_id, gradebook_detail")
+          .eq("class_id", data.classId)
+      : { data: [] as Array<{ student_id: string; gradebook_detail: boolean | null }> };
 
     const { data: questions } = assignmentIds.length
       ? await db.from("questions").select("assignment_id, marks").in("assignment_id", assignmentIds)
@@ -700,11 +709,16 @@ export const getClassOverview = createServerFn({ method: "POST" })
         ).length,
         pastDue,
         behindCount,
+        /** Grades only appear in the gradebook once the deadline has passed. */
+        resultsReleased: a.due_at ? pastDue : true,
       };
     });
 
+    const classDetail = (klass as { gradebook_detail?: boolean | null }).gradebook_detail !== false;
+
     const students = studentIds.map((id) => {
       const profile = (profiles ?? []).find((p) => p.id === id);
+      const override = (detailOverrides ?? []).find((o) => o.student_id === id);
       const grades = assignmentRows.map((a) => {
         const sub = (submissions ?? []).find(
           (s) => s.assignment_id === a.id && s.student_id === id,
@@ -717,9 +731,12 @@ export const getClassOverview = createServerFn({ method: "POST" })
           locked: Boolean(sub?.locked_at),
           aiFlagCount: sub?.ai_flag_count ?? 0,
           penaltyPercent: Number(sub?.penalty_percent ?? 0),
+          resultsReleased: a.resultsReleased,
         };
       });
-      const marked = grades.filter((g) => g.awardedMarks !== null && g.status === "submitted");
+      const marked = grades.filter(
+        (g) => g.awardedMarks !== null && g.status === "submitted" && g.resultsReleased,
+      );
       const earned = marked.reduce((sum, g) => sum + (g.awardedMarks ?? 0), 0);
       const possible = marked.reduce((sum, g) => sum + g.totalMarks, 0);
       return {
@@ -728,6 +745,8 @@ export const getClassOverview = createServerFn({ method: "POST" })
         email: profile?.email ?? "",
         grades,
         average: possible > 0 ? Math.round((earned / possible) * 100) : null,
+        detailOverride: (override?.gradebook_detail ?? null) as boolean | null,
+        detailEnabled: override?.gradebook_detail ?? classDetail,
       };
     });
 
@@ -2384,4 +2403,55 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
 
+  });
+
+/**
+ * Teacher toggles the detailed gradebook report (time on task, tutor chats,
+ * every attempt). `studentId` omitted sets the whole-class default; with a
+ * `studentId`, `enabled: null` clears the override back to the class default.
+ */
+export const setGradebookDetail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        classId: z.string().uuid(),
+        studentId: z.string().uuid().optional(),
+        enabled: z.boolean().nullable(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: isTeacher } = await supabase.rpc("is_class_teacher", {
+      _class_id: data.classId,
+      _user_id: userId,
+    });
+    if (!isTeacher) throw new Error("Not allowed.");
+
+    const db = await admin();
+    if (!data.studentId) {
+      const { error } = await db
+        .from("classes")
+        .update({ gradebook_detail: data.enabled !== false })
+        .eq("id", data.classId);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+
+    const { data: existing } = await db
+      .from("class_student_settings")
+      .select("id")
+      .eq("class_id", data.classId)
+      .eq("student_id", data.studentId)
+      .maybeSingle();
+
+    const patch = { gradebook_detail: data.enabled, updated_by: userId, updated_at: new Date().toISOString() };
+    const { error } = existing
+      ? await db.from("class_student_settings").update(patch).eq("id", existing.id)
+      : await db
+          .from("class_student_settings")
+          .insert({ class_id: data.classId, student_id: data.studentId, ...patch });
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });

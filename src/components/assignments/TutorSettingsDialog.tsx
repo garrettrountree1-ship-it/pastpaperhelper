@@ -200,7 +200,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
                     Hover translation of key words
                     <span className="block text-xs text-muted-foreground">
                       Underlines key words in questions, tutor replies and vocab definitions so
-                      students can hover for a short {klass.tutorLanguage} meaning. Turn it off for
+                      students can hover for the word in {klass.vocabLanguage}. Turn it off for
                       individual students below.
                     </span>
                   </span>

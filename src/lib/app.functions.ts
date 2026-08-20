@@ -646,6 +646,13 @@ export const getClassOverview = createServerFn({ method: "POST" })
       ? await db.from("profiles").select("id, full_name, email").in("id", studentIds)
       : { data: [] };
 
+    const { data: detailOverrides } = studentIds.length
+      ? await db
+          .from("class_student_settings")
+          .select("student_id, gradebook_detail")
+          .eq("class_id", data.classId)
+      : { data: [] as Array<{ student_id: string; gradebook_detail: boolean | null }> };
+
     const { data: questions } = assignmentIds.length
       ? await db.from("questions").select("assignment_id, marks").in("assignment_id", assignmentIds)
       : { data: [] };

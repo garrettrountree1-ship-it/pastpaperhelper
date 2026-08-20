@@ -253,6 +253,26 @@ function ClassPageContent({ classId }: { classId: string }) {
             </div>
           ) : (
             <div className="paper overflow-x-auto p-2">
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="gradebook-detail"
+                    checked={data.klass.gradebook_detail !== false}
+                    onCheckedChange={(checked) => detailMutation.mutate({ enabled: checked })}
+                  />
+                  <Label htmlFor="gradebook-detail" className="text-sm">
+                    Detailed reports (time on task, tutor chats, every attempt)
+                  </Label>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    downloadGradebook(data.klass.name, data.assignments, data.students)
+                  }
+                >
+                  <Download className="size-4" /> Download .xlsx
+                </Button>
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -294,6 +314,7 @@ function ClassPageContent({ classId }: { classId: string }) {
                       </TableHead>
                     ))}
                     <TableHead>Average</TableHead>
+                    <TableHead className="whitespace-nowrap">Detail</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -302,15 +323,20 @@ function ClassPageContent({ classId }: { classId: string }) {
                       key={student.id}
                       classId={classId}
                       student={student}
-                      columns={data.assignments.length + 3}
+                      columns={data.assignments.length + 4}
+                      onToggleDetail={(enabled) =>
+                        detailMutation.mutate({ studentId: student.id, enabled })
+                      }
                       onChanged={() => overview.refetch()}
                     />
                   ))}
                 </TableBody>
               </Table>
               <p className="p-3 text-xs text-muted-foreground">
-                * still in progress. Click a score to review answers and adjust marks, or open
-                a row to see time spent, tutor questions and every attempt.
+                Scores appear once an assignment&apos;s deadline has passed. * still in progress.
+                Click a score to review answers and adjust marks. Turn detail on — for the class
+                above or per student in the last column — to see time spent, tutor questions and
+                every attempt.
               </p>
             </div>
           )}

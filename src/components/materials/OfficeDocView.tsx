@@ -31,6 +31,7 @@ export function OfficeDocView({
     (async () => {
       try {
         const buffer = await (await fetch(url)).arrayBuffer();
+        console.log("OFFICEDOC_FETCH", format, buffer.byteLength);
         if (cancelled) return;
 
         if (format === "docx") {
@@ -51,7 +52,8 @@ export function OfficeDocView({
         await previewer.preview(buffer);
         if (cancelled) return;
         setStatus("ready");
-      } catch {
+      } catch (e) {
+        console.log("OFFICEDOC_ERR", String(e));
         if (!cancelled) setStatus("failed");
       }
     })();

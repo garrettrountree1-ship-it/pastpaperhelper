@@ -231,15 +231,17 @@ export function LessonWorkspace({
           )}
         </div>
       ) : (
-        <div
-          ref={rowRef}
-          className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2 lg:flex-row lg:gap-0 lg:overflow-hidden"
-        >
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2 lg:flex-row lg:overflow-hidden">
+          <div
+            ref={rowRef}
+            className="flex min-w-0 flex-col gap-2 lg:h-full lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-0"
+          >
           {/* Lesson canvas — resizable left half */}
           <div
             className="min-h-[70vh] lg:h-full lg:min-h-0"
             style={{ width: `${split}%` }}
           >
+
             <NotesCanvas
               classId={classId}
               sectionId={active.id}

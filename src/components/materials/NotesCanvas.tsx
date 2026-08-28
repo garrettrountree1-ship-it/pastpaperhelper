@@ -52,6 +52,7 @@ export function NotesCanvas({
   canEdit: boolean;
   initialBlocks: NoteBlock[];
   initialSummary: string | null;
+  initialTab?: "notes" | "summary";
   onConcept: (value: string) => void;
   onSaved?: () => void;
 }) {

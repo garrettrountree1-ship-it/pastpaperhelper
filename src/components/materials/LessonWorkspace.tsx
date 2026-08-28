@@ -245,6 +245,10 @@ export function LessonWorkspace({
                     size="sm"
                     variant={section.id === active?.id ? "default" : "outline"}
                     onClick={() => setActiveId(section.id)}
+                    onDoubleClick={() => {
+                      if (canManage) startRename(section);
+                    }}
+                    title={canManage ? "Click to open · double-click to rename" : undefined}
                   >
                     {section.title}
                   </Button>
@@ -653,7 +657,7 @@ function PlanStrip({
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b bg-muted/40 px-4 py-1.5 text-xs">
       <span className="flex items-center gap-1 font-medium text-muted-foreground">
         <CalendarDays className="size-3.5" />
-        {section.title} schedule
+        {section.title} · schedule for this section
       </span>
       {canManage ? (
         <>

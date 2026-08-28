@@ -193,6 +193,10 @@ export function NotesCanvas({
             <PenLine className="size-4" />
             Draw
           </Button>
+          <Button size="sm" variant={mode === "erase" ? "default" : "outline"} onClick={() => setMode("erase")}>
+            <Eraser className="size-4" />
+            Erase
+          </Button>
           {mode === "draw"
             ? PEN_COLORS.map((value) => (
                 <button

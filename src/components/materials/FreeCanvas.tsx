@@ -3,7 +3,41 @@ import { useRef, useState } from "react";
 
 import type { NoteBlock } from "@/lib/notes.functions";
 
-export type CanvasMode = "type" | "draw";
+export type CanvasMode = "type" | "draw" | "erase";
+
+/** Distance from a point to a segment, for eraser hit-testing. */
+function distToSegment(
+  p: { x: number; y: number },
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lenSq = dx * dx + dy * dy;
+  const t = lenSq === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq));
+  const cx = a.x + t * dx;
+  const cy = a.y + t * dy;
+  return Math.hypot(p.x - cx, p.y - cy);
+}
+
+function pointsOf(d: string): Array<{ x: number; y: number }> {
+  return d
+    .split(/(?=[ML])/)
+    .map((chunk) => {
+      const match = chunk.match(/[ML](-?\d+)\s+(-?\d+)/);
+      return match ? { x: Number(match[1]), y: Number(match[2]) } : null;
+    })
+    .filter((p): p is { x: number; y: number } => p !== null);
+}
+
+function strokeHit(ink: Extract<NoteBlock, { type: "ink" }>, at: { x: number; y: number }) {
+  const pts = pointsOf(ink.d);
+  const radius = Math.max(10, ink.width + 8);
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (distToSegment(at, pts[i]!, pts[i + 1]!) <= radius) return true;
+  }
+  return pts.length === 1 && distToSegment(at, pts[0]!, pts[0]!) <= radius;
+}
 
 /** Words in read-only notes are clickable so the tutor can explain a concept. */
 function ClickableText({ text, onConcept }: { text: string; onConcept: (value: string) => void }) {

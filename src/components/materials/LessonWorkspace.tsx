@@ -245,6 +245,10 @@ export function LessonWorkspace({
                     size="sm"
                     variant={section.id === active?.id ? "default" : "outline"}
                     onClick={() => setActiveId(section.id)}
+                    onDoubleClick={() => {
+                      if (canManage) startRename(section);
+                    }}
+                    title={canManage ? "Click to open · double-click to rename" : undefined}
                   >
                     {section.title}
                   </Button>

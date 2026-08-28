@@ -206,6 +206,7 @@ export function LessonWorkspace({
               canEdit={canManage}
               initialBlocks={active.notes_blocks}
               initialSummary={active.ai_summary}
+              initialTab={initialTab}
               onConcept={setConcept}
               onSaved={invalidateSections}
             />

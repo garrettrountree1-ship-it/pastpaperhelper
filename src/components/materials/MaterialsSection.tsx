@@ -13,6 +13,10 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { OfficeDocView } from "@/components/materials/OfficeDocView";
+import { PdfDocView } from "@/components/materials/PdfDocView";
+import { docFormat } from "@/lib/doc-kind";
+
 import { LessonWorkspace } from "@/components/materials/LessonWorkspace";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -307,6 +311,7 @@ function MaterialRow({
   onOpenWorkspace: (tab: "notes" | "summary") => void;
 }) {
   const Icon = kindIcons[material.kind] ?? FileText;
+  const viewerFormat = docFormat(material.storage_path ?? material.file_name ?? material.title);
   const getUrl = useServerFn(getMaterialUrl);
   const remove = useServerFn(deleteMaterial);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
@@ -316,7 +321,7 @@ function MaterialRow({
     setBusy(true);
     try {
       const { url } = await getUrl({ data: { materialId: material.id, download } });
-      if (download || material.external_url || material.kind === "slides") {
+      if (download || material.external_url || viewerFormat === "legacy") {
         window.open(url, "_blank", "noopener,noreferrer");
       } else {
         setViewerUrl(url);
@@ -398,6 +403,22 @@ function MaterialRow({
                 alt={material.title}
                 className="max-h-[70vh] w-full rounded-md object-contain"
               />
+            ) : viewerFormat === "pptx" || viewerFormat === "docx" ? (
+              <div className="h-[70vh]">
+                <OfficeDocView
+                  url={viewerUrl}
+                  title={material.title}
+                  format={viewerFormat === "pptx" ? "pptx" : "docx"}
+                />
+              </div>
+            ) : viewerFormat === "pdf" ? (
+              <div className="h-[70vh]">
+                <PdfDocView
+                  url={viewerUrl}
+                  title={material.title}
+                  cacheKey={`material:${material.id}`}
+                />
+              </div>
             ) : (
               <iframe src={viewerUrl} title={material.title} className="h-[70vh] w-full rounded-md" />
             )
@@ -434,12 +455,20 @@ function UploadDialog({
         });
       } else {
         if (!file) throw new Error("Choose a file first.");
+        if (file.size > 45 * 1024 * 1024) {
+          throw new Error(
+            "That file is larger than 45 MB. Please compress it or split it before uploading.",
+          );
+        }
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const path = `${classId}/${unitId}/${crypto.randomUUID()}-${safeName}`;
         const { error } = await supabase.storage
           .from("class-materials")
-          .upload(path, file, { contentType: file.type || "application/octet-stream" });
-        if (error) throw new Error(error.message);
+          .upload(path, file, {
+            contentType: file.type || "application/octet-stream",
+            upsert: true,
+          });
+        if (error) throw new Error(`Upload failed: ${error.message}`);
         await record({
           data: {
             unitId,

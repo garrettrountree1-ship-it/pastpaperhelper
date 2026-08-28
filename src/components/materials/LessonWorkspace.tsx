@@ -1,0 +1,387 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { ArrowLeft, CalendarDays, Plus, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+import { LessonTutorBar } from "@/components/materials/LessonTutorBar";
+import { NotesCanvas } from "@/components/materials/NotesCanvas";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { getMaterialUrl, updateUnit } from "@/lib/materials.functions";
+import {
+  createSection,
+  deleteSection,
+  listSections,
+  updateSection,
+} from "@/lib/notes.functions";
+
+type UnitMaterial = {
+  id: string;
+  title: string;
+  kind: string;
+  storage_path: string | null;
+  external_url: string | null;
+};
+
+export type WorkspaceUnit = {
+  id: string;
+  title: string;
+  description: string | null;
+  planned_start: string | null;
+  planned_end: string | null;
+  planned_classes: number | null;
+  materials: UnitMaterial[];
+};
+
+function planLine(unit: WorkspaceUnit) {
+  const dates =
+    unit.planned_start && unit.planned_end
+      ? `${unit.planned_start} → ${unit.planned_end}`
+      : unit.planned_start || unit.planned_end || "Dates not set";
+  const classes =
+    unit.planned_classes && unit.planned_classes > 0
+      ? `${unit.planned_classes} class${unit.planned_classes === 1 ? "" : "es"} planned`
+      : "Number of classes not set";
+  return `${dates} · ${classes}`;
+}
+
+export function LessonWorkspace({
+  classId,
+  unit,
+  canManage,
+  onBack,
+  onUnitChanged,
+}: {
+  classId: string;
+  unit: WorkspaceUnit;
+  canManage: boolean;
+  onBack: () => void;
+  onUnitChanged: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const fetchSections = useServerFn(listSections);
+  const addSection = useServerFn(createSection);
+  const patchSection = useServerFn(updateSection);
+  const removeSection = useServerFn(deleteSection);
+  const getUrl = useServerFn(getMaterialUrl);
+
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [concept, setConcept] = useState<string | null>(null);
+  const [term, setTerm] = useState("");
+
+  const sections = useQuery({
+    queryKey: ["unit-sections", unit.id],
+    queryFn: () => fetchSections({ data: { unitId: unit.id } }),
+  });
+
+  const list = sections.data ?? [];
+  const active = list.find((section) => section.id === activeId) ?? list[0] ?? null;
+
+  useEffect(() => {
+    if (!activeId && list.length > 0) setActiveId(list[0]!.id);
+  }, [activeId, list]);
+
+  const invalidateSections = () =>
+    queryClient.invalidateQueries({ queryKey: ["unit-sections", unit.id] });
+
+  const createMutation = useMutation({
+    mutationFn: (title: string) => addSection({ data: { unitId: unit.id, title } }),
+    onSuccess: async (section) => {
+      await invalidateSections();
+      setActiveId(section.id);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const attachMutation = useMutation({
+    mutationFn: (materialId: string | null) =>
+      patchSection({ data: { sectionId: active!.id, materialId } }),
+    onSuccess: invalidateSections,
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const material = unit.materials.find((m) => m.id === active?.material_id) ?? null;
+  const docUrl = useQuery({
+    queryKey: ["material-url", material?.id],
+    queryFn: () => getUrl({ data: { materialId: material!.id } }),
+    enabled: Boolean(material),
+  });
+
+  return (
+    <div className="space-y-3">
+      <div className="paper flex flex-wrap items-start justify-between gap-3 p-4">
+        <div className="min-w-0">
+          <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2 mb-1">
+            <ArrowLeft className="size-4" />
+            All units
+          </Button>
+          <h2 className="font-display text-2xl">{unit.title}</h2>
+          <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+            <CalendarDays className="size-4" />
+            {planLine(unit)}
+          </p>
+          {unit.description ? (
+            <p className="mt-1 max-w-prose text-sm text-muted-foreground">{unit.description}</p>
+          ) : null}
+        </div>
+        {canManage ? <UnitPlanDialog unit={unit} onSaved={onUnitChanged} /> : null}
+      </div>
+
+      <div className="paper flex flex-wrap items-center gap-2 p-3">
+        {sections.isLoading ? (
+          <Skeleton className="h-8 w-56" />
+        ) : (
+          list.map((section) => (
+            <Button
+              key={section.id}
+              size="sm"
+              variant={section.id === active?.id ? "default" : "outline"}
+              onClick={() => setActiveId(section.id)}
+            >
+              {section.title}
+            </Button>
+          ))
+        )}
+        {canManage ? (
+          <>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                const title = prompt("Section name", `Lesson ${list.length + 1}`);
+                if (title?.trim()) createMutation.mutate(title.trim());
+              }}
+            >
+              <Plus className="size-4" />
+              New section
+            </Button>
+            {active ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={async () => {
+                  if (!confirm(`Delete "${active.title}" and its notes?`)) return;
+                  await removeSection({ data: { sectionId: active.id } });
+                  setActiveId(null);
+                  await invalidateSections();
+                }}
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            ) : null}
+          </>
+        ) : null}
+      </div>
+
+      {!active ? (
+        <div className="paper p-8 text-center text-muted-foreground">
+          {canManage
+            ? "Create your first section to start a lesson canvas."
+            : "Your teacher hasn't added lesson notes to this unit yet."}
+        </div>
+      ) : (
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_320px]">
+          <div className="h-[70vh] min-h-[520px]">
+            <NotesCanvas
+              classId={classId}
+              sectionId={active.id}
+              canEdit={canManage}
+              initialBlocks={active.notes_blocks}
+              initialSummary={active.ai_summary}
+              onConcept={setConcept}
+              onSaved={invalidateSections}
+            />
+          </div>
+
+          <div className="flex h-[70vh] min-h-[520px] flex-col rounded-lg border bg-card">
+            <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
+              <p className="text-sm font-medium">Document</p>
+              {canManage ? (
+                <Select
+                  value={active.material_id ?? "none"}
+                  onValueChange={(value) => attachMutation.mutate(value === "none" ? null : value)}
+                >
+                  <SelectTrigger className="ml-auto h-8 w-[190px] text-xs">
+                    <SelectValue placeholder="Choose a resource" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No document</SelectItem>
+                    {unit.materials.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <span className="ml-auto truncate text-xs text-muted-foreground">
+                  {material?.title ?? "None attached"}
+                </span>
+              )}
+            </div>
+
+            <div className="min-h-0 flex-1 p-2">
+              {!material ? (
+                <p className="p-4 text-sm text-muted-foreground">
+                  {canManage
+                    ? "Attach a PDF, slide deck or document from this unit's resources."
+                    : "No document attached to this section."}
+                </p>
+              ) : docUrl.isLoading || !docUrl.data ? (
+                <Skeleton className="h-full w-full" />
+              ) : material.kind === "video" ? (
+                <video src={docUrl.data.url} controls className="h-full w-full rounded-md" />
+              ) : material.kind === "image" ? (
+                <img
+                  src={docUrl.data.url}
+                  alt={material.title}
+                  className="h-full w-full rounded-md object-contain"
+                />
+              ) : (
+                <iframe
+                  src={docUrl.data.url}
+                  title={material.title}
+                  className="h-full w-full rounded-md"
+                />
+              )}
+            </div>
+
+            <div className="flex gap-2 border-t p-2">
+              <Input
+                value={term}
+                onChange={(event) => setTerm(event.target.value)}
+                placeholder="A term from this document…"
+                className="h-8 text-xs"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!term.trim()}
+                onClick={() => {
+                  setConcept(term.trim());
+                  setTerm("");
+                }}
+              >
+                Explain
+              </Button>
+            </div>
+          </div>
+
+          <div className="h-[70vh] min-h-[520px]">
+            <LessonTutorBar
+              classId={classId}
+              sectionId={active.id}
+              concept={concept}
+              onConceptHandled={() => setConcept(null)}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UnitPlanDialog({ unit, onSaved }: { unit: WorkspaceUnit; onSaved: () => void }) {
+  const save = useServerFn(updateUnit);
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState(unit.title);
+  const [description, setDescription] = useState(unit.description ?? "");
+  const [start, setStart] = useState(unit.planned_start ?? "");
+  const [end, setEnd] = useState(unit.planned_end ?? "");
+  const [classes, setClasses] = useState(String(unit.planned_classes ?? ""));
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      save({
+        data: {
+          unitId: unit.id,
+          title: title.trim(),
+          description,
+          plannedStart: start || null,
+          plannedEnd: end || null,
+          plannedClasses: classes ? Number(classes) : null,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Unit plan updated");
+      setOpen(false);
+      onSaved();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+        Edit unit plan
+      </Button>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Unit plan</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="plan-title">Unit title</Label>
+            <Input id="plan-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="plan-start">Start date</Label>
+              <Input
+                id="plan-start"
+                type="date"
+                value={start}
+                onChange={(e) => setStart(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="plan-end">End date</Label>
+              <Input id="plan-end" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="plan-classes">Classes</Label>
+              <Input
+                id="plan-classes"
+                type="number"
+                min={0}
+                value={classes}
+                onChange={(e) => setClasses(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="plan-description">Description</Label>
+            <Textarea
+              id="plan-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={() => mutation.mutate()} disabled={!title.trim() || mutation.isPending}>
+            Save plan
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

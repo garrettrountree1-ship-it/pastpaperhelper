@@ -535,6 +535,8 @@ function PlanStrip({
       save({
         data: {
           unitId: unit.id,
+          title: unit.title,
+          description: unit.description ?? "",
           plannedStart: start || null,
           plannedEnd: end || null,
           plannedClasses: classes ? Number(classes) : null,

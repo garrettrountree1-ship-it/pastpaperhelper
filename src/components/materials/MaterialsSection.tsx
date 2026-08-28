@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDueDate } from "@/lib/datetime";
@@ -47,6 +48,7 @@ import {
   deleteMaterial,
   deleteUnit,
   getMaterialUrl,
+  setMaterialDownload,
   listMaterialClasses,
   listUnits,
   type MaterialKind,
@@ -61,6 +63,7 @@ type Material = {
   file_name: string | null;
   file_size: number | null;
   content_type: string | null;
+  allow_download?: boolean;
   created_at: string;
 };
 
@@ -314,6 +317,8 @@ function MaterialRow({
   const viewerFormat = docFormat(material.storage_path ?? material.file_name ?? material.title);
   const getUrl = useServerFn(getMaterialUrl);
   const remove = useServerFn(deleteMaterial);
+  const setDownload = useServerFn(setMaterialDownload);
+  const [allowDownload, setAllowDownload] = useState(material.allow_download !== false);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -364,10 +369,28 @@ function MaterialRow({
           AI notes
         </Button>
         <Badge variant="secondary">{material.kind}</Badge>
-        {material.storage_path ? (
+        {material.storage_path && (canManage || allowDownload) ? (
           <Button variant="outline" size="sm" onClick={() => open(true)} disabled={busy}>
             <Download className="size-4" />
           </Button>
+        ) : null}
+        {canManage && material.storage_path ? (
+          <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Switch
+              checked={allowDownload}
+              onCheckedChange={async (next) => {
+                setAllowDownload(next);
+                try {
+                  await setDownload({ data: { materialId: material.id, allow: next } });
+                  toast.success(next ? "Students can download this" : "Downloads blocked");
+                } catch (error) {
+                  setAllowDownload(!next);
+                  toast.error((error as Error).message);
+                }
+              }}
+            />
+            Student download
+          </Label>
         ) : null}
         {canManage ? (
           <Button

@@ -238,6 +238,8 @@ export function LessonWorkspace({
         </div>
       </header>
 
+      <PlanStrip unit={unit} sectionCount={list.length} canManage={canManage} onSaved={onUnitChanged} />
+
       {!active ? (
         <div className="flex flex-1 items-center justify-center p-8 text-center text-muted-foreground">
           {canManage ? (

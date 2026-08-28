@@ -122,26 +122,28 @@ export function OfficeDocView({
         ) : null}
 
         {status === "ready" ? (
-          <div
-            style={{
-              transform: `scale(${zoom})`,
-              transformOrigin: "top left",
-              width: `${100 / zoom}%`,
-            }}
-          >
-            {deck ? (
-              <div className="office-slides space-y-3">
-                {deck.slides.map((slide, index) => (
-                  <SlidePage key={index} deck={deck} index={index} />
-                ))}
-              </div>
-            ) : (
+          deck ? (
+            // Slides size themselves to their container, so zoom widens the stack
+            // and the pane scrolls — no transform needed.
+            <div className="office-slides space-y-3" style={{ width: `${zoom * 100}%` }}>
+              {deck.slides.map((slide, index) => (
+                <SlidePage key={index} deck={deck} index={index} />
+              ))}
+            </div>
+          ) : (
+            <div
+              style={{
+                transform: `scale(${zoom})`,
+                transformOrigin: "top left",
+                width: "100%",
+              }}
+            >
               <div
                 className="office-doc rounded-md border bg-white p-6 text-sm leading-relaxed text-black shadow-sm"
                 dangerouslySetInnerHTML={{ __html: html }}
               />
-            )}
-          </div>
+            </div>
+          )
         ) : null}
       </div>
     </div>

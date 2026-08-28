@@ -222,16 +222,49 @@ export function LessonWorkspace({
           {sections.isLoading ? (
             <Skeleton className="h-8 w-40" />
           ) : (
-            list.map((section) => (
-              <Button
-                key={section.id}
-                size="sm"
-                variant={section.id === active?.id ? "default" : "outline"}
-                onClick={() => setActiveId(section.id)}
-              >
-                {section.title}
-              </Button>
-            ))
+            list.map((section) =>
+              editingId === section.id ? (
+                <Input
+                  key={`edit-${section.id}`}
+                  autoFocus
+                  size-attr="sm"
+                  value={editingTitle}
+                  onChange={(e) => setEditingTitle(e.target.value)}
+                  onBlur={() => commitRename(section.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitRename(section.id);
+                    if (e.key === "Escape") setEditingId(null);
+                  }}
+                  className="h-8 w-40 text-xs"
+                />
+              ) : (
+                <div key={section.id} className="relative inline-flex items-center">
+                  <Button
+                    size="sm"
+                    variant={section.id === active?.id ? "default" : "outline"}
+                    onClick={() => setActiveId(section.id)}
+                  >
+                    {section.title}
+                  </Button>
+                  {canManage ? (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="-ml-2 size-6"
+                      title="Rename section"
+                      aria-label="Rename section"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startRename(section);
+                      }}
+                    >
+                      <Pencil className="size-3" />
+                    </Button>
+                  ) : null}
+                </div>
+              ),
+            )
+
           )}
           {canManage ? (
             <>

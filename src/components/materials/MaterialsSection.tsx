@@ -1,6 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Download, FileText, Film, Image as ImageIcon, Link2, Presentation, Trash2 } from "lucide-react";
+import {
+  Download,
+  FileText,
+  Film,
+  Image as ImageIcon,
+  Link2,
+  Presentation,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -119,6 +128,8 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
   const removeUnit = useServerFn(deleteUnit);
   const [open, setOpen] = useState(false);
   const [openUnitId, setOpenUnitId] = useState<string | null>(null);
+  const [openMaterialId, setOpenMaterialId] = useState<string | null>(null);
+  const [openTab, setOpenTab] = useState<"notes" | "summary">("notes");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
@@ -154,7 +165,13 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
         classId={classId}
         unit={openUnit}
         canManage={canManage}
-        onBack={() => setOpenUnitId(null)}
+        initialMaterialId={openMaterialId}
+        initialTab={openTab}
+        onBack={() => {
+          setOpenUnitId(null);
+          setOpenMaterialId(null);
+          setOpenTab("notes");
+        }}
         onUnitChanged={invalidate}
       />
     );
@@ -262,6 +279,11 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
                     material={material}
                     canManage={canManage}
                     onDeleted={invalidate}
+                    onOpenWorkspace={(tab) => {
+                      setOpenMaterialId(material.id);
+                      setOpenTab(tab);
+                      setOpenUnitId(unit.id);
+                    }}
                   />
                 ))}
               </ul>
@@ -277,10 +299,12 @@ function MaterialRow({
   material,
   canManage,
   onDeleted,
+  onOpenWorkspace,
 }: {
   material: Material;
   canManage: boolean;
   onDeleted: () => void;
+  onOpenWorkspace: (tab: "notes" | "summary") => void;
 }) {
   const Icon = kindIcons[material.kind] ?? FileText;
   const getUrl = useServerFn(getMaterialUrl);
@@ -326,7 +350,14 @@ function MaterialRow({
           </span>
         </span>
       </button>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" onClick={() => onOpenWorkspace("notes")}>
+          Open lesson workspace
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => onOpenWorkspace("summary")}>
+          <Sparkles className="size-4" />
+          AI notes
+        </Button>
         <Badge variant="secondary">{material.kind}</Badge>
         {material.storage_path ? (
           <Button variant="outline" size="sm" onClick={() => open(true)} disabled={busy}>

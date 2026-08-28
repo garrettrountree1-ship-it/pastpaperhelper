@@ -67,12 +67,16 @@ export function LessonWorkspace({
   classId,
   unit,
   canManage,
+  initialMaterialId,
+  initialTab = "notes",
   onBack,
   onUnitChanged,
 }: {
   classId: string;
   unit: WorkspaceUnit;
   canManage: boolean;
+  initialMaterialId?: string | null;
+  initialTab?: "notes" | "summary";
   onBack: () => void;
   onUnitChanged: () => void;
 }) {
@@ -85,6 +89,7 @@ export function LessonWorkspace({
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [concept, setConcept] = useState<string | null>(null);
+  const [docOverride, setDocOverride] = useState<string | null>(initialMaterialId ?? null);
   const [term, setTerm] = useState("");
 
   const sections = useQuery({
@@ -118,7 +123,8 @@ export function LessonWorkspace({
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const material = unit.materials.find((m) => m.id === active?.material_id) ?? null;
+  const currentDocId = docOverride ?? active?.material_id ?? null;
+  const material = unit.materials.find((m) => m.id === currentDocId) ?? null;
   const docUrl = useQuery({
     queryKey: ["material-url", material?.id],
     queryFn: () => getUrl({ data: { materialId: material!.id } }),
@@ -126,98 +132,98 @@ export function LessonWorkspace({
   });
 
   return (
-    <div className="space-y-3">
-      <div className="paper flex flex-wrap items-start justify-between gap-3 p-4">
+    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      <header className="flex flex-wrap items-center gap-3 border-b px-4 py-2">
+        <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2">
+          <ArrowLeft className="size-4" />
+          Close
+        </Button>
         <div className="min-w-0">
-          <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2 mb-1">
-            <ArrowLeft className="size-4" />
-            All units
-          </Button>
-          <h2 className="font-display text-2xl">{unit.title}</h2>
-          <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-            <CalendarDays className="size-4" />
+          <h2 className="truncate font-display text-lg leading-tight">{unit.title}</h2>
+          <p className="flex items-center gap-1 text-xs text-muted-foreground">
+            <CalendarDays className="size-3" />
             {planLine(unit)}
           </p>
-          {unit.description ? (
-            <p className="mt-1 max-w-prose text-sm text-muted-foreground">{unit.description}</p>
-          ) : null}
         </div>
-        {canManage ? <UnitPlanDialog unit={unit} onSaved={onUnitChanged} /> : null}
-      </div>
-
-      <div className="paper flex flex-wrap items-center gap-2 p-3">
-        {sections.isLoading ? (
-          <Skeleton className="h-8 w-56" />
-        ) : (
-          list.map((section) => (
-            <Button
-              key={section.id}
-              size="sm"
-              variant={section.id === active?.id ? "default" : "outline"}
-              onClick={() => setActiveId(section.id)}
-            >
-              {section.title}
-            </Button>
-          ))
-        )}
-        {canManage ? (
-          <>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                const title = prompt("Section name", `Lesson ${list.length + 1}`);
-                if (title?.trim()) createMutation.mutate(title.trim());
-              }}
-            >
-              <Plus className="size-4" />
-              New section
-            </Button>
-            {active ? (
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {sections.isLoading ? (
+            <Skeleton className="h-8 w-40" />
+          ) : (
+            list.map((section) => (
+              <Button
+                key={section.id}
+                size="sm"
+                variant={section.id === active?.id ? "default" : "outline"}
+                onClick={() => setActiveId(section.id)}
+              >
+                {section.title}
+              </Button>
+            ))
+          )}
+          {canManage ? (
+            <>
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={async () => {
-                  if (!confirm(`Delete "${active.title}" and its notes?`)) return;
-                  await removeSection({ data: { sectionId: active.id } });
-                  setActiveId(null);
-                  await invalidateSections();
+                onClick={() => {
+                  const title = prompt("Section name", `Lesson ${list.length + 1}`);
+                  if (title?.trim()) createMutation.mutate(title.trim());
                 }}
               >
-                <Trash2 className="size-4" />
+                <Plus className="size-4" />
+                New section
               </Button>
-            ) : null}
-          </>
-        ) : null}
-      </div>
+              {active ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={async () => {
+                    if (!confirm(`Delete "${active.title}" and its notes?`)) return;
+                    await removeSection({ data: { sectionId: active.id } });
+                    setActiveId(null);
+                    await invalidateSections();
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              ) : null}
+              <UnitPlanDialog unit={unit} onSaved={onUnitChanged} />
+            </>
+          ) : null}
+        </div>
+      </header>
 
       {!active ? (
-        <div className="paper p-8 text-center text-muted-foreground">
+        <div className="flex flex-1 items-center justify-center p-8 text-center text-muted-foreground">
           {canManage
             ? "Create your first section to start a lesson canvas."
             : "Your teacher hasn't added lesson notes to this unit yet."}
         </div>
       ) : (
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_320px]">
-          <div className="h-[70vh] min-h-[520px]">
+        <div className="grid min-h-0 flex-1 gap-2 overflow-y-auto p-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_340px] lg:overflow-hidden">
+          <div className="min-h-[420px] lg:h-full lg:min-h-0">
             <NotesCanvas
               classId={classId}
               sectionId={active.id}
               canEdit={canManage}
               initialBlocks={active.notes_blocks}
               initialSummary={active.ai_summary}
+              initialTab={initialTab}
               onConcept={setConcept}
               onSaved={invalidateSections}
             />
           </div>
 
-          <div className="flex h-[70vh] min-h-[520px] flex-col rounded-lg border bg-card">
+          <div className="flex min-h-[420px] flex-col rounded-lg border bg-card lg:h-full lg:min-h-0">
             <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
               <p className="text-sm font-medium">Document</p>
               {canManage ? (
                 <Select
-                  value={active.material_id ?? "none"}
-                  onValueChange={(value) => attachMutation.mutate(value === "none" ? null : value)}
+                  value={currentDocId ?? "none"}
+                  onValueChange={(value) => {
+                    setDocOverride(value === "none" ? null : value);
+                    attachMutation.mutate(value === "none" ? null : value);
+                  }}
                 >
                   <SelectTrigger className="ml-auto h-8 w-[190px] text-xs">
                     <SelectValue placeholder="Choose a resource" />
@@ -285,7 +291,7 @@ export function LessonWorkspace({
             </div>
           </div>
 
-          <div className="h-[70vh] min-h-[520px]">
+          <div className="min-h-[420px] lg:h-full lg:min-h-0">
             <LessonTutorBar
               classId={classId}
               sectionId={active.id}

@@ -337,14 +337,26 @@ export function FreeCanvas({
         }
 
         const url = imageUrls?.[block.path];
+        const isSelected = selectedId === block.id;
         return (
-          <figure key={block.id} className="group absolute" style={style}>
+          <figure
+            key={block.id}
+            className={`group absolute ${isSelected ? "z-30" : ""}`}
+            style={style}
+            onPointerDown={(event) => {
+              if (!canEdit || mode !== "type") return;
+              setSelectedId(block.id);
+              startMove(block.id, event);
+            }}
+          >
             {url ? (
               <img
                 src={url}
                 alt={block.caption ?? "Lesson note image"}
                 draggable={false}
-                className="w-full select-none rounded-md"
+                className={`w-full select-none rounded-md ${
+                  canEdit && mode === "type" ? "cursor-move" : ""
+                } ${isSelected ? "ring-2 ring-primary" : ""}`}
                 style={{ height: block.h ?? "auto" }}
               />
             ) : (
@@ -352,32 +364,44 @@ export function FreeCanvas({
             )}
             {canEdit ? (
               <>
-                <div className="absolute -left-6 top-0 flex flex-col opacity-0 transition-opacity group-hover:opacity-100">
-                  <button
-                    type="button"
-                    onPointerDown={(event) => startMove(block.id, event)}
-                    className="cursor-grab rounded p-0.5 text-muted-foreground hover:bg-muted"
-                    aria-label="Move image"
-                  >
-                    <GripVertical className="size-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => remove(block.id)}
-                    className="rounded p-0.5 text-muted-foreground hover:bg-muted"
-                    aria-label="Delete image"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                </div>
-                <span
-                  onPointerDown={(event) => startResize(block.id, event)}
-                  className="absolute -bottom-1 -right-1 size-4 cursor-nwse-resize rounded-sm border bg-background opacity-0 group-hover:opacity-100"
-                />
+                <button
+                  type="button"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    remove(block.id);
+                  }}
+                  className={`absolute -right-2 -top-2 rounded-full border bg-background p-1 text-muted-foreground shadow-sm transition-opacity hover:text-destructive ${
+                    isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                  }`}
+                  aria-label="Delete image"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+                {(
+                  [
+                    ["nw", "-left-1.5 -top-1.5 cursor-nwse-resize"],
+                    ["ne", "-right-1.5 -top-1.5 cursor-nesw-resize"],
+                    ["sw", "-left-1.5 -bottom-1.5 cursor-nesw-resize"],
+                    ["se", "-right-1.5 -bottom-1.5 cursor-nwse-resize"],
+                  ] as const
+                ).map(([corner, cls]) => (
+                  <span
+                    key={corner}
+                    onPointerDown={(event) => {
+                      setSelectedId(block.id);
+                      startResize(block.id, event, corner);
+                    }}
+                    className={`absolute size-3 rounded-sm border border-primary bg-background transition-opacity ${cls} ${
+                      isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                    }`}
+                  />
+                ))}
               </>
             ) : null}
           </figure>
         );
+
       })}
 
       {canEdit && blocks.length === 0 ? (

@@ -5,6 +5,16 @@ import type { NoteBlock } from "@/lib/notes.functions";
 
 export type CanvasMode = "type" | "draw" | "erase";
 
+export const TEXT_COLORS: string[] = [
+  "#111827",
+  "#dc2626",
+  "#2563eb",
+  "#16a34a",
+  "#ea580c",
+  "#7c3aed",
+];
+
+
 /** Distance from a point to a segment, for eraser hit-testing. */
 function distToSegment(
   p: { x: number; y: number },

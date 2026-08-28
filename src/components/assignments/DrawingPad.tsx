@@ -87,7 +87,7 @@ export function DrawingPad({
     event.currentTarget.setPointerCapture(event.pointerId);
     drawing.current = true;
     const width = event.pointerType === "pen" ? Math.max(1.2, event.pressure * 4 || 2) : 2.4;
-    strokesRef.current.push({ points: [positionOf(event)], width });
+    strokesRef.current.push({ points: [positionOf(event)], width, color: colorRef.current });
     setHasInk(true);
   }
 

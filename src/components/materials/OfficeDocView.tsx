@@ -1,8 +1,9 @@
 import { Download, Minus, Plus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { parsePptx, type PptxDeck } from "@/lib/pptx-render";
 
 /**
  * Renders .pptx slide decks and .docx documents inline so they simply scroll in
@@ -21,16 +22,19 @@ export function OfficeDocView({
   const [zoom, setZoom] = useState(1);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
   const [html, setHtml] = useState<string>("");
-  const slideHost = useRef<HTMLDivElement | null>(null);
+  const [deck, setDeck] = useState<PptxDeck | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setStatus("loading");
     setHtml("");
+    setDeck(null);
 
     (async () => {
       try {
-        const buffer = await (await fetch(url)).arrayBuffer();
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Download failed (${response.status})`);
+        const buffer = await response.arrayBuffer();
         if (cancelled) return;
 
         if (format === "docx") {
@@ -38,18 +42,11 @@ export function OfficeDocView({
           const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
           if (cancelled) return;
           setHtml(result.value);
-          setStatus("ready");
-          return;
+        } else {
+          const parsed = await parsePptx(buffer);
+          if (cancelled) return;
+          setDeck(parsed);
         }
-
-        const host = slideHost.current;
-        if (!host) return;
-        host.innerHTML = "";
-        const { init } = await import("pptx-preview");
-        const width = Math.max(720, host.clientWidth || 900);
-        const previewer = init(host, { width, height: Math.round((width * 9) / 16) });
-        await previewer.preview(buffer);
-        if (cancelled) return;
         setStatus("ready");
       } catch {
         if (!cancelled) setStatus("failed");
@@ -90,6 +87,11 @@ export function OfficeDocView({
         >
           <Plus className="size-3.5" />
         </Button>
+        {deck ? (
+          <span className="ml-2 text-xs text-muted-foreground">
+            {deck.slides.length} slide{deck.slides.length === 1 ? "" : "s"}
+          </span>
+        ) : null}
         <Button asChild size="sm" variant="outline" className="ml-auto h-7 px-2 text-xs">
           <a href={url} download={title} target="_blank" rel="noreferrer">
             <Download className="size-3.5" />
@@ -107,21 +109,122 @@ export function OfficeDocView({
           </p>
         ) : null}
 
+        {status === "ready" ? (
+          <div
+            style={{
+              transform: `scale(${zoom})`,
+              transformOrigin: "top left",
+              width: `${100 / zoom}%`,
+            }}
+          >
+            {deck ? (
+              <div className="office-slides space-y-3">
+                {deck.slides.map((slide, index) => (
+                  <SlidePage key={index} deck={deck} index={index} />
+                ))}
+              </div>
+            ) : (
+              <div
+                className="office-doc rounded-md border bg-white p-6 text-sm leading-relaxed text-black shadow-sm"
+                dangerouslySetInnerHTML={{ __html: html }}
+              />
+            )}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function SlidePage({ deck, index }: { deck: PptxDeck; index: number }) {
+  const slide = deck.slides[index];
+  if (!slide) return null;
+  return (
+    <div className="relative overflow-hidden rounded-md border bg-white shadow-sm">
+      <div
+        className="relative origin-top-left"
+        style={{ width: "100%", aspectRatio: `${deck.width} / ${deck.height}` }}
+      >
         <div
+          className="absolute left-0 top-0"
           style={{
-            transform: `scale(${zoom})`,
+            width: deck.width,
+            height: deck.height,
+            transform: "scale(var(--slide-scale, 1))",
             transformOrigin: "top left",
-            width: `${100 / zoom}%`,
-            display: status === "ready" || format === "pptx" ? "block" : "none",
+          }}
+          ref={(node) => {
+            if (!node) return;
+            const parent = node.parentElement;
+            if (!parent) return;
+            const apply = () =>
+              node.style.setProperty("--slide-scale", String(parent.clientWidth / deck.width));
+            apply();
+            const observer = new ResizeObserver(apply);
+            observer.observe(parent);
           }}
         >
-          {format === "pptx" ? (
-            <div ref={slideHost} className="office-slides space-y-3" />
-          ) : (
-            <div
-              className="office-doc rounded-md border bg-white p-6 text-sm leading-relaxed text-black shadow-sm"
-              dangerouslySetInnerHTML={{ __html: html }}
-            />
+          {slide.shapes.map((shape, i) =>
+            shape.type === "image" ? (
+              <img
+                key={i}
+                src={shape.src}
+                alt=""
+                style={{
+                  position: "absolute",
+                  left: shape.x,
+                  top: shape.y,
+                  width: shape.w || undefined,
+                  height: shape.h || undefined,
+                  transform: shape.rot ? `rotate(${shape.rot}deg)` : undefined,
+                }}
+              />
+            ) : (
+              <div
+                key={i}
+                style={{
+                  position: "absolute",
+                  left: shape.x,
+                  top: shape.y,
+                  width: shape.w || undefined,
+                  transform: shape.rot ? `rotate(${shape.rot}deg)` : undefined,
+                  color: "#111",
+                }}
+              >
+                {shape.paragraphs.map((paragraph, pi) => (
+                  <p
+                    key={pi}
+                    style={{
+                      textAlign:
+                        paragraph.align === "ctr"
+                          ? "center"
+                          : paragraph.align === "r"
+                            ? "right"
+                            : "left",
+                      margin: "0 0 4px",
+                    }}
+                  >
+                    {paragraph.bullet ? "• " : ""}
+                    {paragraph.runs.map((run, ri) => (
+                      <span
+                        key={ri}
+                        style={{
+                          fontSize: run.size,
+                          lineHeight: 1.25,
+                          fontWeight: run.bold ? 700 : 400,
+                          fontStyle: run.italic ? "italic" : undefined,
+                          textDecoration: run.underline ? "underline" : undefined,
+                          color: run.color ?? undefined,
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        {run.text}
+                      </span>
+                    ))}
+                  </p>
+                ))}
+              </div>
+            ),
           )}
         </div>
       </div>

@@ -42,6 +42,7 @@ type UnitMaterial = {
   kind: string;
   storage_path: string | null;
   external_url: string | null;
+  allow_download?: boolean;
 };
 
 export type WorkspaceUnit = {

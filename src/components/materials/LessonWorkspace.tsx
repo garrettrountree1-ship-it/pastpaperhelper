@@ -238,7 +238,15 @@ export function LessonWorkspace({
         </div>
       </header>
 
-      <PlanStrip unit={unit} sectionCount={list.length} canManage={canManage} onSaved={onUnitChanged} />
+      {active ? (
+        <PlanStrip
+          key={active.id}
+          unit={unit}
+          section={active}
+          canManage={canManage}
+          onSaved={invalidateSections}
+        />
+      ) : null}
 
       {!active ? (
         <div className="flex flex-1 items-center justify-center p-8 text-center text-muted-foreground">

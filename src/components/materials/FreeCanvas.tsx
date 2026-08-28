@@ -252,6 +252,7 @@ export function FreeCanvas({
     ]);
   }
 
+  /** Click any blank spot to start a text box right there, like a Word text cursor. */
   function surfaceClick(event: React.MouseEvent) {
     if (!canEdit || mode !== "type") return;
     if (event.target !== surfaceRef.current) return;
@@ -260,12 +261,17 @@ export function FreeCanvas({
       return;
     }
     const at = point(event);
-
+    const surfaceWidth = surfaceRef.current?.clientWidth ?? 900;
+    const width = Math.max(180, Math.min(760, surfaceWidth - at.x - 24));
+    const id = crypto.randomUUID();
+    setSelectedId(id);
+    setFocusId(id);
     onChange([
       ...blocks,
-      { id: crypto.randomUUID(), type: "text", text: "", x: at.x, y: at.y, w: 480 },
+      { id, type: "text", text: "", x: at.x, y: Math.max(0, at.y - 12), w: width },
     ]);
   }
+
 
   const inks = blocks.filter((b): b is Extract<NoteBlock, { type: "ink" }> => b.type === "ink");
 

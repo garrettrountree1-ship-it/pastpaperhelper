@@ -580,6 +580,21 @@ export function FreeCanvas({
                 >
                   <Trash2 className="size-3.5" />
                 </button>
+                <button
+                  type="button"
+                  onPointerDown={(event) => startRotate(block.id, event)}
+                  onDoubleClick={(event) => {
+                    event.stopPropagation();
+                    patch(block.id, { rot: (((block.rot ?? 0) + 90) % 360) });
+                  }}
+                  className={`absolute -top-8 left-1/2 -translate-x-1/2 cursor-grab rounded-full border bg-background p-1 text-muted-foreground shadow-sm transition-opacity hover:text-primary ${
+                    isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                  }`}
+                  aria-label="Rotate image"
+                  title="Drag to rotate (Shift snaps to 15°), double-click for 90°"
+                >
+                  <RotateCw className="size-3.5" />
+                </button>
                 {(
                   [
                     ["nw", "-left-1.5 -top-1.5 cursor-nwse-resize"],

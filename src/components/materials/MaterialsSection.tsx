@@ -145,6 +145,19 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
 
   if (units.isLoading) return <Skeleton className="h-40 w-full" />;
 
+  const openUnit = (units.data ?? []).find((unit) => unit.id === openUnitId);
+  if (openUnit) {
+    return (
+      <LessonWorkspace
+        classId={classId}
+        unit={openUnit}
+        canManage={canManage}
+        onBack={() => setOpenUnitId(null)}
+        onUnitChanged={invalidate}
+      />
+    );
+  }
+
   return (
     <div className="space-y-4">
       {canManage ? (

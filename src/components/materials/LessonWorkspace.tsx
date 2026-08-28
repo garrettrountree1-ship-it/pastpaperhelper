@@ -68,6 +68,7 @@ export function LessonWorkspace({
   unit,
   canManage,
   initialMaterialId,
+  initialTab = "notes",
   onBack,
   onUnitChanged,
 }: {
@@ -75,6 +76,7 @@ export function LessonWorkspace({
   unit: WorkspaceUnit;
   canManage: boolean;
   initialMaterialId?: string | null;
+  initialTab?: "notes" | "summary";
   onBack: () => void;
   onUnitChanged: () => void;
 }) {

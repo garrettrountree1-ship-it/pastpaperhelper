@@ -583,6 +583,3 @@ export function FreeCanvas({
     </div>
   );
 }
-
-
-}

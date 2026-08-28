@@ -43,6 +43,7 @@ export function NotesCanvas({
   canEdit,
   initialBlocks,
   initialSummary,
+  initialTab = "notes",
   onConcept,
   onSaved,
 }: {

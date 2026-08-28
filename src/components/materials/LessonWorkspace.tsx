@@ -657,7 +657,7 @@ function PlanStrip({
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b bg-muted/40 px-4 py-1.5 text-xs">
       <span className="flex items-center gap-1 font-medium text-muted-foreground">
         <CalendarDays className="size-3.5" />
-        {section.title} schedule
+        {section.title} · schedule for this section
       </span>
       {canManage ? (
         <>

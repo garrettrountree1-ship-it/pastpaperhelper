@@ -70,13 +70,14 @@ export const listUnits = createServerFn({ method: "GET" })
       file_name: string | null;
       file_size: number | null;
       content_type: string | null;
+      allow_download: boolean;
       created_at: string;
     }> = [];
     if (unitIds.length > 0) {
       const { data: rows, error: materialError } = await supabase
         .from("unit_materials")
         .select(
-          "id, unit_id, title, kind, storage_path, external_url, file_name, file_size, content_type, created_at",
+          "id, unit_id, title, kind, storage_path, external_url, file_name, file_size, content_type, allow_download, created_at",
         )
         .in("unit_id", unitIds)
         .order("position", { ascending: true })
@@ -268,11 +269,23 @@ export const getMaterialUrl = createServerFn({ method: "POST" })
     const { supabase } = context;
     const { data: material, error } = await supabase
       .from("unit_materials")
-      .select("storage_path, external_url, file_name")
+      .select("storage_path, external_url, file_name, allow_download, class_id")
       .eq("id", data.materialId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!material) throw new Error("Material not found.");
+
+    if (data.download && material.allow_download === false) {
+      const { data: cls } = await supabase
+        .from("classes")
+        .select("teacher_id")
+        .eq("id", material.class_id)
+        .maybeSingle();
+      if (cls?.teacher_id !== context.userId) {
+        throw new Error("Downloads are turned off for this resource.");
+      }
+    }
+
     if (material.external_url) return { url: material.external_url };
     if (!material.storage_path) throw new Error("Nothing to open.");
 
@@ -285,4 +298,21 @@ export const getMaterialUrl = createServerFn({ method: "POST" })
       );
     if (signError || !signed) throw new Error(signError?.message ?? "Could not open this file.");
     return { url: signed.signedUrl };
+  });
+
+/** Teacher toggle: allow or block student downloads of one resource. */
+export const setMaterialDownload = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ materialId: z.string().uuid(), allow: z.boolean() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertMaterialTeacher(supabase, data.materialId, userId);
+    const { error } = await supabase
+      .from("unit_materials")
+      .update({ allow_download: data.allow })
+      .eq("id", data.materialId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });

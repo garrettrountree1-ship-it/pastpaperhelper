@@ -94,6 +94,8 @@ export function FreeCanvas({
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const [live, setLive] = useState<Array<{ x: number; y: number }> | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
+
   const drawing = useRef(false);
 
 

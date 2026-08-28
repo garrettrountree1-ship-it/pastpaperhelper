@@ -93,7 +93,9 @@ export function FreeCanvas({
 }) {
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const [live, setLive] = useState<Array<{ x: number; y: number }> | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const drawing = useRef(false);
+
 
   const bottom = blocks.reduce((max, block) => {
     if (block.type === "ink") return Math.max(max, block.bottom ?? 0);

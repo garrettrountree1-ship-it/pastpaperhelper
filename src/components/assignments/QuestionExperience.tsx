@@ -237,80 +237,65 @@ export function QuestionExperience({
           <p className="text-sm text-destructive">{ENGLISH_ONLY_MESSAGE}</p>
         ) : null}
 
-        {showPhoto || photoOnly ? (
-          <div className="rounded-lg border border-dashed border-border p-3">
-            <Label
-              htmlFor={`photo-${question.id}`}
-              className="flex items-center gap-2 text-sm font-medium"
-            >
-              <Camera className="size-4" />
-              Your working or diagram
-              {requiresPhoto ? <Badge variant="secondary">needed here</Badge> : null}
-            </Label>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Upload a photo, take one with your device camera, or write it on the pad below —
-              whichever is easiest.
-            </p>
-            <Input
-              id={`photo-${question.id}`}
-              type="file"
-              accept="image/*"
-              multiple
-              className="mt-2"
-              disabled={locked}
-              onChange={(event) => onPhotosChange(event.target.files)}
-            />
-            {onAddDrawing ? (
-              <div className="mt-2">
-                <CameraCapture disabled={locked} onCapture={onAddDrawing} />
-              </div>
-            ) : null}
-            {photoCount > 0 ? (
-              <p className="mt-2 text-xs text-muted-foreground">
-                {photoCount} photo{photoCount === 1 ? "" : "s"} ready — they&apos;ll be marked
-                with your answer.
-              </p>
-            ) : null}
-            {photoUrls.length > 0 ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {photoUrls.map((url, photoIndex) => (
-                  <img
-                    key={`${photoIndex}-${url.slice(-12)}`}
-                    src={url}
-                    alt="Uploaded working"
-                    loading="lazy"
-                    className="size-20 rounded-lg border border-border object-cover"
-                  />
-                ))}
-              </div>
-            ) : null}
-            {requiresPhoto ? (
-              <p className="mt-2 text-xs text-muted-foreground">
-                {photoOnly
-                  ? "Show your full drawing or working — marks are given for the method as well as the final answer."
-                  : "This question asks you to draw, circle or plot — add a photo or use the writing pad so it can be marked."}
-              </p>
-            ) : null}
-
-            {onAddDrawing ? (
-              <div className="mt-3">
-                <DrawingPad disabled={locked} onAttach={onAddDrawing} />
-              </div>
-            ) : null}
-          </div>
-
-        ) : (
-
-          <Button
-            type="button"
-            variant="ghost"
-            className="w-full justify-start text-muted-foreground"
-            onClick={onShowPhoto}
+        <div className="rounded-lg border border-dashed border-border p-3">
+          <Label
+            htmlFor={`photo-${question.id}`}
+            className="flex items-center gap-2 text-sm font-medium"
           >
-            <Camera className="mr-2 size-4" />
-            Add a photo, camera shot or written working
-          </Button>
-        )}
+            <Camera className="size-4" />
+            Your working or diagram
+            {requiresPhoto ? <Badge variant="secondary">recommended here</Badge> : null}
+          </Label>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Upload a photo, take one with your device camera, or write it on the pad below —
+            whichever is easiest. This is optional if you typed your answer.
+          </p>
+          <Input
+            id={`photo-${question.id}`}
+            type="file"
+            accept="image/*"
+            multiple
+            className="mt-2"
+            disabled={locked}
+            onChange={(event) => onPhotosChange(event.target.files)}
+          />
+          {onAddDrawing ? (
+            <div className="mt-2">
+              <CameraCapture disabled={locked} onCapture={onAddDrawing} />
+            </div>
+          ) : null}
+          {photoCount > 0 ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {photoCount} photo{photoCount === 1 ? "" : "s"} ready — they&apos;ll be marked with
+              your answer.
+            </p>
+          ) : null}
+          {photoUrls.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {photoUrls.map((url, photoIndex) => (
+                <img
+                  key={`${photoIndex}-${url.slice(-12)}`}
+                  src={url}
+                  alt="Uploaded working"
+                  loading="lazy"
+                  className="size-20 rounded-lg border border-border object-cover"
+                />
+              ))}
+            </div>
+          ) : null}
+          {requiresPhoto ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Show your full drawing or working — marks are given for the method as well as the
+              final answer.
+            </p>
+          ) : null}
+
+          {onAddDrawing ? (
+            <div className="mt-3">
+              <DrawingPad disabled={locked} onAttach={onAddDrawing} />
+            </div>
+          ) : null}
+        </div>
 
 
         <div className="flex items-center justify-between gap-3">

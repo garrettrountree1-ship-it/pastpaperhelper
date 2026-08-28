@@ -25,6 +25,24 @@ export function OfficeDocView({
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
   const [html, setHtml] = useState<string>("");
   const [deck, setDeck] = useState<PptxDeck | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Pinch / ctrl+wheel zoom, kept inside this pane so the page never zooms.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      const dy = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
+      setZoom((v) =>
+        Number(Math.min(3, Math.max(0.5, v * Math.exp(-dy * 0.0015))).toFixed(3)),
+      );
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
 
   useEffect(() => {
     let cancelled = false;

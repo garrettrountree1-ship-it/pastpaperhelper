@@ -92,6 +92,9 @@ export function LessonWorkspace({
   const [docOverride, setDocOverride] = useState<string | null>(initialMaterialId ?? null);
   const [term, setTerm] = useState("");
   const [tutorOpen, setTutorOpen] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+
 
   // Draggable divider between the lesson canvas and the document pane.
   const rowRef = useRef<HTMLDivElement | null>(null);

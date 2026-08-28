@@ -162,21 +162,43 @@ export function FreeCanvas({
     window.addEventListener("pointerup", onUp);
   }
 
+  const erasing = useRef(false);
+
+  function eraseAt(at: { x: number; y: number }) {
+    const next = blocks.filter(
+      (block) => block.type !== "ink" || !strokeHit(block, at),
+    );
+    if (next.length !== blocks.length) onChange(next);
+  }
+
   function startInk(event: React.PointerEvent) {
-    if (!canEdit || mode !== "draw") return;
+    if (!canEdit || (mode !== "draw" && mode !== "erase")) return;
     event.preventDefault();
     (event.target as Element).setPointerCapture?.(event.pointerId);
+    if (mode === "erase") {
+      erasing.current = true;
+      eraseAt(point(event));
+      return;
+    }
     drawing.current = true;
     setLive([point(event)]);
   }
 
   function moveInk(event: React.PointerEvent) {
+    if (erasing.current) {
+      eraseAt(point(event));
+      return;
+    }
     if (!drawing.current) return;
     const next = point(event);
     setLive((current) => (current ? [...current, next] : [next]));
   }
 
   function endInk() {
+    if (erasing.current) {
+      erasing.current = false;
+      return;
+    }
     if (!drawing.current) return;
     drawing.current = false;
     const points = live ?? [];

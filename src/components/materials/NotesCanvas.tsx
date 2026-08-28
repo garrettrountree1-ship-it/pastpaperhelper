@@ -238,7 +238,9 @@ export function NotesCanvas({
           <span className="text-xs text-muted-foreground">
             {mode === "draw"
               ? "Draw anywhere on the sheet."
-              : "Click anywhere to type · paste images straight in"}
+              : mode === "erase"
+                ? "Click or drag across a stroke to erase it."
+                : "Click anywhere to type · paste images straight in"}
           </span>
         </div>
       ) : null}

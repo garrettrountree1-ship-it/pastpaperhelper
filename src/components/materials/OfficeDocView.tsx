@@ -202,12 +202,20 @@ function SlidePage({ deck, index }: { deck: PptxDeck; index: number }) {
                 key={i}
                 src={shape.src}
                 alt=""
+                loading="lazy"
+                decoding="async"
+                onError={(event) => {
+                  // An image the browser can't decode should leave clean space,
+                  // not a broken-image icon on the slide.
+                  event.currentTarget.style.display = "none";
+                }}
                 style={{
                   position: "absolute",
                   left: shape.x,
                   top: shape.y,
                   width: shape.w || undefined,
                   height: shape.h || undefined,
+                  objectFit: "contain",
                   transform: shape.rot ? `rotate(${shape.rot}deg)` : undefined,
                 }}
               />

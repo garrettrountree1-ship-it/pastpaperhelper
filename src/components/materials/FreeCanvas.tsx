@@ -253,7 +253,12 @@ export function FreeCanvas({
   function surfaceClick(event: React.MouseEvent) {
     if (!canEdit || mode !== "type") return;
     if (event.target !== surfaceRef.current) return;
+    if (selectedId) {
+      setSelectedId(null);
+      return;
+    }
     const at = point(event);
+
     onChange([
       ...blocks,
       { id: crypto.randomUUID(), type: "text", text: "", x: at.x, y: at.y, w: 480 },

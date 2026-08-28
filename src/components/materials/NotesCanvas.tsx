@@ -273,13 +273,13 @@ export function NotesCanvas({
               variant="outline"
               className="size-7"
               aria-label="Zoom out canvas"
-              onClick={() => setZoom((value) => Math.max(0.5, Number((value - 0.1).toFixed(2))))}
+              onClick={() => applyZoom((value) => value - 0.1)}
             >
               <Minus className="size-3.5" />
             </Button>
             <button
               type="button"
-              onClick={() => setZoom(1)}
+              onClick={() => applyZoom(() => 1)}
               className="min-w-11 rounded px-1 text-xs text-muted-foreground hover:bg-muted"
               aria-label="Reset canvas zoom"
             >
@@ -290,7 +290,7 @@ export function NotesCanvas({
               variant="outline"
               className="size-7"
               aria-label="Zoom in canvas"
-              onClick={() => setZoom((value) => Math.min(2.5, Number((value + 0.1).toFixed(2))))}
+              onClick={() => applyZoom((value) => value + 0.1)}
             >
               <Plus className="size-3.5" />
             </Button>

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, CalendarDays, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { LessonTutorBar } from "@/components/materials/LessonTutorBar";
@@ -110,6 +110,11 @@ export function LessonWorkspace({
   const createMutation = useMutation({
     mutationFn: (title: string) => addSection({ data: { unitId: unit.id, title } }),
     onSuccess: async (section) => {
+      if (initialMaterialId) {
+        await patchSection({
+          data: { sectionId: section.id, materialId: initialMaterialId },
+        }).catch(() => undefined);
+      }
       await invalidateSections();
       setActiveId(section.id);
     },
@@ -122,6 +127,23 @@ export function LessonWorkspace({
     onSuccess: invalidateSections,
     onError: (error: Error) => toast.error(error.message),
   });
+
+  // Teachers opening the workspace always land in a ready split screen —
+  // auto-create the first section instead of showing an empty blocker.
+  const autoCreated = useRef(false);
+  useEffect(() => {
+    if (
+      canManage &&
+      !sections.isLoading &&
+      list.length === 0 &&
+      !autoCreated.current &&
+      !createMutation.isPending
+    ) {
+      autoCreated.current = true;
+      createMutation.mutate("Section 1");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canManage, sections.isLoading, list.length]);
 
   const currentDocId = docOverride ?? active?.material_id ?? null;
   const material = unit.materials.find((m) => m.id === currentDocId) ?? null;
@@ -195,9 +217,18 @@ export function LessonWorkspace({
 
       {!active ? (
         <div className="flex flex-1 items-center justify-center p-8 text-center text-muted-foreground">
-          {canManage
-            ? "Create your first section to start a lesson canvas."
-            : "Your teacher hasn't added lesson notes to this unit yet."}
+          {canManage ? (
+            <div className="w-full max-w-5xl space-y-2">
+              <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_340px]">
+                <Skeleton className="h-[60vh] w-full" />
+                <Skeleton className="h-[60vh] w-full" />
+                <Skeleton className="h-[60vh] w-full" />
+              </div>
+              <p className="text-sm">Setting up your lesson workspace…</p>
+            </div>
+          ) : (
+            "Your teacher hasn't added lesson notes to this unit yet."
+          )}
         </div>
       ) : (
         <div className="grid min-h-0 flex-1 gap-2 overflow-y-auto p-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_340px] lg:overflow-hidden">

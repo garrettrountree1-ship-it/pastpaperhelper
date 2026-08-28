@@ -117,6 +117,7 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
   const create = useServerFn(createUnit);
   const removeUnit = useServerFn(deleteUnit);
   const [open, setOpen] = useState(false);
+  const [openUnitId, setOpenUnitId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 

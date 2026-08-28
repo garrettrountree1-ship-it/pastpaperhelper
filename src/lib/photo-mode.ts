@@ -35,19 +35,25 @@ export function resolvePhotoMode(layers: {
 }
 
 export type PhotoAvailability = {
-  /** Show the photo/drawing input by default. */
+  /** Highlight the photo/writing-pad input as the expected route for this question. */
   requiresPhoto: boolean;
-  /** Hide the typed answer box — the answer only exists on paper. */
+  /**
+   * Kept for compatibility. Students always get all three routes (typing,
+   * photo, writing pad), so nothing is ever photo-only.
+   */
   photoOnly: boolean;
 };
 
+/**
+ * Every question offers a text box, a photo (upload or camera) and the writing
+ * pad. `requiresPhoto` only decides which route is nudged as the natural one —
+ * drawing and calculation questions still suggest paper, but never block typing.
+ */
 export function photoAvailability(questionText: string, mode: PhotoMode): PhotoAvailability {
   if (mode === "off") return { requiresPhoto: false, photoOnly: false };
-  if (mode === "on") {
-    return { requiresPhoto: true, photoOnly: isPhotoOnlyQuestion(questionText) };
-  }
+  if (mode === "on") return { requiresPhoto: true, photoOnly: false };
   return {
-    requiresPhoto: needsPhotoAnswer(questionText),
-    photoOnly: isPhotoOnlyQuestion(questionText),
+    requiresPhoto: needsPhotoAnswer(questionText) || isPhotoOnlyQuestion(questionText),
+    photoOnly: false,
   };
 }

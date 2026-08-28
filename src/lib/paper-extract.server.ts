@@ -47,7 +47,10 @@ const INVENTORY_SYSTEM = [
 const DETAIL_SYSTEM = [
   SHARED_RULES,
   "Task: for ONLY the requested part labels, transcribe the question and align the official mark scheme.",
-  "questionText: start with the part label, then transcribe the full wording the student must answer verbatim, including any stem/context shared with earlier parts, given data and units. Never include the answer.",
+  "questionText: start with the part label, then reproduce the printed wording CHARACTER FOR CHARACTER. You are an OCR transcriber, not an editor or a rewriter.",
+  "ABSOLUTE RULE: never change, modernise, simplify, translate, correct, shorten, expand or reorder ANY word of the question. Do not swap a word for a synonym (no \"work out\" for \"calculate\", no \"find\" for \"determine\", no \"picture\" for \"Fig.\"). Do not fix the paper's spelling, capitalisation, punctuation, spacing or British/American usage. Do not add words such as \"the\", \"your\" or \"please\" that are not printed, and do not drop printed words.",
+  "Keep the printed line structure, bracketed instructions, blank-line dots and \"[2]\" style mark tags out of the wording only if they are page furniture; everything the student reads stays exactly as printed.",
+  "If part of the wording is unreadable in the scan, transcribe what is legible and put [unclear] at that spot — never guess or paraphrase a replacement.",
   "NEVER describe or re-draw a figure, diagram, graph, table, circuit or chemical structure in words: the original paper page image is attached to the question for the student to look at. Instead transcribe the wording and refer to it as printed (e.g. \"Fig. 2.1\").",
   "Equations, formulae and expressions must be transcribed exactly as printed, keeping symbols, indices, fractions and units; use plain text/LaTeX-style notation only where unavoidable.",
   "markScheme: the official marking points for that exact part, verbatim where possible, with accepted alternatives and mark allocation.",

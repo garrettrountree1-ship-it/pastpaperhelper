@@ -192,6 +192,23 @@ export function NotesCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canEdit, tab, blocks, sectionId]);
 
+  // Ctrl/⌘ + wheel (and trackpad pinch) zooms only this canvas pane.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || tab !== "notes") return;
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      const dy = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
+      setZoom((value) =>
+        Math.min(2.5, Math.max(0.5, Number((value * Math.exp(-dy * 0.0015)).toFixed(3)))),
+      );
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [tab]);
+
+
   return (
     <div className="flex h-full min-h-0 flex-col rounded-lg border bg-card" onPaste={handlePaste}>
 

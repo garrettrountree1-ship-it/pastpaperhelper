@@ -344,6 +344,9 @@ export function LessonWorkspace({
               </Button>
             </div>
           </div>
+          </div>
+
+
 
           <div className="min-h-[420px] shrink-0 lg:ml-2 lg:h-full lg:min-h-0 lg:w-[340px]">
             <LessonTutorBar

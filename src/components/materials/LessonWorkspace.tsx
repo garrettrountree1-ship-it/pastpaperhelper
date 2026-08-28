@@ -231,21 +231,33 @@ export function LessonWorkspace({
           )}
         </div>
       ) : (
-        <div className="grid min-h-0 flex-1 gap-2 overflow-y-auto p-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_340px] lg:overflow-hidden">
-          <div className="min-h-[420px] lg:h-full lg:min-h-0">
-            <NotesCanvas
-              classId={classId}
-              sectionId={active.id}
-              canEdit={canManage}
-              initialBlocks={active.notes_blocks}
-              initialSummary={active.ai_summary}
-              initialTab={initialTab}
-              onConcept={setConcept}
-              onSaved={invalidateSections}
-            />
+        <div
+          ref={rowRef}
+          className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2 lg:flex-row lg:overflow-hidden"
+        >
+          <div
+            className="min-h-[60vh] lg:h-full lg:min-h-0"
+            style={{ flex: `0 0 auto`, width: undefined }}
+          >
+            <div className="hidden" />
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
-          <div className="flex min-h-[420px] flex-col rounded-lg border bg-card lg:h-full lg:min-h-0">
+function LegacyPanes() {
+  return null;
+}
+
+function UnusedPanes({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      {children}
+      <div>
+        <div className="flex min-h-[420px] flex-col rounded-lg border bg-card lg:h-full lg:min-h-0">
+
             <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
               <p className="text-sm font-medium">Document</p>
               {canManage ? (

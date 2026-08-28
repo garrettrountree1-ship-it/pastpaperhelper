@@ -348,12 +348,9 @@ export function LessonWorkspace({
                   className="h-full w-full rounded-md object-contain"
                 />
               ) : (
-                <iframe
-                  src={viewerSrc(docUrl.data.url)}
-                  title={material.title}
-                  className="h-full w-full rounded-md bg-white"
-                />
+                <PdfDocView url={docUrl.data.url} title={material.title} />
               )}
+
             </div>
 
             <div className="flex gap-2 border-t p-2">

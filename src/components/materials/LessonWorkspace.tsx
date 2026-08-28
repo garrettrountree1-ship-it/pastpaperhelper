@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { LessonTutorBar } from "@/components/materials/LessonTutorBar";
 import { NotesCanvas } from "@/components/materials/NotesCanvas";
+import { OfficeDocView } from "@/components/materials/OfficeDocView";
 import { PdfDocView } from "@/components/materials/PdfDocView";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { docFormat } from "@/lib/doc-kind";
 import { getMaterialUrl, updateUnit } from "@/lib/materials.functions";
 import {
   createSection,
@@ -411,6 +413,17 @@ export function LessonWorkspace({
                   src={docUrl.data.url}
                   alt={material.title}
                   className="h-full w-full rounded-md object-contain"
+                />
+              ) : docFormat(material.storage_path ?? material.title) === "pptx" ||
+                docFormat(material.storage_path ?? material.title) === "docx" ? (
+                <OfficeDocView
+                  url={docUrl.data.url}
+                  title={material.title}
+                  format={
+                    docFormat(material.storage_path ?? material.title) === "pptx"
+                      ? "pptx"
+                      : "docx"
+                  }
                 />
               ) : (
                 <PdfDocView

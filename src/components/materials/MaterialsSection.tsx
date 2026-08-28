@@ -213,28 +213,43 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
             <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-3">
               <div>
                 <h3 className="font-display text-2xl">{unit.title}</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {[
+                    unit.planned_start && unit.planned_end
+                      ? `${unit.planned_start} → ${unit.planned_end}`
+                      : unit.planned_start || unit.planned_end || null,
+                    unit.planned_classes ? `${unit.planned_classes} classes planned` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "No dates or class count set yet"}
+                </p>
                 {unit.description ? (
                   <p className="mt-1 max-w-prose text-sm text-muted-foreground">
                     {unit.description}
                   </p>
                 ) : null}
               </div>
-              {canManage ? (
-                <div className="flex gap-2">
-                  <UploadDialog classId={classId} unitId={unit.id} onDone={invalidate} />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (confirm(`Delete "${unit.title}" and all of its resources?`)) {
-                        deleteMutation.mutate(unit.id);
-                      }
-                    }}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              ) : null}
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => setOpenUnitId(unit.id)}>
+                  {canManage ? "Open lesson workspace" : "Open lesson notes"}
+                </Button>
+                {canManage ? (
+                  <>
+                    <UploadDialog classId={classId} unitId={unit.id} onDone={invalidate} />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm(`Delete "${unit.title}" and all of its resources?`)) {
+                          deleteMutation.mutate(unit.id);
+                        }
+                      }}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </>
+                ) : null}
+              </div>
             </div>
 
             {unit.materials.length === 0 ? (

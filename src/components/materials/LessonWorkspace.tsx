@@ -238,6 +238,8 @@ export function LessonWorkspace({
         </div>
       </header>
 
+      <PlanStrip unit={unit} sectionCount={list.length} canManage={canManage} onSaved={onUnitChanged} />
+
       {!active ? (
         <div className="flex flex-1 items-center justify-center p-8 text-center text-muted-foreground">
           {canManage ? (
@@ -502,5 +504,106 @@ function UnitPlanDialog({ unit, onSaved }: { unit: WorkspaceUnit; onSaved: () =>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Inline schedule strip shown under the unit title inside the lesson workspace.
+// Teachers edit dates/lessons in place; students see the read-only schedule.
+function PlanStrip({
+  unit,
+  sectionCount,
+  canManage,
+  onSaved,
+}: {
+  unit: WorkspaceUnit;
+  sectionCount: number;
+  canManage: boolean;
+  onSaved: () => void;
+}) {
+  const save = useServerFn(updateUnit);
+  const [start, setStart] = useState(unit.planned_start ?? "");
+  const [end, setEnd] = useState(unit.planned_end ?? "");
+  const [classes, setClasses] = useState(String(unit.planned_classes ?? ""));
+
+  const dirty =
+    start !== (unit.planned_start ?? "") ||
+    end !== (unit.planned_end ?? "") ||
+    classes !== String(unit.planned_classes ?? "");
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      save({
+        data: {
+          unitId: unit.id,
+          title: unit.title,
+          description: unit.description ?? "",
+          plannedStart: start || null,
+          plannedEnd: end || null,
+          plannedClasses: classes ? Number(classes) : null,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Schedule updated");
+      onSaved();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b bg-muted/40 px-4 py-1.5 text-xs">
+      <span className="flex items-center gap-1 font-medium text-muted-foreground">
+        <CalendarDays className="size-3.5" />
+        Schedule
+      </span>
+      <span className="text-muted-foreground">
+        {sectionCount} section{sectionCount === 1 ? "" : "s"}
+      </span>
+      {canManage ? (
+        <>
+          <label className="flex items-center gap-1.5">
+            <span className="text-muted-foreground">Dates</span>
+            <Input
+              type="date"
+              value={start}
+              onChange={(e) => setStart(e.target.value)}
+              className="h-7 w-[140px] text-xs"
+              aria-label="Teaching start date"
+            />
+            <span className="text-muted-foreground">→</span>
+            <Input
+              type="date"
+              value={end}
+              onChange={(e) => setEnd(e.target.value)}
+              className="h-7 w-[140px] text-xs"
+              aria-label="Teaching end date"
+            />
+          </label>
+          <label className="flex items-center gap-1.5">
+            <span className="text-muted-foreground">Lessons</span>
+            <Input
+              type="number"
+              min={0}
+              value={classes}
+              onChange={(e) => setClasses(e.target.value)}
+              className="h-7 w-[70px] text-xs"
+              aria-label="Number of lessons"
+            />
+          </label>
+          {dirty ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              onClick={() => mutation.mutate()}
+              disabled={mutation.isPending}
+            >
+              Save schedule
+            </Button>
+          ) : null}
+        </>
+      ) : (
+        <span className="text-muted-foreground">{planLine(unit)}</span>
+      )}
+    </div>
   );
 }

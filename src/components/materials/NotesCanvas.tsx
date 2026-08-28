@@ -237,12 +237,14 @@ export function NotesCanvas({
             <>
               {drawing ? (
                 <DrawingPad
+                  height="h-[60vh]"
                   onAttach={(file) => {
                     setDrawing(false);
                     void uploadImage(file);
                   }}
                 />
               ) : null}
+
               <div className="flex flex-wrap gap-2 pt-1">
                 <Button
                   size="sm"

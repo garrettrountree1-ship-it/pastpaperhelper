@@ -541,7 +541,10 @@ export function FreeCanvas({
           <figure
             key={block.id}
             className={`group absolute ${isSelected ? "z-30" : ""}`}
-            style={style}
+            style={{
+              ...style,
+              transform: block.rot ? `rotate(${block.rot}deg)` : undefined,
+            }}
             onPointerDown={(event) => {
               if (!canEdit || mode !== "type") return;
               setSelectedId(block.id);

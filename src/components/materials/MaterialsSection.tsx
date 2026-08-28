@@ -4,6 +4,7 @@ import { Download, FileText, Film, Image as ImageIcon, Link2, Presentation, Tras
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { LessonWorkspace } from "@/components/materials/LessonWorkspace";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -117,6 +118,7 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
   const create = useServerFn(createUnit);
   const removeUnit = useServerFn(deleteUnit);
   const [open, setOpen] = useState(false);
+  const [openUnitId, setOpenUnitId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
@@ -144,6 +146,19 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
   });
 
   if (units.isLoading) return <Skeleton className="h-40 w-full" />;
+
+  const openUnit = (units.data ?? []).find((unit) => unit.id === openUnitId);
+  if (openUnit) {
+    return (
+      <LessonWorkspace
+        classId={classId}
+        unit={openUnit}
+        canManage={canManage}
+        onBack={() => setOpenUnitId(null)}
+        onUnitChanged={invalidate}
+      />
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -198,28 +213,43 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
             <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-3">
               <div>
                 <h3 className="font-display text-2xl">{unit.title}</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {[
+                    unit.planned_start && unit.planned_end
+                      ? `${unit.planned_start} → ${unit.planned_end}`
+                      : unit.planned_start || unit.planned_end || null,
+                    unit.planned_classes ? `${unit.planned_classes} classes planned` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "No dates or class count set yet"}
+                </p>
                 {unit.description ? (
                   <p className="mt-1 max-w-prose text-sm text-muted-foreground">
                     {unit.description}
                   </p>
                 ) : null}
               </div>
-              {canManage ? (
-                <div className="flex gap-2">
-                  <UploadDialog classId={classId} unitId={unit.id} onDone={invalidate} />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (confirm(`Delete "${unit.title}" and all of its resources?`)) {
-                        deleteMutation.mutate(unit.id);
-                      }
-                    }}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              ) : null}
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => setOpenUnitId(unit.id)}>
+                  {canManage ? "Open lesson workspace" : "Open lesson notes"}
+                </Button>
+                {canManage ? (
+                  <>
+                    <UploadDialog classId={classId} unitId={unit.id} onDone={invalidate} />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm(`Delete "${unit.title}" and all of its resources?`)) {
+                          deleteMutation.mutate(unit.id);
+                        }
+                      }}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </>
+                ) : null}
+              </div>
             </div>
 
             {unit.materials.length === 0 ? (

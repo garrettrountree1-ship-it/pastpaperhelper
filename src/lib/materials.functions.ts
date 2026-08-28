@@ -51,7 +51,9 @@ export const listUnits = createServerFn({ method: "GET" })
     const { supabase } = context;
     const { data: units, error } = await supabase
       .from("class_units")
-      .select("id, title, description, position, created_at")
+      .select(
+        "id, title, description, position, created_at, planned_start, planned_end, planned_classes",
+      )
       .eq("class_id", data.classId)
       .order("position", { ascending: true })
       .order("created_at", { ascending: true });
@@ -97,6 +99,9 @@ export const createUnit = createServerFn({ method: "POST" })
         classId: z.string().uuid(),
         title: z.string().min(1).max(120),
         description: z.string().max(1000).optional(),
+        plannedStart: z.string().max(20).nullable().optional(),
+        plannedEnd: z.string().max(20).nullable().optional(),
+        plannedClasses: z.number().int().min(0).max(200).nullable().optional(),
       })
       .parse(input),
   )
@@ -114,6 +119,9 @@ export const createUnit = createServerFn({ method: "POST" })
         class_id: data.classId,
         title: data.title,
         description: data.description ?? null,
+        planned_start: data.plannedStart || null,
+        planned_end: data.plannedEnd || null,
+        planned_classes: data.plannedClasses ?? null,
         position: count ?? 0,
         created_by: userId,
       })
@@ -131,6 +139,9 @@ export const updateUnit = createServerFn({ method: "POST" })
         unitId: z.string().uuid(),
         title: z.string().min(1).max(120),
         description: z.string().max(1000).optional(),
+        plannedStart: z.string().max(20).nullable().optional(),
+        plannedEnd: z.string().max(20).nullable().optional(),
+        plannedClasses: z.number().int().min(0).max(200).nullable().optional(),
       })
       .parse(input),
   )
@@ -141,6 +152,9 @@ export const updateUnit = createServerFn({ method: "POST" })
       .update({
         title: data.title,
         description: data.description ?? null,
+        planned_start: data.plannedStart || null,
+        planned_end: data.plannedEnd || null,
+        planned_classes: data.plannedClasses ?? null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", data.unitId);

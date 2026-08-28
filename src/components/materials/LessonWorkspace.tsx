@@ -87,6 +87,7 @@ export function LessonWorkspace({
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [concept, setConcept] = useState<string | null>(null);
+  const [docOverride, setDocOverride] = useState<string | null>(initialMaterialId ?? null);
   const [term, setTerm] = useState("");
 
   const sections = useQuery({

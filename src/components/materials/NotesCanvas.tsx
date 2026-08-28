@@ -65,7 +65,7 @@ export function NotesCanvas({
   );
   const [summary, setSummary] = useState(initialSummary ?? "");
   const [drawing, setDrawing] = useState(false);
-  const [tab, setTab] = useState<"notes" | "summary">("notes");
+  const [tab, setTab] = useState<"notes" | "summary">(initialTab);
   const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
   const dirty = useRef(false);
   const fileInput = useRef<HTMLInputElement | null>(null);

@@ -227,7 +227,6 @@ export function LessonWorkspace({
                 <Input
                   key={`edit-${section.id}`}
                   autoFocus
-                  size-attr="sm"
                   value={editingTitle}
                   onChange={(e) => setEditingTitle(e.target.value)}
                   onBlur={() => commitRename(section.id)}
@@ -237,6 +236,7 @@ export function LessonWorkspace({
                   }}
                   className="h-8 w-40 text-xs"
                 />
+
               ) : (
                 <div key={section.id} className="relative inline-flex items-center">
                   <Button

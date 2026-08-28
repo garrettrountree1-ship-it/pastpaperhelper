@@ -163,12 +163,13 @@ export function FreeCanvas({
       const next = point(move);
       const delta = next.x - origin.x;
       const w = Math.max(80, west ? baseW - delta : baseW + delta);
-      const changes: Record<string, number> = { w };
+      const changes: { w: number; h?: number; x?: number; y?: number } = { w };
       if (ratio) changes.h = Math.round(w * ratio);
       if (west) changes.x = Math.max(0, baseX + (baseW - w));
       if (north) changes.y = Math.max(0, baseY + ((ratio ? baseH : 0) - (changes.h ?? 0)));
       patch(id, changes as Partial<Extract<NoteBlock, { type: "image" | "text" }>>);
     };
+
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);

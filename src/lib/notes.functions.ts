@@ -14,7 +14,14 @@ const blockSchema = z.union([
     x: z.number().optional(),
     y: z.number().optional(),
     w: z.number().optional(),
+    size: z.number().min(8).max(96).optional(),
+    bold: z.boolean().optional(),
+    italic: z.boolean().optional(),
+    underline: z.boolean().optional(),
+    color: z.string().max(30).optional(),
+    align: z.enum(["left", "center", "right"]).optional(),
   }),
+
   z.object({
     id: z.string().max(60),
     type: z.literal("image"),

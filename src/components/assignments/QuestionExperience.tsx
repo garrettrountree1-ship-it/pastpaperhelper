@@ -198,36 +198,30 @@ export function QuestionExperience({
 
 
       <div className="mt-4 space-y-3">
-        {photoOnly ? (
-          <p className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
-            Work this one out by hand — either write it on the pad below, take a photo with your
-            device camera, or upload a photo of your paper. Your drawing and working are marked step
-            by step, so you can still earn partial marks.
-          </p>
-        ) : (
+        <p className="text-xs text-muted-foreground">
+          Answer whichever way suits you: type it below, upload or take a photo of your paper, or
+          write it on the pad. {requiresPhoto ? "For this one, working on paper usually earns the most method marks." : null}
+        </p>
 
-
-          <Textarea
-            value={draft}
-            onChange={(event) => {
-              if (answerGuard.flagged) answerGuard.clearFlag();
-              onDraftChange(
-                bulletTarget > 0
-                  ? normaliseBullets(event.target.value, bulletTarget)
-                  : event.target.value,
-              );
-            }}
-            {...answerGuard.guardProps}
-            disabled={locked}
-            placeholder={
-              requiresPhoto
-                ? "Describe what you drew (then add a photo or use the writing pad below)"
-                : "Write your answer in English"
-            }
-            rows={Math.max(4, bulletTarget + 1)}
-
-          />
-        )}
+        <Textarea
+          value={draft}
+          onChange={(event) => {
+            if (answerGuard.flagged) answerGuard.clearFlag();
+            onDraftChange(
+              bulletTarget > 0
+                ? normaliseBullets(event.target.value, bulletTarget)
+                : event.target.value,
+            );
+          }}
+          {...answerGuard.guardProps}
+          disabled={locked}
+          placeholder={
+            requiresPhoto
+              ? "Type your answer or describe your working (a photo or pad sketch can be added below)"
+              : "Write your answer in English"
+          }
+          rows={Math.max(4, bulletTarget + 1)}
+        />
         {bulletTarget > 0 ? (
           <p className="text-xs text-muted-foreground">
             {bulletTarget} marks means {bulletTarget} separate points — write one point on each

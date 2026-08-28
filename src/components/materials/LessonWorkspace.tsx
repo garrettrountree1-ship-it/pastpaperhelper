@@ -120,7 +120,8 @@ export function LessonWorkspace({
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const material = unit.materials.find((m) => m.id === active?.material_id) ?? null;
+  const currentDocId = docOverride ?? active?.material_id ?? null;
+  const material = unit.materials.find((m) => m.id === currentDocId) ?? null;
   const docUrl = useQuery({
     queryKey: ["material-url", material?.id],
     queryFn: () => getUrl({ data: { materialId: material!.id } }),

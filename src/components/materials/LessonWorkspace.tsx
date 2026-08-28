@@ -92,6 +92,28 @@ export function LessonWorkspace({
   const [docOverride, setDocOverride] = useState<string | null>(initialMaterialId ?? null);
   const [term, setTerm] = useState("");
 
+  // Draggable divider between the lesson canvas and the document pane.
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const [split, setSplit] = useState(50);
+
+  function startDrag(event: React.PointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const row = rowRef.current;
+    if (!row) return;
+    const rect = row.getBoundingClientRect();
+    const onMove = (move: PointerEvent) => {
+      const pct = ((move.clientX - rect.left) / rect.width) * 100;
+      setSplit(Math.min(80, Math.max(20, pct)));
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
+
   const sections = useQuery({
     queryKey: ["unit-sections", unit.id],
     queryFn: () => fetchSections({ data: { unitId: unit.id } }),

@@ -1397,6 +1397,9 @@ export type Database = {
           material_id: string | null
           notes_blocks: Json
           notes_text: string
+          planned_classes: number | null
+          planned_end: string | null
+          planned_start: string | null
           position: number
           title: string
           unit_id: string
@@ -1412,6 +1415,9 @@ export type Database = {
           material_id?: string | null
           notes_blocks?: Json
           notes_text?: string
+          planned_classes?: number | null
+          planned_end?: string | null
+          planned_start?: string | null
           position?: number
           title: string
           unit_id: string
@@ -1427,6 +1433,9 @@ export type Database = {
           material_id?: string | null
           notes_blocks?: Json
           notes_text?: string
+          planned_classes?: number | null
+          planned_end?: string | null
+          planned_start?: string | null
           position?: number
           title?: string
           unit_id?: string

@@ -56,7 +56,7 @@ export const listSections = createServerFn({ method: "GET" })
     const { data: rows, error } = await context.supabase
       .from("unit_sections")
       .select(
-        "id, unit_id, class_id, title, position, notes_blocks, notes_text, ai_summary, ai_summary_updated_at, material_id, updated_at",
+        "id, unit_id, class_id, title, position, notes_blocks, notes_text, ai_summary, ai_summary_updated_at, material_id, planned_start, planned_end, planned_classes, updated_at",
       )
       .eq("unit_id", data.unitId)
       .order("position", { ascending: true })
@@ -104,6 +104,9 @@ export const updateSection = createServerFn({ method: "POST" })
         sectionId: z.string().uuid(),
         title: z.string().min(1).max(160).optional(),
         materialId: z.string().uuid().nullable().optional(),
+        plannedStart: z.string().max(20).nullable().optional(),
+        plannedEnd: z.string().max(20).nullable().optional(),
+        plannedClasses: z.number().int().min(0).max(200).nullable().optional(),
       })
       .parse(input),
   )
@@ -121,6 +124,9 @@ export const updateSection = createServerFn({ method: "POST" })
       updated_at: new Date().toISOString(),
       ...(data.title !== undefined ? { title: data.title } : {}),
       ...(data.materialId !== undefined ? { material_id: data.materialId } : {}),
+      ...(data.plannedStart !== undefined ? { planned_start: data.plannedStart || null } : {}),
+      ...(data.plannedEnd !== undefined ? { planned_end: data.plannedEnd || null } : {}),
+      ...(data.plannedClasses !== undefined ? { planned_classes: data.plannedClasses } : {}),
     };
 
     const { error } = await supabase.from("unit_sections").update(patch).eq("id", data.sectionId);

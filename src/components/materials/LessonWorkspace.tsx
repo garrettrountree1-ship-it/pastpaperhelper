@@ -238,7 +238,15 @@ export function LessonWorkspace({
         </div>
       </header>
 
-      <PlanStrip unit={unit} sectionCount={list.length} canManage={canManage} onSaved={onUnitChanged} />
+      {active ? (
+        <PlanStrip
+          key={active.id}
+          unit={unit}
+          section={active}
+          canManage={canManage}
+          onSaved={invalidateSections}
+        />
+      ) : null}
 
       {!active ? (
         <div className="flex flex-1 items-center justify-center p-8 text-center text-muted-foreground">
@@ -507,43 +515,61 @@ function UnitPlanDialog({ unit, onSaved }: { unit: WorkspaceUnit; onSaved: () =>
   );
 }
 
-// Inline schedule strip shown under the unit title inside the lesson workspace.
-// Teachers edit dates/lessons in place; students see the read-only schedule.
+// Inline schedule strip for the ACTIVE section inside the lesson workspace.
+// Each section keeps its own teaching dates and lesson count; the unit plan is
+// shown as a fallback when a section has no schedule of its own.
+type PlanSection = {
+  id: string;
+  title: string;
+  planned_start?: string | null;
+  planned_end?: string | null;
+  planned_classes?: number | null;
+};
+
+function sectionPlanLine(section: PlanSection, unit: WorkspaceUnit) {
+  const start = section.planned_start ?? null;
+  const end = section.planned_end ?? null;
+  const count = section.planned_classes ?? null;
+  if (!start && !end && count === null) return `Unit plan · ${planLine(unit)}`;
+  const dates = start && end ? `${start} → ${end}` : start || end || "Dates not set";
+  const classes =
+    count && count > 0 ? `${count} lesson${count === 1 ? "" : "s"}` : "Lessons not set";
+  return `${dates} · ${classes}`;
+}
+
 function PlanStrip({
   unit,
-  sectionCount,
+  section,
   canManage,
   onSaved,
 }: {
   unit: WorkspaceUnit;
-  sectionCount: number;
+  section: PlanSection;
   canManage: boolean;
   onSaved: () => void;
 }) {
-  const save = useServerFn(updateUnit);
-  const [start, setStart] = useState(unit.planned_start ?? "");
-  const [end, setEnd] = useState(unit.planned_end ?? "");
-  const [classes, setClasses] = useState(String(unit.planned_classes ?? ""));
+  const save = useServerFn(updateSection);
+  const [start, setStart] = useState(section.planned_start ?? "");
+  const [end, setEnd] = useState(section.planned_end ?? "");
+  const [classes, setClasses] = useState(String(section.planned_classes ?? ""));
 
   const dirty =
-    start !== (unit.planned_start ?? "") ||
-    end !== (unit.planned_end ?? "") ||
-    classes !== String(unit.planned_classes ?? "");
+    start !== (section.planned_start ?? "") ||
+    end !== (section.planned_end ?? "") ||
+    classes !== String(section.planned_classes ?? "");
 
   const mutation = useMutation({
     mutationFn: () =>
       save({
         data: {
-          unitId: unit.id,
-          title: unit.title,
-          description: unit.description ?? "",
+          sectionId: section.id,
           plannedStart: start || null,
           plannedEnd: end || null,
           plannedClasses: classes ? Number(classes) : null,
         },
       }),
     onSuccess: () => {
-      toast.success("Schedule updated");
+      toast.success(`Schedule updated for ${section.title}`);
       onSaved();
     },
     onError: (error: Error) => toast.error(error.message),
@@ -553,10 +579,7 @@ function PlanStrip({
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b bg-muted/40 px-4 py-1.5 text-xs">
       <span className="flex items-center gap-1 font-medium text-muted-foreground">
         <CalendarDays className="size-3.5" />
-        Schedule
-      </span>
-      <span className="text-muted-foreground">
-        {sectionCount} section{sectionCount === 1 ? "" : "s"}
+        {section.title} schedule
       </span>
       {canManage ? (
         <>
@@ -567,7 +590,7 @@ function PlanStrip({
               value={start}
               onChange={(e) => setStart(e.target.value)}
               className="h-7 w-[140px] text-xs"
-              aria-label="Teaching start date"
+              aria-label="Section start date"
             />
             <span className="text-muted-foreground">→</span>
             <Input
@@ -575,7 +598,7 @@ function PlanStrip({
               value={end}
               onChange={(e) => setEnd(e.target.value)}
               className="h-7 w-[140px] text-xs"
-              aria-label="Teaching end date"
+              aria-label="Section end date"
             />
           </label>
           <label className="flex items-center gap-1.5">
@@ -586,7 +609,7 @@ function PlanStrip({
               value={classes}
               onChange={(e) => setClasses(e.target.value)}
               className="h-7 w-[70px] text-xs"
-              aria-label="Number of lessons"
+              aria-label="Number of lessons for this section"
             />
           </label>
           {dirty ? (
@@ -602,8 +625,9 @@ function PlanStrip({
           ) : null}
         </>
       ) : (
-        <span className="text-muted-foreground">{planLine(unit)}</span>
+        <span className="text-muted-foreground">{sectionPlanLine(section, unit)}</span>
       )}
     </div>
   );
 }
+

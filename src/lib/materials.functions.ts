@@ -51,7 +51,9 @@ export const listUnits = createServerFn({ method: "GET" })
     const { supabase } = context;
     const { data: units, error } = await supabase
       .from("class_units")
-      .select("id, title, description, position, created_at")
+      .select(
+        "id, title, description, position, created_at, planned_start, planned_end, planned_classes",
+      )
       .eq("class_id", data.classId)
       .order("position", { ascending: true })
       .order("created_at", { ascending: true });

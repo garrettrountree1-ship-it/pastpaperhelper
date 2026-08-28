@@ -1,4 +1,4 @@
-import { GripVertical, Trash2 } from "lucide-react";
+import { GripVertical, RotateCw, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import type { NoteBlock } from "@/lib/notes.functions";
@@ -195,7 +195,36 @@ export function FreeCanvas({
     window.addEventListener("pointerup", onUp);
   }
 
+  /** Drag around the image centre to spin it; Shift snaps to 15° steps. */
+  function startRotate(id: string, event: React.PointerEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    const block = blocks.find((b) => b.id === id);
+    if (!block || block.type !== "image") return;
+    const centre = {
+      x: (block.x ?? 0) + (block.w ?? 420) / 2,
+      y: (block.y ?? 0) + (block.h ?? 300) / 2,
+    };
+    const start = point(event);
+    const startAngle = Math.atan2(start.y - centre.y, start.x - centre.x);
+    const baseRot = block.rot ?? 0;
+    const onMove = (move: PointerEvent) => {
+      const next = point(move);
+      const angle = Math.atan2(next.y - centre.y, next.x - centre.x);
+      let deg = baseRot + ((angle - startAngle) * 180) / Math.PI;
+      if (move.shiftKey) deg = Math.round(deg / 15) * 15;
+      patch(id, { rot: Math.round(((deg % 360) + 360) % 360) });
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
   // Delete or Backspace removes the selected image (Word-like behaviour).
+
   useEffect(() => {
     if (!canEdit || !selectedId) return;
     const onKey = (event: KeyboardEvent) => {
@@ -512,7 +541,10 @@ export function FreeCanvas({
           <figure
             key={block.id}
             className={`group absolute ${isSelected ? "z-30" : ""}`}
-            style={style}
+            style={{
+              ...style,
+              transform: block.rot ? `rotate(${block.rot}deg)` : undefined,
+            }}
             onPointerDown={(event) => {
               if (!canEdit || mode !== "type") return;
               setSelectedId(block.id);
@@ -547,6 +579,21 @@ export function FreeCanvas({
                   aria-label="Delete image"
                 >
                   <Trash2 className="size-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onPointerDown={(event) => startRotate(block.id, event)}
+                  onDoubleClick={(event) => {
+                    event.stopPropagation();
+                    patch(block.id, { rot: (((block.rot ?? 0) + 90) % 360) });
+                  }}
+                  className={`absolute -top-8 left-1/2 -translate-x-1/2 cursor-grab rounded-full border bg-background p-1 text-muted-foreground shadow-sm transition-opacity hover:text-primary ${
+                    isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                  }`}
+                  aria-label="Rotate image"
+                  title="Drag to rotate (Shift snaps to 15°), double-click for 90°"
+                >
+                  <RotateCw className="size-3.5" />
                 </button>
                 {(
                   [

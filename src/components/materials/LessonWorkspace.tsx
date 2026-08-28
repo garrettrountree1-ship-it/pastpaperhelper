@@ -217,9 +217,18 @@ export function LessonWorkspace({
 
       {!active ? (
         <div className="flex flex-1 items-center justify-center p-8 text-center text-muted-foreground">
-          {canManage
-            ? "Create your first section to start a lesson canvas."
-            : "Your teacher hasn't added lesson notes to this unit yet."}
+          {canManage ? (
+            <div className="w-full max-w-5xl space-y-2">
+              <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_340px]">
+                <Skeleton className="h-[60vh] w-full" />
+                <Skeleton className="h-[60vh] w-full" />
+                <Skeleton className="h-[60vh] w-full" />
+              </div>
+              <p className="text-sm">Setting up your lesson workspace…</p>
+            </div>
+          ) : (
+            "Your teacher hasn't added lesson notes to this unit yet."
+          )}
         </div>
       ) : (
         <div className="grid min-h-0 flex-1 gap-2 overflow-y-auto p-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_340px] lg:overflow-hidden">

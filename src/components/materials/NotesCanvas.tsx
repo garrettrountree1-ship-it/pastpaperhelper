@@ -197,12 +197,43 @@ export function NotesCanvas({
           <Sparkles className="size-4" />
           AI summary
         </Button>
-        {canEdit && tab === "notes" ? (
-          <span className="ml-auto text-xs text-muted-foreground">
-            {status === "saving" ? "Saving…" : status === "saved" ? "Saved" : ""}
-          </span>
+        {tab === "notes" ? (
+          <div className="ml-auto flex items-center gap-1">
+            {canEdit ? (
+              <span className="mr-1 text-xs text-muted-foreground">
+                {status === "saving" ? "Saving…" : status === "saved" ? "Saved" : ""}
+              </span>
+            ) : null}
+            <Button
+              size="icon"
+              variant="outline"
+              className="size-7"
+              aria-label="Zoom out canvas"
+              onClick={() => setZoom((value) => Math.max(0.5, Number((value - 0.1).toFixed(2))))}
+            >
+              <Minus className="size-3.5" />
+            </Button>
+            <button
+              type="button"
+              onClick={() => setZoom(1)}
+              className="min-w-11 rounded px-1 text-xs text-muted-foreground hover:bg-muted"
+              aria-label="Reset canvas zoom"
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <Button
+              size="icon"
+              variant="outline"
+              className="size-7"
+              aria-label="Zoom in canvas"
+              onClick={() => setZoom((value) => Math.min(2.5, Number((value + 0.1).toFixed(2))))}
+            >
+              <Plus className="size-3.5" />
+            </Button>
+          </div>
         ) : null}
       </div>
+
 
       {canEdit && tab === "notes" ? (
         <div className="flex flex-wrap items-center gap-2 border-b px-3 py-1.5">

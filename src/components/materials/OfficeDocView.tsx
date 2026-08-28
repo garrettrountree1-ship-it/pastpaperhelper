@@ -1,5 +1,5 @@
 import { Download, Minus, Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,6 +25,24 @@ export function OfficeDocView({
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
   const [html, setHtml] = useState<string>("");
   const [deck, setDeck] = useState<PptxDeck | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Pinch / ctrl+wheel zoom, kept inside this pane so the page never zooms.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      const dy = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
+      setZoom((v) =>
+        Number(Math.min(3, Math.max(0.5, v * Math.exp(-dy * 0.0015))).toFixed(3)),
+      );
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -104,7 +122,7 @@ export function OfficeDocView({
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-md bg-muted/30 p-2">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto rounded-md bg-muted/30 p-2">
         {status === "loading" ? (
           <div className="space-y-2 p-2">
             <p className="text-sm text-muted-foreground">
@@ -122,26 +140,28 @@ export function OfficeDocView({
         ) : null}
 
         {status === "ready" ? (
-          <div
-            style={{
-              transform: `scale(${zoom})`,
-              transformOrigin: "top left",
-              width: `${100 / zoom}%`,
-            }}
-          >
-            {deck ? (
-              <div className="office-slides space-y-3">
-                {deck.slides.map((slide, index) => (
-                  <SlidePage key={index} deck={deck} index={index} />
-                ))}
-              </div>
-            ) : (
+          deck ? (
+            // Slides size themselves to their container, so zoom widens the stack
+            // and the pane scrolls — no transform needed.
+            <div className="office-slides space-y-3" style={{ width: `${zoom * 100}%` }}>
+              {deck.slides.map((slide, index) => (
+                <SlidePage key={index} deck={deck} index={index} />
+              ))}
+            </div>
+          ) : (
+            <div
+              style={{
+                transform: `scale(${zoom})`,
+                transformOrigin: "top left",
+                width: "100%",
+              }}
+            >
               <div
                 className="office-doc rounded-md border bg-white p-6 text-sm leading-relaxed text-black shadow-sm"
                 dangerouslySetInnerHTML={{ __html: html }}
               />
-            )}
-          </div>
+            </div>
+          )
         ) : null}
       </div>
     </div>

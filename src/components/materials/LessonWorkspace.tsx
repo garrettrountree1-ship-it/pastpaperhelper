@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, CalendarDays, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarDays, PanelRightClose, PanelRightOpen, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -91,6 +91,7 @@ export function LessonWorkspace({
   const [concept, setConcept] = useState<string | null>(null);
   const [docOverride, setDocOverride] = useState<string | null>(initialMaterialId ?? null);
   const [term, setTerm] = useState("");
+  const [tutorOpen, setTutorOpen] = useState(true);
 
   // Draggable divider between the lesson canvas and the document pane.
   const rowRef = useRef<HTMLDivElement | null>(null);
@@ -271,7 +272,10 @@ export function LessonWorkspace({
               initialBlocks={active.notes_blocks}
               initialSummary={active.ai_summary}
               initialTab={initialTab}
-              onConcept={setConcept}
+              onConcept={(value) => {
+                setConcept(value);
+                setTutorOpen(true);
+              }}
               onSaved={invalidateSections}
             />
           </div>
@@ -356,6 +360,7 @@ export function LessonWorkspace({
                 disabled={!term.trim()}
                 onClick={() => {
                   setConcept(term.trim());
+                  setTutorOpen(true);
                   setTerm("");
                 }}
               >
@@ -367,13 +372,40 @@ export function LessonWorkspace({
 
 
 
-          <div className="min-h-[420px] shrink-0 lg:ml-2 lg:h-full lg:min-h-0 lg:w-[340px]">
-            <LessonTutorBar
-              classId={classId}
-              sectionId={active.id}
-              concept={concept}
-              onConceptHandled={() => setConcept(null)}
-            />
+          <div className="shrink-0 lg:ml-2 lg:h-full lg:min-h-0">
+            {tutorOpen ? (
+              <div className="flex h-full min-h-[420px] flex-col lg:w-[340px]">
+                <div className="relative h-full min-h-0 flex-1">
+                  <LessonTutorBar
+                    classId={classId}
+                    sectionId={active.id}
+                    concept={concept}
+                    onConceptHandled={() => setConcept(null)}
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="absolute right-1 top-1 z-10 size-7"
+                    title="Collapse AI tutor"
+                    aria-label="Collapse AI tutor"
+                    onClick={() => setTutorOpen(false)}
+                  >
+                    <PanelRightClose className="size-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                size="icon"
+                variant="outline"
+                className="lg:mt-1"
+                title="Open AI tutor"
+                aria-label="Open AI tutor"
+                onClick={() => setTutorOpen(true)}
+              >
+                <PanelRightOpen className="size-4" />
+              </Button>
+            )}
           </div>
         </div>
       )}

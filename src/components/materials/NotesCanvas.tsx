@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ImagePlus, PenLine, RefreshCw, Sparkles, Type } from "lucide-react";
+import { Eraser, ImagePlus, PenLine, RefreshCw, Sparkles, Type } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -193,6 +193,10 @@ export function NotesCanvas({
             <PenLine className="size-4" />
             Draw
           </Button>
+          <Button size="sm" variant={mode === "erase" ? "default" : "outline"} onClick={() => setMode("erase")}>
+            <Eraser className="size-4" />
+            Erase
+          </Button>
           {mode === "draw"
             ? PEN_COLORS.map((value) => (
                 <button
@@ -234,7 +238,9 @@ export function NotesCanvas({
           <span className="text-xs text-muted-foreground">
             {mode === "draw"
               ? "Draw anywhere on the sheet."
-              : "Click anywhere to type · paste images straight in"}
+              : mode === "erase"
+                ? "Click or drag across a stroke to erase it."
+                : "Click anywhere to type · paste images straight in"}
           </span>
         </div>
       ) : null}

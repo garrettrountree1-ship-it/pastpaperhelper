@@ -102,10 +102,33 @@ export function PdfDocView({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-2 pb-1">
-        <span className="truncate text-xs text-muted-foreground">
-          Saved on this device — opens without reloading.
-        </span>
+      <div className="flex items-center gap-1 pb-1">
+        <Button
+          size="icon"
+          variant="outline"
+          className="size-7"
+          aria-label="Zoom out document"
+          onClick={() => setZoom((value) => Math.max(0.5, Number((value - 0.1).toFixed(2))))}
+        >
+          <Minus className="size-3.5" />
+        </Button>
+        <button
+          type="button"
+          onClick={() => setZoom(1)}
+          className="min-w-11 rounded px-1 text-xs text-muted-foreground hover:bg-muted"
+          aria-label="Reset document zoom"
+        >
+          {Math.round(zoom * 100)}%
+        </button>
+        <Button
+          size="icon"
+          variant="outline"
+          className="size-7"
+          aria-label="Zoom in document"
+          onClick={() => setZoom((value) => Math.min(3, Number((value + 0.1).toFixed(2))))}
+        >
+          <Plus className="size-3.5" />
+        </Button>
         <Button
           size="sm"
           variant="ghost"
@@ -125,16 +148,21 @@ export function PdfDocView({
           </a>
         </Button>
       </div>
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto rounded-md bg-muted/30 p-2">
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 space-y-3 overflow-auto rounded-md bg-muted/30 p-2"
+      >
         {pages.map((src, index) => (
           <img
             key={index}
             src={src}
             alt={`${title} page ${index + 1}`}
-            className="w-full rounded-md border bg-white shadow-sm"
+            className="rounded-md border bg-white shadow-sm"
+            style={{ width: `${zoom * 100}%`, maxWidth: "none" }}
           />
         ))}
       </div>
+
     </div>
   );
 }

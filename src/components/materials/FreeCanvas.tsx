@@ -350,7 +350,12 @@ export function FreeCanvas({
             textAlign: block.align ?? "left",
           };
           return (
-            <div key={block.id} className="group absolute" style={style}>
+            <div
+              key={block.id}
+              className={`group absolute ${block.box ? "rounded-md border border-border bg-background/70 p-2 shadow-sm" : ""}`}
+              style={style}
+            >
+
               {canEdit ? (
                 <>
                   {isSelectedText ? (

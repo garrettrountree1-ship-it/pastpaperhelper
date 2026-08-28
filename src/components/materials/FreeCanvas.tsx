@@ -142,19 +142,32 @@ export function FreeCanvas({
     window.addEventListener("pointerup", onUp);
   }
 
-  function startResize(id: string, event: React.PointerEvent) {
+  function startResize(
+    id: string,
+    event: React.PointerEvent,
+    corner: "nw" | "ne" | "sw" | "se" = "se",
+  ) {
     event.preventDefault();
     event.stopPropagation();
     const block = blocks.find((b) => b.id === id);
     if (!block || block.type === "ink") return;
     const origin = point(event);
     const baseW = block.w ?? 420;
-    const baseH = block.type === "image" ? (block.h ?? 300) : 0;
+    const baseH = block.type === "image" ? (block.h ?? 0) : 0;
+    const baseX = block.x ?? 0;
+    const baseY = block.y ?? 0;
     const ratio = baseH && baseW ? baseH / baseW : 0;
+    const west = corner === "nw" || corner === "sw";
+    const north = corner === "nw" || corner === "ne";
     const onMove = (move: PointerEvent) => {
       const next = point(move);
-      const w = Math.max(120, baseW + (next.x - origin.x));
-      patch(id, ratio ? { w, h: Math.round(w * ratio) } : { w });
+      const delta = next.x - origin.x;
+      const w = Math.max(80, west ? baseW - delta : baseW + delta);
+      const changes: Record<string, number> = { w };
+      if (ratio) changes.h = Math.round(w * ratio);
+      if (west) changes.x = Math.max(0, baseX + (baseW - w));
+      if (north) changes.y = Math.max(0, baseY + ((ratio ? baseH : 0) - (changes.h ?? 0)));
+      patch(id, changes as Partial<Extract<NoteBlock, { type: "image" | "text" }>>);
     };
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
@@ -163,6 +176,23 @@ export function FreeCanvas({
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
   }
+
+  // Delete or Backspace removes the selected image (Word-like behaviour).
+  useEffect(() => {
+    if (!canEdit || !selectedId) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
+      const target = event.target as HTMLElement | null;
+      if (target && /INPUT|TEXTAREA/.test(target.tagName)) return;
+      event.preventDefault();
+      remove(selectedId);
+      setSelectedId(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canEdit, selectedId, blocks]);
+
 
   const erasing = useRef(false);
 

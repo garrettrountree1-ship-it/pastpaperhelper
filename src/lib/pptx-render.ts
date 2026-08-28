@@ -222,22 +222,24 @@ export async function parsePptx(buffer: ArrayBuffer): Promise<PptxDeck> {
 
     const walk = async (parent: Element, offsetX: number, offsetY: number) => {
       for (const node of Array.from(parent.children)) {
-        if (node.localName === "sp") {
+        if (node.localName === "sp" || node.localName === "pic") {
           const shape = textShape(node, offsetX, offsetY);
           if (shape) shapes.push(shape);
-        } else if (node.localName === "pic") {
           const frame = xfrmOf(descendant(node, ["spPr", "xfrm"]));
-          const embed = descendant(node, ["blipFill", "blip"])?.getAttribute("r:embed");
+          // Pictures use p:blipFill; ordinary shapes can also be filled with an image.
+          const blip =
+            descendant(node, ["blipFill", "blip"]) ??
+            descendant(node, ["spPr", "blipFill", "blip"]);
+          const embed = blip?.getAttribute("r:embed");
+          const link = blip?.getAttribute("r:link");
           const target = embed ? rels.get(embed) : null;
-          if (!target) continue;
-          const mediaPath = resolvePath(path, target);
-          const file = zip.file(mediaPath);
-          if (!file) continue;
-          const blob = await file.async("blob");
-          const ext = mediaPath.split(".").pop()?.toLowerCase() ?? "png";
-          const typed = new Blob([blob], {
-            type: ext === "svg" ? "image/svg+xml" : `image/${ext === "jpg" ? "jpeg" : ext}`,
-          });
+          let src: string | null = null;
+          if (target) src = await mediaUrl(resolvePath(path, target));
+          else if (link) {
+            const external = rels.get(link);
+            if (external && /^https?:\/\//.test(external)) src = external;
+          }
+          if (!src) continue;
           shapes.push({
             type: "image",
             x: (frame?.x ?? 0) + offsetX,
@@ -245,7 +247,7 @@ export async function parsePptx(buffer: ArrayBuffer): Promise<PptxDeck> {
             w: frame?.w ?? 0,
             h: frame?.h ?? 0,
             rot: frame?.rot ?? 0,
-            src: URL.createObjectURL(typed),
+            src,
           });
         } else if (node.localName === "grpSp") {
           const frame = xfrmOf(descendant(node, ["grpSpPr", "xfrm"]));

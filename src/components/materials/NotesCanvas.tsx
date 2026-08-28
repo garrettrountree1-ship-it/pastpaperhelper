@@ -290,7 +290,7 @@ export function NotesCanvas({
       ) : null}
 
       {tab === "notes" ? (
-        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
           <FreeCanvas
             blocks={blocks}
             canEdit={canEdit}
@@ -298,11 +298,13 @@ export function NotesCanvas({
             penColor={penColor}
             penWidth={2.4}
             imageUrls={urls.data}
+            zoom={zoom}
             onChange={update}
             onConcept={onConcept}
           />
         </div>
       ) : (
+
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           {canEdit ? (
             <Button

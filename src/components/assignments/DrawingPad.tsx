@@ -124,6 +124,23 @@ export function DrawingPad({
         Use a stylus, finger or mouse. When you&apos;re done, attach it — it&apos;s marked step by
         step like a photo of paper.
       </p>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {PEN_COLORS.map((pen) => (
+          <button
+            key={pen.value}
+            type="button"
+            title={pen.name}
+            aria-label={pen.name}
+            aria-pressed={color === pen.value}
+            disabled={disabled}
+            onClick={() => setColor(pen.value)}
+            className={`size-6 rounded-full border-2 transition-transform ${
+              color === pen.value ? "scale-110 border-foreground" : "border-border"
+            }`}
+            style={{ backgroundColor: pen.value }}
+          />
+        ))}
+      </div>
       <canvas
         ref={canvasRef}
         onPointerDown={start}
@@ -131,8 +148,9 @@ export function DrawingPad({
         onPointerUp={end}
         onPointerLeave={end}
         onPointerCancel={end}
-        className="mt-2 h-64 w-full touch-none rounded-md border border-border bg-white"
+        className={`mt-2 w-full touch-none rounded-md border border-border bg-white ${height}`}
       />
+
       <div className="mt-2 flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={attach} disabled={disabled || !hasInk}>
           Attach this working

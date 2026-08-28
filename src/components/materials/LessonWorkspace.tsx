@@ -272,7 +272,10 @@ export function LessonWorkspace({
               initialBlocks={active.notes_blocks}
               initialSummary={active.ai_summary}
               initialTab={initialTab}
-              onConcept={setConcept}
+              onConcept={(value) => {
+                setConcept(value);
+                setTutorOpen(true);
+              }}
               onSaved={invalidateSections}
             />
           </div>

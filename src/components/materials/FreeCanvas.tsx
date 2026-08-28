@@ -1,4 +1,4 @@
-import { GripVertical, Trash2 } from "lucide-react";
+import { GripVertical, RotateCw, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import type { NoteBlock } from "@/lib/notes.functions";

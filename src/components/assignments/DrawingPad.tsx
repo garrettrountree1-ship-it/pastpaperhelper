@@ -3,7 +3,17 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
-type Stroke = { points: Array<{ x: number; y: number }>; width: number };
+type Stroke = { points: Array<{ x: number; y: number }>; width: number; color: string };
+
+const PEN_COLORS = [
+  { name: "Black", value: "#111827" },
+  { name: "Red", value: "#dc2626" },
+  { name: "Blue", value: "#2563eb" },
+  { name: "Green", value: "#16a34a" },
+  { name: "Orange", value: "#ea580c" },
+  { name: "Purple", value: "#7c3aed" },
+];
+
 
 /**
  * Stylus / finger / mouse writing pad for working out calculations on screen

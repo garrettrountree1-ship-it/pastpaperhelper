@@ -5,6 +5,16 @@ import type { NoteBlock } from "@/lib/notes.functions";
 
 export type CanvasMode = "type" | "draw" | "erase";
 
+export const TEXT_COLORS: string[] = [
+  "#111827",
+  "#dc2626",
+  "#2563eb",
+  "#16a34a",
+  "#ea580c",
+  "#7c3aed",
+];
+
+
 /** Distance from a point to a segment, for eraser hit-testing. */
 function distToSegment(
   p: { x: number; y: number },
@@ -340,7 +350,12 @@ export function FreeCanvas({
             textAlign: block.align ?? "left",
           };
           return (
-            <div key={block.id} className="group absolute" style={style}>
+            <div
+              key={block.id}
+              className={`group absolute ${block.box ? "rounded-md border border-border bg-background/70 p-2 shadow-sm" : ""}`}
+              style={style}
+            >
+
               {canEdit ? (
                 <>
                   {isSelectedText ? (
@@ -394,6 +409,29 @@ export function FreeCanvas({
                           {align[0]}
                         </button>
                       ))}
+                      {TEXT_COLORS.map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => patch(block.id, { color: value })}
+                          aria-label={`Text color ${value}`}
+                          className={`size-5 rounded-full border ${
+                            (block.color ?? TEXT_COLORS[0]) === value ? "ring-2 ring-ring" : ""
+                          }`}
+                          style={{ backgroundColor: value }}
+                        />
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => patch(block.id, { box: !block.box })}
+                        aria-pressed={Boolean(block.box)}
+                        className={`size-6 rounded text-[10px] uppercase ${
+                          block.box ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                        }`}
+                        aria-label="Toggle text box border"
+                      >
+                        ▢
+                      </button>
                       <button
                         type="button"
                         onPointerDown={(event) => startMove(block.id, event)}
@@ -417,8 +455,9 @@ export function FreeCanvas({
                     onChange={(event) => patch(block.id, { text: event.target.value })}
                     onFocus={() => setSelectedId(block.id)}
                     onBlur={() => {
-                      if (!block.text.trim()) remove(block.id);
+                      if (!block.box && !block.text.trim()) remove(block.id);
                     }}
+
                     placeholder="Type here…"
                     rows={1}
                     className="w-full resize-none border-0 bg-transparent p-1 text-foreground outline-none focus:ring-0"

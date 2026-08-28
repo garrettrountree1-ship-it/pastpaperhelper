@@ -154,7 +154,32 @@ export function LessonWorkspace({
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const renameMutation = useMutation({
+    mutationFn: ({ sectionId, title }: { sectionId: string; title: string }) =>
+      patchSection({ data: { sectionId, title: title.trim() } }),
+    onSuccess: () => {
+      setEditingId(null);
+      invalidateSections();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  function startRename(section: { id: string; title: string }) {
+    setEditingId(section.id);
+    setEditingTitle(section.title);
+  }
+
+  function commitRename(sectionId: string) {
+    const title = editingTitle.trim();
+    if (!title) {
+      setEditingId(null);
+      return;
+    }
+    renameMutation.mutate({ sectionId, title });
+  }
+
   // Teachers opening the workspace always land in a ready split screen —
+
   // auto-create the first section instead of showing an empty blocker.
   const autoCreated = useRef(false);
   useEffect(() => {

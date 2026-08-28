@@ -1,7 +1,6 @@
 import { GripVertical, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import type { NoteBlock } from "@/lib/notes.functions";
 
 export type CanvasMode = "type" | "draw";
@@ -329,8 +328,6 @@ export function FreeCanvas({
           Click anywhere to type. Switch to Draw to write with a pen. Paste images straight in.
         </p>
       ) : null}
-      {/* Keeps the Button import used for consistent theming of future actions. */}
-      <Button type="button" className="hidden" aria-hidden />
     </div>
   );
 }

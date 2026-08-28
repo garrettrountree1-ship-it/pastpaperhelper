@@ -36,7 +36,7 @@ export function PdfDocView({ url, title }: { url: string; title: string }) {
           const context = canvas.getContext("2d")!;
           context.fillStyle = "#ffffff";
           context.fillRect(0, 0, canvas.width, canvas.height);
-          await page.render({ canvasContext: context, viewport, canvas }).promise;
+          await page.render({ canvasContext: context, viewport } as never).promise;
           out.push(canvas.toDataURL("image/jpeg", 0.85));
           if (token.current !== current) return;
         }

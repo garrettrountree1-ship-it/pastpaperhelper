@@ -110,6 +110,11 @@ export function LessonWorkspace({
   const createMutation = useMutation({
     mutationFn: (title: string) => addSection({ data: { unitId: unit.id, title } }),
     onSuccess: async (section) => {
+      if (initialMaterialId) {
+        await patchSection({
+          data: { sectionId: section.id, materialId: initialMaterialId },
+        }).catch(() => undefined);
+      }
       await invalidateSections();
       setActiveId(section.id);
     },
@@ -122,6 +127,23 @@ export function LessonWorkspace({
     onSuccess: invalidateSections,
     onError: (error: Error) => toast.error(error.message),
   });
+
+  // Teachers opening the workspace always land in a ready split screen —
+  // auto-create the first section instead of showing an empty blocker.
+  const autoCreated = useRef(false);
+  useEffect(() => {
+    if (
+      canManage &&
+      !sections.isLoading &&
+      list.length === 0 &&
+      !autoCreated.current &&
+      !createMutation.isPending
+    ) {
+      autoCreated.current = true;
+      createMutation.mutate("Section 1");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canManage, sections.isLoading, list.length]);
 
   const currentDocId = docOverride ?? active?.material_id ?? null;
   const material = unit.materials.find((m) => m.id === currentDocId) ?? null;

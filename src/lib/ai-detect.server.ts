@@ -15,54 +15,28 @@ const schema = z.object({
   reason: z.string().default(""),
 });
 
-/** Obvious chatbot giveaways — instant flag, no model call needed. */
+/**
+ * Only unmistakable chatbot giveaways are auto-flagged. Ordinary good writing —
+ * em dashes, "in summary", bullet formatting, correct punctuation — is NOT
+ * evidence of AI use and must never be rejected on its own.
+ */
 const HARD_PATTERNS: RegExp[] = [
   /\bas an ai\b/i,
   /\bas a language model\b/i,
   /\bi'?m an ai\b/i,
+  /\bi am an ai\b/i,
   /\bchatgpt\b/i,
   /\bopenai\b/i,
-  /\bgemini\b|\bdeepseek\b|\bcopilot\b|\bclaude\b/i,
-  /\bcertainly!/i,
-  /\bgreat question!/i,
-  /^\s*sure[,!]/i,
-  /\bhere'?s (a|the) (step-by-step|breakdown|explanation)\b/i,
-  /\blet'?s break (this|it) down\b/i,
+  /\bas requested,? here\b/i,
+  /\bhere'?s (a|the) (step-by-step|breakdown)\b/i,
   /\bi hope this helps\b/i,
-  /\bin summary\b|\bin conclusion\b/i,
-  /\bit'?s important to note\b|\bit is worth noting\b/i,
-  /\bkey (takeaways?|points?):/i,
-  /\*\*[^*]+\*\*/,
-  /^\s*(step\s*\d+[:.]|\d+\.\s+\*\*)/im,
-  /\bfirstly\b|\bmoreover\b|\bfurthermore\b|\badditionally\b|\boverall,/i,
-  /\bthis (means|is because) that\b|\bplays? a (crucial|vital|key) role\b/i,
-  /\bthe (process|reaction) (can be described|occurs) as follows\b/i,
-  /\bis defined as\b.*\bwhich\b/i,
-  /\bin other words\b|\bto put it simply\b|\bthink of it as\b/i,
-  /\bnote that\b|\bkeep in mind\b|\bremember that\b/i,
-  /—/,
-  /\bwikipedia\b|\bbyju|\bsave my exams\b|\bstudy ?smarter\b|\bcourse ?hero\b|\bquizlet\b/i,
+  /\blet me know if you (need|have) (any )?(more|other|further)\b/i,
+  /\bwould you like me to\b/i,
+  /\b(sure|certainly|of course)[,!]\s+(here|i)\b/i,
 ];
 
 function wordCount(text: string) {
   return text.trim().split(/\s+/).filter(Boolean).length;
-}
-
-const PROCEDURE_VERBS =
-  "add|apply|choose|combine|compare|connect|describe|explain|heat|identify|insert|measure|mix|observe|place|pour|record|remove|select|state|test|use|write";
-
-/**
- * Short search-result answers often omit chatbot catchphrases but retain a
- * polished, instructional sequence (for example, "Use … . Add … ."). That
- * style is unusual in a student's terse exam response and is safe to reject
- * under this app's deliberately strict integrity policy.
- */
-function looksLikeCopiedShortProcedure(answer: string, words: number) {
-  if (words < 8) return false;
-  const imperative = new RegExp(`(?:^|[.!?]\\s+)(?:${PROCEDURE_VERBS})\\b`, "gi");
-  const commands = answer.match(imperative)?.length ?? 0;
-  const sentences = answer.split(/[.!?]+(?:\s+|$)/).filter((part) => part.trim()).length;
-  return commands >= 2 || (commands >= 1 && sentences >= 2 && words >= 12);
 }
 
 /**
@@ -85,14 +59,6 @@ export async function detectAiAnswer(input: {
       isAi: true,
       confidence: 0.95,
       reason: "The answer contains chatbot-style phrasing or formatting.",
-    };
-  }
-
-  if (looksLikeCopiedShortProcedure(answer, words)) {
-    return {
-      isAi: true,
-      confidence: 0.92,
-      reason: "The answer uses polished, search-result-style instructional steps rather than student exam wording.",
     };
   }
 

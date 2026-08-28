@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, CalendarDays, PanelRightClose, PanelRightOpen, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarDays, Pencil, PanelRightClose, PanelRightOpen, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -92,6 +92,9 @@ export function LessonWorkspace({
   const [docOverride, setDocOverride] = useState<string | null>(initialMaterialId ?? null);
   const [term, setTerm] = useState("");
   const [tutorOpen, setTutorOpen] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+
 
   // Draggable divider between the lesson canvas and the document pane.
   const rowRef = useRef<HTMLDivElement | null>(null);
@@ -151,7 +154,32 @@ export function LessonWorkspace({
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const renameMutation = useMutation({
+    mutationFn: ({ sectionId, title }: { sectionId: string; title: string }) =>
+      patchSection({ data: { sectionId, title: title.trim() } }),
+    onSuccess: () => {
+      setEditingId(null);
+      invalidateSections();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  function startRename(section: { id: string; title: string }) {
+    setEditingId(section.id);
+    setEditingTitle(section.title);
+  }
+
+  function commitRename(sectionId: string) {
+    const title = editingTitle.trim();
+    if (!title) {
+      setEditingId(null);
+      return;
+    }
+    renameMutation.mutate({ sectionId, title });
+  }
+
   // Teachers opening the workspace always land in a ready split screen —
+
   // auto-create the first section instead of showing an empty blocker.
   const autoCreated = useRef(false);
   useEffect(() => {
@@ -194,16 +222,49 @@ export function LessonWorkspace({
           {sections.isLoading ? (
             <Skeleton className="h-8 w-40" />
           ) : (
-            list.map((section) => (
-              <Button
-                key={section.id}
-                size="sm"
-                variant={section.id === active?.id ? "default" : "outline"}
-                onClick={() => setActiveId(section.id)}
-              >
-                {section.title}
-              </Button>
-            ))
+            list.map((section) =>
+              editingId === section.id ? (
+                <Input
+                  key={`edit-${section.id}`}
+                  autoFocus
+                  value={editingTitle}
+                  onChange={(e) => setEditingTitle(e.target.value)}
+                  onBlur={() => commitRename(section.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitRename(section.id);
+                    if (e.key === "Escape") setEditingId(null);
+                  }}
+                  className="h-8 w-40 text-xs"
+                />
+
+              ) : (
+                <div key={section.id} className="relative inline-flex items-center">
+                  <Button
+                    size="sm"
+                    variant={section.id === active?.id ? "default" : "outline"}
+                    onClick={() => setActiveId(section.id)}
+                  >
+                    {section.title}
+                  </Button>
+                  {canManage ? (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="-ml-2 size-6"
+                      title="Rename section"
+                      aria-label="Rename section"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startRename(section);
+                      }}
+                    >
+                      <Pencil className="size-3" />
+                    </Button>
+                  ) : null}
+                </div>
+              ),
+            )
+
           )}
           {canManage ? (
             <>

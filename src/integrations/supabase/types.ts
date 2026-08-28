@@ -418,6 +418,9 @@ export type Database = {
           created_by: string
           description: string | null
           id: string
+          planned_classes: number | null
+          planned_end: string | null
+          planned_start: string | null
           position: number
           title: string
           updated_at: string
@@ -428,6 +431,9 @@ export type Database = {
           created_by: string
           description?: string | null
           id?: string
+          planned_classes?: number | null
+          planned_end?: string | null
+          planned_start?: string | null
           position?: number
           title: string
           updated_at?: string
@@ -438,6 +444,9 @@ export type Database = {
           created_by?: string
           description?: string | null
           id?: string
+          planned_classes?: number | null
+          planned_end?: string | null
+          planned_start?: string | null
           position?: number
           title?: string
           updated_at?: string
@@ -1370,6 +1379,76 @@ export type Database = {
           },
           {
             foreignKeyName: "unit_materials_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "class_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      unit_sections: {
+        Row: {
+          ai_summary: string | null
+          ai_summary_updated_at: string | null
+          class_id: string
+          created_at: string
+          created_by: string
+          id: string
+          material_id: string | null
+          notes_blocks: Json
+          notes_text: string
+          position: number
+          title: string
+          unit_id: string
+          updated_at: string
+        }
+        Insert: {
+          ai_summary?: string | null
+          ai_summary_updated_at?: string | null
+          class_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          material_id?: string | null
+          notes_blocks?: Json
+          notes_text?: string
+          position?: number
+          title: string
+          unit_id: string
+          updated_at?: string
+        }
+        Update: {
+          ai_summary?: string | null
+          ai_summary_updated_at?: string | null
+          class_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          material_id?: string | null
+          notes_blocks?: Json
+          notes_text?: string
+          position?: number
+          title?: string
+          unit_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unit_sections_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unit_sections_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "unit_materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unit_sections_unit_id_fkey"
             columns: ["unit_id"]
             isOneToOne: false
             referencedRelation: "class_units"

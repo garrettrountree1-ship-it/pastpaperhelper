@@ -50,6 +50,16 @@ export type WorkspaceUnit = {
   planned_classes: number | null;
   materials: UnitMaterial[];
 };
+/**
+ * Hide the built-in PDF viewer chrome (the dark thumbnail sidebar and toolbar)
+ * so the page itself fills the pane and simply scrolls.
+ */
+function viewerSrc(url: string) {
+  const [base, hash] = url.split("#");
+  const params = "toolbar=0&navpanes=0&scrollbar=1&view=FitH&pagemode=none";
+  return `${base}#${hash ? `${hash}&` : ""}${params}`;
+}
+
 
 function planLine(unit: WorkspaceUnit) {
   const dates =
@@ -91,6 +101,28 @@ export function LessonWorkspace({
   const [concept, setConcept] = useState<string | null>(null);
   const [docOverride, setDocOverride] = useState<string | null>(initialMaterialId ?? null);
   const [term, setTerm] = useState("");
+
+  // Draggable divider between the lesson canvas and the document pane.
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const [split, setSplit] = useState(50);
+
+  function startDrag(event: React.PointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const row = rowRef.current;
+    if (!row) return;
+    const rect = row.getBoundingClientRect();
+    const onMove = (move: PointerEvent) => {
+      const pct = ((move.clientX - rect.left) / rect.width) * 100;
+      setSplit(Math.min(80, Math.max(20, pct)));
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
 
   const sections = useQuery({
     queryKey: ["unit-sections", unit.id],
@@ -231,8 +263,17 @@ export function LessonWorkspace({
           )}
         </div>
       ) : (
-        <div className="grid min-h-0 flex-1 gap-2 overflow-y-auto p-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_340px] lg:overflow-hidden">
-          <div className="min-h-[420px] lg:h-full lg:min-h-0">
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2 lg:flex-row lg:overflow-hidden">
+          <div
+            ref={rowRef}
+            className="flex min-w-0 flex-col gap-2 lg:h-full lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-0"
+          >
+          {/* Lesson canvas — resizable left half */}
+          <div
+            className="min-h-[70vh] lg:h-full lg:min-h-0"
+            style={{ width: `${split}%` }}
+          >
+
             <NotesCanvas
               classId={classId}
               sectionId={active.id}
@@ -245,7 +286,21 @@ export function LessonWorkspace({
             />
           </div>
 
-          <div className="flex min-h-[420px] flex-col rounded-lg border bg-card lg:h-full lg:min-h-0">
+          {/* Drag handle between canvas and document */}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            onPointerDown={startDrag}
+            className="group hidden w-2 shrink-0 cursor-col-resize items-center justify-center lg:flex"
+          >
+            <div className="h-16 w-1 rounded-full bg-border transition-colors group-hover:bg-primary" />
+          </div>
+
+          {/* Document — resizable right half */}
+          <div
+            className="flex min-h-[70vh] flex-col rounded-lg border bg-card lg:h-full lg:min-h-0"
+            style={{ width: `calc(${100 - split}% - 0.5rem)` }}
+          >
             <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
               <p className="text-sm font-medium">Document</p>
               {canManage ? (
@@ -294,9 +349,9 @@ export function LessonWorkspace({
                 />
               ) : (
                 <iframe
-                  src={docUrl.data.url}
+                  src={viewerSrc(docUrl.data.url)}
                   title={material.title}
-                  className="h-full w-full rounded-md"
+                  className="h-full w-full rounded-md bg-white"
                 />
               )}
             </div>
@@ -321,8 +376,11 @@ export function LessonWorkspace({
               </Button>
             </div>
           </div>
+          </div>
 
-          <div className="min-h-[420px] lg:h-full lg:min-h-0">
+
+
+          <div className="min-h-[420px] shrink-0 lg:ml-2 lg:h-full lg:min-h-0 lg:w-[340px]">
             <LessonTutorBar
               classId={classId}
               sectionId={active.id}
@@ -335,6 +393,7 @@ export function LessonWorkspace({
     </div>
   );
 }
+
 
 function UnitPlanDialog({ unit, onSaved }: { unit: WorkspaceUnit; onSaved: () => void }) {
   const save = useServerFn(updateUnit);

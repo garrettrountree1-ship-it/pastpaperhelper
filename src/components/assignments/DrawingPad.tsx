@@ -3,7 +3,17 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
-type Stroke = { points: Array<{ x: number; y: number }>; width: number };
+type Stroke = { points: Array<{ x: number; y: number }>; width: number; color: string };
+
+const PEN_COLORS = [
+  { name: "Black", value: "#111827" },
+  { name: "Red", value: "#dc2626" },
+  { name: "Blue", value: "#2563eb" },
+  { name: "Green", value: "#16a34a" },
+  { name: "Orange", value: "#ea580c" },
+  { name: "Purple", value: "#7c3aed" },
+];
+
 
 /**
  * Stylus / finger / mouse writing pad for working out calculations on screen
@@ -12,15 +22,21 @@ type Stroke = { points: Array<{ x: number; y: number }>; width: number };
  */
 export function DrawingPad({
   disabled = false,
+  height = "h-64",
   onAttach,
 }: {
   disabled?: boolean;
+  /** Tailwind height class for the pad surface. */
+  height?: string;
   onAttach: (file: File) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const strokesRef = useRef<Stroke[]>([]);
   const drawing = useRef(false);
   const [hasInk, setHasInk] = useState(false);
+  const [color, setColor] = useState(PEN_COLORS[0]!.value);
+  const colorRef = useRef(color);
+  colorRef.current = color;
 
   function redraw() {
     const canvas = canvasRef.current;
@@ -28,12 +44,13 @@ export function DrawingPad({
     if (!canvas || !ctx) return;
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = "#111827";
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     for (const stroke of strokesRef.current) {
+      ctx.strokeStyle = stroke.color;
       ctx.lineWidth = stroke.width;
       ctx.beginPath();
+
       stroke.points.forEach((point, index) => {
         if (index === 0) ctx.moveTo(point.x, point.y);
         else ctx.lineTo(point.x, point.y);
@@ -70,7 +87,7 @@ export function DrawingPad({
     event.currentTarget.setPointerCapture(event.pointerId);
     drawing.current = true;
     const width = event.pointerType === "pen" ? Math.max(1.2, event.pressure * 4 || 2) : 2.4;
-    strokesRef.current.push({ points: [positionOf(event)], width });
+    strokesRef.current.push({ points: [positionOf(event)], width, color: colorRef.current });
     setHasInk(true);
   }
 
@@ -107,6 +124,23 @@ export function DrawingPad({
         Use a stylus, finger or mouse. When you&apos;re done, attach it — it&apos;s marked step by
         step like a photo of paper.
       </p>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {PEN_COLORS.map((pen) => (
+          <button
+            key={pen.value}
+            type="button"
+            title={pen.name}
+            aria-label={pen.name}
+            aria-pressed={color === pen.value}
+            disabled={disabled}
+            onClick={() => setColor(pen.value)}
+            className={`size-6 rounded-full border-2 transition-transform ${
+              color === pen.value ? "scale-110 border-foreground" : "border-border"
+            }`}
+            style={{ backgroundColor: pen.value }}
+          />
+        ))}
+      </div>
       <canvas
         ref={canvasRef}
         onPointerDown={start}
@@ -114,8 +148,9 @@ export function DrawingPad({
         onPointerUp={end}
         onPointerLeave={end}
         onPointerCancel={end}
-        className="mt-2 h-64 w-full touch-none rounded-md border border-border bg-white"
+        className={`mt-2 w-full touch-none rounded-md border border-border bg-white ${height}`}
       />
+
       <div className="mt-2 flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={attach} disabled={disabled || !hasInk}>
           Attach this working

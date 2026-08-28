@@ -191,7 +191,8 @@ export function NotesCanvas({
                       update(next);
                     }}
                     placeholder="Type your lesson notes: key concepts, vocabulary, worked examples…"
-                    className="min-h-[140px] text-sm"
+                    className="min-h-[55vh] resize-y text-sm leading-relaxed"
+
                   />
                   {blocks.length > 1 ? (
                     <Button
@@ -236,12 +237,14 @@ export function NotesCanvas({
             <>
               {drawing ? (
                 <DrawingPad
+                  height="h-[60vh]"
                   onAttach={(file) => {
                     setDrawing(false);
                     void uploadImage(file);
                   }}
                 />
               ) : null}
+
               <div className="flex flex-wrap gap-2 pt-1">
                 <Button
                   size="sm"

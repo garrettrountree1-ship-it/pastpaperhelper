@@ -94,6 +94,8 @@ export function FreeCanvas({
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const [live, setLive] = useState<Array<{ x: number; y: number }> | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
+
   const drawing = useRef(false);
 
 
@@ -250,6 +252,7 @@ export function FreeCanvas({
     ]);
   }
 
+  /** Click any blank spot to start a text box right there, like a Word text cursor. */
   function surfaceClick(event: React.MouseEvent) {
     if (!canEdit || mode !== "type") return;
     if (event.target !== surfaceRef.current) return;
@@ -258,12 +261,17 @@ export function FreeCanvas({
       return;
     }
     const at = point(event);
-
+    const surfaceWidth = surfaceRef.current?.clientWidth ?? 900;
+    const width = Math.max(180, Math.min(760, surfaceWidth - at.x - 24));
+    const id = crypto.randomUUID();
+    setSelectedId(id);
+    setFocusId(id);
     onChange([
       ...blocks,
-      { id: crypto.randomUUID(), type: "text", text: "", x: at.x, y: at.y, w: 480 },
+      { id, type: "text", text: "", x: at.x, y: Math.max(0, at.y - 12), w: width },
     ]);
   }
+
 
   const inks = blocks.filter((b): b is Extract<NoteBlock, { type: "ink" }> => b.type === "ink");
 
@@ -321,58 +329,131 @@ export function FreeCanvas({
         } as React.CSSProperties;
 
         if (block.type === "text") {
+          const isSelectedText = selectedId === block.id;
+          const textStyle: React.CSSProperties = {
+            fontSize: block.size ?? 15,
+            lineHeight: 1.5,
+            fontWeight: block.bold ? 700 : 400,
+            fontStyle: block.italic ? "italic" : "normal",
+            textDecoration: block.underline ? "underline" : "none",
+            color: block.color ?? undefined,
+            textAlign: block.align ?? "left",
+          };
           return (
             <div key={block.id} className="group absolute" style={style}>
               {canEdit ? (
                 <>
+                  {isSelectedText ? (
+                    <div
+                      className="absolute -top-9 left-0 z-40 flex items-center gap-1 rounded-md border bg-background px-1 py-0.5 shadow-sm"
+                      onPointerDown={(event) => event.stopPropagation()}
+                    >
+                      <select
+                        value={block.size ?? 15}
+                        onChange={(event) => patch(block.id, { size: Number(event.target.value) })}
+                        className="h-6 rounded border bg-background px-1 text-xs"
+                        aria-label="Font size"
+                      >
+                        {[12, 14, 15, 18, 22, 28, 36, 48].map((size) => (
+                          <option key={size} value={size}>
+                            {size}
+                          </option>
+                        ))}
+                      </select>
+                      {(
+                        [
+                          ["bold", "B", "font-bold"],
+                          ["italic", "I", "italic"],
+                          ["underline", "U", "underline"],
+                        ] as const
+                      ).map(([key, label, cls]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => patch(block.id, { [key]: !block[key] })}
+                          aria-pressed={Boolean(block[key])}
+                          className={`size-6 rounded text-xs ${cls} ${
+                            block[key] ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                      {(["left", "center", "right"] as const).map((align) => (
+                        <button
+                          key={align}
+                          type="button"
+                          onClick={() => patch(block.id, { align })}
+                          aria-label={`Align ${align}`}
+                          className={`size-6 rounded text-[10px] uppercase ${
+                            (block.align ?? "left") === align
+                              ? "bg-primary text-primary-foreground"
+                              : "hover:bg-muted"
+                          }`}
+                        >
+                          {align[0]}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onPointerDown={(event) => startMove(block.id, event)}
+                        className="cursor-grab rounded p-0.5 text-muted-foreground hover:bg-muted"
+                        aria-label="Move text"
+                      >
+                        <GripVertical className="size-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => remove(block.id)}
+                        className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-destructive"
+                        aria-label="Delete text"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
+                  ) : null}
                   <textarea
                     value={block.text}
                     onChange={(event) => patch(block.id, { text: event.target.value })}
+                    onFocus={() => setSelectedId(block.id)}
+                    onBlur={() => {
+                      if (!block.text.trim()) remove(block.id);
+                    }}
                     placeholder="Type here…"
                     rows={1}
-                    className="w-full resize-none border-0 bg-transparent p-1 text-sm leading-relaxed text-foreground outline-none focus:ring-0"
-                    style={{ height: "auto", minHeight: 28 }}
+                    className="w-full resize-none border-0 bg-transparent p-1 text-foreground outline-none focus:ring-0"
+                    style={{ ...textStyle, height: "auto", minHeight: 28 }}
                     onInput={(event) => {
                       const el = event.currentTarget;
                       el.style.height = "auto";
                       el.style.height = `${el.scrollHeight}px`;
                     }}
                     ref={(el) => {
-                      if (el) {
-                        el.style.height = "auto";
-                        el.style.height = `${el.scrollHeight}px`;
+                      if (!el) return;
+                      el.style.height = "auto";
+                      el.style.height = `${el.scrollHeight}px`;
+                      if (focusId === block.id) {
+                        el.focus();
+                        setFocusId(null);
                       }
                     }}
                   />
-                  <div className="absolute -left-6 top-0 flex flex-col opacity-0 transition-opacity group-hover:opacity-100">
-                    <button
-                      type="button"
-                      onPointerDown={(event) => startMove(block.id, event)}
-                      className="cursor-grab rounded p-0.5 text-muted-foreground hover:bg-muted"
-                      aria-label="Move text"
-                    >
-                      <GripVertical className="size-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => remove(block.id)}
-                      className="rounded p-0.5 text-muted-foreground hover:bg-muted"
-                      aria-label="Delete text"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </div>
                   <span
                     onPointerDown={(event) => startResize(block.id, event)}
-                    className="absolute -right-1 bottom-0 size-3 cursor-ew-resize rounded-sm bg-border opacity-0 group-hover:opacity-100"
+                    className={`absolute -right-1 bottom-0 size-3 cursor-ew-resize rounded-sm bg-border transition-opacity ${
+                      isSelectedText ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                    }`}
                   />
                 </>
               ) : (
-                <ClickableText text={block.text} onConcept={onConcept} />
+                <div style={textStyle}>
+                  <ClickableText text={block.text} onConcept={onConcept} />
+                </div>
               )}
             </div>
           );
         }
+
 
         const url = imageUrls?.[block.path];
         const isSelected = selectedId === block.id;

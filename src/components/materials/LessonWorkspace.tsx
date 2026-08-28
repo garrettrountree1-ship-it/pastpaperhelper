@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { LessonTutorBar } from "@/components/materials/LessonTutorBar";
 import { NotesCanvas } from "@/components/materials/NotesCanvas";
+import { PdfDocView } from "@/components/materials/PdfDocView";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -50,17 +51,6 @@ export type WorkspaceUnit = {
   planned_classes: number | null;
   materials: UnitMaterial[];
 };
-/**
- * Hide the built-in PDF viewer chrome (the dark thumbnail sidebar and toolbar)
- * so the page itself fills the pane and simply scrolls.
- */
-function viewerSrc(url: string) {
-  const [base, hash] = url.split("#");
-  const params = "toolbar=0&navpanes=0&scrollbar=1&view=FitH&pagemode=none";
-  return `${base}#${hash ? `${hash}&` : ""}${params}`;
-}
-
-
 function planLine(unit: WorkspaceUnit) {
   const dates =
     unit.planned_start && unit.planned_end

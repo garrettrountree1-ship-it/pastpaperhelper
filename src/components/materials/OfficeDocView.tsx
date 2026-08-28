@@ -122,7 +122,7 @@ export function OfficeDocView({
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-md bg-muted/30 p-2">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto rounded-md bg-muted/30 p-2">
         {status === "loading" ? (
           <div className="space-y-2 p-2">
             <p className="text-sm text-muted-foreground">

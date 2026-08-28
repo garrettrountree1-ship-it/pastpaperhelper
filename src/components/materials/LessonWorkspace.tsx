@@ -360,6 +360,7 @@ export function LessonWorkspace({
                 disabled={!term.trim()}
                 onClick={() => {
                   setConcept(term.trim());
+                  setTutorOpen(true);
                   setTerm("");
                 }}
               >

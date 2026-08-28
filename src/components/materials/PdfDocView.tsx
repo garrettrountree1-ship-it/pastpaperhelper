@@ -15,10 +15,12 @@ export function PdfDocView({
   url,
   title,
   cacheKey,
+  canDownload = true,
 }: {
   url: string;
   title: string;
   cacheKey?: string;
+  canDownload?: boolean;
 }) {
   const [pages, setPages] = useState<string[] | null>(null);
   const [failed, setFailed] = useState(false);

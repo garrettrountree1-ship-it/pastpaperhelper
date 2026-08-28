@@ -431,6 +431,7 @@ function MaterialRow({
                 <OfficeDocView
                   url={viewerUrl}
                   title={material.title}
+                  canDownload={canManage || allowDownload}
                   format={viewerFormat === "pptx" ? "pptx" : "docx"}
                 />
               </div>
@@ -439,6 +440,7 @@ function MaterialRow({
                 <PdfDocView
                   url={viewerUrl}
                   title={material.title}
+                  canDownload={canManage || allowDownload}
                   cacheKey={`material:${material.id}`}
                 />
               </div>

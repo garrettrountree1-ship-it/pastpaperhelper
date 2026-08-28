@@ -14,10 +14,12 @@ export function OfficeDocView({
   url,
   title,
   format,
+  canDownload = true,
 }: {
   url: string;
   title: string;
   format: "pptx" | "docx";
+  canDownload?: boolean;
 }) {
   const [zoom, setZoom] = useState(1);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");

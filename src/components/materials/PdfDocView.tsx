@@ -23,8 +23,27 @@ export function PdfDocView({
   const [pages, setPages] = useState<string[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [rebuilding, setRebuilding] = useState(false);
+  const [zoom, setZoom] = useState(1);
   const token = useRef(0);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const key = cacheKey ?? title;
+
+  // Ctrl/⌘ + wheel zooms only the document pane.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      const dy = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
+      setZoom((value) =>
+        Math.min(3, Math.max(0.5, Number((value * Math.exp(-dy * 0.0015)).toFixed(3)))),
+      );
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [pages]);
+
 
   useEffect(() => {
     const current = ++token.current;

@@ -129,6 +129,34 @@ function textShape(sp: Element, offsetX: number, offsetY: number): PptxShape | n
   };
 }
 
+/** Detects the real image type from magic bytes; PowerPoint file extensions lie often. */
+function sniffImageType(bytes: Uint8Array, ext: string): string | null {
+  const b = bytes;
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return "image/png";
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return "image/gif";
+  if (b[0] === 0x42 && b[1] === 0x4d) return "image/bmp";
+  if (
+    b[0] === 0x52 &&
+    b[1] === 0x49 &&
+    b[2] === 0x46 &&
+    b[3] === 0x46 &&
+    b[8] === 0x57 &&
+    b[9] === 0x45 &&
+    b[10] === 0x42 &&
+    b[11] === 0x50
+  )
+    return "image/webp";
+  // TIFF, EMF and WMF cannot be displayed by browsers at all.
+  if ((b[0] === 0x49 && b[1] === 0x49) || (b[0] === 0x4d && b[1] === 0x4d)) return null;
+  if (b[0] === 0x01 && b[1] === 0x00 && b[2] === 0x00 && b[3] === 0x00) return null;
+  if (b[0] === 0xd7 && b[1] === 0xcd) return null;
+  if (ext === "svg") return "image/svg+xml";
+  if (ext === "png" || ext === "gif" || ext === "bmp" || ext === "webp") return `image/${ext}`;
+  if (ext === "jpg" || ext === "jpeg" || ext === "jfif") return "image/jpeg";
+  return null;
+}
+
 export async function parsePptx(buffer: ArrayBuffer): Promise<PptxDeck> {
   const JSZip = (await import("jszip")).default;
   const zip = await JSZip.loadAsync(buffer);
@@ -137,6 +165,27 @@ export async function parsePptx(buffer: ArrayBuffer): Promise<PptxDeck> {
     const file = zip.file(path);
     return file ? await file.async("text") : null;
   };
+
+  /** Media entries are shared between slides, so build each object URL only once. */
+  const mediaUrls = new Map<string, string | null>();
+  const mediaUrl = async (mediaPath: string): Promise<string | null> => {
+    if (mediaUrls.has(mediaPath)) return mediaUrls.get(mediaPath) ?? null;
+    let url: string | null = null;
+    const file = zip.file(mediaPath) ?? zip.file(decodeURIComponent(mediaPath));
+    if (file) {
+      const bytes = await file.async("uint8array");
+      const ext = mediaPath.split(".").pop()?.toLowerCase() ?? "";
+      const type = bytes.length > 12 ? sniffImageType(bytes, ext) : null;
+      if (type) {
+        url = URL.createObjectURL(
+          new Blob([bytes.slice().buffer as ArrayBuffer], { type }),
+        );
+      }
+    }
+    mediaUrls.set(mediaPath, url);
+    return url;
+  };
+
 
   const presentationXml = await read("ppt/presentation.xml");
   if (!presentationXml) throw new Error("Not a PowerPoint file");

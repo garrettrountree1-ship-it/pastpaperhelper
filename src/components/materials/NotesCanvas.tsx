@@ -1,12 +1,11 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ImagePlus, PenLine, Plus, RefreshCw, Sparkles, Trash2, Type } from "lucide-react";
+import { ImagePlus, PenLine, RefreshCw, Sparkles, Type } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { DrawingPad } from "@/components/assignments/DrawingPad";
+import { FreeCanvas, type CanvasMode } from "@/components/materials/FreeCanvas";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import {
   generateSectionSummary,
@@ -15,7 +14,9 @@ import {
   type NoteBlock,
 } from "@/lib/notes.functions";
 
-/** Words in read-only notes are clickable so the tutor can explain a concept. */
+const PEN_COLORS = ["#111827", "#dc2626", "#2563eb", "#16a34a", "#ea580c", "#7c3aed"];
+
+/** Words in read-only summaries are clickable so the tutor can explain them. */
 function ClickableText({ text, onConcept }: { text: string; onConcept: (value: string) => void }) {
   return (
     <p className="whitespace-pre-wrap text-sm leading-relaxed">
@@ -35,6 +36,18 @@ function ClickableText({ text, onConcept }: { text: string; onConcept: (value: s
       )}
     </p>
   );
+}
+
+/** Legacy stacked blocks get positions so they land on the free canvas. */
+function withPositions(blocks: NoteBlock[]): NoteBlock[] {
+  let y = 24;
+  return blocks.map((block) => {
+    if (block.type === "ink") return block;
+    if (block.x !== undefined && block.y !== undefined) return block;
+    const placed = { ...block, x: 24, y, w: block.w ?? 520 } as NoteBlock;
+    y += block.type === "image" ? 340 : 180;
+    return placed;
+  });
 }
 
 export function NotesCanvas({
@@ -60,30 +73,29 @@ export function NotesCanvas({
   const regenerate = useServerFn(generateSectionSummary);
   const signPaths = useServerFn(signNotePaths);
 
-  const [blocks, setBlocks] = useState<NoteBlock[]>(
-    initialBlocks.length > 0 || !canEdit ? initialBlocks : [{ id: crypto.randomUUID(), type: "text", text: "" }],
-  );
+  const [blocks, setBlocks] = useState<NoteBlock[]>(withPositions(initialBlocks));
   const [summary, setSummary] = useState(initialSummary ?? "");
-  const [drawing, setDrawing] = useState(false);
   const [tab, setTab] = useState<"notes" | "summary">(initialTab);
+  const [mode, setMode] = useState<CanvasMode>("type");
+  const [penColor, setPenColor] = useState(PEN_COLORS[0]!);
   const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
   const dirty = useRef(false);
   const fileInput = useRef<HTMLInputElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // Reset when the teacher switches section.
   useEffect(() => {
-    setBlocks(
-      initialBlocks.length > 0 || !canEdit
-        ? initialBlocks
-        : [{ id: crypto.randomUUID(), type: "text", text: "" }],
-    );
+    setBlocks(withPositions(initialBlocks));
     setSummary(initialSummary ?? "");
     dirty.current = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionId]);
 
   const imagePaths = useMemo(
-    () => blocks.filter((b): b is Extract<NoteBlock, { type: "image" }> => b.type === "image").map((b) => b.path),
+    () =>
+      blocks
+        .filter((b): b is Extract<NoteBlock, { type: "image" }> => b.type === "image")
+        .map((b) => b.path),
     [blocks],
   );
   const urls = useQuery({
@@ -133,7 +145,11 @@ export function NotesCanvas({
       toast.error(error.message);
       return;
     }
-    update([...blocks, { id: crypto.randomUUID(), type: "image", path, caption: file.name }]);
+    const top = (scrollRef.current?.scrollTop ?? 0) + 40;
+    update([
+      ...blocks,
+      { id: crypto.randomUUID(), type: "image", path, caption: file.name, x: 40, y: top, w: 360 },
+    ]);
   }
 
   function handlePaste(event: React.ClipboardEvent) {
@@ -149,11 +165,7 @@ export function NotesCanvas({
   return (
     <div className="flex h-full min-h-0 flex-col rounded-lg border bg-card" onPaste={handlePaste}>
       <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
-        <Button
-          size="sm"
-          variant={tab === "notes" ? "default" : "ghost"}
-          onClick={() => setTab("notes")}
-        >
+        <Button size="sm" variant={tab === "notes" ? "default" : "ghost"} onClick={() => setTab("notes")}>
           Lesson canvas
         </Button>
         <Button
@@ -171,116 +183,74 @@ export function NotesCanvas({
         ) : null}
       </div>
 
+      {canEdit && tab === "notes" ? (
+        <div className="flex flex-wrap items-center gap-2 border-b px-3 py-1.5">
+          <Button size="sm" variant={mode === "type" ? "default" : "outline"} onClick={() => setMode("type")}>
+            <Type className="size-4" />
+            Type
+          </Button>
+          <Button size="sm" variant={mode === "draw" ? "default" : "outline"} onClick={() => setMode("draw")}>
+            <PenLine className="size-4" />
+            Draw
+          </Button>
+          {mode === "draw"
+            ? PEN_COLORS.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-label={`Pen colour ${value}`}
+                  aria-pressed={penColor === value}
+                  onClick={() => setPenColor(value)}
+                  className={`size-5 rounded-full border-2 transition-transform ${
+                    penColor === value ? "scale-110 border-foreground" : "border-border"
+                  }`}
+                  style={{ backgroundColor: value }}
+                />
+              ))
+            : null}
+          <Button size="sm" variant="outline" onClick={() => fileInput.current?.click()}>
+            <ImagePlus className="size-4" />
+            Image
+          </Button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void uploadImage(file);
+              event.target.value = "";
+            }}
+          />
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => update(blocks.slice(0, -1))}
+            disabled={blocks.length === 0}
+          >
+            Undo
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            {mode === "draw"
+              ? "Draw anywhere on the sheet."
+              : "Click anywhere to type · paste images straight in"}
+          </span>
+        </div>
+      ) : null}
+
       {tab === "notes" ? (
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
-          {blocks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nothing written on this canvas yet.
-            </p>
-          ) : null}
-
-          {blocks.map((block, index) =>
-            block.type === "text" ? (
-              canEdit ? (
-                <div key={block.id} className="group relative">
-                  <Textarea
-                    value={block.text}
-                    onChange={(event) => {
-                      const next = [...blocks];
-                      next[index] = { ...block, text: event.target.value };
-                      update(next);
-                    }}
-                    placeholder="Type your lesson notes: key concepts, vocabulary, worked examples…"
-                    className="min-h-[55vh] resize-y text-sm leading-relaxed"
-
-                  />
-                  {blocks.length > 1 ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="absolute right-1 top-1 opacity-0 transition-opacity group-hover:opacity-100"
-                      onClick={() => update(blocks.filter((b) => b.id !== block.id))}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  ) : null}
-                </div>
-              ) : (
-                <ClickableText key={block.id} text={block.text} onConcept={onConcept} />
-              )
-            ) : (
-              <figure key={block.id} className="relative">
-                {urls.data?.[block.path] ? (
-                  <img
-                    src={urls.data[block.path]}
-                    alt={block.caption ?? "Lesson note image"}
-                    className="w-full rounded-md border bg-white"
-                  />
-                ) : (
-                  <div className="h-40 animate-pulse rounded-md border bg-muted" />
-                )}
-                {canEdit ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="absolute right-2 top-2"
-                    onClick={() => update(blocks.filter((b) => b.id !== block.id))}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                ) : null}
-              </figure>
-            ),
-          )}
-
-          {canEdit ? (
-            <>
-              {drawing ? (
-                <DrawingPad
-                  height="h-[60vh]"
-                  onAttach={(file) => {
-                    setDrawing(false);
-                    void uploadImage(file);
-                  }}
-                />
-              ) : null}
-
-              <div className="flex flex-wrap gap-2 pt-1">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    update([...blocks, { id: crypto.randomUUID(), type: "text", text: "" }])
-                  }
-                >
-                  <Type className="size-4" />
-                  Add text
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setDrawing((v) => !v)}>
-                  <PenLine className="size-4" />
-                  {drawing ? "Close drawing" : "Draw"}
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => fileInput.current?.click()}>
-                  <ImagePlus className="size-4" />
-                  Add image
-                </Button>
-                <input
-                  ref={fileInput}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) void uploadImage(file);
-                    event.target.value = "";
-                  }}
-                />
-                <span className="self-center text-xs text-muted-foreground">
-                  You can also paste images straight onto the canvas.
-                </span>
-              </div>
-            </>
-          ) : null}
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+          <FreeCanvas
+            blocks={blocks}
+            canEdit={canEdit}
+            mode={mode}
+            penColor={penColor}
+            penWidth={2.4}
+            imageUrls={urls.data}
+            onChange={update}
+            onConcept={onConcept}
+          />
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
@@ -304,7 +274,11 @@ export function NotesCanvas({
                     {line.replace(/^#+\s*/, "")}
                   </h4>
                 ) : line.trim() ? (
-                  <ClickableText key={index} text={line.replace(/^[-*]\s*/, "• ")} onConcept={onConcept} />
+                  <ClickableText
+                    key={index}
+                    text={line.replace(/^[-*]\s*/, "• ")}
+                    onConcept={onConcept}
+                  />
                 ) : null,
               )}
             </div>
@@ -317,13 +291,6 @@ export function NotesCanvas({
           )}
         </div>
       )}
-
-      {canEdit && tab === "notes" ? (
-        <div className="border-t px-3 py-2 text-xs text-muted-foreground">
-          <Plus className="mr-1 inline size-3" />
-          Students can read this canvas and the AI summary, but only you can edit them.
-        </div>
-      ) : null}
     </div>
   );
 }

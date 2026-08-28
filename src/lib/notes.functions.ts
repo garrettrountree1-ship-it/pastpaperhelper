@@ -7,14 +7,34 @@ import { lessonTutorReply, summariseTeacherNotes } from "@/lib/notes.server";
 import { effectiveTutorSettings } from "@/lib/tutor-settings.server";
 
 const blockSchema = z.union([
-  z.object({ id: z.string().max(60), type: z.literal("text"), text: z.string().max(20000) }),
+  z.object({
+    id: z.string().max(60),
+    type: z.literal("text"),
+    text: z.string().max(20000),
+    x: z.number().optional(),
+    y: z.number().optional(),
+    w: z.number().optional(),
+  }),
   z.object({
     id: z.string().max(60),
     type: z.literal("image"),
     path: z.string().max(500),
     caption: z.string().max(300).optional(),
+    x: z.number().optional(),
+    y: z.number().optional(),
+    w: z.number().optional(),
+    h: z.number().optional(),
+  }),
+  z.object({
+    id: z.string().max(60),
+    type: z.literal("ink"),
+    d: z.string().max(40000),
+    color: z.string().max(30),
+    width: z.number(),
+    bottom: z.number().optional(),
   }),
 ]);
+
 
 export type NoteBlock = z.infer<typeof blockSchema>;
 
@@ -137,9 +157,17 @@ export const saveSectionNotes = createServerFn({ method: "POST" })
     await assertClassTeacher(supabase, section.class_id, userId);
 
     const notesText = data.blocks
-      .map((block) => (block.type === "text" ? block.text : `[image: ${block.caption ?? "handwritten working"}]`))
+      .map((block) =>
+        block.type === "text"
+          ? block.text
+          : block.type === "image"
+            ? `[image: ${block.caption ?? "handwritten working"}]`
+            : "",
+      )
+      .filter(Boolean)
       .join("\n")
       .trim();
+
 
     const { error } = await supabase
       .from("unit_sections")

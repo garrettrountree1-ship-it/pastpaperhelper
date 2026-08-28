@@ -581,5 +581,8 @@ export function FreeCanvas({
       ) : null}
     </div>
     </div>
+  );
+}
+
 
 }

@@ -233,31 +233,40 @@ export function LessonWorkspace({
       ) : (
         <div
           ref={rowRef}
-          className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2 lg:flex-row lg:overflow-hidden"
+          className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2 lg:flex-row lg:gap-0 lg:overflow-hidden"
         >
+          {/* Lesson canvas — resizable left half */}
           <div
-            className="min-h-[60vh] lg:h-full lg:min-h-0"
-            style={{ flex: `0 0 auto`, width: undefined }}
+            className="min-h-[70vh] lg:h-full lg:min-h-0"
+            style={{ width: `${split}%` }}
           >
-            <div className="hidden" />
+            <NotesCanvas
+              classId={classId}
+              sectionId={active.id}
+              canEdit={canManage}
+              initialBlocks={active.notes_blocks}
+              initialSummary={active.ai_summary}
+              initialTab={initialTab}
+              onConcept={setConcept}
+              onSaved={invalidateSections}
+            />
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
-function LegacyPanes() {
-  return null;
-}
+          {/* Drag handle between canvas and document */}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            onPointerDown={startDrag}
+            className="group hidden w-2 shrink-0 cursor-col-resize items-center justify-center lg:flex"
+          >
+            <div className="h-16 w-1 rounded-full bg-border transition-colors group-hover:bg-primary" />
+          </div>
 
-function UnusedPanes({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      {children}
-      <div>
-        <div className="flex min-h-[420px] flex-col rounded-lg border bg-card lg:h-full lg:min-h-0">
-
+          {/* Document — resizable right half */}
+          <div
+            className="flex min-h-[70vh] flex-col rounded-lg border bg-card lg:h-full lg:min-h-0"
+            style={{ width: `calc(${100 - split}% - 0.5rem)` }}
+          >
             <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
               <p className="text-sm font-medium">Document</p>
               {canManage ? (
@@ -306,9 +315,9 @@ function UnusedPanes({ children }: { children: React.ReactNode }) {
                 />
               ) : (
                 <iframe
-                  src={docUrl.data.url}
+                  src={viewerSrc(docUrl.data.url)}
                   title={material.title}
-                  className="h-full w-full rounded-md"
+                  className="h-full w-full rounded-md bg-white"
                 />
               )}
             </div>
@@ -334,7 +343,7 @@ function UnusedPanes({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <div className="min-h-[420px] lg:h-full lg:min-h-0">
+          <div className="min-h-[420px] shrink-0 lg:ml-2 lg:h-full lg:min-h-0 lg:w-[340px]">
             <LessonTutorBar
               classId={classId}
               sectionId={active.id}
@@ -347,6 +356,7 @@ function UnusedPanes({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
 
 function UnitPlanDialog({ unit, onSaved }: { unit: WorkspaceUnit; onSaved: () => void }) {
   const save = useServerFn(updateUnit);

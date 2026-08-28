@@ -33,6 +33,7 @@ const blockSchema = z.union([
     y: z.number().optional(),
     w: z.number().optional(),
     h: z.number().optional(),
+    rot: z.number().min(-360).max(360).optional(),
   }),
   z.object({
     id: z.string().max(60),

@@ -22,15 +22,21 @@ const PEN_COLORS = [
  */
 export function DrawingPad({
   disabled = false,
+  height = "h-64",
   onAttach,
 }: {
   disabled?: boolean;
+  /** Tailwind height class for the pad surface. */
+  height?: string;
   onAttach: (file: File) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const strokesRef = useRef<Stroke[]>([]);
   const drawing = useRef(false);
   const [hasInk, setHasInk] = useState(false);
+  const [color, setColor] = useState(PEN_COLORS[0]!.value);
+  const colorRef = useRef(color);
+  colorRef.current = color;
 
   function redraw() {
     const canvas = canvasRef.current;
@@ -38,12 +44,13 @@ export function DrawingPad({
     if (!canvas || !ctx) return;
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = "#111827";
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     for (const stroke of strokesRef.current) {
+      ctx.strokeStyle = stroke.color;
       ctx.lineWidth = stroke.width;
       ctx.beginPath();
+
       stroke.points.forEach((point, index) => {
         if (index === 0) ctx.moveTo(point.x, point.y);
         else ctx.lineTo(point.x, point.y);

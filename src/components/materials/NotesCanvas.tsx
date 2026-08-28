@@ -231,10 +231,35 @@ export function NotesCanvas({
                 />
               ))
             : null}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              const top = (scrollRef.current?.scrollTop ?? 0) + 40;
+              setMode("type");
+              update([
+                ...blocks,
+                {
+                  id: crypto.randomUUID(),
+                  type: "text",
+                  text: "",
+                  x: 40,
+                  y: top,
+                  w: 320,
+                  size: 15,
+                  box: true,
+                },
+              ]);
+            }}
+          >
+            <SquarePlus className="size-4" />
+            Text box
+          </Button>
           <Button size="sm" variant="outline" onClick={() => fileInput.current?.click()}>
             <ImagePlus className="size-4" />
             Image
           </Button>
+
           <input
             ref={fileInput}
             type="file"

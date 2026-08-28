@@ -162,8 +162,27 @@ export function NotesCanvas({
     }
   }
 
+  // Paste anywhere on the canvas — the browser only fires paste on the focused
+  // element, so listen on the document while the lesson canvas is open.
+  useEffect(() => {
+    if (!canEdit || tab !== "notes") return;
+    const onPaste = (event: ClipboardEvent) => {
+      const item = Array.from(event.clipboardData?.items ?? []).find((i) =>
+        i.type.startsWith("image/"),
+      );
+      const file = item?.getAsFile();
+      if (!file) return;
+      event.preventDefault();
+      void uploadImage(file);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canEdit, tab, blocks, sectionId]);
+
   return (
     <div className="flex h-full min-h-0 flex-col rounded-lg border bg-card" onPaste={handlePaste}>
+
       <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
         <Button size="sm" variant={tab === "notes" ? "default" : "ghost"} onClick={() => setTab("notes")}>
           Lesson canvas

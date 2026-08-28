@@ -1,5 +1,5 @@
 import { GripVertical, Trash2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { NoteBlock } from "@/lib/notes.functions";
 
@@ -93,7 +93,9 @@ export function FreeCanvas({
 }) {
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const [live, setLive] = useState<Array<{ x: number; y: number }> | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const drawing = useRef(false);
+
 
   const bottom = blocks.reduce((max, block) => {
     if (block.type === "ink") return Math.max(max, block.bottom ?? 0);
@@ -140,20 +142,34 @@ export function FreeCanvas({
     window.addEventListener("pointerup", onUp);
   }
 
-  function startResize(id: string, event: React.PointerEvent) {
+  function startResize(
+    id: string,
+    event: React.PointerEvent,
+    corner: "nw" | "ne" | "sw" | "se" = "se",
+  ) {
     event.preventDefault();
     event.stopPropagation();
     const block = blocks.find((b) => b.id === id);
     if (!block || block.type === "ink") return;
     const origin = point(event);
     const baseW = block.w ?? 420;
-    const baseH = block.type === "image" ? (block.h ?? 300) : 0;
+    const baseH = block.type === "image" ? (block.h ?? 0) : 0;
+    const baseX = block.x ?? 0;
+    const baseY = block.y ?? 0;
     const ratio = baseH && baseW ? baseH / baseW : 0;
+    const west = corner === "nw" || corner === "sw";
+    const north = corner === "nw" || corner === "ne";
     const onMove = (move: PointerEvent) => {
       const next = point(move);
-      const w = Math.max(120, baseW + (next.x - origin.x));
-      patch(id, ratio ? { w, h: Math.round(w * ratio) } : { w });
+      const delta = next.x - origin.x;
+      const w = Math.max(80, west ? baseW - delta : baseW + delta);
+      const changes: { w: number; h?: number; x?: number; y?: number } = { w };
+      if (ratio) changes.h = Math.round(w * ratio);
+      if (west) changes.x = Math.max(0, baseX + (baseW - w));
+      if (north) changes.y = Math.max(0, baseY + ((ratio ? baseH : 0) - (changes.h ?? 0)));
+      patch(id, changes as Partial<Extract<NoteBlock, { type: "image" | "text" }>>);
     };
+
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
@@ -161,6 +177,23 @@ export function FreeCanvas({
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
   }
+
+  // Delete or Backspace removes the selected image (Word-like behaviour).
+  useEffect(() => {
+    if (!canEdit || !selectedId) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
+      const target = event.target as HTMLElement | null;
+      if (target && /INPUT|TEXTAREA/.test(target.tagName)) return;
+      event.preventDefault();
+      remove(selectedId);
+      setSelectedId(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canEdit, selectedId, blocks]);
+
 
   const erasing = useRef(false);
 
@@ -220,7 +253,12 @@ export function FreeCanvas({
   function surfaceClick(event: React.MouseEvent) {
     if (!canEdit || mode !== "type") return;
     if (event.target !== surfaceRef.current) return;
+    if (selectedId) {
+      setSelectedId(null);
+      return;
+    }
     const at = point(event);
+
     onChange([
       ...blocks,
       { id: crypto.randomUUID(), type: "text", text: "", x: at.x, y: at.y, w: 480 },
@@ -337,14 +375,26 @@ export function FreeCanvas({
         }
 
         const url = imageUrls?.[block.path];
+        const isSelected = selectedId === block.id;
         return (
-          <figure key={block.id} className="group absolute" style={style}>
+          <figure
+            key={block.id}
+            className={`group absolute ${isSelected ? "z-30" : ""}`}
+            style={style}
+            onPointerDown={(event) => {
+              if (!canEdit || mode !== "type") return;
+              setSelectedId(block.id);
+              startMove(block.id, event);
+            }}
+          >
             {url ? (
               <img
                 src={url}
                 alt={block.caption ?? "Lesson note image"}
                 draggable={false}
-                className="w-full select-none rounded-md"
+                className={`w-full select-none rounded-md ${
+                  canEdit && mode === "type" ? "cursor-move" : ""
+                } ${isSelected ? "ring-2 ring-primary" : ""}`}
                 style={{ height: block.h ?? "auto" }}
               />
             ) : (
@@ -352,32 +402,44 @@ export function FreeCanvas({
             )}
             {canEdit ? (
               <>
-                <div className="absolute -left-6 top-0 flex flex-col opacity-0 transition-opacity group-hover:opacity-100">
-                  <button
-                    type="button"
-                    onPointerDown={(event) => startMove(block.id, event)}
-                    className="cursor-grab rounded p-0.5 text-muted-foreground hover:bg-muted"
-                    aria-label="Move image"
-                  >
-                    <GripVertical className="size-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => remove(block.id)}
-                    className="rounded p-0.5 text-muted-foreground hover:bg-muted"
-                    aria-label="Delete image"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                </div>
-                <span
-                  onPointerDown={(event) => startResize(block.id, event)}
-                  className="absolute -bottom-1 -right-1 size-4 cursor-nwse-resize rounded-sm border bg-background opacity-0 group-hover:opacity-100"
-                />
+                <button
+                  type="button"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    remove(block.id);
+                  }}
+                  className={`absolute -right-2 -top-2 rounded-full border bg-background p-1 text-muted-foreground shadow-sm transition-opacity hover:text-destructive ${
+                    isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                  }`}
+                  aria-label="Delete image"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+                {(
+                  [
+                    ["nw", "-left-1.5 -top-1.5 cursor-nwse-resize"],
+                    ["ne", "-right-1.5 -top-1.5 cursor-nesw-resize"],
+                    ["sw", "-left-1.5 -bottom-1.5 cursor-nesw-resize"],
+                    ["se", "-right-1.5 -bottom-1.5 cursor-nwse-resize"],
+                  ] as const
+                ).map(([corner, cls]) => (
+                  <span
+                    key={corner}
+                    onPointerDown={(event) => {
+                      setSelectedId(block.id);
+                      startResize(block.id, event, corner);
+                    }}
+                    className={`absolute size-3 rounded-sm border border-primary bg-background transition-opacity ${cls} ${
+                      isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                    }`}
+                  />
+                ))}
               </>
             ) : null}
           </figure>
         );
+
       })}
 
       {canEdit && blocks.length === 0 ? (

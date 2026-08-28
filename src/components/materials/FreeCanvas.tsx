@@ -394,6 +394,29 @@ export function FreeCanvas({
                           {align[0]}
                         </button>
                       ))}
+                      {TEXT_COLORS.map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => patch(block.id, { color: value })}
+                          aria-label={`Text color ${value}`}
+                          className={`size-5 rounded-full border ${
+                            (block.color ?? TEXT_COLORS[0]) === value ? "ring-2 ring-ring" : ""
+                          }`}
+                          style={{ backgroundColor: value }}
+                        />
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => patch(block.id, { box: !block.box })}
+                        aria-pressed={Boolean(block.box)}
+                        className={`size-6 rounded text-[10px] uppercase ${
+                          block.box ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                        }`}
+                        aria-label="Toggle text box border"
+                      >
+                        ▢
+                      </button>
                       <button
                         type="button"
                         onPointerDown={(event) => startMove(block.id, event)}
@@ -417,8 +440,9 @@ export function FreeCanvas({
                     onChange={(event) => patch(block.id, { text: event.target.value })}
                     onFocus={() => setSelectedId(block.id)}
                     onBlur={() => {
-                      if (!block.text.trim()) remove(block.id);
+                      if (!block.box && !block.text.trim()) remove(block.id);
                     }}
+
                     placeholder="Type here…"
                     rows={1}
                     className="w-full resize-none border-0 bg-transparent p-1 text-foreground outline-none focus:ring-0"

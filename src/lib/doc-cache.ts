@@ -71,3 +71,41 @@ export async function clearCachedDoc(key: string): Promise<void> {
     // ignore
   }
 }
+
+/**
+ * Slide decks and converted Word documents are cached as JSON so a lesson
+ * document renders once and then opens instantly, even though the signed
+ * storage URL changes on every load.
+ */
+export type CachedPayload<T> = { payload: T; savedAt: number };
+
+export async function readCachedJson<T>(key: string): Promise<T | null> {
+  const db = await openDb();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    try {
+      const request = db.transaction(STORE, "readonly").objectStore(STORE).get(key);
+      request.onsuccess = () => {
+        const value = request.result as CachedPayload<T> | undefined;
+        if (!value || value.payload === undefined) return resolve(null);
+        if (Date.now() - value.savedAt > MAX_AGE_MS) return resolve(null);
+        resolve(value.payload);
+      };
+      request.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+export async function writeCachedJson<T>(key: string, payload: T): Promise<void> {
+  const db = await openDb();
+  if (!db) return;
+  try {
+    db.transaction(STORE, "readwrite")
+      .objectStore(STORE)
+      .put({ payload, savedAt: Date.now() } satisfies CachedPayload<T>, key);
+  } catch {
+    // Cache writes are best-effort only.
+  }
+}

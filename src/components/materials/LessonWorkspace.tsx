@@ -424,6 +424,7 @@ export function LessonWorkspace({
                 <OfficeDocView
                   url={docUrl.data.url}
                   title={material.title}
+                  cacheKey={`material:${material.id}`}
                   canDownload={canManage || material.allow_download !== false}
                   format={
                     docFormat(material.storage_path ?? material.title) === "pptx"

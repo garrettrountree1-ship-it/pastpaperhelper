@@ -67,12 +67,14 @@ export function LessonWorkspace({
   classId,
   unit,
   canManage,
+  initialMaterialId,
   onBack,
   onUnitChanged,
 }: {
   classId: string;
   unit: WorkspaceUnit;
   canManage: boolean;
+  initialMaterialId?: string | null;
   onBack: () => void;
   onUnitChanged: () => void;
 }) {

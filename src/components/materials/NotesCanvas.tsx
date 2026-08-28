@@ -1,6 +1,16 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Eraser, ImagePlus, PenLine, RefreshCw, Sparkles, SquarePlus, Type } from "lucide-react";
+import {
+  Eraser,
+  ImagePlus,
+  Minus,
+  PenLine,
+  Plus,
+  RefreshCw,
+  Sparkles,
+  SquarePlus,
+  Type,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -78,6 +88,8 @@ export function NotesCanvas({
   const [tab, setTab] = useState<"notes" | "summary">(initialTab);
   const [mode, setMode] = useState<CanvasMode>("type");
   const [penColor, setPenColor] = useState(PEN_COLORS[0]!);
+  const [zoom, setZoom] = useState(1);
+
   const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
   const dirty = useRef(false);
   const fileInput = useRef<HTMLInputElement | null>(null);
@@ -180,6 +192,23 @@ export function NotesCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canEdit, tab, blocks, sectionId]);
 
+  // Ctrl/⌘ + wheel (and trackpad pinch) zooms only this canvas pane.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || tab !== "notes") return;
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      const dy = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
+      setZoom((value) =>
+        Math.min(2.5, Math.max(0.5, Number((value * Math.exp(-dy * 0.0015)).toFixed(3)))),
+      );
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [tab]);
+
+
   return (
     <div className="flex h-full min-h-0 flex-col rounded-lg border bg-card" onPaste={handlePaste}>
 
@@ -195,12 +224,43 @@ export function NotesCanvas({
           <Sparkles className="size-4" />
           AI summary
         </Button>
-        {canEdit && tab === "notes" ? (
-          <span className="ml-auto text-xs text-muted-foreground">
-            {status === "saving" ? "Saving…" : status === "saved" ? "Saved" : ""}
-          </span>
+        {tab === "notes" ? (
+          <div className="ml-auto flex items-center gap-1">
+            {canEdit ? (
+              <span className="mr-1 text-xs text-muted-foreground">
+                {status === "saving" ? "Saving…" : status === "saved" ? "Saved" : ""}
+              </span>
+            ) : null}
+            <Button
+              size="icon"
+              variant="outline"
+              className="size-7"
+              aria-label="Zoom out canvas"
+              onClick={() => setZoom((value) => Math.max(0.5, Number((value - 0.1).toFixed(2))))}
+            >
+              <Minus className="size-3.5" />
+            </Button>
+            <button
+              type="button"
+              onClick={() => setZoom(1)}
+              className="min-w-11 rounded px-1 text-xs text-muted-foreground hover:bg-muted"
+              aria-label="Reset canvas zoom"
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <Button
+              size="icon"
+              variant="outline"
+              className="size-7"
+              aria-label="Zoom in canvas"
+              onClick={() => setZoom((value) => Math.min(2.5, Number((value + 0.1).toFixed(2))))}
+            >
+              <Plus className="size-3.5" />
+            </Button>
+          </div>
         ) : null}
       </div>
+
 
       {canEdit && tab === "notes" ? (
         <div className="flex flex-wrap items-center gap-2 border-b px-3 py-1.5">
@@ -290,7 +350,7 @@ export function NotesCanvas({
       ) : null}
 
       {tab === "notes" ? (
-        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
           <FreeCanvas
             blocks={blocks}
             canEdit={canEdit}
@@ -298,11 +358,13 @@ export function NotesCanvas({
             penColor={penColor}
             penWidth={2.4}
             imageUrls={urls.data}
+            zoom={zoom}
             onChange={update}
             onConcept={onConcept}
           />
         </div>
       ) : (
+
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           {canEdit ? (
             <Button

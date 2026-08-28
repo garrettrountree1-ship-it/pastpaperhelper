@@ -89,6 +89,7 @@ export function FreeCanvas({
   penColor,
   penWidth,
   imageUrls,
+  zoom = 1,
   onChange,
   onConcept,
 }: {
@@ -98,6 +99,7 @@ export function FreeCanvas({
   penColor: string;
   penWidth: number;
   imageUrls: Record<string, string> | undefined;
+  zoom?: number;
   onChange: (next: NoteBlock[]) => void;
   onConcept: (value: string) => void;
 }) {
@@ -116,10 +118,13 @@ export function FreeCanvas({
   }, 0);
   const height = Math.max(1800, bottom + 700);
 
+  // Pointer positions arrive in screen pixels; the sheet may be zoomed, so
+  // convert back into unscaled canvas coordinates.
   function point(event: { clientX: number; clientY: number }) {
     const rect = surfaceRef.current!.getBoundingClientRect();
-    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    return { x: (event.clientX - rect.left) / zoom, y: (event.clientY - rect.top) / zoom };
   }
+
 
   function patch(id: string, changes: Partial<Extract<NoteBlock, { type: "image" | "text" }>>) {
     onChange(
@@ -286,12 +291,19 @@ export function FreeCanvas({
   const inks = blocks.filter((b): b is Extract<NoteBlock, { type: "ink" }> => b.type === "ink");
 
   return (
+    <div style={{ height: height * zoom, overflow: "hidden" }}>
     <div
       ref={surfaceRef}
       onClick={surfaceClick}
-      className="relative w-full bg-white"
-      style={{ height }}
+      className="relative bg-white"
+      style={{
+        height,
+        width: `${100 / zoom}%`,
+        transform: `scale(${zoom})`,
+        transformOrigin: "0 0",
+      }}
     >
+
       {/* Ink layer: captures the pen everywhere while in draw mode. */}
       <svg
         className="absolute inset-0 h-full w-full"
@@ -567,6 +579,7 @@ export function FreeCanvas({
           Click anywhere to type. Switch to Draw to write with a pen. Paste images straight in.
         </p>
       ) : null}
+    </div>
     </div>
   );
 }

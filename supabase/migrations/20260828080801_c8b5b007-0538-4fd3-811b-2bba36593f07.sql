@@ -1,0 +1,1 @@
+ALTER TABLE public.unit_materials ADD COLUMN IF NOT EXISTS allow_download boolean NOT NULL DEFAULT true;

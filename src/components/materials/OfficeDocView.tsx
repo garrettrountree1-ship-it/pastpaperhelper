@@ -14,10 +14,12 @@ export function OfficeDocView({
   url,
   title,
   format,
+  canDownload = true,
 }: {
   url: string;
   title: string;
   format: "pptx" | "docx";
+  canDownload?: boolean;
 }) {
   const [zoom, setZoom] = useState(1);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
@@ -92,12 +94,14 @@ export function OfficeDocView({
             {deck.slides.length} slide{deck.slides.length === 1 ? "" : "s"}
           </span>
         ) : null}
+        {canDownload === false ? null : (
         <Button asChild size="sm" variant="outline" className="ml-auto h-7 px-2 text-xs">
           <a href={url} download={title} target="_blank" rel="noreferrer">
             <Download className="size-3.5" />
             Download
           </a>
         </Button>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto rounded-md bg-muted/30 p-2">

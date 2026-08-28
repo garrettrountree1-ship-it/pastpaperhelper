@@ -15,10 +15,12 @@ export function PdfDocView({
   url,
   title,
   cacheKey,
+  canDownload = true,
 }: {
   url: string;
   title: string;
   cacheKey?: string;
+  canDownload?: boolean;
 }) {
   const [pages, setPages] = useState<string[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -177,12 +179,14 @@ export function PdfDocView({
           <RefreshCw className="size-3.5" />
           Refresh
         </Button>
+        {canDownload === false ? null : (
         <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
           <a href={url} download={`${title}.pdf`} target="_blank" rel="noreferrer">
             <Download className="size-3.5" />
             Download
           </a>
         </Button>
+        )}
       </div>
       <div
         ref={scrollRef}

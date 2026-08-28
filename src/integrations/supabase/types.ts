@@ -1325,6 +1325,7 @@ export type Database = {
       }
       unit_materials: {
         Row: {
+          allow_download: boolean
           class_id: string
           content_type: string | null
           created_at: string
@@ -1340,6 +1341,7 @@ export type Database = {
           unit_id: string
         }
         Insert: {
+          allow_download?: boolean
           class_id: string
           content_type?: string | null
           created_at?: string
@@ -1355,6 +1357,7 @@ export type Database = {
           unit_id: string
         }
         Update: {
+          allow_download?: boolean
           class_id?: string
           content_type?: string | null
           created_at?: string

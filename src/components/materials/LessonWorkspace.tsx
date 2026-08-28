@@ -42,6 +42,7 @@ type UnitMaterial = {
   kind: string;
   storage_path: string | null;
   external_url: string | null;
+  allow_download?: boolean;
 };
 
 export type WorkspaceUnit = {
@@ -423,6 +424,7 @@ export function LessonWorkspace({
                 <OfficeDocView
                   url={docUrl.data.url}
                   title={material.title}
+                  canDownload={canManage || material.allow_download !== false}
                   format={
                     docFormat(material.storage_path ?? material.title) === "pptx"
                       ? "pptx"
@@ -433,6 +435,7 @@ export function LessonWorkspace({
                 <PdfDocView
                   url={docUrl.data.url}
                   title={material.title}
+                  canDownload={canManage || material.allow_download !== false}
                   cacheKey={`material:${material.id}`}
                 />
               )}

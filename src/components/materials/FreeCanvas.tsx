@@ -240,9 +240,10 @@ export function FreeCanvas({
       <svg
         className="absolute inset-0 h-full w-full"
         style={{
-          pointerEvents: canEdit && mode === "draw" ? "auto" : "none",
+          pointerEvents: canEdit && (mode === "draw" || mode === "erase") ? "auto" : "none",
           touchAction: "none",
           zIndex: 20,
+          cursor: canEdit && mode === "erase" ? "crosshair" : undefined,
         }}
         onPointerDown={startInk}
         onPointerMove={moveInk}

@@ -291,12 +291,19 @@ export function FreeCanvas({
   const inks = blocks.filter((b): b is Extract<NoteBlock, { type: "ink" }> => b.type === "ink");
 
   return (
+    <div style={{ height: height * zoom, overflow: "hidden" }}>
     <div
       ref={surfaceRef}
       onClick={surfaceClick}
-      className="relative w-full bg-white"
-      style={{ height }}
+      className="relative bg-white"
+      style={{
+        height,
+        width: `${100 / zoom}%`,
+        transform: `scale(${zoom})`,
+        transformOrigin: "0 0",
+      }}
     >
+
       {/* Ink layer: captures the pen everywhere while in draw mode. */}
       <svg
         className="absolute inset-0 h-full w-full"

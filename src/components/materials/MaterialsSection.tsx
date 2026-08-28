@@ -455,12 +455,20 @@ function UploadDialog({
         });
       } else {
         if (!file) throw new Error("Choose a file first.");
+        if (file.size > 45 * 1024 * 1024) {
+          throw new Error(
+            "That file is larger than 45 MB. Please compress it or split it before uploading.",
+          );
+        }
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const path = `${classId}/${unitId}/${crypto.randomUUID()}-${safeName}`;
         const { error } = await supabase.storage
           .from("class-materials")
-          .upload(path, file, { contentType: file.type || "application/octet-stream" });
-        if (error) throw new Error(error.message);
+          .upload(path, file, {
+            contentType: file.type || "application/octet-stream",
+            upsert: true,
+          });
+        if (error) throw new Error(`Upload failed: ${error.message}`);
         await record({
           data: {
             unitId,

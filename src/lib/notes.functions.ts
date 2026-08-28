@@ -20,7 +20,9 @@ const blockSchema = z.union([
     underline: z.boolean().optional(),
     color: z.string().max(30).optional(),
     align: z.enum(["left", "center", "right"]).optional(),
+    box: z.boolean().optional(),
   }),
+
 
   z.object({
     id: z.string().max(60),

@@ -101,7 +101,15 @@ export function OfficeDocView({
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto rounded-md bg-muted/30 p-2">
-        {status === "loading" ? <Skeleton className="h-full w-full" /> : null}
+        {status === "loading" ? (
+          <div className="space-y-2 p-2">
+            <p className="text-sm text-muted-foreground">
+              Preparing {format === "pptx" ? "slides" : "document"}… large files can take a few
+              seconds the first time.
+            </p>
+            <Skeleton className="h-64 w-full" />
+          </div>
+        ) : null}
         {status === "failed" ? (
           <p className="p-4 text-sm text-muted-foreground">
             This file couldn&apos;t be displayed inline. Use Download to open it, or upload a PDF

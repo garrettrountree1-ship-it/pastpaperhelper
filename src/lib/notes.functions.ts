@@ -87,9 +87,11 @@ export const updateSection = createServerFn({ method: "POST" })
     if (!section) throw new Error("Section not found.");
     await assertClassTeacher(supabase, section.class_id, userId);
 
-    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    if (data.title !== undefined) patch["title"] = data.title;
-    if (data.materialId !== undefined) patch["material_id"] = data.materialId;
+    const patch = {
+      updated_at: new Date().toISOString(),
+      ...(data.title !== undefined ? { title: data.title } : {}),
+      ...(data.materialId !== undefined ? { material_id: data.materialId } : {}),
+    };
 
     const { error } = await supabase.from("unit_sections").update(patch).eq("id", data.sectionId);
     if (error) throw new Error(error.message);

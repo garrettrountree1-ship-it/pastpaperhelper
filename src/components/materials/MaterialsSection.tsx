@@ -4,6 +4,7 @@ import { Download, FileText, Film, Image as ImageIcon, Link2, Presentation, Tras
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { LessonWorkspace } from "@/components/materials/LessonWorkspace";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {

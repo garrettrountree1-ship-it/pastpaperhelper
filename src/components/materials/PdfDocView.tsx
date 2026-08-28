@@ -1,15 +1,30 @@
+import { Download, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { clearCachedDoc, readCachedDoc, writeCachedDoc } from "@/lib/doc-cache";
 
 /**
  * Renders every page of a PDF as an image so the document simply scrolls in the
- * pane — no dark browser PDF chrome, no thumbnail sidebar.
+ * pane — no dark browser PDF chrome, no thumbnail sidebar. Rendered pages are
+ * cached in the browser (IndexedDB) under `cacheKey`, so the document is only
+ * ever built once instead of reloading every time the workspace opens.
  */
-export function PdfDocView({ url, title }: { url: string; title: string }) {
+export function PdfDocView({
+  url,
+  title,
+  cacheKey,
+}: {
+  url: string;
+  title: string;
+  cacheKey?: string;
+}) {
   const [pages, setPages] = useState<string[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const [rebuilding, setRebuilding] = useState(false);
   const token = useRef(0);
+  const key = cacheKey ?? title;
 
   useEffect(() => {
     const current = ++token.current;
@@ -17,6 +32,13 @@ export function PdfDocView({ url, title }: { url: string; title: string }) {
     setFailed(false);
 
     (async () => {
+      const cached = await readCachedDoc(key);
+      if (token.current !== current) return;
+      if (cached) {
+        setPages(cached);
+        return;
+      }
+
       try {
         const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
         const workerUrl = (await import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url")).default;
@@ -40,31 +62,60 @@ export function PdfDocView({ url, title }: { url: string; title: string }) {
           out.push(canvas.toDataURL("image/jpeg", 0.85));
           if (token.current !== current) return;
         }
-        if (token.current === current) setPages(out);
+        if (token.current === current) {
+          setPages(out);
+          void writeCachedDoc(key, out);
+        }
       } catch {
         if (token.current === current) setFailed(true);
+      } finally {
+        if (token.current === current) setRebuilding(false);
       }
     })();
-  }, [url]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, url, rebuilding]);
 
   if (failed) {
-    return (
-      <iframe src={url} title={title} className="h-full w-full rounded-md bg-white" />
-    );
+    return <iframe src={url} title={title} className="h-full w-full rounded-md bg-white" />;
   }
 
   if (!pages) return <Skeleton className="h-full w-full" />;
 
   return (
-    <div className="h-full space-y-3 overflow-y-auto bg-muted/30 p-2">
-      {pages.map((src, index) => (
-        <img
-          key={index}
-          src={src}
-          alt={`${title} page ${index + 1}`}
-          className="w-full rounded-md border bg-white shadow-sm"
-        />
-      ))}
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex items-center gap-2 pb-1">
+        <span className="truncate text-xs text-muted-foreground">
+          Saved on this device — opens without reloading.
+        </span>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="ml-auto h-7 px-2 text-xs"
+          onClick={async () => {
+            await clearCachedDoc(key);
+            setRebuilding((value) => !value);
+          }}
+        >
+          <RefreshCw className="size-3.5" />
+          Refresh
+        </Button>
+        <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
+          <a href={url} download={`${title}.pdf`} target="_blank" rel="noreferrer">
+            <Download className="size-3.5" />
+            Download
+          </a>
+        </Button>
+      </div>
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto rounded-md bg-muted/30 p-2">
+        {pages.map((src, index) => (
+          <img
+            key={index}
+            src={src}
+            alt={`${title} page ${index + 1}`}
+            className="w-full rounded-md border bg-white shadow-sm"
+          />
+        ))}
+      </div>
     </div>
   );
 }

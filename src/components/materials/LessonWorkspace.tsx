@@ -342,7 +342,11 @@ export function LessonWorkspace({
                   className="h-full w-full rounded-md object-contain"
                 />
               ) : (
-                <PdfDocView url={docUrl.data.url} title={material.title} />
+                <PdfDocView
+                  url={docUrl.data.url}
+                  title={material.title}
+                  cacheKey={`material:${material.id}`}
+                />
               )}
 
             </div>

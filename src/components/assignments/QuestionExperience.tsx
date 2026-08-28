@@ -307,20 +307,11 @@ export function QuestionExperience({
             disabled={
               locked ||
               checking ||
-              (photoOnly
-                ? photoCount === 0
-                : (!hasWrittenAnswer && photoCount === 0) || !isEnglishOnly(draft))
+              (!hasWrittenAnswer && photoCount === 0) ||
+              !isEnglishOnly(draft)
             }
           >
-            {locked
-              ? "Locked"
-              : checking
-                ? "Marking..."
-                : result
-                  ? "Re-check answer"
-                  : photoOnly
-                    ? "Mark my working"
-                    : "Check answer"}
+            {locked ? "Locked" : checking ? "Marking..." : result ? "Re-check answer" : "Check answer"}
           </Button>
 
         </div>

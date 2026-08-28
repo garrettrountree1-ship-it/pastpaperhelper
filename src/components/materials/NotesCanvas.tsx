@@ -78,6 +78,8 @@ export function NotesCanvas({
   const [tab, setTab] = useState<"notes" | "summary">(initialTab);
   const [mode, setMode] = useState<CanvasMode>("type");
   const [penColor, setPenColor] = useState(PEN_COLORS[0]!);
+  const [zoom, setZoom] = useState(1);
+
   const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
   const dirty = useRef(false);
   const fileInput = useRef<HTMLInputElement | null>(null);

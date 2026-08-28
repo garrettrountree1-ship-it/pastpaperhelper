@@ -191,7 +191,8 @@ export function NotesCanvas({
                       update(next);
                     }}
                     placeholder="Type your lesson notes: key concepts, vocabulary, worked examples…"
-                    className="min-h-[140px] text-sm"
+                    className="min-h-[55vh] resize-y text-sm leading-relaxed"
+
                   />
                   {blocks.length > 1 ? (
                     <Button

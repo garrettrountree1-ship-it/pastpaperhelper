@@ -1,6 +1,16 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Eraser, ImagePlus, PenLine, RefreshCw, Sparkles, SquarePlus, Type } from "lucide-react";
+import {
+  Eraser,
+  ImagePlus,
+  Minus,
+  PenLine,
+  Plus,
+  RefreshCw,
+  Sparkles,
+  SquarePlus,
+  Type,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 

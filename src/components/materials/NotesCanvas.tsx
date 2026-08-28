@@ -11,7 +11,7 @@ import {
   SquarePlus,
   Type,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { FreeCanvas, type CanvasMode } from "@/components/materials/FreeCanvas";

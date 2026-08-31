@@ -170,6 +170,29 @@ export function OfficeDocView({
     return () => observer.disconnect();
   }, [deck]);
 
+  // Dragging the split-view divider changes this pane's width, which rescales
+  // every slide and would otherwise slide the view onto a different slide.
+  // Re-pin the slide that was on screen after each width change.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !deck) return;
+    let lastWidth = el.clientWidth;
+    const observer = new ResizeObserver(() => {
+      const width = el.clientWidth;
+      if (width === lastWidth) return;
+      lastWidth = width;
+      requestAnimationFrame(() => {
+        const node = slideRefs.current[currentSlide];
+        if (!node) return;
+        const top = node.getBoundingClientRect().top - el.getBoundingClientRect().top;
+        el.scrollTop = Math.max(0, el.scrollTop + top - 8);
+      });
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [deck, currentSlide]);
+
+
   useEffect(() => {
     const run = ++token.current;
     let cancelled = false;

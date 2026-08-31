@@ -12,6 +12,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { clearCachedDoc, readCachedJson, writeCachedJson } from "@/lib/doc-cache";
 import { parsePptx, type PptxDeck, type PptxShape } from "@/lib/pptx-render";
 
+/** A teacher's change to one slide element: retyped text, or a moved/resized box. */
+export type ShapeEdit = { text?: string; x?: number; y?: number; w?: number; h?: number };
+
+
 
 /**
  * Renders .pptx slide decks and .docx documents inline so they simply scroll in

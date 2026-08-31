@@ -41,24 +41,31 @@ export function OfficeDocView({
   title,
   format,
   cacheKey,
+  materialId,
+  canPrepareShared = false,
   canDownload = true,
 }: {
   url: string;
   title: string;
   format: "pptx" | "docx";
   cacheKey?: string;
+  /** Enables the shared, prepared-once render stored alongside the file. */
+  materialId?: string;
+  /** Teachers may store the prepared render for everyone else. */
+  canPrepareShared?: boolean;
   canDownload?: boolean;
 }) {
   const [zoom, setZoom] = useState(1);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
   const [html, setHtml] = useState<string>("");
   const [deck, setDeck] = useState<PptxDeck | null>(null);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [rebuilding, setRebuilding] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const token = useRef(0);
   // Increment when the renderer changes so old, incorrectly parsed decks are
   // never served forever from IndexedDB after a fidelity fix.
-  const key = `office-render-v3:${format}:${cacheKey ?? title}`;
+  const key = `office-render-v4:${format}:${cacheKey ?? title}`;
   const notesKey = `office-annotations:${format}:${cacheKey ?? title}`;
   const editsKey = `office-shape-edits:${format}:${cacheKey ?? title}`;
 

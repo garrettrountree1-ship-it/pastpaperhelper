@@ -14,6 +14,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { OfficeDocView } from "@/components/materials/OfficeDocView";
+import { prerenderUploadedMaterial } from "@/lib/office-prerender";
 import { PdfDocView } from "@/components/materials/PdfDocView";
 import { docFormat } from "@/lib/doc-kind";
 
@@ -432,6 +433,8 @@ function MaterialRow({
                   url={viewerUrl}
                   title={material.title}
                   cacheKey={`material:${material.id}`}
+                  materialId={material.id}
+                  canPrepareShared={canManage}
                   canDownload={canManage || allowDownload}
                   format={viewerFormat === "pptx" ? "pptx" : "docx"}
                 />
@@ -495,7 +498,7 @@ function UploadDialog({
             upsert: true,
           });
         if (error) throw new Error(`Upload failed: ${error.message}`);
-        await record({
+        const created = await record({
           data: {
             unitId,
             classId,
@@ -507,6 +510,15 @@ function UploadDialog({
             contentType: file.type || "application/octet-stream",
           },
         });
+
+        // Prepare the slides/document once, now, so the first person who opens
+        // it (teacher or student) sees it instantly instead of waiting.
+        const format = docFormat(file.name);
+        if (created?.id && (format === "pptx" || format === "docx")) {
+          void prerenderUploadedMaterial(created.id, file, format)
+            .then(() => toast.success("Slides prepared — they will open instantly now."))
+            .catch(() => undefined);
+        }
       }
       toast.success("Added");
       setOpen(false);

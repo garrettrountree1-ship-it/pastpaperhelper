@@ -241,7 +241,7 @@ export function LessonWorkspace({
                 />
 
               ) : (
-                <div key={section.id} className="relative inline-flex items-center">
+                <div key={section.id} className="inline-flex items-center gap-0.5">
                   <Button
                     size="sm"
                     variant={section.id === active?.id ? "default" : "outline"}
@@ -257,7 +257,7 @@ export function LessonWorkspace({
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="-ml-2 size-6"
+                      className="size-6 shrink-0"
                       title="Rename section"
                       aria-label="Rename section"
                       onClick={(e) => {
@@ -425,6 +425,8 @@ export function LessonWorkspace({
                   url={docUrl.data.url}
                   title={material.title}
                   cacheKey={`material:${material.id}`}
+                  materialId={material.id}
+                  canPrepareShared={canManage}
                   canDownload={canManage || material.allow_download !== false}
                   format={
                     docFormat(material.storage_path ?? material.title) === "pptx"

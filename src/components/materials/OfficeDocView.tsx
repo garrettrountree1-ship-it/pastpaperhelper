@@ -1,4 +1,14 @@
-import { Download, Eraser, Minus, MousePointer2, PenLine, Plus, RefreshCw, Type } from "lucide-react";
+import {
+  Download,
+  Eraser,
+  Minus,
+  MousePointer2,
+  PenLine,
+  Plus,
+  RefreshCw,
+  SquarePen,
+  Type,
+} from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import {
@@ -11,6 +21,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { clearCachedDoc, readCachedJson, writeCachedJson } from "@/lib/doc-cache";
 import { parsePptx, type PptxDeck, type PptxShape } from "@/lib/pptx-render";
+
+/** A teacher's change to one slide element: retyped text, or a moved/resized box. */
+export type ShapeEdit = { text?: string; x?: number; y?: number; w?: number; h?: number };
+
 
 
 /**
@@ -46,12 +60,14 @@ export function OfficeDocView({
   // never served forever from IndexedDB after a fidelity fix.
   const key = `office-render-v3:${format}:${cacheKey ?? title}`;
   const notesKey = `office-annotations:${format}:${cacheKey ?? title}`;
+  const editsKey = `office-shape-edits:${format}:${cacheKey ?? title}`;
 
   // Drawings and text boxes made on top of the slides, kept per slide index and
   // saved locally so they are still there next lesson.
   const [tool, setTool] = useState<SlideTool>("none");
   const [penColor, setPenColor] = useState("#dc2626");
   const [notes, setNotes] = useState<Record<number, SlideAnnotation>>({});
+  const [edits, setEdits] = useState<Record<string, ShapeEdit>>({});
   const [currentSlide, setCurrentSlide] = useState(0);
   const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -60,16 +76,29 @@ export function OfficeDocView({
     void (async () => {
       const saved = await readCachedJson<Record<number, SlideAnnotation>>(notesKey);
       if (!cancelled && saved) setNotes(saved);
+      const savedEdits = await readCachedJson<Record<string, ShapeEdit>>(editsKey);
+      if (!cancelled && savedEdits) setEdits(savedEdits);
     })();
     return () => {
       cancelled = true;
     };
-  }, [notesKey]);
+  }, [notesKey, editsKey]);
 
   function updateNotes(index: number, next: SlideAnnotation) {
     setNotes((current) => {
       const merged = { ...current, [index]: next };
       void writeCachedJson(notesKey, merged);
+      return merged;
+    });
+  }
+
+  // Edits the teacher makes directly to slide elements (retyped text, resized or
+  // moved boxes) are stored per shape and layered over the parsed deck.
+  function updateEdit(slideIndex: number, shapeIndex: number, patch: ShapeEdit) {
+    setEdits((current) => {
+      const id = `${slideIndex}:${shapeIndex}`;
+      const merged = { ...current, [id]: { ...current[id], ...patch } };
+      void writeCachedJson(editsKey, merged);
       return merged;
     });
   }
@@ -150,6 +179,29 @@ export function OfficeDocView({
     });
     return () => observer.disconnect();
   }, [deck]);
+
+  // Dragging the split-view divider changes this pane's width, which rescales
+  // every slide and would otherwise slide the view onto a different slide.
+  // Re-pin the slide that was on screen after each width change.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !deck) return;
+    let lastWidth = el.clientWidth;
+    const observer = new ResizeObserver(() => {
+      const width = el.clientWidth;
+      if (width === lastWidth) return;
+      lastWidth = width;
+      requestAnimationFrame(() => {
+        const node = slideRefs.current[currentSlide];
+        if (!node) return;
+        const top = node.getBoundingClientRect().top - el.getBoundingClientRect().top;
+        el.scrollTop = Math.max(0, el.scrollTop + top - 8);
+      });
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [deck, currentSlide]);
+
 
   useEffect(() => {
     const run = ++token.current;
@@ -237,6 +289,7 @@ export function OfficeDocView({
             {(
               [
                 ["none", "Select", MousePointer2],
+                ["edit", "Edit slide text and boxes", SquarePen],
                 ["draw", "Draw on slides", PenLine],
                 ["text", "Add a text box", Type],
                 ["erase", "Erase marks", Eraser],
@@ -330,6 +383,8 @@ export function OfficeDocView({
                     penColor={penColor}
                     annotation={notes[index] ?? emptyAnnotation}
                     onAnnotationChange={(next) => updateNotes(index, next)}
+                    edits={edits}
+                    onEdit={(shapeIndex, patch) => updateEdit(index, shapeIndex, patch)}
                   />
                 </div>
               ))}
@@ -355,6 +410,8 @@ function SlidePage({
   penColor,
   annotation,
   onAnnotationChange,
+  edits,
+  onEdit,
 }: {
   deck: PptxDeck;
   index: number;
@@ -362,13 +419,29 @@ function SlidePage({
   penColor: string;
   annotation: SlideAnnotation;
   onAnnotationChange: (next: SlideAnnotation) => void;
+  edits: Record<string, ShapeEdit>;
+  onEdit: (shapeIndex: number, patch: ShapeEdit) => void;
 }) {
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const [scale, setScale] = useState(1);
+
+  // The slide is laid out at its native size and scaled to the pane width.
+  useEffect(() => {
+    const el = frameRef.current;
+    if (!el) return;
+    const apply = () => setScale(el.clientWidth / deck.width);
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [deck.width]);
 
   const slide = deck.slides[index];
   if (!slide) return null;
   return (
     <div className="relative overflow-hidden rounded-md border shadow-sm">
       <div
+        ref={frameRef}
         className="relative origin-top-left"
         style={{
           width: "100%",
@@ -381,22 +454,20 @@ function SlidePage({
           style={{
             width: deck.width,
             height: deck.height,
-            transform: "scale(var(--slide-scale, 1))",
+            transform: `scale(${scale})`,
             transformOrigin: "top left",
-          }}
-          ref={(node) => {
-            if (!node) return;
-            const parent = node.parentElement;
-            if (!parent) return;
-            const apply = () =>
-              node.style.setProperty("--slide-scale", String(parent.clientWidth / deck.width));
-            apply();
-            const observer = new ResizeObserver(apply);
-            observer.observe(parent);
           }}
         >
           {slide.shapes.map((shape, i) => (
-            <SlideShape key={i} shape={shape} />
+            <SlideShape
+              key={i}
+              shape={shape}
+              slideWidth={deck.width}
+              editable={tool === "edit"}
+              scale={scale}
+              edit={edits[`${index}:${i}`]}
+              onEdit={(patch) => onEdit(i, patch)}
+            />
           ))}
           <SlideAnnotations
             width={deck.width}
@@ -406,14 +477,27 @@ function SlidePage({
             value={annotation}
             onChange={onAnnotationChange}
           />
-
         </div>
       </div>
     </div>
   );
 }
 
-function SlideShape({ shape }: { shape: PptxShape }) {
+function SlideShape({
+  shape,
+  slideWidth,
+  editable,
+  scale,
+  edit,
+  onEdit,
+}: {
+  shape: PptxShape;
+  slideWidth: number;
+  editable: boolean;
+  scale: number;
+  edit?: ShapeEdit | undefined;
+  onEdit: (patch: ShapeEdit) => void;
+}) {
   const rotate = shape.rot ? `rotate(${shape.rot}deg)` : undefined;
 
   if (shape.type === "image") {
@@ -459,15 +543,133 @@ function SlideShape({ shape }: { shape: PptxShape }) {
     );
   }
 
+  return (
+    <TextShape
+      shape={shape}
+      slideWidth={slideWidth}
+      editable={editable}
+      scale={scale}
+      edit={edit}
+      onEdit={onEdit}
+      rotate={rotate}
+    />
+  );
+}
+
+/**
+ * A slide text box. Long titles are given more width before any shrinking, so a
+ * heading spreads sideways instead of wrapping down over the text beneath it.
+ * With the Edit tool on, the teacher can retype the text and drag the box to
+ * move or resize it.
+ */
+function TextShape({
+  shape,
+  slideWidth,
+  editable,
+  scale,
+  edit,
+  onEdit,
+  rotate,
+}: {
+  shape: Extract<PptxShape, { type: "text" }>;
+  slideWidth: number;
+  editable: boolean;
+  scale: number;
+  edit?: ShapeEdit | undefined;
+  onEdit: (patch: ShapeEdit) => void;
+  rotate?: string | undefined;
+}) {
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
+  const drag = useRef<{
+    mode: "move" | "resize";
+    startX: number;
+    startY: number;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  } | null>(null);
+
+  const x = edit?.x ?? shape.x;
+  const y = edit?.y ?? shape.y;
+  const baseW = edit?.w ?? shape.w;
+  const baseH = edit?.h ?? shape.h;
+  const overrideText = edit?.text;
+
+  // Fit the copy inside the box: widen first, then shrink as a last resort.
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    const inner = innerRef.current;
+    if (!box || !inner) return;
+    box.style.width = baseW ? `${baseW}px` : "auto";
+    inner.style.width = "100%";
+    inner.style.transform = "";
+    if (!baseW || !baseH) return;
+
+    let width = baseW;
+    const maxWidth = Math.max(baseW, slideWidth - x - 8);
+    const step = Math.max(40, baseW * 0.12);
+    let height = inner.scrollHeight;
+    while (height > baseH + 2 && width < maxWidth) {
+      width = Math.min(maxWidth, width + step);
+      box.style.width = `${width}px`;
+      height = inner.scrollHeight;
+    }
+    if (height > baseH + 2) {
+      const shrink = Math.max(0.55, baseH / height);
+      inner.style.width = `${width / shrink}px`;
+      inner.style.transform = `scale(${shrink})`;
+    }
+  }, [baseW, baseH, x, slideWidth, overrideText, shape]);
+
+  function startDrag(mode: "move" | "resize", event: React.PointerEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    drag.current = {
+      mode,
+      startX: event.clientX,
+      startY: event.clientY,
+      x,
+      y,
+      w: baseW || 200,
+      h: baseH || 80,
+    };
+  }
+
+  function onDragMove(event: React.PointerEvent) {
+    const state = drag.current;
+    if (!state) return;
+    const dx = (event.clientX - state.startX) / (scale || 1);
+    const dy = (event.clientY - state.startY) / (scale || 1);
+    if (state.mode === "move") {
+      onEdit({ x: Math.round(state.x + dx), y: Math.round(state.y + dy) });
+    } else {
+      onEdit({
+        w: Math.max(60, Math.round(state.w + dx)),
+        h: Math.max(30, Math.round(state.h + dy)),
+      });
+    }
+  }
+
+  function endDrag() {
+    drag.current = null;
+  }
+
   const [lIns, tIns, rIns, bIns] = shape.insets;
+  const firstRun = shape.paragraphs[0]?.runs[0];
+  const firstParagraph = shape.paragraphs[0];
+
   return (
     <div
+      ref={boxRef}
       style={{
         position: "absolute",
-        left: shape.x,
-        top: shape.y,
-        width: shape.w || undefined,
-        height: shape.h || undefined,
+        left: x,
+        top: y,
+        width: baseW || undefined,
+        height: baseH || undefined,
         transform: rotate,
         display: "flex",
         flexDirection: "column",
@@ -476,51 +678,145 @@ function SlideShape({ shape }: { shape: PptxShape }) {
         padding: `${tIns}px ${rIns}px ${bIns}px ${lIns}px`,
         background: shape.fill ?? undefined,
         border: shape.line ? `${shape.line.width}px solid ${shape.line.color}` : undefined,
+        outline: editable ? "1px dashed hsl(var(--primary))" : undefined,
         borderRadius: shape.radius || undefined,
         boxSizing: "border-box",
         color: "#111",
         overflow: "visible",
       }}
     >
-      {shape.paragraphs.map((paragraph, pi) => (
-        <p
-          key={pi}
-          style={{
-            textAlign:
-              paragraph.align === "ctr"
-                ? "center"
-                : paragraph.align === "r"
-                  ? "right"
-                  : paragraph.align === "just"
-                    ? "justify"
-                    : "left",
-            margin: `${paragraph.spaceBefore}px 0 ${paragraph.spaceAfter}px`,
-            paddingLeft: paragraph.bullet ? 18 + paragraph.level * 18 : paragraph.level * 18,
-            textIndent: paragraph.bullet ? -14 : 0,
-            lineHeight: paragraph.lineHeight,
-            whiteSpace: shape.wrap ? "pre-wrap" : "pre",
-            minHeight: paragraph.runs.length === 0 ? "0.75em" : undefined,
-            wordBreak: "break-word",
+      <div ref={innerRef} style={{ transformOrigin: "top left" }}>
+        <div
+          contentEditable={editable}
+          suppressContentEditableWarning
+          spellCheck={false}
+          onBlur={(event) => {
+            if (!editable) return;
+            const next = (event.currentTarget as HTMLElement).innerText.replace(/\u00a0/g, " ");
+            const current =
+              overrideText ??
+              shape.paragraphs
+                .map((p) => (p.bullet ? `${p.bullet} ` : "") + p.runs.map((r) => r.text).join(""))
+                .join("\n");
+            if (next !== current) onEdit({ text: next });
           }}
+          style={{ outline: "none", cursor: editable ? "text" : undefined }}
         >
-          {paragraph.bullet ? `${paragraph.bullet} ` : ""}
-          {paragraph.runs.map((run, ri) => (
-            <span
-              key={ri}
-              style={{
-                fontSize: run.size,
-                fontFamily: run.font ? `"${run.font}", system-ui, sans-serif` : undefined,
-                fontWeight: run.bold ? 700 : 400,
-                fontStyle: run.italic ? "italic" : undefined,
-                textDecoration: run.underline ? "underline" : undefined,
-                color: run.color ?? undefined,
-              }}
-            >
-              {run.text}
-            </span>
-          ))}
-        </p>
-      ))}
+          {overrideText != null
+            ? overrideText.split("\n").map((line, li) => (
+                <p
+                  key={li}
+                  style={{
+                    margin: 0,
+                    textAlign:
+                      firstParagraph?.align === "ctr"
+                        ? "center"
+                        : firstParagraph?.align === "r"
+                          ? "right"
+                          : "left",
+                    lineHeight: firstParagraph?.lineHeight ?? 1.2,
+                    fontSize: firstRun?.size,
+                    fontFamily: firstRun?.font
+                      ? `"${firstRun.font}", system-ui, sans-serif`
+                      : undefined,
+                    fontWeight: firstRun?.bold ? 700 : 400,
+                    fontStyle: firstRun?.italic ? "italic" : undefined,
+                    color: firstRun?.color ?? undefined,
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                    minHeight: line === "" ? "0.75em" : undefined,
+                  }}
+                >
+                  {line}
+                </p>
+              ))
+            : shape.paragraphs.map((paragraph, pi) => (
+                <p
+                  key={pi}
+                  style={{
+                    textAlign:
+                      paragraph.align === "ctr"
+                        ? "center"
+                        : paragraph.align === "r"
+                          ? "right"
+                          : paragraph.align === "just"
+                            ? "justify"
+                            : "left",
+                    margin: `${paragraph.spaceBefore}px 0 ${paragraph.spaceAfter}px`,
+                    paddingLeft: paragraph.bullet ? 18 + paragraph.level * 18 : paragraph.level * 18,
+                    textIndent: paragraph.bullet ? -14 : 0,
+                    lineHeight: paragraph.lineHeight,
+                    whiteSpace: shape.wrap ? "pre-wrap" : "pre",
+                    minHeight: paragraph.runs.length === 0 ? "0.75em" : undefined,
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {paragraph.bullet ? `${paragraph.bullet} ` : ""}
+                  {paragraph.runs.map((run, ri) => (
+                    <span
+                      key={ri}
+                      style={{
+                        fontSize: run.size,
+                        fontFamily: run.font ? `"${run.font}", system-ui, sans-serif` : undefined,
+                        fontWeight: run.bold ? 700 : 400,
+                        fontStyle: run.italic ? "italic" : undefined,
+                        textDecoration: run.underline ? "underline" : undefined,
+                        color: run.color ?? undefined,
+                      }}
+                    >
+                      {run.text}
+                    </span>
+                  ))}
+                </p>
+              ))}
+        </div>
+      </div>
+
+      {editable ? (
+        <>
+          <div
+            role="button"
+            tabIndex={-1}
+            aria-label="Move this text box"
+            title="Drag to move"
+            onPointerDown={(event) => startDrag("move", event)}
+            onPointerMove={onDragMove}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+            style={{
+              position: "absolute",
+              left: -10,
+              top: -10,
+              width: 20,
+              height: 20,
+              borderRadius: 999,
+              background: "hsl(var(--primary))",
+              cursor: "move",
+              touchAction: "none",
+            }}
+          />
+          <div
+            role="button"
+            tabIndex={-1}
+            aria-label="Resize this text box"
+            title="Drag to resize"
+            onPointerDown={(event) => startDrag("resize", event)}
+            onPointerMove={onDragMove}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+            style={{
+              position: "absolute",
+              right: -10,
+              bottom: -10,
+              width: 20,
+              height: 20,
+              background: "hsl(var(--primary))",
+              cursor: "nwse-resize",
+              touchAction: "none",
+            }}
+          />
+        </>
+      ) : null}
     </div>
   );
 }

@@ -199,6 +199,44 @@ export function OfficeDocView({
             {deck.slides.length} slide{deck.slides.length === 1 ? "" : "s"}
           </span>
         ) : null}
+        {deck ? (
+          <div className="ml-2 flex items-center gap-1">
+            {(
+              [
+                ["none", "Select", MousePointer2],
+                ["draw", "Draw on slides", PenLine],
+                ["text", "Add a text box", Type],
+                ["erase", "Erase marks", Eraser],
+              ] as const
+            ).map(([value, label, Icon]) => (
+              <Button
+                key={value}
+                size="icon"
+                variant={tool === value ? "default" : "outline"}
+                className="size-7"
+                aria-label={label}
+                title={label}
+                aria-pressed={tool === value}
+                onClick={() => setTool(value)}
+              >
+                <Icon className="size-3.5" />
+              </Button>
+            ))}
+            {["#dc2626", "#2563eb", "#16a34a", "#111827"].map((swatch) => (
+              <button
+                key={swatch}
+                type="button"
+                aria-label={`Pen colour ${swatch}`}
+                onClick={() => setPenColor(swatch)}
+                className={`size-5 rounded-full border-2 ${
+                  penColor === swatch ? "scale-110 border-foreground" : "border-border"
+                }`}
+                style={{ backgroundColor: swatch }}
+              />
+            ))}
+          </div>
+        ) : null}
+
         <Button
           size="icon"
           variant="ghost"

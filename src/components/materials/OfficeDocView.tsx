@@ -229,7 +229,7 @@ export function OfficeDocView({
         </Button>
         {deck ? (
           <span className="ml-2 text-xs text-muted-foreground">
-            {deck.slides.length} slide{deck.slides.length === 1 ? "" : "s"}
+            Slide {currentSlide + 1} of {deck.slides.length}
           </span>
         ) : null}
         {deck ? (

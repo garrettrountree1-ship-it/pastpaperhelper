@@ -300,6 +300,55 @@ export const getMaterialUrl = createServerFn({ method: "POST" })
     return { url: signed.signedUrl };
   });
 
+/**
+ * Prepared slide/document renders are stored next to the original file, so the
+ * heavy work happens once (on upload) and every later viewer just downloads the
+ * finished render instead of parsing the file again.
+ */
+const RENDER_VERSION = "v4";
+const renderPath = (storagePath: string) => `${storagePath}.render-${RENDER_VERSION}.json`;
+
+/** Signed URL for a shared prepared render, or null when none exists yet. */
+export const getMaterialRenderUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ materialId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: material } = await supabase
+      .from("unit_materials")
+      .select("storage_path")
+      .eq("id", data.materialId)
+      .maybeSingle();
+    if (!material?.storage_path) return { url: null };
+
+    const { data: signed } = await supabase.storage
+      .from("class-materials")
+      .createSignedUrl(renderPath(material.storage_path), 60 * 30);
+    return { url: signed?.signedUrl ?? null };
+  });
+
+/** Teacher-only upload ticket for storing a prepared render. */
+export const createMaterialRenderUpload = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ materialId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertMaterialTeacher(supabase, data.materialId, userId);
+    const { data: material } = await supabase
+      .from("unit_materials")
+      .select("storage_path")
+      .eq("id", data.materialId)
+      .maybeSingle();
+    if (!material?.storage_path) throw new Error("This resource has no stored file.");
+
+    const path = renderPath(material.storage_path);
+    const { data: ticket, error } = await supabase.storage
+      .from("class-materials")
+      .createSignedUploadUrl(path, { upsert: true });
+    if (error || !ticket) throw new Error(error?.message ?? "Could not prepare the render upload.");
+    return { path, token: ticket.token };
+  });
+
 /** Teacher toggle: allow or block student downloads of one resource. */
 export const setMaterialDownload = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

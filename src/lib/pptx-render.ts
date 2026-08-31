@@ -193,6 +193,24 @@ function placeholderOf(sp: Element): { type: string | null; idx: string | null }
   return { type: ph.getAttribute("type"), idx: ph.getAttribute("idx") };
 }
 
+function isPowerPointPrompt(sp: Element): boolean {
+  const text = Array.from(sp.getElementsByTagName("a:t"))
+    .map((node) => node.textContent ?? "")
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  if (!text) return false;
+  return (
+    text.includes("click to edit master") ||
+    text.includes("click to edit title style") ||
+    text.includes("click to edit subtitle style") ||
+    text.includes("click to edit body style") ||
+    text.includes("click to add title") ||
+    text.includes("click to add text")
+  );
+}
+
 function textShape(
   sp: Element,
   frame: Frame | null,
@@ -487,7 +505,7 @@ export async function parsePptx(buffer: ArrayBuffer): Promise<PptxDeck> {
           const ph = placeholderOf(node);
           // Layout/master placeholders only carry prompt text ("Click to edit
           // Master title style"). Drawing them scribbles over the real slide.
-          if (ph && !inheritFrames) continue;
+          if (!inheritFrames && (ph || isPowerPointPrompt(node))) continue;
           if (!frame && ph && inheritFrames) frame = findPlaceholderFrame(ph);
 
 

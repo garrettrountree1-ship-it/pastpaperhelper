@@ -8,6 +8,7 @@ import { LessonTutorBar } from "@/components/materials/LessonTutorBar";
 import { NotesCanvas } from "@/components/materials/NotesCanvas";
 import { OfficeDocView } from "@/components/materials/OfficeDocView";
 import { PdfDocView } from "@/components/materials/PdfDocView";
+import { PowerPointView } from "@/components/materials/PowerPointView";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -419,8 +420,13 @@ export function LessonWorkspace({
                   alt={material.title}
                   className="h-full w-full rounded-md object-contain"
                 />
-              ) : docFormat(material.storage_path ?? material.title) === "pptx" ||
-                docFormat(material.storage_path ?? material.title) === "docx" ? (
+              ) : docFormat(material.storage_path ?? material.title) === "pptx" ? (
+                <PowerPointView
+                  url={docUrl.data.url}
+                  title={material.title}
+                  canDownload={canManage || material.allow_download !== false}
+                />
+              ) : docFormat(material.storage_path ?? material.title) === "docx" ? (
                 <OfficeDocView
                   url={docUrl.data.url}
                   title={material.title}
@@ -428,11 +434,7 @@ export function LessonWorkspace({
                   materialId={material.id}
                   canPrepareShared={canManage}
                   canDownload={canManage || material.allow_download !== false}
-                  format={
-                    docFormat(material.storage_path ?? material.title) === "pptx"
-                      ? "pptx"
-                      : "docx"
-                  }
+                  format="docx"
                 />
               ) : (
                 <PdfDocView

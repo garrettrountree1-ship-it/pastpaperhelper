@@ -88,6 +88,19 @@ export function OfficeDocView({
   // Word documents are one long flow, so the markup layer covers the whole page.
   const docRef = useRef<HTMLDivElement | null>(null);
   const [docRatio, setDocRatio] = useState(1.414);
+
+  useEffect(() => {
+    const el = docRef.current;
+    if (!el) return;
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      if (rect.width > 0) setDocRatio(rect.height / rect.width);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [html, status]);
   const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {

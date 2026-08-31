@@ -1,5 +1,5 @@
 import { Eraser, MousePointer2, PenLine, Type } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   emptyAnnotation,
@@ -119,10 +119,34 @@ export function DocMarkupSurface({
   onChange: (next: SlideAnnotation) => void;
   children: React.ReactNode;
 }) {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const [width, setWidth] = useState(0);
+
+  // The markup lives in a fixed 1000px-wide coordinate space and is scaled to the
+  // rendered size, so marks stay locked to the page at any zoom level.
+  useEffect(() => {
+    const el = hostRef.current;
+    if (!el) return;
+    const measure = () => setWidth(el.getBoundingClientRect().width);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const scale = width > 0 ? width / MARKUP_WIDTH : 1;
+
   return (
-    <div className="relative">
+    <div ref={hostRef} className="relative">
       {children}
-      <div className={`absolute inset-0 ${tool === "none" ? "pointer-events-none" : ""}`}>
+      <div
+        className="absolute left-0 top-0"
+        style={{
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
+          pointerEvents: tool === "none" ? "none" : "auto",
+        }}
+      >
         <SlideAnnotations
           width={MARKUP_WIDTH}
           height={Math.max(1, Math.round(MARKUP_WIDTH * ratio))}

@@ -7,7 +7,7 @@ export type SlideAnnotation = { strokes: SlideStroke[]; texts: SlideTextBox[] };
 
 export const emptyAnnotation: SlideAnnotation = { strokes: [], texts: [] };
 
-export type SlideTool = "none" | "draw" | "erase" | "text";
+export type SlideTool = "none" | "edit" | "draw" | "erase" | "text";
 
 /**
  * Transparent drawing / text-box layer that sits on top of a rendered slide.

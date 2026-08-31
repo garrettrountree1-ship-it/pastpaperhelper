@@ -1,4 +1,14 @@
-import { Download, Eraser, Minus, MousePointer2, PenLine, Plus, RefreshCw, Type } from "lucide-react";
+import {
+  Download,
+  Eraser,
+  Minus,
+  MousePointer2,
+  PenLine,
+  Plus,
+  RefreshCw,
+  SquarePen,
+  Type,
+} from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import {

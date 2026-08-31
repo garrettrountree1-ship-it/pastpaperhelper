@@ -383,6 +383,8 @@ export function OfficeDocView({
                     penColor={penColor}
                     annotation={notes[index] ?? emptyAnnotation}
                     onAnnotationChange={(next) => updateNotes(index, next)}
+                    edits={edits}
+                    onEdit={(shapeIndex, patch) => updateEdit(index, shapeIndex, patch)}
                   />
                 </div>
               ))}

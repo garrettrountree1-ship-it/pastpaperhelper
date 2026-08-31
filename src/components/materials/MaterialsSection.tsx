@@ -14,8 +14,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { OfficeDocView } from "@/components/materials/OfficeDocView";
-import { prerenderUploadedMaterial } from "@/lib/office-prerender";
 import { PdfDocView } from "@/components/materials/PdfDocView";
+import { PowerPointView } from "@/components/materials/PowerPointView";
+import { prerenderUploadedMaterial } from "@/lib/office-prerender";
 import { docFormat } from "@/lib/doc-kind";
 
 import { LessonWorkspace } from "@/components/materials/LessonWorkspace";
@@ -116,14 +117,10 @@ export function MaterialsSection({
         </p>
       </div>
 
-      <UnitList
-        classId={classId}
-        canManage={role === "teacher" && Boolean(selected?.canManage)}
-      />
+      <UnitList classId={classId} canManage={role === "teacher" && Boolean(selected?.canManage)} />
     </div>
   );
 }
-
 
 function UnitList({ classId, canManage }: { classId: string; canManage: boolean }) {
   const queryClient = useQueryClient();
@@ -361,11 +358,7 @@ function MaterialRow({
         <span className="min-w-0">
           <span className="block truncate font-medium">{material.title}</span>
           <span className="block text-xs text-muted-foreground">
-            {[
-              material.kind,
-              formatSize(material.file_size),
-              formatDueDate(material.created_at),
-            ]
+            {[material.kind, formatSize(material.file_size), formatDueDate(material.created_at)]
               .filter(Boolean)
               .join(" · ")}
           </span>
@@ -430,7 +423,15 @@ function MaterialRow({
                 alt={material.title}
                 className="max-h-[70vh] w-full rounded-md object-contain"
               />
-            ) : viewerFormat === "pptx" || viewerFormat === "docx" ? (
+            ) : viewerFormat === "pptx" ? (
+              <div className="h-[70vh]">
+                <PowerPointView
+                  url={viewerUrl}
+                  title={material.title}
+                  canDownload={canManage || allowDownload}
+                />
+              </div>
+            ) : viewerFormat === "docx" ? (
               <div className="h-[70vh]">
                 <OfficeDocView
                   url={viewerUrl}
@@ -439,7 +440,7 @@ function MaterialRow({
                   materialId={material.id}
                   canPrepareShared={canManage}
                   canDownload={canManage || allowDownload}
-                  format={viewerFormat === "pptx" ? "pptx" : "docx"}
+                  format="docx"
                 />
               </div>
             ) : viewerFormat === "pdf" ? (
@@ -452,7 +453,11 @@ function MaterialRow({
                 />
               </div>
             ) : (
-              <iframe src={viewerUrl} title={material.title} className="h-[70vh] w-full rounded-md" />
+              <iframe
+                src={viewerUrl}
+                title={material.title}
+                className="h-[70vh] w-full rounded-md"
+              />
             )
           ) : null}
         </DialogContent>
@@ -494,12 +499,10 @@ function UploadDialog({
         }
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const path = `${classId}/${unitId}/${crypto.randomUUID()}-${safeName}`;
-        const { error } = await supabase.storage
-          .from("class-materials")
-          .upload(path, file, {
-            contentType: file.type || "application/octet-stream",
-            upsert: true,
-          });
+        const { error } = await supabase.storage.from("class-materials").upload(path, file, {
+          contentType: file.type || "application/octet-stream",
+          upsert: true,
+        });
         if (error) throw new Error(`Upload failed: ${error.message}`);
         const created = await record({
           data: {
@@ -517,9 +520,9 @@ function UploadDialog({
         // Prepare the slides/document once, now, so the first person who opens
         // it (teacher or student) sees it instantly instead of waiting.
         const format = docFormat(file.name);
-        if (created?.id && (format === "pptx" || format === "docx")) {
-          void prerenderUploadedMaterial(created.id, file, format)
-            .then(() => toast.success("Slides prepared — they will open instantly now."))
+        if (created?.id && format === "docx") {
+          void prerenderUploadedMaterial(created.id, file, "docx")
+            .then(() => toast.success("Document prepared — it will open instantly now."))
             .catch(() => undefined);
         }
       }

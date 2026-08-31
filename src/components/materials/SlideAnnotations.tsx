@@ -90,9 +90,9 @@ export function SlideAnnotations({
       style={{
         width,
         height,
-        pointerEvents: tool === "none" ? "none" : "auto",
+        pointerEvents: tool === "none" || tool === "edit" ? "none" : "auto",
         cursor: tool === "draw" ? "crosshair" : tool === "text" ? "text" : "default",
-        touchAction: tool === "none" ? undefined : "none",
+        touchAction: tool === "none" || tool === "edit" ? undefined : "none",
       }}
       onPointerDown={down}
       onPointerMove={move}

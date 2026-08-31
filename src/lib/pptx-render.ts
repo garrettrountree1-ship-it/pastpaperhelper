@@ -709,7 +709,13 @@ export async function parsePptx(
         ? fillOf(descendant(masterDoc.documentElement, ["cSld", "bg", "bgPr"]), theme)
         : null);
 
-    slides.push({ shapes, background: bgFill });
+    const slide: PptxSlide = { shapes, background: bgFill };
+    slides.push(slide);
+    if (options.onSlide) {
+      options.onSlide(slide, slides.length - 1, order.length);
+      // Yield to the browser so the slide that just finished can paint.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
   }
 
   if (slides.length === 0) throw new Error("No slides found");

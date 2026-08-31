@@ -1,10 +1,17 @@
-import { Download, Minus, Plus, RefreshCw } from "lucide-react";
+import { Download, Eraser, Minus, MousePointer2, PenLine, Plus, RefreshCw, Type } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import {
+  emptyAnnotation,
+  SlideAnnotations,
+  type SlideAnnotation,
+  type SlideTool,
+} from "@/components/materials/SlideAnnotations";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { clearCachedDoc, readCachedJson, writeCachedJson } from "@/lib/doc-cache";
 import { parsePptx, type PptxDeck, type PptxShape } from "@/lib/pptx-render";
+
 
 /**
  * Renders .pptx slide decks and .docx documents inline so they simply scroll in

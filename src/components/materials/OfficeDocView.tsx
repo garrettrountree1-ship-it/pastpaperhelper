@@ -46,12 +46,14 @@ export function OfficeDocView({
   // never served forever from IndexedDB after a fidelity fix.
   const key = `office-render-v3:${format}:${cacheKey ?? title}`;
   const notesKey = `office-annotations:${format}:${cacheKey ?? title}`;
+  const editsKey = `office-shape-edits:${format}:${cacheKey ?? title}`;
 
   // Drawings and text boxes made on top of the slides, kept per slide index and
   // saved locally so they are still there next lesson.
   const [tool, setTool] = useState<SlideTool>("none");
   const [penColor, setPenColor] = useState("#dc2626");
   const [notes, setNotes] = useState<Record<number, SlideAnnotation>>({});
+  const [edits, setEdits] = useState<Record<string, ShapeEdit>>({});
   const [currentSlide, setCurrentSlide] = useState(0);
   const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -60,16 +62,29 @@ export function OfficeDocView({
     void (async () => {
       const saved = await readCachedJson<Record<number, SlideAnnotation>>(notesKey);
       if (!cancelled && saved) setNotes(saved);
+      const savedEdits = await readCachedJson<Record<string, ShapeEdit>>(editsKey);
+      if (!cancelled && savedEdits) setEdits(savedEdits);
     })();
     return () => {
       cancelled = true;
     };
-  }, [notesKey]);
+  }, [notesKey, editsKey]);
 
   function updateNotes(index: number, next: SlideAnnotation) {
     setNotes((current) => {
       const merged = { ...current, [index]: next };
       void writeCachedJson(notesKey, merged);
+      return merged;
+    });
+  }
+
+  // Edits the teacher makes directly to slide elements (retyped text, resized or
+  // moved boxes) are stored per shape and layered over the parsed deck.
+  function updateEdit(slideIndex: number, shapeIndex: number, patch: ShapeEdit) {
+    setEdits((current) => {
+      const id = `${slideIndex}:${shapeIndex}`;
+      const merged = { ...current, [id]: { ...current[id], ...patch } };
+      void writeCachedJson(editsKey, merged);
       return merged;
     });
   }

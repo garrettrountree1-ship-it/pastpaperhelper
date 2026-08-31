@@ -52,6 +52,8 @@ export function OfficeDocView({
   const [tool, setTool] = useState<SlideTool>("none");
   const [penColor, setPenColor] = useState("#dc2626");
   const [notes, setNotes] = useState<Record<number, SlideAnnotation>>({});
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     let cancelled = false;

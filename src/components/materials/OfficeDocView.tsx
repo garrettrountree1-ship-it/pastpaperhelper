@@ -43,6 +43,33 @@ export function OfficeDocView({
   const scrollRef = useRef<HTMLDivElement>(null);
   const token = useRef(0);
   const key = `office:${format}:${cacheKey ?? title}`;
+  const notesKey = `${key}:annotations`;
+
+  // Drawings and text boxes made on top of the slides, kept per slide index and
+  // saved locally so they are still there next lesson.
+  const [tool, setTool] = useState<SlideTool>("none");
+  const [penColor, setPenColor] = useState("#dc2626");
+  const [notes, setNotes] = useState<Record<number, SlideAnnotation>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const saved = await readCachedJson<Record<number, SlideAnnotation>>(notesKey);
+      if (!cancelled && saved) setNotes(saved);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [notesKey]);
+
+  function updateNotes(index: number, next: SlideAnnotation) {
+    setNotes((current) => {
+      const merged = { ...current, [index]: next };
+      void writeCachedJson(notesKey, merged);
+      return merged;
+    });
+  }
+
 
   // Zoom keeps the anchor point fixed instead of drifting the scroll position.
   const pendingScroll = useRef<{ x: number; y: number } | null>(null);

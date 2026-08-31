@@ -52,6 +52,8 @@ export function OfficeDocView({
   const [tool, setTool] = useState<SlideTool>("none");
   const [penColor, setPenColor] = useState("#dc2626");
   const [notes, setNotes] = useState<Record<number, SlideAnnotation>>({});
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -119,6 +121,35 @@ export function OfficeDocView({
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
+
+  // Track which slide is most visible while scrolling.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !deck) return;
+    const ratios = new Map<number, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const index = Number((entry.target as HTMLElement).dataset["slideIndex"]);
+          ratios.set(index, entry.intersectionRatio);
+        });
+        let best = 0;
+        let bestRatio = -1;
+        ratios.forEach((ratio, index) => {
+          if (ratio > bestRatio) {
+            bestRatio = ratio;
+            best = index;
+          }
+        });
+        setCurrentSlide(best);
+      },
+      { root: el, threshold: [0, 0.25, 0.5, 0.75, 1] }
+    );
+    slideRefs.current.forEach((node) => {
+      if (node) observer.observe(node);
+    });
+    return () => observer.disconnect();
+  }, [deck]);
 
   useEffect(() => {
     const run = ++token.current;
@@ -198,7 +229,7 @@ export function OfficeDocView({
         </Button>
         {deck ? (
           <span className="ml-2 text-xs text-muted-foreground">
-            {deck.slides.length} slide{deck.slides.length === 1 ? "" : "s"}
+            Slide {currentSlide + 1} of {deck.slides.length}
           </span>
         ) : null}
         {deck ? (
@@ -285,17 +316,23 @@ export function OfficeDocView({
             // and the pane scrolls — the anchored scroll keeps the view steady.
             <div className="office-slides space-y-3" style={{ width: `${zoom * 100}%` }}>
               {deck.slides.map((_, index) => (
-                <SlidePage
+                <div
                   key={index}
-                  deck={deck}
-                  index={index}
-                  tool={tool}
-                  penColor={penColor}
-                  annotation={notes[index] ?? emptyAnnotation}
-                  onAnnotationChange={(next) => updateNotes(index, next)}
-                />
+                  data-slide-index={index}
+                  ref={(node) => {
+                    slideRefs.current[index] = node;
+                  }}
+                >
+                  <SlidePage
+                    deck={deck}
+                    index={index}
+                    tool={tool}
+                    penColor={penColor}
+                    annotation={notes[index] ?? emptyAnnotation}
+                    onAnnotationChange={(next) => updateNotes(index, next)}
+                  />
+                </div>
               ))}
-
             </div>
           ) : (
             <div style={{ width: `${zoom * 100}%` }}>

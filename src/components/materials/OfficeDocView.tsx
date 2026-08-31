@@ -309,7 +309,22 @@ export function OfficeDocView({
   );
 }
 
-function SlidePage({ deck, index }: { deck: PptxDeck; index: number }) {
+function SlidePage({
+  deck,
+  index,
+  tool,
+  penColor,
+  annotation,
+  onAnnotationChange,
+}: {
+  deck: PptxDeck;
+  index: number;
+  tool: SlideTool;
+  penColor: string;
+  annotation: SlideAnnotation;
+  onAnnotationChange: (next: SlideAnnotation) => void;
+}) {
+
   const slide = deck.slides[index];
   if (!slide) return null;
   return (

@@ -213,14 +213,16 @@ export function OfficeDocView({
   useEffect(() => {
     const run = ++token.current;
     let cancelled = false;
+    const live = () => !cancelled && run === token.current;
     setStatus("loading");
+    setProgress(null);
     setHtml("");
     setDeck(null);
 
     (async () => {
-      // Cached render first: the document opens with no download or parsing.
+      // 1. This device has already opened it: no download, no parsing.
       const cached = await readCachedJson<PptxDeck | string>(key);
-      if (cancelled || run !== token.current) return;
+      if (!live()) return;
       if (cached) {
         if (format === "pptx" && typeof cached === "object") setDeck(cached);
         else if (format === "docx" && typeof cached === "string") setHtml(cached);
@@ -228,25 +230,55 @@ export function OfficeDocView({
         return;
       }
 
+      // 2. Someone has already prepared this resource: download the finished
+      //    render instead of rebuilding the file.
+      if (materialId) {
+        const shared = await fetchSharedRender(materialId);
+        if (!live()) return;
+        if (shared) {
+          if (shared.format === "pptx" && format === "pptx") {
+            setDeck(shared.deck);
+            void writeCachedJson(key, shared.deck);
+          } else if (shared.format === "docx" && format === "docx") {
+            setHtml(shared.html);
+            void writeCachedJson(key, shared.html);
+          }
+          setStatus("ready");
+          return;
+        }
+      }
+
+      // 3. Build it here, showing slides as they become ready.
       try {
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Download failed (${response.status})`);
         const buffer = await response.arrayBuffer();
-        if (cancelled || run !== token.current) return;
+        if (!live()) return;
 
-        if (format === "docx") {
-          const mammoth = await import("mammoth/mammoth.browser.js");
-          const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
-          if (cancelled || run !== token.current) return;
-          setHtml(result.value);
-          void writeCachedJson(key, result.value);
+        const render = await buildOfficeRender(buffer, format, {
+          onSlide: (_slide, index, total) => {
+            if (!live()) return;
+            setProgress({ done: index + 1, total });
+          },
+          onPartialDeck: (partial) => {
+            if (!live()) return;
+            setDeck(partial);
+            setStatus("ready");
+          },
+        });
+        if (!live()) return;
+
+        if (render.format === "docx") {
+          setHtml(render.html);
+          void writeCachedJson(key, render.html);
         } else {
-          const parsed = await parsePptx(buffer);
-          if (cancelled || run !== token.current) return;
-          setDeck(parsed);
-          void writeCachedJson(key, parsed);
+          setDeck(render.deck);
+          void writeCachedJson(key, render.deck);
         }
         setStatus("ready");
+        setProgress(null);
+        // Share the finished render so nobody else pays this cost.
+        if (materialId && canPrepareShared) void saveSharedRender(materialId, render);
       } catch {
         if (!cancelled) setStatus("failed");
       }
@@ -255,7 +287,7 @@ export function OfficeDocView({
     return () => {
       cancelled = true;
     };
-  }, [url, format, key, rebuilding]);
+  }, [url, format, key, rebuilding, materialId, canPrepareShared]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">

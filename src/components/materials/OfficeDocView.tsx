@@ -42,8 +42,10 @@ export function OfficeDocView({
   const [rebuilding, setRebuilding] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const token = useRef(0);
-  const key = `office:${format}:${cacheKey ?? title}`;
-  const notesKey = `${key}:annotations`;
+  // Increment when the renderer changes so old, incorrectly parsed decks are
+  // never served forever from IndexedDB after a fidelity fix.
+  const key = `office-render-v3:${format}:${cacheKey ?? title}`;
+  const notesKey = `office-annotations:${format}:${cacheKey ?? title}`;
 
   // Drawings and text boxes made on top of the slides, kept per slide index and
   // saved locally so they are still there next lesson.

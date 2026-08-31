@@ -495,7 +495,7 @@ function SlideShape({
   slideWidth: number;
   editable: boolean;
   scale: number;
-  edit?: ShapeEdit;
+  edit?: ShapeEdit | undefined;
   onEdit: (patch: ShapeEdit) => void;
 }) {
   const rotate = shape.rot ? `rotate(${shape.rot}deg)` : undefined;
@@ -575,9 +575,9 @@ function TextShape({
   slideWidth: number;
   editable: boolean;
   scale: number;
-  edit?: ShapeEdit;
+  edit?: ShapeEdit | undefined;
   onEdit: (patch: ShapeEdit) => void;
-  rotate?: string;
+  rotate?: string | undefined;
 }) {
   const boxRef = useRef<HTMLDivElement | null>(null);
   const innerRef = useRef<HTMLDivElement | null>(null);

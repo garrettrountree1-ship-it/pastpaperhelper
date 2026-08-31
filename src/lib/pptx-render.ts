@@ -485,7 +485,11 @@ export async function parsePptx(buffer: ArrayBuffer): Promise<PptxDeck> {
         if (local === "sp" || local === "pic") {
           let frame = xfrmOf(descendant(node, ["spPr", "xfrm"]));
           const ph = placeholderOf(node);
+          // Layout/master placeholders only carry prompt text ("Click to edit
+          // Master title style"). Drawing them scribbles over the real slide.
+          if (ph && !inheritFrames) continue;
           if (!frame && ph && inheritFrames) frame = findPlaceholderFrame(ph);
+
 
           const spPr = firstChild(node, "spPr");
           const blip =

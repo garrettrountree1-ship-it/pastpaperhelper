@@ -415,6 +415,8 @@ async function shrinkImage(
 export type PptxParseOptions = {
   /** Called as each slide finishes so the first slide can be shown immediately. */
   onSlide?: (slide: PptxSlide, index: number, total: number) => void;
+  /** Called with the deck built so far, so early slides can be shown at once. */
+  onPartialDeck?: (deck: PptxDeck) => void;
   /** Longest edge kept for embedded photos (px). */
   maxImageEdge?: number;
   /** WebP quality for re-encoded photos. */
@@ -711,8 +713,9 @@ export async function parsePptx(
 
     const slide: PptxSlide = { shapes, background: bgFill };
     slides.push(slide);
-    if (options.onSlide) {
-      options.onSlide(slide, slides.length - 1, order.length);
+    if (options.onSlide || options.onPartialDeck) {
+      options.onSlide?.(slide, slides.length - 1, order.length);
+      options.onPartialDeck?.({ width, height, slides: [...slides] });
       // Yield to the browser so the slide that just finished can paint.
       await new Promise((resolve) => setTimeout(resolve, 0));
     }

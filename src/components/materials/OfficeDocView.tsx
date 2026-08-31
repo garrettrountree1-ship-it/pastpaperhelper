@@ -20,7 +20,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { clearCachedDoc, readCachedJson, writeCachedJson } from "@/lib/doc-cache";
-import { parsePptx, type PptxDeck, type PptxShape } from "@/lib/pptx-render";
+import {
+  buildOfficeRender,
+  fetchSharedRender,
+  saveSharedRender,
+} from "@/lib/office-prerender";
+import { type PptxDeck, type PptxShape } from "@/lib/pptx-render";
 
 /** A teacher's change to one slide element: retyped text, or a moved/resized box. */
 export type ShapeEdit = { text?: string; x?: number; y?: number; w?: number; h?: number };

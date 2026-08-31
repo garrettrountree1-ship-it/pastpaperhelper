@@ -1,10 +1,17 @@
-import { Download, Minus, Plus, RefreshCw } from "lucide-react";
+import { Download, Eraser, Minus, MousePointer2, PenLine, Plus, RefreshCw, Type } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import {
+  emptyAnnotation,
+  SlideAnnotations,
+  type SlideAnnotation,
+  type SlideTool,
+} from "@/components/materials/SlideAnnotations";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { clearCachedDoc, readCachedJson, writeCachedJson } from "@/lib/doc-cache";
 import { parsePptx, type PptxDeck, type PptxShape } from "@/lib/pptx-render";
+
 
 /**
  * Renders .pptx slide decks and .docx documents inline so they simply scroll in
@@ -36,6 +43,33 @@ export function OfficeDocView({
   const scrollRef = useRef<HTMLDivElement>(null);
   const token = useRef(0);
   const key = `office:${format}:${cacheKey ?? title}`;
+  const notesKey = `${key}:annotations`;
+
+  // Drawings and text boxes made on top of the slides, kept per slide index and
+  // saved locally so they are still there next lesson.
+  const [tool, setTool] = useState<SlideTool>("none");
+  const [penColor, setPenColor] = useState("#dc2626");
+  const [notes, setNotes] = useState<Record<number, SlideAnnotation>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const saved = await readCachedJson<Record<number, SlideAnnotation>>(notesKey);
+      if (!cancelled && saved) setNotes(saved);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [notesKey]);
+
+  function updateNotes(index: number, next: SlideAnnotation) {
+    setNotes((current) => {
+      const merged = { ...current, [index]: next };
+      void writeCachedJson(notesKey, merged);
+      return merged;
+    });
+  }
+
 
   // Zoom keeps the anchor point fixed instead of drifting the scroll position.
   const pendingScroll = useRef<{ x: number; y: number } | null>(null);
@@ -165,6 +199,44 @@ export function OfficeDocView({
             {deck.slides.length} slide{deck.slides.length === 1 ? "" : "s"}
           </span>
         ) : null}
+        {deck ? (
+          <div className="ml-2 flex items-center gap-1">
+            {(
+              [
+                ["none", "Select", MousePointer2],
+                ["draw", "Draw on slides", PenLine],
+                ["text", "Add a text box", Type],
+                ["erase", "Erase marks", Eraser],
+              ] as const
+            ).map(([value, label, Icon]) => (
+              <Button
+                key={value}
+                size="icon"
+                variant={tool === value ? "default" : "outline"}
+                className="size-7"
+                aria-label={label}
+                title={label}
+                aria-pressed={tool === value}
+                onClick={() => setTool(value)}
+              >
+                <Icon className="size-3.5" />
+              </Button>
+            ))}
+            {["#dc2626", "#2563eb", "#16a34a", "#111827"].map((swatch) => (
+              <button
+                key={swatch}
+                type="button"
+                aria-label={`Pen colour ${swatch}`}
+                onClick={() => setPenColor(swatch)}
+                className={`size-5 rounded-full border-2 ${
+                  penColor === swatch ? "scale-110 border-foreground" : "border-border"
+                }`}
+                style={{ backgroundColor: swatch }}
+              />
+            ))}
+          </div>
+        ) : null}
+
         <Button
           size="icon"
           variant="ghost"
@@ -211,8 +283,17 @@ export function OfficeDocView({
             // and the pane scrolls — the anchored scroll keeps the view steady.
             <div className="office-slides space-y-3" style={{ width: `${zoom * 100}%` }}>
               {deck.slides.map((_, index) => (
-                <SlidePage key={index} deck={deck} index={index} />
+                <SlidePage
+                  key={index}
+                  deck={deck}
+                  index={index}
+                  tool={tool}
+                  penColor={penColor}
+                  annotation={notes[index] ?? emptyAnnotation}
+                  onAnnotationChange={(next) => updateNotes(index, next)}
+                />
               ))}
+
             </div>
           ) : (
             <div style={{ width: `${zoom * 100}%` }}>
@@ -228,7 +309,22 @@ export function OfficeDocView({
   );
 }
 
-function SlidePage({ deck, index }: { deck: PptxDeck; index: number }) {
+function SlidePage({
+  deck,
+  index,
+  tool,
+  penColor,
+  annotation,
+  onAnnotationChange,
+}: {
+  deck: PptxDeck;
+  index: number;
+  tool: SlideTool;
+  penColor: string;
+  annotation: SlideAnnotation;
+  onAnnotationChange: (next: SlideAnnotation) => void;
+}) {
+
   const slide = deck.slides[index];
   if (!slide) return null;
   return (
@@ -263,6 +359,15 @@ function SlidePage({ deck, index }: { deck: PptxDeck; index: number }) {
           {slide.shapes.map((shape, i) => (
             <SlideShape key={i} shape={shape} />
           ))}
+          <SlideAnnotations
+            width={deck.width}
+            height={deck.height}
+            tool={tool}
+            color={penColor}
+            value={annotation}
+            onChange={onAnnotationChange}
+          />
+
         </div>
       </div>
     </div>

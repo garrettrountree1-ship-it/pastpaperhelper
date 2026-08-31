@@ -122,6 +122,35 @@ export function OfficeDocView({
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
+  // Track which slide is most visible while scrolling.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !deck) return;
+    const ratios = new Map<number, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const index = Number((entry.target as HTMLElement).dataset.slideIndex);
+          ratios.set(index, entry.intersectionRatio);
+        });
+        let best = 0;
+        let bestRatio = -1;
+        ratios.forEach((ratio, index) => {
+          if (ratio > bestRatio) {
+            bestRatio = ratio;
+            best = index;
+          }
+        });
+        setCurrentSlide(best);
+      },
+      { root: el, threshold: [0, 0.25, 0.5, 0.75, 1] }
+    );
+    slideRefs.current.forEach((node) => {
+      if (node) observer.observe(node);
+    });
+    return () => observer.disconnect();
+  }, [deck]);
+
   useEffect(() => {
     const run = ++token.current;
     let cancelled = false;

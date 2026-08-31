@@ -375,7 +375,60 @@ function toBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-export async function parsePptx(buffer: ArrayBuffer): Promise<PptxDeck> {
+/**
+ * Slide photos are usually far larger than the pane they are shown in, and they
+ * dominate both the parse time and the size of the cached render. Re-encode big
+ * raster images to a screen-sized WebP; keep the original when that would not
+ * actually be smaller, or when the browser cannot decode it here.
+ */
+async function shrinkImage(
+  bytes: Uint8Array,
+  type: string,
+  maxEdge: number,
+  quality: number,
+): Promise<{ bytes: Uint8Array; type: string }> {
+  const original = { bytes, type };
+  if (type === "image/svg+xml" || type === "image/gif") return original;
+  if (bytes.length < 80_000) return original;
+  if (typeof createImageBitmap !== "function" || typeof OffscreenCanvas === "undefined") {
+    return original;
+  }
+  try {
+    const source = new Uint8Array(bytes);
+    const bitmap = await createImageBitmap(new Blob([source.buffer as ArrayBuffer], { type }));
+    const factor = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * factor));
+    const height = Math.max(1, Math.round(bitmap.height * factor));
+    const canvas = new OffscreenCanvas(width, height);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return original;
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close();
+    const blob = await canvas.convertToBlob({ type: "image/webp", quality });
+    if (!blob || blob.size >= bytes.length) return original;
+    return { bytes: new Uint8Array(await blob.arrayBuffer()), type: "image/webp" };
+  } catch {
+    return original;
+  }
+}
+
+export type PptxParseOptions = {
+  /** Called as each slide finishes so the first slide can be shown immediately. */
+  onSlide?: (slide: PptxSlide, index: number, total: number) => void;
+  /** Called with the deck built so far, so early slides can be shown at once. */
+  onPartialDeck?: (deck: PptxDeck) => void;
+  /** Longest edge kept for embedded photos (px). */
+  maxImageEdge?: number;
+  /** WebP quality for re-encoded photos. */
+  imageQuality?: number;
+};
+
+export async function parsePptx(
+  buffer: ArrayBuffer,
+  options: PptxParseOptions = {},
+): Promise<PptxDeck> {
+  const maxEdge = options.maxImageEdge ?? 1600;
+  const quality = options.imageQuality ?? 0.82;
   const JSZip = (await import("jszip")).default;
   const zip = await JSZip.loadAsync(buffer);
 
@@ -394,11 +447,15 @@ export async function parsePptx(buffer: ArrayBuffer): Promise<PptxDeck> {
       const bytes = await file.async("uint8array");
       const ext = mediaPath.split(".").pop()?.toLowerCase() ?? "";
       const type = bytes.length > 12 ? sniffImageType(bytes, ext) : null;
-      if (type) url = `data:${type};base64,${toBase64(bytes)}`;
+      if (type) {
+        const small = await shrinkImage(bytes, type, maxEdge, quality);
+        url = `data:${small.type};base64,${toBase64(small.bytes)}`;
+      }
     }
     mediaUrls.set(mediaPath, url);
     return url;
   };
+
 
   const presentationXml = await read("ppt/presentation.xml");
   if (!presentationXml) throw new Error("Not a PowerPoint file");
@@ -654,7 +711,14 @@ export async function parsePptx(buffer: ArrayBuffer): Promise<PptxDeck> {
         ? fillOf(descendant(masterDoc.documentElement, ["cSld", "bg", "bgPr"]), theme)
         : null);
 
-    slides.push({ shapes, background: bgFill });
+    const slide: PptxSlide = { shapes, background: bgFill };
+    slides.push(slide);
+    if (options.onSlide || options.onPartialDeck) {
+      options.onSlide?.(slide, slides.length - 1, order.length);
+      options.onPartialDeck?.({ width, height, slides: [...slides] });
+      // Yield to the browser so the slide that just finished can paint.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
   }
 
   if (slides.length === 0) throw new Error("No slides found");

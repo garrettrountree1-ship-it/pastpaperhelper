@@ -1,6 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, CalendarDays, Pencil, PanelRightClose, PanelRightOpen, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarDays,
+  Pencil,
+  PanelRightClose,
+  PanelRightOpen,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -30,12 +38,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { docFormat } from "@/lib/doc-kind";
 import { getMaterialUrl, updateUnit } from "@/lib/materials.functions";
-import {
-  createSection,
-  deleteSection,
-  listSections,
-  updateSection,
-} from "@/lib/notes.functions";
+import { createSection, deleteSection, listSections, updateSection } from "@/lib/notes.functions";
 
 type UnitMaterial = {
   id: string;
@@ -99,7 +102,6 @@ export function LessonWorkspace({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
 
-
   // Draggable divider between the lesson canvas and the document pane.
   const rowRef = useRef<HTMLDivElement | null>(null);
   const [split, setSplit] = useState(50);
@@ -120,7 +122,6 @@ export function LessonWorkspace({
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
   }
-
 
   const sections = useQuery({
     queryKey: ["unit-sections", unit.id],
@@ -240,7 +241,6 @@ export function LessonWorkspace({
                   }}
                   className="h-8 w-40 text-xs"
                 />
-
               ) : (
                 <div key={section.id} className="inline-flex items-center gap-0.5">
                   <Button
@@ -272,7 +272,6 @@ export function LessonWorkspace({
                 </div>
               ),
             )
-
           )}
           {canManage ? (
             <>
@@ -338,139 +337,132 @@ export function LessonWorkspace({
             ref={rowRef}
             className="flex min-w-0 flex-col gap-2 lg:h-full lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-0"
           >
-          {/* Lesson canvas — resizable left half */}
-          <div
-            className="min-h-[70vh] lg:h-full lg:min-h-0"
-            style={{ width: `${split}%` }}
-          >
+            {/* Lesson canvas — resizable left half */}
+            <div className="min-h-[70vh] lg:h-full lg:min-h-0" style={{ width: `${split}%` }}>
+              <NotesCanvas
+                classId={classId}
+                sectionId={active.id}
+                canEdit={canManage}
+                initialBlocks={active.notes_blocks}
+                initialSummary={active.ai_summary}
+                initialTab={initialTab}
+                onConcept={(value) => {
+                  setConcept(value);
+                  setTutorOpen(true);
+                }}
+                onSaved={invalidateSections}
+              />
+            </div>
 
-            <NotesCanvas
-              classId={classId}
-              sectionId={active.id}
-              canEdit={canManage}
-              initialBlocks={active.notes_blocks}
-              initialSummary={active.ai_summary}
-              initialTab={initialTab}
-              onConcept={(value) => {
-                setConcept(value);
-                setTutorOpen(true);
-              }}
-              onSaved={invalidateSections}
-            />
-          </div>
+            {/* Drag handle between canvas and document */}
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              onPointerDown={startDrag}
+              className="group hidden w-2 shrink-0 cursor-col-resize items-center justify-center lg:flex"
+            >
+              <div className="h-16 w-1 rounded-full bg-border transition-colors group-hover:bg-primary" />
+            </div>
 
-          {/* Drag handle between canvas and document */}
-          <div
-            role="separator"
-            aria-orientation="vertical"
-            onPointerDown={startDrag}
-            className="group hidden w-2 shrink-0 cursor-col-resize items-center justify-center lg:flex"
-          >
-            <div className="h-16 w-1 rounded-full bg-border transition-colors group-hover:bg-primary" />
-          </div>
+            {/* Document — resizable right half */}
+            <div
+              className="flex min-h-[70vh] flex-col rounded-lg border bg-card lg:h-full lg:min-h-0"
+              style={{ width: `calc(${100 - split}% - 0.5rem)` }}
+            >
+              <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
+                <p className="text-sm font-medium">Document</p>
+                {canManage ? (
+                  <Select
+                    value={currentDocId ?? "none"}
+                    onValueChange={(value) => {
+                      setDocOverride(value === "none" ? null : value);
+                      attachMutation.mutate(value === "none" ? null : value);
+                    }}
+                  >
+                    <SelectTrigger className="ml-auto h-8 w-[190px] text-xs">
+                      <SelectValue placeholder="Choose a resource" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No document</SelectItem>
+                      {unit.materials.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <span className="ml-auto truncate text-xs text-muted-foreground">
+                    {material?.title ?? "None attached"}
+                  </span>
+                )}
+              </div>
 
-          {/* Document — resizable right half */}
-          <div
-            className="flex min-h-[70vh] flex-col rounded-lg border bg-card lg:h-full lg:min-h-0"
-            style={{ width: `calc(${100 - split}% - 0.5rem)` }}
-          >
-            <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
-              <p className="text-sm font-medium">Document</p>
-              {canManage ? (
-                <Select
-                  value={currentDocId ?? "none"}
-                  onValueChange={(value) => {
-                    setDocOverride(value === "none" ? null : value);
-                    attachMutation.mutate(value === "none" ? null : value);
+              <div className="min-h-0 flex-1 p-2">
+                {!material ? (
+                  <p className="p-4 text-sm text-muted-foreground">
+                    {canManage
+                      ? "Attach a PDF, slide deck or document from this unit's resources."
+                      : "No document attached to this section."}
+                  </p>
+                ) : docUrl.isLoading || !docUrl.data ? (
+                  <Skeleton className="h-full w-full" />
+                ) : material.kind === "video" ? (
+                  <video src={docUrl.data.url} controls className="h-full w-full rounded-md" />
+                ) : material.kind === "image" ? (
+                  <img
+                    src={docUrl.data.url}
+                    alt={material.title}
+                    className="h-full w-full rounded-md object-contain"
+                  />
+                ) : docFormat(material.storage_path ?? material.title) === "pptx" ? (
+                  <PowerPointView
+                    url={docUrl.data.url}
+                    title={material.title}
+                    canDownload={canManage || material.allow_download !== false}
+                  />
+                ) : docFormat(material.storage_path ?? material.title) === "docx" ? (
+                  <OfficeDocView
+                    url={docUrl.data.url}
+                    title={material.title}
+                    cacheKey={`material:${material.id}`}
+                    materialId={material.id}
+                    canPrepareShared={canManage}
+                    canDownload={canManage || material.allow_download !== false}
+                    format="docx"
+                  />
+                ) : (
+                  <PdfDocView
+                    url={docUrl.data.url}
+                    title={material.title}
+                    canDownload={canManage || material.allow_download !== false}
+                    cacheKey={`material:${material.id}`}
+                  />
+                )}
+              </div>
+
+              <div className="flex gap-2 border-t p-2">
+                <Input
+                  value={term}
+                  onChange={(event) => setTerm(event.target.value)}
+                  placeholder="A term from this document…"
+                  className="h-8 text-xs"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!term.trim()}
+                  onClick={() => {
+                    setConcept(term.trim());
+                    setTutorOpen(true);
+                    setTerm("");
                   }}
                 >
-                  <SelectTrigger className="ml-auto h-8 w-[190px] text-xs">
-                    <SelectValue placeholder="Choose a resource" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No document</SelectItem>
-                    {unit.materials.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <span className="ml-auto truncate text-xs text-muted-foreground">
-                  {material?.title ?? "None attached"}
-                </span>
-              )}
-            </div>
-
-            <div className="min-h-0 flex-1 p-2">
-              {!material ? (
-                <p className="p-4 text-sm text-muted-foreground">
-                  {canManage
-                    ? "Attach a PDF, slide deck or document from this unit's resources."
-                    : "No document attached to this section."}
-                </p>
-              ) : docUrl.isLoading || !docUrl.data ? (
-                <Skeleton className="h-full w-full" />
-              ) : material.kind === "video" ? (
-                <video src={docUrl.data.url} controls className="h-full w-full rounded-md" />
-              ) : material.kind === "image" ? (
-                <img
-                  src={docUrl.data.url}
-                  alt={material.title}
-                  className="h-full w-full rounded-md object-contain"
-                />
-              ) : docFormat(material.storage_path ?? material.title) === "pptx" ? (
-                <PowerPointView
-                  url={docUrl.data.url}
-                  title={material.title}
-                  canDownload={canManage || material.allow_download !== false}
-                />
-              ) : docFormat(material.storage_path ?? material.title) === "docx" ? (
-                <OfficeDocView
-                  url={docUrl.data.url}
-                  title={material.title}
-                  cacheKey={`material:${material.id}`}
-                  materialId={material.id}
-                  canPrepareShared={canManage}
-                  canDownload={canManage || material.allow_download !== false}
-                  format="docx"
-                />
-              ) : (
-                <PdfDocView
-                  url={docUrl.data.url}
-                  title={material.title}
-                  canDownload={canManage || material.allow_download !== false}
-                  cacheKey={`material:${material.id}`}
-                />
-              )}
-
-            </div>
-
-            <div className="flex gap-2 border-t p-2">
-              <Input
-                value={term}
-                onChange={(event) => setTerm(event.target.value)}
-                placeholder="A term from this document…"
-                className="h-8 text-xs"
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!term.trim()}
-                onClick={() => {
-                  setConcept(term.trim());
-                  setTutorOpen(true);
-                  setTerm("");
-                }}
-              >
-                Explain
-              </Button>
+                  Explain
+                </Button>
+              </div>
             </div>
           </div>
-          </div>
-
-
 
           <div className="shrink-0 lg:ml-2 lg:h-full lg:min-h-0">
             {tutorOpen ? (
@@ -512,7 +504,6 @@ export function LessonWorkspace({
     </div>
   );
 }
-
 
 function UnitPlanDialog({ unit, onSaved }: { unit: WorkspaceUnit; onSaved: () => void }) {
   const save = useServerFn(updateUnit);
@@ -569,7 +560,12 @@ function UnitPlanDialog({ unit, onSaved }: { unit: WorkspaceUnit; onSaved: () =>
             </div>
             <div className="space-y-2">
               <Label htmlFor="plan-end">End date</Label>
-              <Input id="plan-end" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
+              <Input
+                id="plan-end"
+                type="date"
+                value={end}
+                onChange={(e) => setEnd(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="plan-classes">Classes</Label>
@@ -716,4 +712,3 @@ function PlanStrip({
     </div>
   );
 }
-

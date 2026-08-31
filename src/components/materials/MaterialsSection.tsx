@@ -117,14 +117,10 @@ export function MaterialsSection({
         </p>
       </div>
 
-      <UnitList
-        classId={classId}
-        canManage={role === "teacher" && Boolean(selected?.canManage)}
-      />
+      <UnitList classId={classId} canManage={role === "teacher" && Boolean(selected?.canManage)} />
     </div>
   );
 }
-
 
 function UnitList({ classId, canManage }: { classId: string; canManage: boolean }) {
   const queryClient = useQueryClient();
@@ -362,11 +358,7 @@ function MaterialRow({
         <span className="min-w-0">
           <span className="block truncate font-medium">{material.title}</span>
           <span className="block text-xs text-muted-foreground">
-            {[
-              material.kind,
-              formatSize(material.file_size),
-              formatDueDate(material.created_at),
-            ]
+            {[material.kind, formatSize(material.file_size), formatDueDate(material.created_at)]
               .filter(Boolean)
               .join(" · ")}
           </span>
@@ -461,7 +453,11 @@ function MaterialRow({
                 />
               </div>
             ) : (
-              <iframe src={viewerUrl} title={material.title} className="h-[70vh] w-full rounded-md" />
+              <iframe
+                src={viewerUrl}
+                title={material.title}
+                className="h-[70vh] w-full rounded-md"
+              />
             )
           ) : null}
         </DialogContent>
@@ -503,12 +499,10 @@ function UploadDialog({
         }
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const path = `${classId}/${unitId}/${crypto.randomUUID()}-${safeName}`;
-        const { error } = await supabase.storage
-          .from("class-materials")
-          .upload(path, file, {
-            contentType: file.type || "application/octet-stream",
-            upsert: true,
-          });
+        const { error } = await supabase.storage.from("class-materials").upload(path, file, {
+          contentType: file.type || "application/octet-stream",
+          upsert: true,
+        });
         if (error) throw new Error(`Upload failed: ${error.message}`);
         const created = await record({
           data: {

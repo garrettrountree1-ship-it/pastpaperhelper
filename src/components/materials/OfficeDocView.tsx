@@ -359,6 +359,15 @@ function SlidePage({
           {slide.shapes.map((shape, i) => (
             <SlideShape key={i} shape={shape} />
           ))}
+          <SlideAnnotations
+            width={deck.width}
+            height={deck.height}
+            tool={tool}
+            color={penColor}
+            value={annotation}
+            onChange={onAnnotationChange}
+          />
+
         </div>
       </div>
     </div>

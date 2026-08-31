@@ -1,6 +1,11 @@
 import { Download, Minus, Plus, RefreshCw } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import {
+  DocMarkupSurface,
+  DocMarkupToolbar,
+  useDocMarkup,
+} from "@/components/materials/DocMarkupLayer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { clearCachedDoc, readCachedDoc, writeCachedDoc } from "@/lib/doc-cache";

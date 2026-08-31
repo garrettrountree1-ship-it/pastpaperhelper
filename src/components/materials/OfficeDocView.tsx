@@ -17,6 +17,10 @@ import {
   type SlideAnnotation,
   type SlideTool,
 } from "@/components/materials/SlideAnnotations";
+import {
+  DocMarkupSurface,
+  DocMarkupToolbar,
+} from "@/components/materials/DocMarkupLayer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { clearCachedDoc, readCachedJson, writeCachedJson } from "@/lib/doc-cache";
@@ -81,6 +85,22 @@ export function OfficeDocView({
   const [notes, setNotes] = useState<Record<number, SlideAnnotation>>({});
   const [edits, setEdits] = useState<Record<string, ShapeEdit>>({});
   const [currentSlide, setCurrentSlide] = useState(0);
+  // Word documents are one long flow, so the markup layer covers the whole page.
+  const docRef = useRef<HTMLDivElement | null>(null);
+  const [docRatio, setDocRatio] = useState(1.414);
+
+  useEffect(() => {
+    const el = docRef.current;
+    if (!el) return;
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      if (rect.width > 0) setDocRatio(rect.height / rect.width);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [html, status]);
   const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
@@ -367,6 +387,14 @@ export function OfficeDocView({
             ))}
           </div>
         ) : null}
+        {!deck && status === "ready" ? (
+          <DocMarkupToolbar
+            tool={tool}
+            setTool={setTool}
+            penColor={penColor}
+            setPenColor={setPenColor}
+          />
+        ) : null}
 
         <Button
           size="icon"
@@ -449,10 +477,19 @@ export function OfficeDocView({
             </div>
           ) : (
             <div style={{ width: `${zoom * 100}%` }}>
-              <div
-                className="office-doc rounded-md border bg-white p-6 text-sm leading-relaxed text-black shadow-sm"
-                dangerouslySetInnerHTML={{ __html: html }}
-              />
+              <DocMarkupSurface
+                ratio={docRatio}
+                tool={tool}
+                penColor={penColor}
+                value={notes[0] ?? emptyAnnotation}
+                onChange={(next) => updateNotes(0, next)}
+              >
+                <div
+                  ref={docRef}
+                  className="office-doc rounded-md border bg-white p-6 text-sm leading-relaxed text-black shadow-sm"
+                  dangerouslySetInnerHTML={{ __html: html }}
+                />
+              </DocMarkupSurface>
             </div>
           )
         ) : null}

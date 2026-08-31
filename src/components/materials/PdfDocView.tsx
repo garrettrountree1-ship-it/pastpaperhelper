@@ -1,6 +1,11 @@
 import { Download, Minus, Plus, RefreshCw } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import {
+  DocMarkupSurface,
+  DocMarkupToolbar,
+  useDocMarkup,
+} from "@/components/materials/DocMarkupLayer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { clearCachedDoc, readCachedDoc, writeCachedDoc } from "@/lib/doc-cache";
@@ -29,6 +34,8 @@ export function PdfDocView({
   const token = useRef(0);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const key = cacheKey ?? title;
+  const markup = useDocMarkup(`pdf-annotations:${key}`);
+  const [ratios, setRatios] = useState<Record<number, number>>({});
 
   // Zooming keeps the anchor point fixed instead of shifting the scroll.
   const pendingScroll = useRef<{ x: number; y: number } | null>(null);
@@ -167,6 +174,12 @@ export function PdfDocView({
         >
           <Plus className="size-3.5" />
         </Button>
+        <DocMarkupToolbar
+          tool={markup.tool}
+          setTool={markup.setTool}
+          penColor={markup.penColor}
+          setPenColor={markup.setPenColor}
+        />
         <Button
           size="sm"
           variant="ghost"
@@ -193,13 +206,30 @@ export function PdfDocView({
         className="min-h-0 flex-1 space-y-3 overflow-auto rounded-md bg-muted/30 p-2"
       >
         {pages.map((src, index) => (
-          <img
-            key={index}
-            src={src}
-            alt={`${title} page ${index + 1}`}
-            className="rounded-md border bg-white shadow-sm"
-            style={{ width: `${zoom * 100}%`, maxWidth: "none" }}
-          />
+          <div key={index} style={{ width: `${zoom * 100}%` }}>
+            <DocMarkupSurface
+              ratio={ratios[index] ?? 1.414}
+              tool={markup.tool}
+              penColor={markup.penColor}
+              value={markup.annotationOf(index)}
+              onChange={(next) => markup.update(index, next)}
+            >
+              <img
+                src={src}
+                alt={`${title} page ${index + 1}`}
+                className="w-full rounded-md border bg-white shadow-sm"
+                style={{ maxWidth: "none" }}
+                onLoad={(event) => {
+                  const img = event.currentTarget;
+                  if (!img.naturalWidth) return;
+                  const ratio = img.naturalHeight / img.naturalWidth;
+                  setRatios((current) =>
+                    current[index] === ratio ? current : { ...current, [index]: ratio },
+                  );
+                }}
+              />
+            </DocMarkupSurface>
+          </div>
         ))}
       </div>
 

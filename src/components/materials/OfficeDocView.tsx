@@ -130,7 +130,7 @@ export function OfficeDocView({
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          const index = Number((entry.target as HTMLElement).dataset.slideIndex);
+          const index = Number((entry.target as HTMLElement).dataset["slideIndex"]);
           ratios.set(index, entry.intersectionRatio);
         });
         let best = 0;

@@ -325,7 +325,8 @@ export function OfficeDocView({
         </Button>
         {deck ? (
           <span className="ml-2 text-xs text-muted-foreground">
-            Slide {currentSlide + 1} of {deck.slides.length}
+            Slide {currentSlide + 1} of {progress?.total ?? deck.slides.length}
+            {progress && progress.done < progress.total ? " · still preparing…" : ""}
           </span>
         ) : null}
         {deck ? (
@@ -397,6 +398,19 @@ export function OfficeDocView({
               Preparing {format === "pptx" ? "slides" : "document"}… this happens once, then it
               opens instantly.
             </p>
+            {progress ? (
+              <div className="space-y-1">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{ width: `${Math.round((progress.done / progress.total) * 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Slide {progress.done} of {progress.total}
+                </p>
+              </div>
+            ) : null}
             <Skeleton className="h-64 w-full" />
           </div>
         ) : null}

@@ -8,7 +8,17 @@ import {
 } from "@/components/materials/DocMarkupLayer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { clearCachedDoc, readCachedDoc, writeCachedDoc } from "@/lib/doc-cache";
+import {
+  clearCachedDoc,
+  readCachedDoc,
+  readCachedJson,
+  writeCachedDoc,
+  writeCachedJson,
+} from "@/lib/doc-cache";
+
+/** One selectable word/run from the PDF, in rendered page pixels. */
+type TextRun = { x: number; y: number; w: number; h: number; s: string };
+type PageText = { w: number; h: number; runs: TextRun[] };
 
 /**
  * Renders every page of a PDF as an image so the document simply scrolls in the
@@ -36,6 +46,10 @@ export function PdfDocView({
   const key = cacheKey ?? title;
   const markup = useDocMarkup(`pdf-annotations:${key}`);
   const [ratios, setRatios] = useState<Record<number, number>>({});
+  // Invisible, selectable text sitting exactly over each page image, so the
+  // document can be highlighted and copied like a normal PDF.
+  const [texts, setTexts] = useState<PageText[] | null>(null);
+  const textKey = `pdf-text-v1:${key}`;
 
   // Zooming keeps the anchor point fixed instead of shifting the scroll.
   const pendingScroll = useRef<{ x: number; y: number } | null>(null);
@@ -97,9 +111,11 @@ export function PdfDocView({
 
     (async () => {
       const cached = await readCachedDoc(key);
+      const cachedText = await readCachedJson<PageText[]>(textKey);
       if (token.current !== current) return;
-      if (cached) {
+      if (cached && cachedText) {
         setPages(cached);
+        setTexts(cachedText);
         return;
       }
 
@@ -111,6 +127,7 @@ export function PdfDocView({
         const buffer = await (await fetch(url)).arrayBuffer();
         const doc = await pdfjs.getDocument({ data: new Uint8Array(buffer) }).promise;
         const out: string[] = [];
+        const textOut: PageText[] = [];
         for (let index = 1; index <= Math.min(doc.numPages, 60); index += 1) {
           const page = await doc.getPage(index);
           const base = page.getViewport({ scale: 1 });
@@ -124,11 +141,39 @@ export function PdfDocView({
           context.fillRect(0, 0, canvas.width, canvas.height);
           await page.render({ canvasContext: context, viewport } as never).promise;
           out.push(canvas.toDataURL("image/jpeg", 0.85));
+
+          try {
+            const content = await page.getTextContent();
+            const runs: TextRun[] = [];
+            for (const raw of content.items as Array<{
+              str?: string;
+              transform?: number[];
+              width?: number;
+              height?: number;
+            }>) {
+              const str = raw?.str ?? "";
+              if (!str.trim() || !raw.transform) continue;
+              const size = Math.hypot(raw.transform[1] ?? 0, raw.transform[3] ?? 1) * scale;
+              const height = Math.max(raw.height ? raw.height * scale : size, 1);
+              runs.push({
+                x: (raw.transform[4] ?? 0) * scale,
+                y: canvas.height - (raw.transform[5] ?? 0) * scale - height,
+                w: Math.max((raw.width ?? 0) * scale, 1),
+                h: height,
+                s: str,
+              });
+            }
+            textOut.push({ w: canvas.width, h: canvas.height, runs });
+          } catch {
+            textOut.push({ w: canvas.width, h: canvas.height, runs: [] });
+          }
           if (token.current !== current) return;
         }
         if (token.current === current) {
           setPages(out);
+          setTexts(textOut);
           void writeCachedDoc(key, out);
+          void writeCachedJson(textKey, textOut);
         }
       } catch {
         if (token.current === current) setFailed(true);
@@ -228,11 +273,64 @@ export function PdfDocView({
                   );
                 }}
               />
+              {texts?.[index] ? <PdfTextLayer page={texts[index]!} /> : null}
             </DocMarkupSurface>
           </div>
         ))}
       </div>
 
+    </div>
+  );
+}
+
+/**
+ * Transparent but selectable copy of the page text, scaled to the rendered page
+ * so selection and copy/paste work on top of the page image.
+ */
+function PdfTextLayer({ page }: { page: PageText }) {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const el = hostRef.current;
+    if (!el) return;
+    const measure = () => setWidth(el.getBoundingClientRect().width);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const scale = width > 0 ? width / page.w : 1;
+
+  return (
+    <div ref={hostRef} className="absolute inset-0 overflow-hidden">
+      <div
+        className="absolute left-0 top-0 select-text"
+        style={{
+          width: page.w,
+          height: page.h,
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
+        }}
+      >
+        {page.runs.map((run, index) => (
+          <span
+            key={index}
+            className="absolute whitespace-pre text-transparent"
+            style={{
+              left: run.x,
+              top: run.y,
+              fontSize: run.h,
+              lineHeight: 1,
+              width: run.w,
+              transformOrigin: "left top",
+            }}
+          >
+            {run.s}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

@@ -279,6 +279,7 @@ export function OfficeDocView({
             {(
               [
                 ["none", "Select", MousePointer2],
+                ["edit", "Edit slide text and boxes", SquarePen],
                 ["draw", "Draw on slides", PenLine],
                 ["text", "Add a text box", Type],
                 ["erase", "Erase marks", Eraser],

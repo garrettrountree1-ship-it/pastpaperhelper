@@ -319,12 +319,10 @@ function MaterialRow({
   material,
   canManage,
   onDeleted,
-  onOpenWorkspace,
 }: {
   material: Material;
   canManage: boolean;
   onDeleted: () => void;
-  onOpenWorkspace: (tab: "notes" | "summary") => void;
 }) {
   const Icon = kindIcons[material.kind] ?? FileText;
   const viewerFormat = docFormat(material.storage_path ?? material.file_name ?? material.title);

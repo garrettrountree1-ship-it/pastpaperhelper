@@ -254,9 +254,26 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
                   </p>
                 ) : null}
               </div>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => setOpenUnitId(unit.id)}>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setOpenTab("notes");
+                    setOpenUnitId(unit.id);
+                  }}
+                >
                   {canManage ? "Open lesson workspace" : "Open lesson notes"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setOpenTab("summary");
+                    setOpenUnitId(unit.id);
+                  }}
+                >
+                  <Sparkles className="size-4" />
+                  AI notes
                 </Button>
                 {canManage ? (
                   <>
@@ -287,11 +304,6 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
                     material={material}
                     canManage={canManage}
                     onDeleted={invalidate}
-                    onOpenWorkspace={(tab) => {
-                      setOpenMaterialId(material.id);
-                      setOpenTab(tab);
-                      setOpenUnitId(unit.id);
-                    }}
                   />
                 ))}
               </ul>
@@ -307,12 +319,10 @@ function MaterialRow({
   material,
   canManage,
   onDeleted,
-  onOpenWorkspace,
 }: {
   material: Material;
   canManage: boolean;
   onDeleted: () => void;
-  onOpenWorkspace: (tab: "notes" | "summary") => void;
 }) {
   const Icon = kindIcons[material.kind] ?? FileText;
   const viewerFormat = docFormat(material.storage_path ?? material.file_name ?? material.title);
@@ -362,13 +372,6 @@ function MaterialRow({
         </span>
       </button>
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={() => onOpenWorkspace("notes")}>
-          Open lesson workspace
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => onOpenWorkspace("summary")}>
-          <Sparkles className="size-4" />
-          AI notes
-        </Button>
         <Badge variant="secondary">{material.kind}</Badge>
         {material.storage_path && (canManage || allowDownload) ? (
           <Button variant="outline" size="sm" onClick={() => open(true)} disabled={busy}>

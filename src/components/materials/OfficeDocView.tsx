@@ -283,8 +283,17 @@ export function OfficeDocView({
             // and the pane scrolls — the anchored scroll keeps the view steady.
             <div className="office-slides space-y-3" style={{ width: `${zoom * 100}%` }}>
               {deck.slides.map((_, index) => (
-                <SlidePage key={index} deck={deck} index={index} />
+                <SlidePage
+                  key={index}
+                  deck={deck}
+                  index={index}
+                  tool={tool}
+                  penColor={penColor}
+                  annotation={notes[index] ?? emptyAnnotation}
+                  onAnnotationChange={(next) => updateNotes(index, next)}
+                />
               ))}
+
             </div>
           ) : (
             <div style={{ width: `${zoom * 100}%` }}>

@@ -55,8 +55,8 @@ function AuthPage() {
     event.preventDefault();
     setBusy(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setBusy(false);
     if (error) {
+      setBusy(false);
       if (/not confirmed/i.test(error.message)) {
         setPendingEmail(email);
         toast.error(
@@ -68,8 +68,16 @@ function AuthPage() {
       return;
     }
 
+    // Wait until the session is readable so the auth gate can't bounce us back.
+    for (let i = 0; i < 20; i += 1) {
+      const { data: current } = await supabase.auth.getSession();
+      if (current.session) break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    setBusy(false);
     navigate({ to: "/dashboard", replace: true });
   }
+
 
   async function handleSignUp(event: React.FormEvent) {
     event.preventDefault();

@@ -22,45 +22,65 @@ type ExtractInput = {
   markSchemeFiles: UploadedFile[];
 };
 
-type InventoryItem = { label: string; marks: number; pages: number[] };
+type InventoryItem = { label: string; marks: number; pages: number[]; kind?: string };
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const BATCH_SIZE = 6;
+const MAX_ITEMS = 300;
 
 const SHARED_RULES = [
   "You digitise IGCSE, A-Level and IB past papers into homework questions.",
+  "The upload is often NOT a clean official paper: teachers paste questions and mark schemes together from several different papers into a Word document or PDF, in any order, with inconsistent numbering, duplicated numbers, missing numbers, stray headings, tables and screenshots.",
+  "Papers mix question types freely: multiple choice (A/B/C/D), short answer, calculations, diagram/drawing tasks and extended writing. Treat every one of them as a question.",
   "Every answerable sub-part is its own item: 1(a), 1(b)(i), 1(b)(ii), 2(a) ... Never merge sub-parts and never summarise a paper down to a few sample questions.",
-  "Work through the documents page by page, in order, from the first question to the very last one.",
+  "Work through the documents page by page, in order, from the first question to the very last one, including anything that appears after a mark scheme block or between mark scheme blocks.",
+  "Never skip a question because it looks out of place, unnumbered, repeated, or because its numbering clashes with an earlier one.",
 ].join(" ");
 
 const INVENTORY_SYSTEM = [
   SHARED_RULES,
-  "Task: produce a COMPLETE index of every answerable question part in the paper.",
-  "Do not write the question wording or the answers here — only the part label and its marks.",
-  "Labels must be exactly as printed, e.g. \"1(a)\", \"1(b)(ii)\", \"3\", \"7(c)\".",
+  "Task: produce a COMPLETE index of every answerable question part in the upload.",
+  "Do not write the question wording or the answers here — only the part label, its marks and its type.",
+  "Use the printed label exactly where one exists, e.g. \"1(a)\", \"1(b)(ii)\", \"3\", \"7(c)\".",
+  "When numbering is missing, ambiguous or repeats a label you already used, invent a unique stable label instead of skipping the question: \"p3-Q1\", \"p3-Q1b\", \"MCQ-4\". Never output the same label twice.",
   "If a question has no sub-parts, list the question number alone.",
-  "Include every part, even easy ones, diagram/graph ones and extended-writing ones.",
+  "Include every part: multiple choice items, one-mark recall items, calculations, diagram/graph tasks and extended-writing tasks.",
+  "kind: \"mcq\" for multiple-choice items with printed options, otherwise \"short\".",
+  "Anything that is only a mark scheme / answer block for a question you have already indexed is NOT a new item.",
   "Each paper page is supplied as an image labelled PAGE 1, PAGE 2, ... Record which page(s) each part appears on, including a page that only holds its figure, diagram, graph or table.",
-  'Reply with JSON only: {"items":[{"label":"1(a)","marks":2,"pages":[3]}]}',
+  'Reply with JSON only: {"items":[{"label":"1(a)","marks":2,"kind":"short","pages":[3]}]}',
+].join(" ");
+
+const SWEEP_SYSTEM = [
+  SHARED_RULES,
+  "Task: a first pass already indexed some question parts. Find the ones it MISSED.",
+  "You are given the labels already found. Scan the whole upload again and list only answerable question parts that are not already covered.",
+  "Pay special attention to multiple-choice blocks, questions pasted mid-document, questions after a mark scheme section, and unnumbered questions.",
+  "Give missed items a unique label that does not clash with the supplied list (e.g. \"p5-Q2\").",
+  "If nothing was missed, reply with an empty items array.",
+  'Reply with JSON only: {"items":[{"label":"p5-Q2","marks":1,"kind":"mcq","pages":[5]}]}',
 ].join(" ");
 
 const DETAIL_SYSTEM = [
   SHARED_RULES,
   "Task: for ONLY the requested part labels, transcribe the question and align the official mark scheme.",
   "questionText: start with the part label, then reproduce the printed wording CHARACTER FOR CHARACTER. You are an OCR transcriber, not an editor or a rewriter.",
+  "For multiple-choice questions, transcribe the stem AND every printed option on its own line, keeping the printed option letters/numbers (A, B, C, D). Never drop, reorder or reword options.",
   "ABSOLUTE RULE: never change, modernise, simplify, translate, correct, shorten, expand or reorder ANY word of the question. Do not swap a word for a synonym (no \"work out\" for \"calculate\", no \"find\" for \"determine\", no \"picture\" for \"Fig.\"). Do not fix the paper's spelling, capitalisation, punctuation, spacing or British/American usage. Do not add words such as \"the\", \"your\" or \"please\" that are not printed, and do not drop printed words.",
   "Keep the printed line structure, bracketed instructions, blank-line dots and \"[2]\" style mark tags out of the wording only if they are page furniture; everything the student reads stays exactly as printed.",
   "If part of the wording is unreadable in the scan, transcribe what is legible and put [unclear] at that spot — never guess or paraphrase a replacement.",
   "NEVER describe or re-draw a figure, diagram, graph, table, circuit or chemical structure in words: the original paper page image is attached to the question for the student to look at. Instead transcribe the wording and refer to it as printed (e.g. \"Fig. 2.1\").",
   "Equations, formulae and expressions must be transcribed exactly as printed, keeping symbols, indices, fractions and units; use plain text/LaTeX-style notation only where unavoidable.",
-  "markScheme: the official marking points for that exact part, verbatim where possible, with accepted alternatives and mark allocation.",
-  "If no mark scheme document was supplied, write a concise expected answer with marking points instead.",
+  "markScheme: the official marking points for that exact part, verbatim where possible, with accepted alternatives and mark allocation. The mark scheme may sit far away from the question in the upload, or immediately under it — search the whole document for it.",
+  "For multiple choice, the mark scheme is the correct option letter plus a one-line reason, e.g. \"C (1 mark) — ...\".",
+  "If no mark scheme is supplied anywhere for that part, write a concise expected answer with marking points instead.",
   "marks: the integer marks for that part (default 1).",
   "Return one item per requested label, in the same order, and never skip a label.",
   "Symbols and units MUST be reproduced as real Unicode characters exactly as printed: \u00b0C, \u00b0F, \u00b5, \u03a9, \u00b1, \u00d7, \u00f7, \u2264, \u2265, \u2248, \u2192, \u21cc, \u221a, \u03b1\u03b2\u03b3\u03bb\u03c0\u0394\u03b8, subscripts/superscripts (H\u2082O, cm\u00b3, m s\u207b\u00b2, 10\u2076).",
   "Never write symbols as words, ASCII stand-ins or escapes: no \"degrees C\", \"deg C\", \"oC\", \"^oC\", \"ohms\", \"micro\", \"+/-\", \"\\\\u00b0\", \"&deg;\", \"?C\". Write 25 \u00b0C, 4.7 k\u03a9, 3 \u00b5A.",
   'Reply with JSON only: {"questions":[{"label":"1(a)","questionText":"...","markScheme":"...","marks":2,"pages":[3]}]}',
 ].join(" ");
+
 
 export async function extractQuestionsFromPapers(
   input: ExtractInput,
@@ -73,36 +93,66 @@ export async function extractQuestionsFromPapers(
     `Curriculum: ${input.curriculum}`,
     `Subject/topic: ${input.subject || "unspecified"}`,
     input.markSchemeFiles.length > 0
-      ? "The first document(s) are the past paper; the last document(s) are the official mark scheme."
-      : "The document(s) may contain both questions and mark scheme combined — separate them yourself.",
+      ? "The first document(s) are the past paper(s); the last document(s) are the mark scheme(s). Either set may be a teacher-made compilation pasted from several papers, in any order."
+      : "The document(s) may contain both questions and mark schemes combined, pasted together from several papers in any order — separate them yourself.",
   ].join("\n");
 
-  const inventory = await runInventory(key, header, documents);
+  let inventory = await runInventory(key, header, documents);
+
+  if (inventory.length > 0) {
+    // Second sweep: messy compilations routinely lose questions in pass one.
+    const missed = await runSweep(key, header, documents, inventory);
+    if (missed.length > 0) {
+      const seen = new Set(inventory.map((i) => i.label.toLowerCase()));
+      for (const item of missed) {
+        if (seen.has(item.label.toLowerCase())) continue;
+        seen.add(item.label.toLowerCase());
+        inventory.push(item);
+      }
+      inventory = inventory.slice(0, MAX_ITEMS);
+    }
+  }
 
   if (inventory.length === 0) {
     // Fall back to a single-pass extraction if the index could not be built.
-    return await runDetail(key, header, documents, [], true);
+    return dedupe(await runDetail(key, header, documents, [], true));
   }
 
+  const results = await runBatches(key, header, documents, inventory);
+
+  // Any label the detail pass dropped gets one focused retry.
+  const done = new Set(results.map((r) => r.label.toLowerCase()));
+  const missing = inventory.filter((i) => !done.has(i.label.toLowerCase()));
+  if (missing.length > 0) {
+    results.push(...(await runBatches(key, header, documents, missing)));
+  }
+
+  return dedupe(results);
+}
+
+async function runBatches(
+  key: string,
+  header: string,
+  documents: Array<Record<string, unknown>>,
+  items: InventoryItem[],
+): Promise<DetailResult[]> {
   const batches: InventoryItem[][] = [];
-  for (let i = 0; i < inventory.length; i += BATCH_SIZE) {
-    batches.push(inventory.slice(i, i + BATCH_SIZE));
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    batches.push(items.slice(i, i + BATCH_SIZE));
   }
 
-  const results: ExtractedQuestion[] = [];
+  const results: DetailResult[] = [];
   const CONCURRENCY = 3;
   for (let i = 0; i < batches.length; i += CONCURRENCY) {
     const slice = batches.slice(i, i + CONCURRENCY);
     const settled = await Promise.all(
       slice.map((batch) =>
-        runDetail(key, header, documents, batch, false).catch(() => [] as ExtractedQuestion[]),
+        runDetail(key, header, documents, batch, false).catch(() => [] as DetailResult[]),
       ),
     );
     for (const part of settled) results.push(...part);
   }
-
-
-  return dedupe(results);
+  return results;
 }
 
 const DOCX_MIME =
@@ -229,6 +279,33 @@ async function callGateway(
   return payload.choices?.[0]?.message?.content ?? "";
 }
 
+type DetailResult = ExtractedQuestion & { label: string };
+
+function parseInventoryItems(parsed: Record<string, unknown>, taken: Set<string>): InventoryItem[] {
+  const items = Array.isArray(parsed["items"]) ? (parsed["items"] as unknown[]) : [];
+  const out: InventoryItem[] = [];
+  for (const raw of items) {
+    const item = raw as Record<string, unknown>;
+    const label = String(item["label"] ?? "").trim();
+    if (!label || taken.has(label.toLowerCase())) continue;
+    taken.add(label.toLowerCase());
+    const pages = Array.isArray(item["pages"])
+      ? (item["pages"] as unknown[])
+          .map((n) => Math.round(Number(n)))
+          .filter((n) => Number.isFinite(n) && n > 0)
+      : [];
+    const kind = String(item["kind"] ?? "").trim().toLowerCase();
+    out.push({
+      label,
+      marks: Math.max(1, Math.round(Number(item["marks"]) || 1)),
+      pages: [...new Set(pages)].slice(0, 3),
+      ...(kind ? { kind } : {}),
+    });
+
+  }
+  return out;
+}
+
 async function runInventory(
   key: string,
   header: string,
@@ -239,31 +316,40 @@ async function runInventory(
       { type: "text", text: `${header}\n\nIndex every answerable question part now.` },
       ...documents,
     ]);
-    const parsed = parseJson(text);
-    const items = Array.isArray(parsed["items"]) ? (parsed["items"] as unknown[]) : [];
-    const seen = new Set<string>();
-    const out: InventoryItem[] = [];
-    for (const raw of items) {
-      const item = raw as Record<string, unknown>;
-      const label = String(item["label"] ?? "").trim();
-      if (!label || seen.has(label.toLowerCase())) continue;
-      seen.add(label.toLowerCase());
-      const pages = Array.isArray(item["pages"])
-        ? (item["pages"] as unknown[])
-            .map((n) => Math.round(Number(n)))
-            .filter((n) => Number.isFinite(n) && n > 0)
-        : [];
-      out.push({
-        label,
-        marks: Math.max(1, Math.round(Number(item["marks"]) || 1)),
-        pages: [...new Set(pages)].slice(0, 3),
-      });
-    }
-    return out.slice(0, 120);
+    return parseInventoryItems(parseJson(text), new Set<string>()).slice(0, MAX_ITEMS);
   } catch {
     return [];
   }
 }
+
+async function runSweep(
+  key: string,
+  header: string,
+  documents: Array<Record<string, unknown>>,
+  found: InventoryItem[],
+): Promise<InventoryItem[]> {
+  try {
+    const text = await callGateway(key, SWEEP_SYSTEM, [
+      {
+        type: "text",
+        text: [
+          header,
+          "",
+          "Already indexed labels:",
+          found.map((f) => `- ${f.label}`).join("\n"),
+          "",
+          "List every answerable question part that is missing from that list.",
+        ].join("\n"),
+      },
+      ...documents,
+    ]);
+    const taken = new Set(found.map((f) => f.label.toLowerCase()));
+    return parseInventoryItems(parseJson(text), taken).slice(0, MAX_ITEMS);
+  } catch {
+    return [];
+  }
+}
+
 
 async function runDetail(
   key: string,
@@ -271,17 +357,17 @@ async function runDetail(
   documents: Array<Record<string, unknown>>,
   batch: InventoryItem[],
   everything: boolean,
-): Promise<ExtractedQuestion[]> {
+): Promise<DetailResult[]> {
   const instruction = everything
-    ? "Transcribe EVERY answerable question part in the paper with its mark scheme. Do not stop early and do not sample."
+    ? "Transcribe EVERY answerable question part in the upload with its mark scheme, including multiple-choice items. Do not stop early and do not sample."
     : [
         "Transcribe exactly these part labels, in this order, with their mark schemes:",
         batch
           .map(
             (b) =>
-              `- ${b.label} (${b.marks} mark${b.marks === 1 ? "" : "s"})${
-                b.pages.length ? ` on PAGE ${b.pages.join(", ")}` : ""
-              }`,
+              `- ${b.label} (${b.marks} mark${b.marks === 1 ? "" : "s"}${
+                b.kind === "mcq" ? ", multiple choice — include every option" : ""
+              })${b.pages.length ? ` on PAGE ${b.pages.join(", ")}` : ""}`,
           )
           .join("\n"),
       ].join("\n");
@@ -295,11 +381,13 @@ async function runDetail(
   const rows = Array.isArray(parsed["questions"]) ? (parsed["questions"] as unknown[]) : [];
 
   return rows
-    .map((raw) => {
+    .map((raw, rowIndex) => {
       const item = raw as Record<string, unknown>;
-      const label = String(item["label"] ?? "").trim();
+      const label = String(item["label"] ?? "").trim() || batch[rowIndex]?.label || "";
       let questionText = String(item["questionText"] ?? "").trim();
-      if (label && !questionText.toLowerCase().startsWith(label.toLowerCase())) {
+      // Only printed numbering is echoed into the wording; invented keys (p3-Q1) are not.
+      const printed = /^\d/.test(label);
+      if (printed && !questionText.toLowerCase().startsWith(label.toLowerCase())) {
         questionText = `${label} ${questionText}`;
       }
       const match = batch.find((b) => b.label.toLowerCase() === label.toLowerCase());
@@ -309,11 +397,13 @@ async function runDetail(
             .filter((n) => Number.isFinite(n) && n > 0)
         : [];
       return {
+        label,
         questionText: scrubIdentifiers(normaliseSymbols(questionText)),
         markScheme: normaliseSymbols(String(item["markScheme"] ?? "").trim()),
         marks: Math.max(1, Math.round(Number(item["marks"]) || match?.marks || 1)),
         pages: match?.pages?.length ? match.pages : [...new Set(pagesFromModel)].slice(0, 3),
       };
+
 
     })
     .filter((item) => item.questionText.length > 0);
@@ -339,17 +429,26 @@ export function scrubIdentifiers(input: string): string {
 }
 
 
-function dedupe(items: ExtractedQuestion[]): ExtractedQuestion[] {
+function dedupe(items: Array<ExtractedQuestion | DetailResult>): ExtractedQuestion[] {
   const seen = new Set<string>();
   const out: ExtractedQuestion[] = [];
   for (const item of items) {
-    const fingerprint = item.questionText.slice(0, 80).toLowerCase();
+    if (!item.questionText) continue;
+    // Compilations legitimately repeat similar openings, so compare the whole
+    // wording (whitespace-normalised) instead of the first few words.
+    const fingerprint = item.questionText.replace(/\s+/g, " ").trim().toLowerCase();
     if (seen.has(fingerprint)) continue;
     seen.add(fingerprint);
-    out.push(item);
+    out.push({
+      questionText: item.questionText,
+      markScheme: item.markScheme,
+      marks: item.marks,
+      pages: item.pages,
+    });
   }
   return out;
 }
+
 
 function parseJson(text: string): Record<string, unknown> {
   const start = text.indexOf("{");

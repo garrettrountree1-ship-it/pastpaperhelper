@@ -274,6 +274,7 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
                 </Button>
                 {canManage ? (
                   <>
+                    <EditUnitDialog unit={unit} onDone={invalidate} />
                     <UploadDialog classId={classId} unitId={unit.id} onDone={invalidate} />
                     <Button
                       variant="outline"

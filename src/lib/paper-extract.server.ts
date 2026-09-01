@@ -22,45 +22,65 @@ type ExtractInput = {
   markSchemeFiles: UploadedFile[];
 };
 
-type InventoryItem = { label: string; marks: number; pages: number[] };
+type InventoryItem = { label: string; marks: number; pages: number[]; kind?: string };
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const BATCH_SIZE = 6;
+const MAX_ITEMS = 300;
 
 const SHARED_RULES = [
   "You digitise IGCSE, A-Level and IB past papers into homework questions.",
+  "The upload is often NOT a clean official paper: teachers paste questions and mark schemes together from several different papers into a Word document or PDF, in any order, with inconsistent numbering, duplicated numbers, missing numbers, stray headings, tables and screenshots.",
+  "Papers mix question types freely: multiple choice (A/B/C/D), short answer, calculations, diagram/drawing tasks and extended writing. Treat every one of them as a question.",
   "Every answerable sub-part is its own item: 1(a), 1(b)(i), 1(b)(ii), 2(a) ... Never merge sub-parts and never summarise a paper down to a few sample questions.",
-  "Work through the documents page by page, in order, from the first question to the very last one.",
+  "Work through the documents page by page, in order, from the first question to the very last one, including anything that appears after a mark scheme block or between mark scheme blocks.",
+  "Never skip a question because it looks out of place, unnumbered, repeated, or because its numbering clashes with an earlier one.",
 ].join(" ");
 
 const INVENTORY_SYSTEM = [
   SHARED_RULES,
-  "Task: produce a COMPLETE index of every answerable question part in the paper.",
-  "Do not write the question wording or the answers here — only the part label and its marks.",
-  "Labels must be exactly as printed, e.g. \"1(a)\", \"1(b)(ii)\", \"3\", \"7(c)\".",
+  "Task: produce a COMPLETE index of every answerable question part in the upload.",
+  "Do not write the question wording or the answers here — only the part label, its marks and its type.",
+  "Use the printed label exactly where one exists, e.g. \"1(a)\", \"1(b)(ii)\", \"3\", \"7(c)\".",
+  "When numbering is missing, ambiguous or repeats a label you already used, invent a unique stable label instead of skipping the question: \"p3-Q1\", \"p3-Q1b\", \"MCQ-4\". Never output the same label twice.",
   "If a question has no sub-parts, list the question number alone.",
-  "Include every part, even easy ones, diagram/graph ones and extended-writing ones.",
+  "Include every part: multiple choice items, one-mark recall items, calculations, diagram/graph tasks and extended-writing tasks.",
+  "kind: \"mcq\" for multiple-choice items with printed options, otherwise \"short\".",
+  "Anything that is only a mark scheme / answer block for a question you have already indexed is NOT a new item.",
   "Each paper page is supplied as an image labelled PAGE 1, PAGE 2, ... Record which page(s) each part appears on, including a page that only holds its figure, diagram, graph or table.",
-  'Reply with JSON only: {"items":[{"label":"1(a)","marks":2,"pages":[3]}]}',
+  'Reply with JSON only: {"items":[{"label":"1(a)","marks":2,"kind":"short","pages":[3]}]}',
+].join(" ");
+
+const SWEEP_SYSTEM = [
+  SHARED_RULES,
+  "Task: a first pass already indexed some question parts. Find the ones it MISSED.",
+  "You are given the labels already found. Scan the whole upload again and list only answerable question parts that are not already covered.",
+  "Pay special attention to multiple-choice blocks, questions pasted mid-document, questions after a mark scheme section, and unnumbered questions.",
+  "Give missed items a unique label that does not clash with the supplied list (e.g. \"p5-Q2\").",
+  "If nothing was missed, reply with an empty items array.",
+  'Reply with JSON only: {"items":[{"label":"p5-Q2","marks":1,"kind":"mcq","pages":[5]}]}',
 ].join(" ");
 
 const DETAIL_SYSTEM = [
   SHARED_RULES,
   "Task: for ONLY the requested part labels, transcribe the question and align the official mark scheme.",
   "questionText: start with the part label, then reproduce the printed wording CHARACTER FOR CHARACTER. You are an OCR transcriber, not an editor or a rewriter.",
+  "For multiple-choice questions, transcribe the stem AND every printed option on its own line, keeping the printed option letters/numbers (A, B, C, D). Never drop, reorder or reword options.",
   "ABSOLUTE RULE: never change, modernise, simplify, translate, correct, shorten, expand or reorder ANY word of the question. Do not swap a word for a synonym (no \"work out\" for \"calculate\", no \"find\" for \"determine\", no \"picture\" for \"Fig.\"). Do not fix the paper's spelling, capitalisation, punctuation, spacing or British/American usage. Do not add words such as \"the\", \"your\" or \"please\" that are not printed, and do not drop printed words.",
   "Keep the printed line structure, bracketed instructions, blank-line dots and \"[2]\" style mark tags out of the wording only if they are page furniture; everything the student reads stays exactly as printed.",
   "If part of the wording is unreadable in the scan, transcribe what is legible and put [unclear] at that spot — never guess or paraphrase a replacement.",
   "NEVER describe or re-draw a figure, diagram, graph, table, circuit or chemical structure in words: the original paper page image is attached to the question for the student to look at. Instead transcribe the wording and refer to it as printed (e.g. \"Fig. 2.1\").",
   "Equations, formulae and expressions must be transcribed exactly as printed, keeping symbols, indices, fractions and units; use plain text/LaTeX-style notation only where unavoidable.",
-  "markScheme: the official marking points for that exact part, verbatim where possible, with accepted alternatives and mark allocation.",
-  "If no mark scheme document was supplied, write a concise expected answer with marking points instead.",
+  "markScheme: the official marking points for that exact part, verbatim where possible, with accepted alternatives and mark allocation. The mark scheme may sit far away from the question in the upload, or immediately under it — search the whole document for it.",
+  "For multiple choice, the mark scheme is the correct option letter plus a one-line reason, e.g. \"C (1 mark) — ...\".",
+  "If no mark scheme is supplied anywhere for that part, write a concise expected answer with marking points instead.",
   "marks: the integer marks for that part (default 1).",
   "Return one item per requested label, in the same order, and never skip a label.",
   "Symbols and units MUST be reproduced as real Unicode characters exactly as printed: \u00b0C, \u00b0F, \u00b5, \u03a9, \u00b1, \u00d7, \u00f7, \u2264, \u2265, \u2248, \u2192, \u21cc, \u221a, \u03b1\u03b2\u03b3\u03bb\u03c0\u0394\u03b8, subscripts/superscripts (H\u2082O, cm\u00b3, m s\u207b\u00b2, 10\u2076).",
   "Never write symbols as words, ASCII stand-ins or escapes: no \"degrees C\", \"deg C\", \"oC\", \"^oC\", \"ohms\", \"micro\", \"+/-\", \"\\\\u00b0\", \"&deg;\", \"?C\". Write 25 \u00b0C, 4.7 k\u03a9, 3 \u00b5A.",
   'Reply with JSON only: {"questions":[{"label":"1(a)","questionText":"...","markScheme":"...","marks":2,"pages":[3]}]}',
 ].join(" ");
+
 
 export async function extractQuestionsFromPapers(
   input: ExtractInput,

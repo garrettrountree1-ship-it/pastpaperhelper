@@ -6,6 +6,7 @@ import {
   Film,
   Image as ImageIcon,
   Link2,
+  Pencil,
   Presentation,
   Sparkles,
   Trash2,
@@ -51,6 +52,7 @@ import {
   deleteUnit,
   getMaterialUrl,
   setMaterialDownload,
+  updateUnit,
   listMaterialClasses,
   listUnits,
   type MaterialKind,
@@ -605,6 +607,94 @@ function UploadDialog({
         <DialogFooter>
           <Button onClick={submit} disabled={busy || (mode === "file" ? !file : !url.trim())}>
             {busy ? "Adding…" : "Add"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Teacher-only rename/edit of a unit's title and description. */
+function EditUnitDialog({
+  unit,
+  onDone,
+}: {
+  unit: {
+    id: string;
+    title: string;
+    description: string | null;
+    planned_start: string | null;
+    planned_end: string | null;
+    planned_classes: number | null;
+  };
+  onDone: () => void;
+}) {
+  const save = useServerFn(updateUnit);
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState(unit.title);
+  const [description, setDescription] = useState(unit.description ?? "");
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      save({
+        data: {
+          unitId: unit.id,
+          title: title.trim(),
+          description: description.trim(),
+          plannedStart: unit.planned_start,
+          plannedEnd: unit.planned_end,
+          plannedClasses: unit.planned_classes,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Unit updated");
+      setOpen(false);
+      onDone();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) {
+          setTitle(unit.title);
+          setDescription(unit.description ?? "");
+        }
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" title="Edit unit name">
+          <Pencil className="size-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit unit</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor={`edit-unit-title-${unit.id}`}>Unit title</Label>
+            <Input
+              id={`edit-unit-title-${unit.id}`}
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`edit-unit-desc-${unit.id}`}>Description (optional)</Label>
+            <Textarea
+              id={`edit-unit-desc-${unit.id}`}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={() => mutation.mutate()} disabled={!title.trim() || mutation.isPending}>
+            Save changes
           </Button>
         </DialogFooter>
       </DialogContent>

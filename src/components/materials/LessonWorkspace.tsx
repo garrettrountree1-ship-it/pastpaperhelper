@@ -346,6 +346,9 @@ export function LessonWorkspace({
                 initialBlocks={active.notes_blocks}
                 initialSummary={active.ai_summary}
                 initialTab={initialTab}
+                documentMaterialId={material?.id ?? null}
+                documentTitle={material?.title ?? null}
+
                 onConcept={(value) => {
                   setConcept(value);
                   setTutorOpen(true);

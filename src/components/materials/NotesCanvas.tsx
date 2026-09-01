@@ -67,6 +67,8 @@ export function NotesCanvas({
   initialBlocks,
   initialSummary,
   initialTab = "notes",
+  documentMaterialId = null,
+  documentTitle = null,
   onConcept,
   onSaved,
 }: {
@@ -76,6 +78,9 @@ export function NotesCanvas({
   initialBlocks: NoteBlock[];
   initialSummary: string | null;
   initialTab?: "notes" | "summary";
+  /** Attached document, so its drawing/text markup joins the AI summary. */
+  documentMaterialId?: string | null;
+  documentTitle?: string | null;
   onConcept: (value: string) => void;
   onSaved?: () => void;
 }) {
@@ -117,10 +122,18 @@ export function NotesCanvas({
   });
 
   const summaryMutation = useMutation({
-    mutationFn: () => regenerate({ data: { sectionId } }),
+    mutationFn: async () => {
+      // Rasterise the pen drawing on the canvas and any marks made on the
+      // attached document, so the summary covers drawings and pictures too.
+      const visuals = await collectSummaryVisuals(blocks, documentMaterialId);
+      return regenerate({
+        data: { sectionId, documentTitle, ...visuals },
+      });
+    },
     onSuccess: (result) => setSummary(result.summary ?? ""),
     onError: (error: Error) => toast.error(error.message),
   });
+
 
   // Continuous autosave, then a fresh AI summary once typing settles.
   useEffect(() => {

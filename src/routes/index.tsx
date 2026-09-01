@@ -386,7 +386,7 @@ function Landing() {
                               src={img.src}
                               alt={img.alt}
                               loading="lazy"
-                              className="h-full w-full rounded-lg border border-border object-cover shadow-paper"
+                              className="h-full w-full rounded-lg border border-border object-contain shadow-paper"
                             />
                           ))}
                         </div>

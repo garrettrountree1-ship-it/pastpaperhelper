@@ -12,7 +12,11 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { LessonTutorBar } from "@/components/materials/LessonTutorBar";
+import {
+  INITIAL_TUTOR_TURNS,
+  LessonTutorBar,
+  type LessonTutorTurn,
+} from "@/components/materials/LessonTutorBar";
 import { NotesCanvas } from "@/components/materials/NotesCanvas";
 import { OfficeDocView } from "@/components/materials/OfficeDocView";
 import { PdfDocView } from "@/components/materials/PdfDocView";
@@ -99,6 +103,7 @@ export function LessonWorkspace({
   const [docOverride, setDocOverride] = useState<string | null>(initialMaterialId ?? null);
   const [term, setTerm] = useState("");
   const [tutorOpen, setTutorOpen] = useState(true);
+  const [tutorTurns, setTutorTurns] = useState<LessonTutorTurn[]>(INITIAL_TUTOR_TURNS);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
 
@@ -471,6 +476,8 @@ export function LessonWorkspace({
                     sectionId={active.id}
                     concept={concept}
                     onConceptHandled={() => setConcept(null)}
+                    turns={tutorTurns}
+                    onTurnsChange={setTutorTurns}
                   />
                   <Button
                     size="icon"

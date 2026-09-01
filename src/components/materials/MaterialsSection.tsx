@@ -16,7 +16,7 @@ import { toast } from "sonner";
 
 import { OfficeDocView } from "@/components/materials/OfficeDocView";
 import { PdfDocView } from "@/components/materials/PdfDocView";
-import { PowerPointView } from "@/components/materials/PowerPointView";
+import { SlideDeckView } from "@/components/materials/SlideDeckView";
 import { prerenderUploadedMaterial } from "@/lib/office-prerender";
 import { docFormat } from "@/lib/doc-kind";
 
@@ -428,12 +428,16 @@ function MaterialRow({
               />
             ) : viewerFormat === "pptx" ? (
               <div className="h-[70vh]">
-                <PowerPointView
+                <SlideDeckView
                   url={viewerUrl}
                   title={material.title}
+                  cacheKey={`material:${material.id}`}
+                  materialId={material.id}
+                  canPrepareShared={canManage}
                   canDownload={canManage || allowDownload}
                 />
               </div>
+
             ) : viewerFormat === "docx" ? (
               <div className="h-[70vh]">
                 <OfficeDocView

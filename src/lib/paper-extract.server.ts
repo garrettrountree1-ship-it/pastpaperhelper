@@ -429,17 +429,26 @@ export function scrubIdentifiers(input: string): string {
 }
 
 
-function dedupe(items: ExtractedQuestion[]): ExtractedQuestion[] {
+function dedupe(items: Array<ExtractedQuestion | DetailResult>): ExtractedQuestion[] {
   const seen = new Set<string>();
   const out: ExtractedQuestion[] = [];
   for (const item of items) {
-    const fingerprint = item.questionText.slice(0, 80).toLowerCase();
+    if (!item.questionText) continue;
+    // Compilations legitimately repeat similar openings, so compare the whole
+    // wording (whitespace-normalised) instead of the first few words.
+    const fingerprint = item.questionText.replace(/\s+/g, " ").trim().toLowerCase();
     if (seen.has(fingerprint)) continue;
     seen.add(fingerprint);
-    out.push(item);
+    out.push({
+      questionText: item.questionText,
+      markScheme: item.markScheme,
+      marks: item.marks,
+      pages: item.pages,
+    });
   }
   return out;
 }
+
 
 function parseJson(text: string): Record<string, unknown> {
   const start = text.indexOf("{");

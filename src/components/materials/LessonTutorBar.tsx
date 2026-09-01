@@ -20,25 +20,35 @@ const STARTERS = [
  * Always-visible lesson tutor. It never shows an empty box: there is always a
  * prompt on screen, and every reply ends with a leading diagnostic question.
  */
+export const INITIAL_TUTOR_TURNS: Turn[] = [
+  {
+    role: "assistant",
+    content:
+      "I'm your lesson tutor. Tell me what you're working on, or click any concept in the notes or the document and I'll start from there. To begin: which part of this section feels least clear right now?",
+  },
+];
+
+export type LessonTutorTurn = Turn;
+
 export function LessonTutorBar({
   classId,
   sectionId,
   concept,
   onConceptHandled,
+  turns: turnsProp,
+  onTurnsChange,
 }: {
   classId: string;
   sectionId: string | null;
   concept: string | null;
   onConceptHandled: () => void;
+  turns?: Turn[];
+  onTurnsChange?: (updater: (prev: Turn[]) => Turn[]) => void;
 }) {
   const ask = useServerFn(askLessonTutor);
-  const [turns, setTurns] = useState<Turn[]>([
-    {
-      role: "assistant",
-      content:
-        "I'm your lesson tutor. Tell me what you're working on, or click any concept in the notes or the document and I'll start from there. To begin: which part of this section feels least clear right now?",
-    },
-  ]);
+  const [localTurns, setLocalTurns] = useState<Turn[]>(INITIAL_TUTOR_TURNS);
+  const turns = turnsProp ?? localTurns;
+  const setTurns = onTurnsChange ?? setLocalTurns;
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
 

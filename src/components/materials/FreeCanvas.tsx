@@ -116,7 +116,26 @@ export function FreeCanvas({
     const height = block.type === "image" ? (block.h ?? 300) : 200;
     return Math.max(max, (block.y ?? 0) + height);
   }, 0);
-  const height = Math.max(1800, bottom + 700);
+
+  // The sheet grows endlessly: every time the teacher scrolls near the bottom
+  // we add another page of blank space, so the canvas never runs out.
+  const [grown, setGrown] = useState(0);
+  useEffect(() => {
+    let el = surfaceRef.current?.parentElement ?? null;
+    while (el && el.scrollHeight <= el.clientHeight + 1) el = el.parentElement;
+    if (!el) return;
+    const scroller = el;
+    const onScroll = () => {
+      if (scroller.scrollTop + scroller.clientHeight > scroller.scrollHeight - 800) {
+        setGrown((value) => value + 1200);
+      }
+    };
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    return () => scroller.removeEventListener("scroll", onScroll);
+  }, [zoom]);
+
+  const height = Math.max(1800, bottom + 700) + grown;
+
 
   // Pointer positions arrive in screen pixels; the sheet may be zoomed, so
   // convert back into unscaled canvas coordinates.

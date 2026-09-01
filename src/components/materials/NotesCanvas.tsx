@@ -23,6 +23,8 @@ import {
   signNotePaths,
   type NoteBlock,
 } from "@/lib/notes.functions";
+import { collectSummaryVisuals } from "@/lib/summary-visuals";
+
 
 const PEN_COLORS = ["#111827", "#dc2626", "#2563eb", "#16a34a", "#ea580c", "#7c3aed"];
 

@@ -25,6 +25,8 @@ import { Brand } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { DEMO_EMAIL, DEMO_PASSWORD } from "@/lib/demo";
+import lessonWorkspaceImg from "@/assets/lesson-workspace.png.asset.json";
+import originalPptImg from "@/assets/original-ppt-view.png.asset.json";
 
 
 export const Route = createFileRoute("/")({
@@ -49,7 +51,7 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
-const pillars = [
+const coreFeatures = [
   {
     icon: Upload,
     title: "Upload past papers",
@@ -67,26 +69,54 @@ const pillars = [
   },
 ];
 
-const sections = [
+const fourSections = [
   {
+    key: "homework",
     icon: FileText,
     title: "Homework",
-    body: "Past-paper questions with AI marking, unlimited retries and full per-student history.",
+    headline: "Past-paper homework that marks itself",
+    points: [
+      "AI extracts questions and mark schemes from any PDF or Word upload.",
+      "Students answer by typing, photo or drawing pad; vision marking handles handwritten work.",
+      "Teachers get a full gradebook with attempts, time spent, photos and tutor chat history.",
+    ],
   },
   {
-    icon: Clock,
-    title: "Quizzes",
-    body: "Timed, in-class quizzes with no AI help. Release when the class is ready and review results instantly.",
-  },
-  {
+    key: "materials",
     icon: FolderArchive,
     title: "Class materials",
-    body: "Organise units of slides, videos, PDFs and links for students to view or download.",
+    headline: "Split-screen lessons with notes, slides and AI",
+    points: [
+      "Teacher builds units of PDFs, PowerPoints, videos and links.",
+      "Split-screen workspace: lesson canvas on the left, document on the right, AI tutor beside it.",
+      "Teachers draw, type and annotate; students view the same materials and ask the tutor questions.",
+    ],
+    images: [
+      { src: lessonWorkspaceImg.url, alt: "Split-screen lesson workspace showing notes canvas, PowerPoint and AI tutor" },
+      { src: originalPptImg.url, alt: "Original PowerPoint view embedded in the lesson materials panel" },
+    ],
   },
   {
+    key: "quizzes",
+    icon: Clock,
+    title: "Quizzes",
+    headline: "Timed, in-class quizzes with no AI help",
+    points: [
+      "Teacher releases the quiz when the class is ready; a countdown starts for each student.",
+      "No marking feedback, no tutor and no hints while the timer is running.",
+      "Results and the mark scheme unlock automatically when time is up or the teacher ends the quiz.",
+    ],
+  },
+  {
+    key: "games",
     icon: Gamepad2,
     title: "Games",
-    body: "Head-to-head challenges and the daily double with anonymous animal aliases, leaderboards and tokens.",
+    headline: "Head-to-head challenges and daily doubles",
+    points: [
+      "Students get anonymous animal aliases and compete for tokens.",
+      "Head-to-head challenges pair students on past-paper questions from class homework.",
+      "A daily double pops up once per day; leaderboards and token history stay fair and auditable.",
+    ],
   },
 ];
 
@@ -255,7 +285,7 @@ function Landing() {
               <div className="mt-8 flex flex-wrap gap-3">
                 <Button asChild size="lg">
                   <Link to="/auth" search={{ mode: "signup" }}>
-                    Create a teacher account
+                    Create an account
                   </Link>
                 </Button>
                 <Button asChild size="lg" variant="outline">
@@ -295,7 +325,7 @@ function Landing() {
             </p>
           </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            {pillars.map((feature) => (
+            {coreFeatures.map((feature) => (
               <article key={feature.title} className="paper p-6 text-center">
                 <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-accent/60">
                   <feature.icon className="size-6 text-accent-foreground" />
@@ -309,24 +339,69 @@ function Landing() {
 
         <section className="mt-14">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-2xl sm:text-3xl">Four sections, one class</h2>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Four sections, one class
+            </p>
+            <h2 className="mt-2 text-2xl sm:text-3xl">
+              Everything teachers and students need in one place
+            </h2>
             <p className="mt-2 text-muted-foreground">
-              After logging in, teachers and students move between homework, quizzes, materials and games
-              from a single sidebar.
+              After logging in, move between homework, class materials, quizzes and games from a single sidebar.
             </p>
           </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            {sections.map((section) => (
-              <article key={section.title} className="paper flex gap-4 p-5">
-                <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                  <section.icon className="size-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="text-xl">{section.title}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{section.body}</p>
-                </div>
-              </article>
-            ))}
+
+          <div className="mt-8 space-y-10">
+            {fourSections.map((section, index) => {
+              const isReversed = index % 2 === 1;
+              return (
+                <article
+                  key={section.key}
+                  className="paper overflow-hidden"
+                >
+                  <div className={`grid lg:grid-cols-2 ${isReversed ? "lg:flex-row-reverse" : ""}`}>
+                    <div className={`p-6 sm:p-8 lg:p-10 ${isReversed ? "lg:order-2" : ""}`}>
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-10 items-center justify-center rounded-full bg-primary/10">
+                          <section.icon className="size-5 text-primary" />
+                        </div>
+                        <h3 className="text-xl sm:text-2xl">{section.title}</h3>
+                      </div>
+                      <p className="mt-3 text-lg font-medium">{section.headline}</p>
+                      <ul className="mt-4 space-y-2">
+                        {section.points.map((point) => (
+                          <li key={point} className="flex gap-3 text-sm text-muted-foreground">
+                            <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
+                            <span>{point}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className={`relative bg-muted/40 ${isReversed ? "lg:order-1" : ""}`}>
+                      {section.images ? (
+                        <div className="grid h-full gap-3 p-4 sm:grid-cols-2">
+                          {section.images.map((img) => (
+                            <img
+                              key={img.src}
+                              src={img.src}
+                              alt={img.alt}
+                              loading="lazy"
+                              className="h-full w-full rounded-lg border border-border object-contain shadow-paper"
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex h-64 items-center justify-center lg:h-full">
+                          <div className="flex size-24 items-center justify-center rounded-full bg-primary/10">
+                            <section.icon className="size-12 text-primary" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </section>
 

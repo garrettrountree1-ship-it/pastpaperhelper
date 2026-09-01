@@ -93,9 +93,66 @@ function ClassHome() {
                 );
               })}
             </div>
+
+            {role === "teacher" ? <ClassRoster classId={classId} /> : null}
           </>
         )}
       </main>
     </div>
+  );
+}
+
+/** Teacher-only list of the students who have joined this class. */
+function ClassRoster({ classId }: { classId: string }) {
+  const fetchRoster = useServerFn(listClassRoster);
+  const roster = useQuery({
+    queryKey: ["class-roster", classId],
+    queryFn: () => fetchRoster({ data: { classId } }),
+  });
+  const students = roster.data ?? [];
+
+  return (
+    <section className="paper mt-6 p-6">
+      <div className="mb-4 flex items-center gap-2">
+        <Users className="size-5 text-primary" />
+        <h2 className="font-display text-xl">Students in this class</h2>
+        <span className="text-sm text-muted-foreground">
+          {roster.isPending ? "" : `· ${students.length}`}
+        </span>
+      </div>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Visible to you only — students cannot see this list.
+      </p>
+      {roster.isPending ? (
+        <Skeleton className="h-24 w-full" />
+      ) : students.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No students yet. Share the class code so they can join.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="py-2 pr-4 font-medium">Name</th>
+                <th className="py-2 pr-4 font-medium">Email</th>
+                <th className="py-2 font-medium">Joined</th>
+              </tr>
+            </thead>
+            <tbody>
+              {students.map((s) => (
+                <tr key={s.id} className="border-t border-border">
+                  <td className="py-2 pr-4">{s.name}</td>
+                  <td className="py-2 pr-4 text-muted-foreground">{s.email ?? "—"}</td>
+                  <td className="py-2 text-muted-foreground">
+                    {new Date(s.joinedAt).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }

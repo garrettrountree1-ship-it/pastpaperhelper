@@ -16,16 +16,31 @@ export function useTutorThread(scope: string) {
 
   useEffect(() => {
     let cancelled = false;
+    const apply = (id: string) => {
+      const view = readDemoView();
+      setAccountKey(`tutorThread:${id}${view ? `:${view}` : ""}:${scope}`);
+    };
     void supabase.auth.getUser().then(({ data }) => {
       if (cancelled) return;
       const id = data.user?.id ?? "anon";
-      const view = readDemoView();
-      setAccountKey(`tutorThread:${id}${view ? `:${view}` : ""}:${scope}`);
+      apply(id);
+      // Switching the demo view (or signing in as someone else in another tab)
+      // must swap to that account's own thread, never continue the last one.
+      const onChange = () => apply(id);
+      window.addEventListener("demo-view-role-change", onChange);
+      window.addEventListener("storage", onChange);
+      cleanup = () => {
+        window.removeEventListener("demo-view-role-change", onChange);
+        window.removeEventListener("storage", onChange);
+      };
     });
+    let cleanup: (() => void) | null = null;
     return () => {
       cancelled = true;
+      cleanup?.();
     };
   }, [scope]);
+
 
   // Restore this account's own thread once we know whose it is.
   useEffect(() => {

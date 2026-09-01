@@ -294,12 +294,14 @@ function parseInventoryItems(parsed: Record<string, unknown>, taken: Set<string>
           .map((n) => Math.round(Number(n)))
           .filter((n) => Number.isFinite(n) && n > 0)
       : [];
+    const kind = String(item["kind"] ?? "").trim().toLowerCase();
     out.push({
       label,
       marks: Math.max(1, Math.round(Number(item["marks"]) || 1)),
       pages: [...new Set(pages)].slice(0, 3),
-      kind: String(item["kind"] ?? "").trim().toLowerCase() || undefined,
+      ...(kind ? { kind } : {}),
     });
+
   }
   return out;
 }

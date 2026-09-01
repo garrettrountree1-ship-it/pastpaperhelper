@@ -357,17 +357,17 @@ async function runDetail(
   documents: Array<Record<string, unknown>>,
   batch: InventoryItem[],
   everything: boolean,
-): Promise<ExtractedQuestion[]> {
+): Promise<DetailResult[]> {
   const instruction = everything
-    ? "Transcribe EVERY answerable question part in the paper with its mark scheme. Do not stop early and do not sample."
+    ? "Transcribe EVERY answerable question part in the upload with its mark scheme, including multiple-choice items. Do not stop early and do not sample."
     : [
         "Transcribe exactly these part labels, in this order, with their mark schemes:",
         batch
           .map(
             (b) =>
-              `- ${b.label} (${b.marks} mark${b.marks === 1 ? "" : "s"})${
-                b.pages.length ? ` on PAGE ${b.pages.join(", ")}` : ""
-              }`,
+              `- ${b.label} (${b.marks} mark${b.marks === 1 ? "" : "s"}${
+                b.kind === "mcq" ? ", multiple choice — include every option" : ""
+              })${b.pages.length ? ` on PAGE ${b.pages.join(", ")}` : ""}`,
           )
           .join("\n"),
       ].join("\n");
@@ -381,11 +381,13 @@ async function runDetail(
   const rows = Array.isArray(parsed["questions"]) ? (parsed["questions"] as unknown[]) : [];
 
   return rows
-    .map((raw) => {
+    .map((raw, rowIndex) => {
       const item = raw as Record<string, unknown>;
-      const label = String(item["label"] ?? "").trim();
+      const label = String(item["label"] ?? "").trim() || batch[rowIndex]?.label || "";
       let questionText = String(item["questionText"] ?? "").trim();
-      if (label && !questionText.toLowerCase().startsWith(label.toLowerCase())) {
+      // Only printed numbering is echoed into the wording; invented keys (p3-Q1) are not.
+      const printed = /^\d/.test(label);
+      if (printed && !questionText.toLowerCase().startsWith(label.toLowerCase())) {
         questionText = `${label} ${questionText}`;
       }
       const match = batch.find((b) => b.label.toLowerCase() === label.toLowerCase());
@@ -395,11 +397,13 @@ async function runDetail(
             .filter((n) => Number.isFinite(n) && n > 0)
         : [];
       return {
+        label,
         questionText: scrubIdentifiers(normaliseSymbols(questionText)),
         markScheme: normaliseSymbols(String(item["markScheme"] ?? "").trim()),
         marks: Math.max(1, Math.round(Number(item["marks"]) || match?.marks || 1)),
         pages: match?.pages?.length ? match.pages : [...new Set(pagesFromModel)].slice(0, 3),
       };
+
 
     })
     .filter((item) => item.questionText.length > 0);

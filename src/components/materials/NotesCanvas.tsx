@@ -265,21 +265,24 @@ export function NotesCanvas({
     <div className="flex h-full min-h-0 flex-col rounded-lg border bg-card" onPaste={handlePaste}>
 
       <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
-        {tab === "notes" ? (
-          <span className="px-2 text-sm font-medium">Lesson canvas</span>
-        ) : (
-          <Button size="sm" variant="ghost" onClick={() => setTab("notes")}>
-            Lesson canvas
-          </Button>
-        )}
+        <Button
+          size="sm"
+          variant={tab === "notes" ? "default" : "ghost"}
+          aria-pressed={tab === "notes"}
+          onClick={() => setTab("notes")}
+        >
+          Lesson canvas
+        </Button>
         <Button
           size="sm"
           variant={tab === "summary" ? "default" : "ghost"}
+          aria-pressed={tab === "summary"}
           onClick={() => setTab("summary")}
         >
           <Sparkles className="size-4" />
           AI summary
         </Button>
+
         {tab === "notes" ? (
           <div className="ml-auto flex items-center gap-1">
             {canEdit ? (

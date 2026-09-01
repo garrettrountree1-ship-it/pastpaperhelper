@@ -197,15 +197,29 @@ export const saveSectionNotes = createServerFn({ method: "POST" })
     return { ok: true, notesText };
   });
 
-/** Regenerates the student-facing AI summary from the teacher's notes only. */
+/**
+ * Regenerates the student-facing AI summary from the whole lesson page: typed
+ * notes, canvas pictures, canvas pen drawing, and marks/text added on the
+ * attached document (rasterised by the browser and passed in here).
+ */
 export const generateSectionSummary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ sectionId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        sectionId: z.string().uuid(),
+        canvasInk: z.string().max(4_000_000).nullable().optional(),
+        docInk: z.array(z.string().max(4_000_000)).max(6).optional(),
+        docTexts: z.array(z.string().max(2000)).max(60).optional(),
+        documentTitle: z.string().max(200).nullable().optional(),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: section } = await supabase
       .from("unit_sections")
-      .select("class_id, unit_id, title, notes_text")
+      .select("class_id, unit_id, title, notes_text, notes_blocks")
       .eq("id", data.sectionId)
       .maybeSingle();
     if (!section) throw new Error("Section not found.");
@@ -216,11 +230,32 @@ export const generateSectionSummary = createServerFn({ method: "POST" })
       supabase.from("classes").select("subject").eq("id", section.class_id).maybeSingle(),
     ]);
 
+    // Sign the canvas pictures so the model can actually see them.
+    const blocks = Array.isArray(section.notes_blocks) ? (section.notes_blocks as NoteBlock[]) : [];
+    const paths = blocks
+      .filter((block): block is Extract<NoteBlock, { type: "image" }> => block.type === "image")
+      .map((block) => block.path)
+      .slice(0, 8);
+    let canvasImageUrls: string[] = [];
+    if (paths.length > 0) {
+      const { data: signed } = await supabase.storage
+        .from("class-materials")
+        .createSignedUrls(paths, 60 * 30);
+      canvasImageUrls = (signed ?? [])
+        .map((item) => item.signedUrl)
+        .filter((url): url is string => Boolean(url));
+    }
+
     const summary = await summariseTeacherNotes({
       unitTitle: unit?.title ?? "Unit",
       sectionTitle: section.title,
       subject: klass?.subject ?? "Science",
       notesText: section.notes_text ?? "",
+      canvasImageUrls,
+      canvasInk: data.canvasInk ?? null,
+      docInk: data.docInk ?? [],
+      docTexts: data.docTexts ?? [],
+      documentTitle: data.documentTitle ?? null,
     });
 
     const { error } = await supabase
@@ -230,6 +265,7 @@ export const generateSectionSummary = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { summary };
   });
+
 
 /** Short-lived signed URLs for canvas images (class-materials bucket). */
 export const signNotePaths = createServerFn({ method: "POST" })

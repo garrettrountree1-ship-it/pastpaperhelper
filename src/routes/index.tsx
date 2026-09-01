@@ -152,6 +152,24 @@ const steps = [
 function Landing() {
   const [demoLoading, setDemoLoading] = useState(false);
 
+  // If a session already exists (e.g. returning from Google OAuth), go straight in.
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!cancelled && data.session) window.location.assign("/dashboard");
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
+        window.location.assign("/dashboard");
+      }
+    });
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
+
   async function handleDemoLogin() {
     if (demoLoading) return;
     setDemoLoading(true);

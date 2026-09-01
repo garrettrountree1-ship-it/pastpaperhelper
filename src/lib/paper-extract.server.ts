@@ -93,36 +93,67 @@ export async function extractQuestionsFromPapers(
     `Curriculum: ${input.curriculum}`,
     `Subject/topic: ${input.subject || "unspecified"}`,
     input.markSchemeFiles.length > 0
-      ? "The first document(s) are the past paper; the last document(s) are the official mark scheme."
-      : "The document(s) may contain both questions and mark scheme combined — separate them yourself.",
+      ? "The first document(s) are the past paper(s); the last document(s) are the mark scheme(s). Either set may be a teacher-made compilation pasted from several papers, in any order."
+      : "The document(s) may contain both questions and mark schemes combined, pasted together from several papers in any order — separate them yourself.",
   ].join("\n");
 
-  const inventory = await runInventory(key, header, documents);
+  let inventory = await runInventory(key, header, documents);
+
+  if (inventory.length > 0) {
+    // Second sweep: messy compilations routinely lose questions in pass one.
+    const missed = await runSweep(key, header, documents, inventory);
+    if (missed.length > 0) {
+      const seen = new Set(inventory.map((i) => i.label.toLowerCase()));
+      for (const item of missed) {
+        if (seen.has(item.label.toLowerCase())) continue;
+        seen.add(item.label.toLowerCase());
+        inventory.push(item);
+      }
+      inventory = inventory.slice(0, MAX_ITEMS);
+    }
+  }
 
   if (inventory.length === 0) {
     // Fall back to a single-pass extraction if the index could not be built.
-    return await runDetail(key, header, documents, [], true);
+    return dedupe(await runDetail(key, header, documents, [], true));
   }
 
+  const results = await runBatches(key, header, documents, inventory);
+
+  // Any label the detail pass dropped gets one focused retry.
+  const done = new Set(results.map((r) => r.label.toLowerCase()));
+  const missing = inventory.filter((i) => !done.has(i.label.toLowerCase()));
+  if (missing.length > 0) {
+    results.push(...(await runBatches(key, header, documents, missing)));
+  }
+
+  return dedupe(results);
+}
+
+async function runBatches(
+  key: string,
+  header: string,
+  documents: Array<Record<string, unknown>>,
+  items: InventoryItem[],
+): Promise<DetailResult[]> {
   const batches: InventoryItem[][] = [];
-  for (let i = 0; i < inventory.length; i += BATCH_SIZE) {
-    batches.push(inventory.slice(i, i + BATCH_SIZE));
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    batches.push(items.slice(i, i + BATCH_SIZE));
   }
 
-  const results: ExtractedQuestion[] = [];
+  const results: DetailResult[] = [];
   const CONCURRENCY = 3;
   for (let i = 0; i < batches.length; i += CONCURRENCY) {
     const slice = batches.slice(i, i + CONCURRENCY);
     const settled = await Promise.all(
       slice.map((batch) =>
-        runDetail(key, header, documents, batch, false).catch(() => [] as ExtractedQuestion[]),
+        runDetail(key, header, documents, batch, false).catch(() => [] as DetailResult[]),
       ),
     );
     for (const part of settled) results.push(...part);
   }
-
-
-  return dedupe(results);
+  return results;
+}
 }
 
 const DOCX_MIME =

@@ -12,11 +12,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  INITIAL_TUTOR_TURNS,
-  LessonTutorBar,
-  type LessonTutorTurn,
-} from "@/components/materials/LessonTutorBar";
+import { LessonTutorBar } from "@/components/materials/LessonTutorBar";
 import { NotesCanvas } from "@/components/materials/NotesCanvas";
 import { OfficeDocView } from "@/components/materials/OfficeDocView";
 import { PdfDocView } from "@/components/materials/PdfDocView";
@@ -40,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { useTutorThread } from "@/hooks/use-tutor-thread";
 import { docFormat } from "@/lib/doc-kind";
 import { getMaterialUrl, updateUnit } from "@/lib/materials.functions";
 import { createSection, deleteSection, listSections, updateSection } from "@/lib/notes.functions";
@@ -103,7 +100,8 @@ export function LessonWorkspace({
   const [docOverride, setDocOverride] = useState<string | null>(initialMaterialId ?? null);
   const [term, setTerm] = useState("");
   const [tutorOpen, setTutorOpen] = useState(true);
-  const [tutorTurns, setTutorTurns] = useState<LessonTutorTurn[]>(INITIAL_TUTOR_TURNS);
+  // The tutor thread belongs to the signed-in account only.
+  const { turns: tutorTurns, setTurns: setTutorTurns } = useTutorThread(`class:${classId}`);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
 

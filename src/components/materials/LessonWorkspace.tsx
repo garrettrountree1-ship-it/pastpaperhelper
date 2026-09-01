@@ -417,9 +417,12 @@ export function LessonWorkspace({
                     className="h-full w-full rounded-md object-contain"
                   />
                 ) : docFormat(material.storage_path ?? material.title) === "pptx" ? (
-                  <PowerPointView
+                  <SlideDeckView
                     url={docUrl.data.url}
                     title={material.title}
+                    cacheKey={`material:${material.id}`}
+                    materialId={material.id}
+                    canPrepareShared={canManage}
                     canDownload={canManage || material.allow_download !== false}
                   />
                 ) : docFormat(material.storage_path ?? material.title) === "docx" ? (

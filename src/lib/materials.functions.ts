@@ -372,3 +372,37 @@ export const setMaterialDownload = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/** Students joined to one class — teacher only. */
+export const listClassRoster = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ classId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertClassTeacher(supabase, data.classId, userId);
+
+    const { data: members } = await supabase
+      .from("class_members")
+      .select("student_id, joined_at")
+      .eq("class_id", data.classId)
+      .order("joined_at", { ascending: true });
+
+    const ids = (members ?? []).map((m) => m.student_id);
+    if (ids.length === 0) return [];
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: profiles } = await supabaseAdmin
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", ids);
+
+    return (members ?? []).map((m) => {
+      const p = (profiles ?? []).find((row) => row.id === m.student_id);
+      return {
+        id: m.student_id,
+        name: p?.full_name ?? "Student",
+        email: p?.email ?? null,
+        joinedAt: m.joined_at as string,
+      };
+    });
+  });

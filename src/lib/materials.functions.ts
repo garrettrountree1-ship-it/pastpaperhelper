@@ -20,7 +20,7 @@ export const listMaterialClasses = createServerFn({ method: "GET" })
     const [{ data: taught }, { data: memberships }] = await Promise.all([
       supabase
         .from("classes")
-        .select("id, name, subject, curriculum")
+        .select("id, name, subject, curriculum, join_code")
         .eq("teacher_id", userId)
         .order("created_at", { ascending: false }),
       supabase.from("class_members").select("class_id").eq("student_id", userId),
@@ -38,9 +38,16 @@ export const listMaterialClasses = createServerFn({ method: "GET" })
 
     const taughtIds = new Set((taught ?? []).map((c) => c.id));
     return [
-      ...(taught ?? []).map((c) => ({ ...c, canManage: true })),
-      ...joined.filter((c) => !taughtIds.has(c.id)).map((c) => ({ ...c, canManage: false })),
+      ...(taught ?? []).map(({ join_code, ...c }) => ({
+        ...c,
+        joinCode: join_code as string,
+        canManage: true,
+      })),
+      ...joined
+        .filter((c) => !taughtIds.has(c.id))
+        .map((c) => ({ ...c, joinCode: null as string | null, canManage: false })),
     ];
+
   });
 
 /** Units and their materials for one class. */

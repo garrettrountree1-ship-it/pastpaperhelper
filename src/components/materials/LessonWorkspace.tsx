@@ -16,7 +16,7 @@ import { LessonTutorBar } from "@/components/materials/LessonTutorBar";
 import { NotesCanvas } from "@/components/materials/NotesCanvas";
 import { OfficeDocView } from "@/components/materials/OfficeDocView";
 import { PdfDocView } from "@/components/materials/PdfDocView";
-import { PowerPointView } from "@/components/materials/PowerPointView";
+import { SlideDeckView } from "@/components/materials/SlideDeckView";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

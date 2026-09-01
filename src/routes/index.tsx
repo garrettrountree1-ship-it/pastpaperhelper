@@ -2,21 +2,19 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import {
   BookOpenCheck,
   BotMessageSquare,
-  Camera,
   Clock,
   Eye,
   FileText,
-  FolderArchive,
   Gamepad2,
   GraduationCap,
-  Languages,
+  Highlighter,
   Lock,
   MessageSquare,
+  MonitorPlay,
   PenTool,
+  Presentation,
   ShieldAlert,
-  Sparkles,
   Upload,
-  Users,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -28,21 +26,20 @@ import { DEMO_EMAIL, DEMO_PASSWORD } from "@/lib/demo";
 import lessonWorkspaceImg from "@/assets/lesson-workspace.png.asset.json";
 import originalPptImg from "@/assets/original-ppt-view.png.asset.json";
 
-
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "PastPaperHelper.AI — Past-paper homework that teaches, for IG, A-Level & IB" },
+      { title: "PastPaperHelper.AI — Past-paper homework & live lesson teaching" },
       {
         name: "description",
         content:
-          "Upload past papers and mark schemes. AI marks against the mark scheme, coaches every student with a built-in tutor, and blocks copied or AI-written work.",
+          "Two classroom tools in one: past papers marked by the mark scheme with a Socratic AI tutor, and a split-screen lesson workspace for slides, notes and annotation. Quizzes and games included.",
       },
-      { property: "og:title", content: "PastPaperHelper.AI — Past-paper homework that teaches" },
+      { property: "og:title", content: "PastPaperHelper.AI — Homework and lessons in one place" },
       {
         property: "og:description",
         content:
-          "AI marking, a Socratic tutor, anti-copying controls, quizzes, games and class materials — all built for IGCSE, A-Level and IB teachers.",
+          "Mark-scheme AI marking with a built-in tutor, plus a split-screen lesson workspace for PDFs, PowerPoints and live notes. Timed quizzes and class games too.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -51,132 +48,79 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
-const coreFeatures = [
-  {
-    icon: Upload,
-    title: "Upload past papers",
-    body: "Drop in the paper and mark scheme as combined or separate PDFs. AI aligns the questions, marks and diagrams into a ready assignment.",
-  },
-  {
-    icon: BookOpenCheck,
-    title: "Marked by the mark scheme",
-    body: "Every answer is checked point-by-point against the official mark scheme. Students see which marks they earned, not the answer wording.",
-  },
-  {
-    icon: BotMessageSquare,
-    title: "A built-in AI tutor",
-    body: "Wrong answers get Socratic leading questions and smaller steps. The tutor never reveals the answer, and students can ask follow-ups until it clicks.",
-  },
-];
-
-const fourSections = [
+const pillars = [
   {
     key: "homework",
     icon: FileText,
-    title: "Homework",
-    headline: "Past-paper homework that marks itself",
+    kicker: "Pillar one",
+    title: "Past-paper homework",
+    headline: "Marked by the mark scheme, taught by an AI tutor.",
     points: [
-      "AI extracts questions and mark schemes from any PDF or Word upload.",
-      "Students answer by typing, photo or drawing pad; vision marking handles handwritten work.",
-      "Teachers get a full gradebook with attempts, time spent, photos and tutor chat history.",
+      "Upload the paper and mark scheme — combined or separate, tidy or a messy compilation. Questions, marks and diagrams are aligned automatically.",
+      "Students answer by typing, photo of handwritten working, or on-screen writing pad. Vision marking reads all three.",
+      "Wrong answers get leading questions and smaller steps — never the answer — and students retry until they earn the marks.",
+    ],
+    stats: [
+      { icon: BookOpenCheck, label: "Point-by-point marking" },
+      { icon: BotMessageSquare, label: "Socratic tutor, unlimited follow-ups" },
+      { icon: Eye, label: "Every attempt, photo and chat logged" },
     ],
   },
   {
     key: "materials",
-    icon: FolderArchive,
-    title: "Class materials",
-    headline: "Split-screen lessons with notes, slides and AI",
+    icon: Presentation,
+    kicker: "Pillar two",
+    title: "Class presentation",
+    headline: "A split-screen lesson workspace you teach live from.",
     points: [
-      "Teacher builds units of PDFs, PowerPoints, videos and links.",
-      "Split-screen workspace: lesson canvas on the left, document on the right, AI tutor beside it.",
-      "Teachers draw, type and annotate; students view the same materials and ask the tutor questions.",
+      "Build units from PDFs, PowerPoints, Word docs, videos and links — viewed in high fidelity, exactly as uploaded.",
+      "Lesson canvas on the left to type, draw and paste images; the document on the right with draw, text-box and highlight tools over any file.",
+      "The AI lesson tutor sits permanently beside both, private to each teacher and student, and can summarise everything written and drawn.",
     ],
-    images: [
-      { src: lessonWorkspaceImg.url, alt: "Split-screen lesson workspace showing notes canvas, PowerPoint and AI tutor" },
-      { src: originalPptImg.url, alt: "Original PowerPoint view embedded in the lesson materials panel" },
+    stats: [
+      { icon: MonitorPlay, label: "Original PowerPoint or scrollable slides" },
+      { icon: Highlighter, label: "Annotate PDFs, docs and decks" },
+      { icon: PenTool, label: "Infinite teacher notes canvas" },
     ],
   },
+];
+
+const alsoIncluded = [
   {
-    key: "quizzes",
     icon: Clock,
     title: "Quizzes",
-    headline: "Timed, in-class quizzes with no AI help",
-    points: [
-      "Teacher releases the quiz when the class is ready; a countdown starts for each student.",
-      "No marking feedback, no tutor and no hints while the timer is running.",
-      "Results and the mark scheme unlock automatically when time is up or the teacher ends the quiz.",
-    ],
+    body: "Release a timed quiz when the class is ready. No hints, no tutor, no feedback while the clock runs — results and the mark scheme unlock when time is up.",
   },
   {
-    key: "games",
     icon: Gamepad2,
     title: "Games",
-    headline: "Head-to-head challenges and daily doubles",
-    points: [
-      "Students get anonymous animal aliases and compete for tokens.",
-      "Head-to-head challenges pair students on past-paper questions from class homework.",
-      "A daily double pops up once per day; leaderboards and token history stay fair and auditable.",
-    ],
+    body: "Anonymous animal aliases, token leaderboards, head-to-head past-paper challenges and a daily double that appears once a day.",
   },
 ];
 
-const studentTools = [
-  {
-    icon: Languages,
-    title: "Translated key vocabulary",
-    body: "Hover over a key word for a translation, or open the vocab sheet for a deeper explanation with images.",
-  },
-  {
-    icon: Camera,
-    title: "Photo working",
-    body: "For calculations and diagrams, students upload a photo of their handwritten work or draw on a stylus pad.",
-  },
-  {
-    icon: PenTool,
-    title: "Drawing pad",
-    body: "Students can sketch graphs, diagrams and working directly on screen with a stylus or finger.",
-  },
-];
-
-const teacherControls = [
+const integrity = [
   {
     icon: ShieldAlert,
     title: "AI & plagiarism filter",
-    body: "Copy-paste, drag-and-drop and AI-written text are detected and rejected. After a set number of warnings, the homework auto-locks.",
+    body: "Paste, drag-and-drop and AI-written text are detected and rejected. Repeat attempts auto-lock the assignment.",
   },
   {
     icon: Lock,
-    title: "Lock and unlock",
-    body: "Teachers control when a cheating student can continue, and can apply a percentage deduction on re-entry.",
+    title: "You hold the keys",
+    body: "Unlock a student, apply a deduction, extend a due date for the class or one student, credit or remove a question.",
   },
   {
-    icon: Eye,
-    title: "Full visibility",
-    body: "See every attempt, time spent, photo upload, tutor chat and integrity warning in the gradebook.",
+    icon: MessageSquare,
+    title: "Bulletins & messaging",
+    body: "Post class announcements; students message you about a specific question. Students can never message each other.",
   },
 ];
 
 const steps = [
-  {
-    step: "1",
-    title: "Create your class",
-    body: "Pick the curriculum and subject, then share the class code with students.",
-  },
-  {
-    step: "2",
-    title: "Upload a paper",
-    body: "Add the past paper and mark scheme — or write your own questions — and publish.",
-  },
-  {
-    step: "3",
-    title: "Students work and learn",
-    body: "They answer, get marked, are coached by the tutor and retry until they earn the marks.",
-  },
-  {
-    step: "4",
-    title: "Review and control",
-    body: "Open the gradebook, message students, adjust due dates and manage integrity flags.",
-  },
+  { step: "1", title: "Create your class", body: "Pick curriculum and subject, then share the class code." },
+  { step: "2", title: "Add a paper or a unit", body: "Upload past papers, or build a unit of slides and resources." },
+  { step: "3", title: "Teach and set homework", body: "Present from the workspace; students work with the tutor." },
+  { step: "4", title: "Review everything", body: "Gradebook with attempts, time, photos, chats — export to Excel." },
 ];
 
 function Landing() {
@@ -198,7 +142,6 @@ function Landing() {
       sub.subscription.unsubscribe();
     };
   }, []);
-
 
   async function handleDemoLogin() {
     if (demoLoading) return;
@@ -233,10 +176,8 @@ function Landing() {
     }
   }
 
-
   return (
     <div className="min-h-screen">
-
       <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
         <Brand />
         <div className="flex gap-2">
@@ -252,206 +193,179 @@ function Landing() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 pb-20">
-        <section className="-mx-4 sm:mx-0">
-          <div className="grid items-center gap-10 px-4 py-12 lg:grid-cols-[1.1fr_0.9fr] lg:py-20">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                IGCSE · A-Level · IB
-              </p>
-              <h1 className="mt-4 text-4xl leading-[1.05] sm:text-5xl lg:text-6xl">
-                Homework that marks, teaches, and stays honest.
-              </h1>
-              <p className="mt-6 max-w-xl text-lg text-muted-foreground">
-                Upload real past papers with their mark schemes. Students answer and get instant,
-                point-by-point AI marking. A built-in tutor then coaches them with leading questions
-                until they can earn the marks themselves.
-              </p>
-              <ul className="mt-6 flex flex-wrap gap-2 text-sm">
-                {[
-                  "AI marking",
-                  "Socratic tutor",
-                  "Copy-paste blocked",
-                  "AI & plagiarism detection",
-                  "Full student history",
-                ].map((chip) => (
-                  <li
-                    key={chip}
-                    className="rounded-full border border-border bg-card/80 px-3 py-1 text-card-foreground"
-                  >
-                    {chip}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Button asChild size="lg">
-                  <Link to="/auth" search={{ mode: "signup" }}>
-                    Create an account
-                  </Link>
-                </Button>
-                <Button asChild size="lg" variant="outline">
-                  <Link to="/auth">I have a class code</Link>
-                </Button>
-              </div>
-            </div>
-
-            <div className="ink-panel p-6 shadow-lift">
-              <p className="text-xs uppercase tracking-[0.2em] opacity-70">Live coaching</p>
-              <div className="mt-4 space-y-3 text-sm">
-                <div className="rounded-lg bg-primary-foreground/10 p-3">
-                  <p className="opacity-70">Question · 4 marks</p>
-                  <p className="mt-1">Explain why the rate of reaction decreases over time.</p>
-                </div>
-                <div className="rounded-lg bg-primary-foreground/10 p-3">
-                  <p className="opacity-70">Student</p>
-                  <p className="mt-1">Because the reaction gets colder.</p>
-                </div>
-                <div className="rounded-lg bg-accent p-3 text-accent-foreground">
-                  <p className="text-xs font-semibold uppercase tracking-wide">1 / 4 · keep going</p>
-                  <p className="mt-1">
-                    What happens to the number of reactant particles in the flask as the reaction
-                    proceeds?
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-14">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-2xl sm:text-3xl">The core idea</h2>
-            <p className="mt-2 text-muted-foreground">
-              Three things that make every assignment teach, instead of just test.
-            </p>
-          </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            {coreFeatures.map((feature) => (
-              <article key={feature.title} className="paper p-6 text-center">
-                <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-accent/60">
-                  <feature.icon className="size-6 text-accent-foreground" />
-                </div>
-                <h3 className="mt-4 text-xl">{feature.title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{feature.body}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="mt-14">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Four sections, one class
-            </p>
-            <h2 className="mt-2 text-2xl sm:text-3xl">
-              Everything teachers and students need in one place
-            </h2>
-            <p className="mt-2 text-muted-foreground">
-              After logging in, move between homework, class materials, quizzes and games from a single sidebar.
-            </p>
-          </div>
-
-          <div className="mt-8 space-y-10">
-            {fourSections.map((section, index) => {
-              const isReversed = index % 2 === 1;
-              return (
-                <article
-                  key={section.key}
-                  className="paper overflow-hidden"
-                >
-                  <div className={`grid lg:grid-cols-2 ${isReversed ? "lg:flex-row-reverse" : ""}`}>
-                    <div className={`p-6 sm:p-8 lg:p-10 ${isReversed ? "lg:order-2" : ""}`}>
-                      <div className="flex items-center gap-3">
-                        <div className="flex size-10 items-center justify-center rounded-full bg-primary/10">
-                          <section.icon className="size-5 text-primary" />
-                        </div>
-                        <h3 className="text-xl sm:text-2xl">{section.title}</h3>
-                      </div>
-                      <p className="mt-3 text-lg font-medium">{section.headline}</p>
-                      <ul className="mt-4 space-y-2">
-                        {section.points.map((point) => (
-                          <li key={point} className="flex gap-3 text-sm text-muted-foreground">
-                            <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
-                            <span>{point}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <div className={`relative bg-muted/40 ${isReversed ? "lg:order-1" : ""}`}>
-                      {section.images ? (
-                        <div className="grid h-full gap-3 p-4 sm:grid-cols-2">
-                          {section.images.map((img) => (
-                            <img
-                              key={img.src}
-                              src={img.src}
-                              alt={img.alt}
-                              loading="lazy"
-                              className="h-full w-full rounded-lg border border-border object-contain shadow-paper"
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="flex h-64 items-center justify-center lg:h-full">
-                          <div className="flex size-24 items-center justify-center rounded-full bg-primary/10">
-                            <section.icon className="size-12 text-primary" />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="mt-14">
-          <h2 className="text-2xl sm:text-3xl">How students learn</h2>
-          <p className="mt-2 max-w-2xl text-muted-foreground">
-            The workspace is built for effort and understanding, not shortcuts.
+        {/* Hero */}
+        <section className="py-12 lg:py-16">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            IGCSE · A-Level · IB
           </p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            {studentTools.map((tool) => (
-              <article key={tool.title} className="paper p-6">
-                <tool.icon className="size-6 text-accent" />
-                <h3 className="mt-4 text-lg">{tool.title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{tool.body}</p>
+          <h1 className="mt-4 max-w-4xl text-4xl leading-[1.05] sm:text-5xl lg:text-6xl">
+            Teach the lesson. Set the past paper. One place for both.
+          </h1>
+          <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
+            PastPaperHelper.AI gives every class two things that work together: a live
+            split-screen lesson workspace for your slides and notes, and past-paper homework that
+            marks itself against the mark scheme and coaches each student until they can earn the
+            marks.
+          </p>
+
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Button asChild size="lg">
+              <Link to="/auth" search={{ mode: "signup" }}>
+                Create an account
+              </Link>
+            </Button>
+            <Button size="lg" variant="secondary" onClick={handleDemoLogin} disabled={demoLoading}>
+              {demoLoading ? "Signing in..." : "Try the demo"}
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link to="/auth">I have a class code</Link>
+            </Button>
+          </div>
+
+          <div className="mt-10 grid gap-4 sm:grid-cols-2">
+            {pillars.map((pillar) => (
+              <div key={pillar.key} className="paper flex items-start gap-4 p-5">
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                  <pillar.icon className="size-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-lg leading-tight">{pillar.title}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{pillar.headline}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Pillar one: homework */}
+        <section className="mt-6 space-y-10">
+          {pillars.map((pillar, index) => (
+            <article key={pillar.key} className="paper overflow-hidden">
+              <div className="grid lg:grid-cols-2">
+                <div className={`p-6 sm:p-8 lg:p-10 ${index === 1 ? "lg:order-2" : ""}`}>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    {pillar.kicker} · {pillar.title}
+                  </p>
+                  <h2 className="mt-3 text-2xl sm:text-3xl">{pillar.headline}</h2>
+                  <ul className="mt-5 space-y-3">
+                    {pillar.points.map((point) => (
+                      <li key={point} className="flex gap-3 text-sm text-muted-foreground">
+                        <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
+                        <span>{point}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <ul className="mt-6 flex flex-wrap gap-2 text-xs">
+                    {pillar.stats.map((stat) => (
+                      <li
+                        key={stat.label}
+                        className="flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-card-foreground"
+                      >
+                        <stat.icon className="size-3.5 text-primary" />
+                        {stat.label}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className={`bg-muted/40 p-4 sm:p-6 ${index === 1 ? "lg:order-1" : ""}`}>
+                  {pillar.key === "materials" ? (
+                    <div className="grid h-full gap-3 sm:grid-cols-2">
+                      <img
+                        src={lessonWorkspaceImg.url}
+                        alt="Split-screen lesson workspace with notes canvas, PowerPoint slide and AI lesson tutor"
+                        loading="lazy"
+                        className="h-full w-full rounded-lg border border-border object-contain shadow-paper"
+                      />
+                      <img
+                        src={originalPptImg.url}
+                        alt="Original PowerPoint view shown inside the lesson materials panel"
+                        loading="lazy"
+                        className="h-full w-full rounded-lg border border-border object-contain shadow-paper"
+                      />
+                    </div>
+                  ) : (
+                    <div className="ink-panel h-full p-5">
+                      <p className="text-xs uppercase tracking-[0.2em] opacity-70">Live coaching</p>
+                      <div className="mt-4 space-y-3 text-sm">
+                        <div className="rounded-lg bg-primary-foreground/10 p-3">
+                          <p className="opacity-70">Question · 4 marks</p>
+                          <p className="mt-1">Explain why the rate of reaction decreases over time.</p>
+                        </div>
+                        <div className="rounded-lg bg-primary-foreground/10 p-3">
+                          <p className="opacity-70">Student</p>
+                          <p className="mt-1">Because the reaction gets colder.</p>
+                        </div>
+                        <div className="rounded-lg bg-accent p-3 text-accent-foreground">
+                          <p className="text-xs font-semibold uppercase tracking-wide">
+                            1 / 4 · keep going
+                          </p>
+                          <p className="mt-1">
+                            What happens to the number of reactant particles in the flask as the
+                            reaction proceeds?
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </article>
+          ))}
+        </section>
+
+        {/* Upload once */}
+        <section className="paper mt-14 p-6 sm:p-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-accent/60">
+              <Upload className="size-6 text-accent-foreground" />
+            </div>
+            <div>
+              <h2 className="text-xl sm:text-2xl">Upload once, use it both ways</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                The same class holds your teaching resources and your homework. Present a unit in
+                the lesson workspace, then set questions from the paper you just taught — students
+                move between materials and homework from one sidebar.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Also included */}
+        <section className="mt-14">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Also included
+          </p>
+          <h2 className="mt-2 text-2xl sm:text-3xl">Quizzes and games, in the same class</h2>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            {alsoIncluded.map((item) => (
+              <article key={item.title} className="paper p-6">
+                <div className="flex size-10 items-center justify-center rounded-full bg-primary/10">
+                  <item.icon className="size-5 text-primary" />
+                </div>
+                <h3 className="mt-4 text-lg">{item.title}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{item.body}</p>
               </article>
             ))}
           </div>
         </section>
 
+        {/* Integrity */}
         <section className="mt-14">
           <h2 className="text-2xl sm:text-3xl">You stay in control</h2>
-          <p className="mt-2 max-w-2xl text-muted-foreground">
-            Integrity and visibility are built in, not bolted on.
-          </p>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
-            {teacherControls.map((item) => (
-              <article key={item.title} className="paper border-destructive/30 p-6">
+            {integrity.map((item) => (
+              <article key={item.title} className="paper p-6">
                 <item.icon className="size-6 text-destructive" />
                 <h3 className="mt-4 text-lg">{item.title}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{item.body}</p>
               </article>
             ))}
           </div>
-          <div className="paper mt-4 p-6">
-            <div className="flex items-start gap-4">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-secondary">
-                <MessageSquare className="size-6 text-secondary-foreground" />
-              </div>
-              <div>
-                <h3 className="text-lg">Announcements and one-to-one messaging</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Teachers post class bulletins, and students can message the teacher about a specific
-                  question. Students can never message each other.
-                </p>
-              </div>
-            </div>
-          </div>
         </section>
 
-        <section className="paper mt-14 p-6">
+        {/* How it works */}
+        <section className="paper mt-14 p-6 sm:p-8">
           <h2 className="text-2xl sm:text-3xl">How it works</h2>
           <ol className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {steps.map((item) => (
@@ -468,15 +382,16 @@ function Landing() {
           </ol>
         </section>
 
+        {/* CTA */}
         <section className="paper mt-14 p-8 text-center">
           <div className="mx-auto flex max-w-2xl flex-col items-center gap-4">
             <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
               <GraduationCap className="size-6 text-primary" />
             </div>
-            <h2 className="text-2xl sm:text-3xl">Try it with a demo account</h2>
+            <h2 className="text-2xl sm:text-3xl">See it from both sides</h2>
             <p className="text-muted-foreground">
-              Sign in with the demo teacher account and switch to the student view at any time to see
-              exactly what your class will see.
+              Open the demo account, teach from the lesson workspace, then switch to the student
+              view to see exactly what your class sees.
             </p>
             <div className="mt-2 flex flex-wrap justify-center gap-3">
               <Button asChild size="lg">
@@ -484,25 +399,19 @@ function Landing() {
                   Create an account
                 </Link>
               </Button>
+              <Button size="lg" variant="secondary" onClick={handleDemoLogin} disabled={demoLoading}>
+                {demoLoading ? "Signing in..." : "Try the demo"}
+              </Button>
               <Button asChild size="lg" variant="outline">
                 <Link to="/auth">Sign in</Link>
-              </Button>
-              <Button
-                size="lg"
-                variant="secondary"
-                onClick={handleDemoLogin}
-                disabled={demoLoading}
-              >
-                {demoLoading ? "Signing in..." : "Try the demo"}
               </Button>
             </div>
           </div>
         </section>
-
       </main>
 
       <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
-        PastPaperHelper.AI · homework, marked and taught.
+        PastPaperHelper.AI · lessons taught, homework marked.
       </footer>
     </div>
   );

@@ -279,6 +279,31 @@ async function callGateway(
   return payload.choices?.[0]?.message?.content ?? "";
 }
 
+type DetailResult = ExtractedQuestion & { label: string };
+
+function parseInventoryItems(parsed: Record<string, unknown>, taken: Set<string>): InventoryItem[] {
+  const items = Array.isArray(parsed["items"]) ? (parsed["items"] as unknown[]) : [];
+  const out: InventoryItem[] = [];
+  for (const raw of items) {
+    const item = raw as Record<string, unknown>;
+    const label = String(item["label"] ?? "").trim();
+    if (!label || taken.has(label.toLowerCase())) continue;
+    taken.add(label.toLowerCase());
+    const pages = Array.isArray(item["pages"])
+      ? (item["pages"] as unknown[])
+          .map((n) => Math.round(Number(n)))
+          .filter((n) => Number.isFinite(n) && n > 0)
+      : [];
+    out.push({
+      label,
+      marks: Math.max(1, Math.round(Number(item["marks"]) || 1)),
+      pages: [...new Set(pages)].slice(0, 3),
+      kind: String(item["kind"] ?? "").trim().toLowerCase() || undefined,
+    });
+  }
+  return out;
+}
+
 async function runInventory(
   key: string,
   header: string,
@@ -289,31 +314,40 @@ async function runInventory(
       { type: "text", text: `${header}\n\nIndex every answerable question part now.` },
       ...documents,
     ]);
-    const parsed = parseJson(text);
-    const items = Array.isArray(parsed["items"]) ? (parsed["items"] as unknown[]) : [];
-    const seen = new Set<string>();
-    const out: InventoryItem[] = [];
-    for (const raw of items) {
-      const item = raw as Record<string, unknown>;
-      const label = String(item["label"] ?? "").trim();
-      if (!label || seen.has(label.toLowerCase())) continue;
-      seen.add(label.toLowerCase());
-      const pages = Array.isArray(item["pages"])
-        ? (item["pages"] as unknown[])
-            .map((n) => Math.round(Number(n)))
-            .filter((n) => Number.isFinite(n) && n > 0)
-        : [];
-      out.push({
-        label,
-        marks: Math.max(1, Math.round(Number(item["marks"]) || 1)),
-        pages: [...new Set(pages)].slice(0, 3),
-      });
-    }
-    return out.slice(0, 120);
+    return parseInventoryItems(parseJson(text), new Set<string>()).slice(0, MAX_ITEMS);
   } catch {
     return [];
   }
 }
+
+async function runSweep(
+  key: string,
+  header: string,
+  documents: Array<Record<string, unknown>>,
+  found: InventoryItem[],
+): Promise<InventoryItem[]> {
+  try {
+    const text = await callGateway(key, SWEEP_SYSTEM, [
+      {
+        type: "text",
+        text: [
+          header,
+          "",
+          "Already indexed labels:",
+          found.map((f) => `- ${f.label}`).join("\n"),
+          "",
+          "List every answerable question part that is missing from that list.",
+        ].join("\n"),
+      },
+      ...documents,
+    ]);
+    const taken = new Set(found.map((f) => f.label.toLowerCase()));
+    return parseInventoryItems(parseJson(text), taken).slice(0, MAX_ITEMS);
+  } catch {
+    return [];
+  }
+}
+
 
 async function runDetail(
   key: string,

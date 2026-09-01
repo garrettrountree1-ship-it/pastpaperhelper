@@ -16,7 +16,7 @@ import { toast } from "sonner";
 
 import { OfficeDocView } from "@/components/materials/OfficeDocView";
 import { PdfDocView } from "@/components/materials/PdfDocView";
-import { PowerPointView } from "@/components/materials/PowerPointView";
+import { SlideDeckView } from "@/components/materials/SlideDeckView";
 import { prerenderUploadedMaterial } from "@/lib/office-prerender";
 import { docFormat } from "@/lib/doc-kind";
 

@@ -316,10 +316,33 @@ function ClassPicker({ role }: { role: "teacher" | "student" }) {
                 </span>
               </Link>
               {role === "teacher" && klass.canManage ? (
-                <div className="mt-4 flex justify-end">
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Class code
+                    </span>
+                    <code className="rounded-md border border-border bg-muted px-2 py-1 font-mono text-sm tracking-widest">
+                      {klass.joinCode ?? "—"}
+                    </code>
+                    {klass.joinCode ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          navigator.clipboard
+                            ?.writeText(klass.joinCode!)
+                            .then(() => toast.success("Class code copied — send it to your students"))
+                            .catch(() => toast.error("Could not copy. Select the code manually."));
+                        }}
+                      >
+                        Copy
+                      </Button>
+                    ) : null}
+                  </div>
                   <ManageClassDialog klass={klass} onChanged={refresh} />
                 </div>
               ) : null}
+
             </div>
           ))}
         </div>

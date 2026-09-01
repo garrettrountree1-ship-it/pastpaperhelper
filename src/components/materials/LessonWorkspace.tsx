@@ -476,6 +476,8 @@ export function LessonWorkspace({
                     sectionId={active.id}
                     concept={concept}
                     onConceptHandled={() => setConcept(null)}
+                    turns={tutorTurns}
+                    onTurnsChange={setTutorTurns}
                   />
                   <Button
                     size="icon"

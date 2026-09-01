@@ -1,10 +1,13 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { BookOpen, Gamepad2, NotebookPen, Timer } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { BookOpen, Gamepad2, NotebookPen, Timer, Users } from "lucide-react";
 
 import { AppHeader } from "@/components/AppHeader";
 import { useMyClasses } from "@/components/SectionShell";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { listClassRoster } from "@/lib/materials.functions";
 import { SECTIONS, type SectionKey } from "@/lib/sections";
 
 export const Route = createFileRoute("/_authenticated/classes/$classId/")({

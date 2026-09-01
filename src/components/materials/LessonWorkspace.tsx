@@ -371,31 +371,26 @@ export function LessonWorkspace({
             >
               <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
                 <p className="text-sm font-medium">Document</p>
-                {canManage ? (
-                  <Select
-                    value={currentDocId ?? "none"}
-                    onValueChange={(value) => {
-                      setDocOverride(value === "none" ? null : value);
-                      attachMutation.mutate(value === "none" ? null : value);
-                    }}
-                  >
-                    <SelectTrigger className="ml-auto h-8 w-[190px] text-xs">
-                      <SelectValue placeholder="Choose a resource" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No document</SelectItem>
-                      {unit.materials.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {m.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <span className="ml-auto truncate text-xs text-muted-foreground">
-                    {material?.title ?? "None attached"}
-                  </span>
-                )}
+                <Select
+                  value={currentDocId ?? "none"}
+                  onValueChange={(value) => {
+                    setDocOverride(value === "none" ? null : value);
+                    if (canManage) attachMutation.mutate(value === "none" ? null : value);
+                  }}
+                >
+                  <SelectTrigger className="ml-auto h-8 w-[190px] text-xs">
+                    <SelectValue placeholder="Choose a resource" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No document</SelectItem>
+                    {unit.materials.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
               </div>
 
               <div className="min-h-0 flex-1 p-2">

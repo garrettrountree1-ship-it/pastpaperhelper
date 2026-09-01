@@ -127,8 +127,42 @@ export async function extractQuestionsFromPapers(
     results.push(...(await runBatches(key, header, documents, missing)));
   }
 
-  return dedupe(results);
+  return renumberQuestions(dedupe(results));
 }
+
+const RENUMBER_HEAD = new RegExp(
+  "^\\s*\\(?(\\d{1,3})\\)?\\s*[.)]?\\s*((?:\\(\\s*(?:i{1,3}|iv|v|vi{1,3}|ix|x|[a-z])\\s*\\)\\s*)*)",
+  "i",
+);
+
+/**
+ * Teachers often paste questions with wrong, repeated or missing numbering.
+ * Questions are renumbered 1, 2, 3 ... in upload order, while printed
+ * sub-part letters (a)(i) are kept and regrouped under the new number.
+ */
+export function renumberQuestions(items: ExtractedQuestion[]): ExtractedQuestion[] {
+  let counter = 0;
+  let prevMain: string | null = null;
+  let usedSubs = new Set<string>();
+
+  return items.map((item) => {
+    const head = RENUMBER_HEAD.exec(item.questionText);
+    const main = head?.[1] ?? null;
+    const sub = (head?.[2] ?? "").replace(/\s+/g, "").toLowerCase();
+    const body = head ? item.questionText.slice(head[0].length).replace(/^[\s.):-]+/, "") : item.questionText;
+
+    if (!sub || main === null || main !== prevMain || usedSubs.has(sub)) {
+      counter += 1;
+      usedSubs = new Set<string>();
+    }
+    prevMain = main;
+    if (sub) usedSubs.add(sub);
+
+    const label = `${counter}${sub}`;
+    return { ...item, questionText: `${label} ${body}`.trim() };
+  });
+}
+
 
 async function runBatches(
   key: string,

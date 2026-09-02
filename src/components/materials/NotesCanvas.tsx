@@ -3,13 +3,16 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   Eraser,
   ImagePlus,
+  Mic,
   Minus,
   PenLine,
   Plus,
   RefreshCw,
   Sparkles,
   SquarePlus,
+  Square,
   Type,
+  Volume2,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -21,9 +24,12 @@ import {
   generateSectionSummary,
   saveSectionNotes,
   signNotePaths,
+  transcribeVoiceNote,
   type NoteBlock,
 } from "@/lib/notes.functions";
 import { collectSummaryVisuals } from "@/lib/summary-visuals";
+import { blobToBase64, startVoiceRecording } from "@/lib/voice-recorder";
+
 
 
 const PEN_COLORS = ["#111827", "#dc2626", "#2563eb", "#16a34a", "#ea580c", "#7c3aed"];

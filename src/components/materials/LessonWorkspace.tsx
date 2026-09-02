@@ -383,7 +383,21 @@ export function LessonWorkspace({
           )}
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2 lg:flex-row lg:overflow-hidden">
+        <div
+          className={`relative flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto lg:flex-row lg:overflow-hidden ${presenting ? "p-0" : "p-2"}`}
+        >
+          {presenting ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="absolute right-2 top-2 z-50 shadow"
+              onClick={togglePresentation}
+              title="Exit presentation (Esc)"
+            >
+              <Minimize className="size-4" />
+              Exit presentation
+            </Button>
+          ) : null}
           <div
             ref={rowRef}
             className="flex min-w-0 flex-col gap-2 lg:h-full lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-0"

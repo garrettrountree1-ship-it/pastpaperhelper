@@ -471,6 +471,33 @@ export function NotesCanvas({
             <ImagePlus className="size-4" />
             Image
           </Button>
+          <Button
+            size="sm"
+            variant={recording === "dictate" ? "destructive" : "outline"}
+            disabled={busyVoice || recording === "note"}
+            onClick={() =>
+              recording === "dictate" ? void finishRecording() : void beginRecording("dictate")
+            }
+          >
+            {recording === "dictate" ? <Square className="size-4" /> : <Mic className="size-4" />}
+            {recording === "dictate" ? "Stop & insert text" : "Voice to text"}
+          </Button>
+          <Button
+            size="sm"
+            variant={recording === "note" ? "destructive" : "outline"}
+            disabled={busyVoice || recording === "dictate"}
+            onClick={() =>
+              recording === "note" ? void finishRecording() : void beginRecording("note")
+            }
+          >
+            {recording === "note" ? <Square className="size-4" /> : <Volume2 className="size-4" />}
+            {recording === "note" ? "Stop & save note" : "Voice note"}
+          </Button>
+          {busyVoice ? (
+            <span className="text-xs text-muted-foreground">Processing audio…</span>
+          ) : null}
+
+
 
           <input
             ref={fileInput}

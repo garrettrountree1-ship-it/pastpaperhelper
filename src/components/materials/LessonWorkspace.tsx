@@ -3,6 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft,
   CalendarDays,
+  Maximize,
+  Minimize,
   Pencil,
   PanelRightClose,
   PanelRightOpen,
@@ -100,6 +102,7 @@ export function LessonWorkspace({
   const [docOverride, setDocOverride] = useState<string | null>(initialMaterialId ?? null);
   const [term, setTerm] = useState("");
   const [tutorOpen, setTutorOpen] = useState(true);
+  const [presenting, setPresenting] = useState(false);
   // The tutor thread belongs to the signed-in account only.
   const { turns: tutorTurns, setTurns: setTutorTurns } = useTutorThread(`class:${classId}`);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -124,6 +127,42 @@ export function LessonWorkspace({
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+  }
+
+  // Presentation mode: hide the top chrome and expand the three panes to fill
+  // the whole viewport. ESC or the floating button exits.
+  useEffect(() => {
+    if (!presenting) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPresenting(false);
+    };
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement) setPresenting(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+    };
+  }, [presenting]);
+
+  async function togglePresentation() {
+    const next = !presenting;
+    setPresenting(next);
+    if (next) {
+      try {
+        await document.documentElement.requestFullscreen();
+      } catch {
+        // Fullscreen is optional; the CSS expansion still covers the viewport.
+      }
+    } else {
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+      } catch {
+        // ignore
+      }
+    }
   }
 
   const sections = useQuery({
@@ -214,7 +253,7 @@ export function LessonWorkspace({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
-      <header className="flex flex-wrap items-center gap-3 border-b px-4 py-2">
+      <header className={`flex flex-wrap items-center gap-3 border-b px-4 py-2 ${presenting ? "hidden" : ""}`}>
         <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2">
           <ArrowLeft className="size-4" />
           Close
@@ -306,10 +345,19 @@ export function LessonWorkspace({
               <UnitPlanDialog unit={unit} onSaved={onUnitChanged} />
             </>
           ) : null}
+          <Button
+            size="sm"
+            variant={presenting ? "default" : "outline"}
+            onClick={togglePresentation}
+            title={presenting ? "Exit presentation" : "Present to students"}
+          >
+            {presenting ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
+            <span className="hidden sm:inline">{presenting ? "Exit" : "Present"}</span>
+          </Button>
         </div>
       </header>
 
-      {active ? (
+      {active && !presenting ? (
         <PlanStrip
           key={active.id}
           unit={unit}
@@ -335,7 +383,21 @@ export function LessonWorkspace({
           )}
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2 lg:flex-row lg:overflow-hidden">
+        <div
+          className={`relative flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto lg:flex-row lg:overflow-hidden ${presenting ? "p-0" : "p-2"}`}
+        >
+          {presenting ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="absolute right-2 top-2 z-50 shadow"
+              onClick={togglePresentation}
+              title="Exit presentation (Esc)"
+            >
+              <Minimize className="size-4" />
+              Exit presentation
+            </Button>
+          ) : null}
           <div
             ref={rowRef}
             className="flex min-w-0 flex-col gap-2 lg:h-full lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-0"

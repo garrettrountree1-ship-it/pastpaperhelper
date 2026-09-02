@@ -2,7 +2,16 @@ import { X } from "lucide-react";
 import { useRef, useState } from "react";
 
 export type SlideStroke = { points: Array<{ x: number; y: number }>; color: string; width: number };
-export type SlideTextBox = { x: number; y: number; text: string; color: string; size: number };
+export type SlideTextBox = {
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+  size: number;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+};
 export type SlideAnnotation = { strokes: SlideStroke[]; texts: SlideTextBox[] };
 
 export const emptyAnnotation: SlideAnnotation = { strokes: [], texts: [] };

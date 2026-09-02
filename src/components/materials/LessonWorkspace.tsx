@@ -102,6 +102,7 @@ export function LessonWorkspace({
   const [docOverride, setDocOverride] = useState<string | null>(initialMaterialId ?? null);
   const [term, setTerm] = useState("");
   const [tutorOpen, setTutorOpen] = useState(true);
+  const [presenting, setPresenting] = useState(false);
   // The tutor thread belongs to the signed-in account only.
   const { turns: tutorTurns, setTurns: setTutorTurns } = useTutorThread(`class:${classId}`);
   const [editingId, setEditingId] = useState<string | null>(null);

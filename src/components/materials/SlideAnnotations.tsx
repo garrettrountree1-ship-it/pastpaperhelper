@@ -1,5 +1,8 @@
 import { X } from "lucide-react";
 import { useRef, useState } from "react";
+import { useUndoHistory } from "@/hooks/use-undo-history";
+import { textShortcutOf } from "@/lib/text-shortcuts";
+
 
 export type SlideStroke = { points: Array<{ x: number; y: number }>; color: string; width: number };
 export type SlideTextBox = {

@@ -124,13 +124,55 @@ export function LessonWorkspace({
   const [split, setSplit] = useState(50);
   // "split" shows both panes; "canvas"/"doc" give one pane the full width.
   const [paneMode, setPaneMode] = useState<"split" | "canvas" | "doc">("split");
-  // Side-by-side columns, or stacked rows (one above the other).
-  const [stacked, setStacked] = useState(false);
+  // Side-by-side columns, stacked rows, or layered (one window floating on top).
+  const [layout, setLayout] = useState<"split" | "stacked" | "layered">("split");
+  const stacked = layout === "stacked";
   const canvasSize = paneMode === "canvas" ? "100%" : paneMode === "doc" ? "0%" : `${split}%`;
   const docSize =
     paneMode === "doc" ? "100%" : paneMode === "canvas" ? "0%" : `calc(${100 - split}% - 0.5rem)`;
   const canvasStyle = stacked ? { height: canvasSize } : { width: canvasSize };
   const docStyle = stacked ? { height: docSize } : { width: docSize };
+
+  // Layered mode: one pane fills the area, the other floats above it in a
+  // window that can be dragged, stretched, minimised or maximised.
+  const [frontPane, setFrontPane] = useState<"canvas" | "doc">("canvas");
+  const [floatRect, setFloatRect] = useState({ x: 6, y: 6, w: 52, h: 62 });
+  const [floatState, setFloatState] = useState<"window" | "min" | "max">("window");
+
+  function startFloatDrag(
+    event: React.PointerEvent<HTMLElement>,
+    mode: "move" | "resize",
+  ) {
+    event.preventDefault();
+    const row = rowRef.current;
+    if (!row) return;
+    setFloatState("window");
+    const rect = row.getBoundingClientRect();
+    const start = { px: event.clientX, py: event.clientY, ...floatRect };
+    const onMove = (move: PointerEvent) => {
+      const dx = ((move.clientX - start.px) / rect.width) * 100;
+      const dy = ((move.clientY - start.py) / rect.height) * 100;
+      setFloatRect(() =>
+        mode === "move"
+          ? {
+              ...start,
+              x: Math.min(100 - start.w, Math.max(0, start.x + dx)),
+              y: Math.min(100 - start.h, Math.max(0, start.y + dy)),
+            }
+          : {
+              ...start,
+              w: Math.min(100 - start.x, Math.max(20, start.w + dx)),
+              h: Math.min(100 - start.y, Math.max(15, start.h + dy)),
+            },
+      );
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
 
   function startDrag(event: React.PointerEvent<HTMLDivElement>) {
     event.preventDefault();

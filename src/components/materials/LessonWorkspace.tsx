@@ -253,7 +253,7 @@ export function LessonWorkspace({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
-      <header className="flex flex-wrap items-center gap-3 border-b px-4 py-2">
+      <header className={`flex flex-wrap items-center gap-3 border-b px-4 py-2 ${presenting ? "hidden" : ""}`}>
         <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2">
           <ArrowLeft className="size-4" />
           Close

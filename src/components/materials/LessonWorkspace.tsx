@@ -604,10 +604,12 @@ export function LessonWorkspace({
               >
                 <Layers className="size-4" />
                 Layered
+              </Button>
               {canManage ? (
                 <FormativeCheckButton classId={classId} sectionId={active?.id ?? null} />
               ) : null}
               <Button size="sm" variant="secondary" onClick={togglePresentation} title="Exit presentation (Esc)">
+
 
                 <Minimize className="size-4" />
                 Exit

@@ -2,16 +2,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft,
+  ArrowLeftRight,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
   Columns2,
+  Layers,
+  Minus,
   Rows2,
 
   Maximize,
   Minimize,
+  Move,
   Pencil,
   PanelRightClose,
   PanelRightOpen,
@@ -120,13 +124,55 @@ export function LessonWorkspace({
   const [split, setSplit] = useState(50);
   // "split" shows both panes; "canvas"/"doc" give one pane the full width.
   const [paneMode, setPaneMode] = useState<"split" | "canvas" | "doc">("split");
-  // Side-by-side columns, or stacked rows (one above the other).
-  const [stacked, setStacked] = useState(false);
+  // Side-by-side columns, stacked rows, or layered (one window floating on top).
+  const [layout, setLayout] = useState<"split" | "stacked" | "layered">("split");
+  const stacked = layout === "stacked";
   const canvasSize = paneMode === "canvas" ? "100%" : paneMode === "doc" ? "0%" : `${split}%`;
   const docSize =
     paneMode === "doc" ? "100%" : paneMode === "canvas" ? "0%" : `calc(${100 - split}% - 0.5rem)`;
   const canvasStyle = stacked ? { height: canvasSize } : { width: canvasSize };
   const docStyle = stacked ? { height: docSize } : { width: docSize };
+
+  // Layered mode: one pane fills the area, the other floats above it in a
+  // window that can be dragged, stretched, minimised or maximised.
+  const [frontPane, setFrontPane] = useState<"canvas" | "doc">("canvas");
+  const [floatRect, setFloatRect] = useState({ x: 6, y: 6, w: 52, h: 62 });
+  const [floatState, setFloatState] = useState<"window" | "min" | "max">("window");
+
+  function startFloatDrag(
+    event: React.PointerEvent<HTMLElement>,
+    mode: "move" | "resize",
+  ) {
+    event.preventDefault();
+    const row = rowRef.current;
+    if (!row) return;
+    setFloatState("window");
+    const rect = row.getBoundingClientRect();
+    const start = { px: event.clientX, py: event.clientY, ...floatRect };
+    const onMove = (move: PointerEvent) => {
+      const dx = ((move.clientX - start.px) / rect.width) * 100;
+      const dy = ((move.clientY - start.py) / rect.height) * 100;
+      setFloatRect(() =>
+        mode === "move"
+          ? {
+              ...start,
+              x: Math.min(100 - start.w, Math.max(0, start.x + dx)),
+              y: Math.min(100 - start.h, Math.max(0, start.y + dy)),
+            }
+          : {
+              ...start,
+              w: Math.min(100 - start.x, Math.max(20, start.w + dx)),
+              h: Math.min(100 - start.y, Math.max(15, start.h + dy)),
+            },
+      );
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
 
   function startDrag(event: React.PointerEvent<HTMLDivElement>) {
     event.preventDefault();
@@ -272,6 +318,121 @@ export function LessonWorkspace({
     enabled: Boolean(material),
   });
 
+  // The two panes are built once so they can be arranged side by side, stacked,
+  // or layered as floating windows without duplicating their markup.
+  const canvasNode = active ? (
+    <NotesCanvas
+      classId={classId}
+      sectionId={active.id}
+      canEdit={canManage}
+      initialBlocks={active.notes_blocks}
+      initialSummary={active.ai_summary}
+      initialTab={initialTab}
+      documentMaterialId={material?.id ?? null}
+      documentTitle={material?.title ?? null}
+      onConcept={(value) => {
+        setConcept(value);
+        setTutorOpen(true);
+      }}
+      onSaved={invalidateSections}
+    />
+  ) : null;
+
+  const docNode = (
+    <div className="flex h-full min-h-0 flex-col rounded-lg border bg-card">
+      <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
+        <p className="text-sm font-medium">Lesson Materials</p>
+        <Select
+          value={currentDocId ?? "none"}
+          onValueChange={(value) => {
+            setDocOverride(value === "none" ? null : value);
+            if (canManage) attachMutation.mutate(value === "none" ? null : value);
+          }}
+        >
+          <SelectTrigger className="ml-auto h-8 w-[190px] text-xs">
+            <SelectValue placeholder="Choose a resource" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">No document</SelectItem>
+            {unit.materials.map((m) => (
+              <SelectItem key={m.id} value={m.id}>
+                {m.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="min-h-0 flex-1 p-2">
+        {!material ? (
+          <p className="p-4 text-sm text-muted-foreground">
+            {canManage
+              ? "Attach a PDF, slide deck or document from this unit's resources."
+              : "No document attached to this section."}
+          </p>
+        ) : docUrl.isLoading || !docUrl.data ? (
+          <Skeleton className="h-full w-full" />
+        ) : material.kind === "video" ? (
+          <video src={docUrl.data.url} controls className="h-full w-full rounded-md" />
+        ) : material.kind === "image" ? (
+          <img
+            src={docUrl.data.url}
+            alt={material.title}
+            className="h-full w-full rounded-md object-contain"
+          />
+        ) : docFormat(material.storage_path ?? material.title) === "pptx" ? (
+          <SlideDeckView
+            url={docUrl.data.url}
+            title={material.title}
+            cacheKey={`material:${material.id}`}
+            materialId={material.id}
+            canPrepareShared={canManage}
+            canDownload={canManage || material.allow_download !== false}
+          />
+        ) : docFormat(material.storage_path ?? material.title) === "docx" ? (
+          <OfficeDocView
+            url={docUrl.data.url}
+            title={material.title}
+            cacheKey={`material:${material.id}`}
+            materialId={material.id}
+            canPrepareShared={canManage}
+            canDownload={canManage || material.allow_download !== false}
+            format="docx"
+          />
+        ) : (
+          <PdfDocView
+            url={docUrl.data.url}
+            title={material.title}
+            canDownload={canManage || material.allow_download !== false}
+            cacheKey={`material:${material.id}`}
+          />
+        )}
+      </div>
+
+      <div className="flex gap-2 border-t p-2">
+        <Input
+          value={term}
+          onChange={(event) => setTerm(event.target.value)}
+          placeholder="A term from this document…"
+          className="h-8 text-xs"
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!term.trim()}
+          onClick={() => {
+            setConcept(term.trim());
+            setTutorOpen(true);
+            setTerm("");
+          }}
+        >
+          Explain
+        </Button>
+      </div>
+    </div>
+  );
+
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
       <header className={`flex flex-wrap items-center gap-3 border-b px-4 py-2 ${presenting ? "hidden" : ""}`}>
@@ -411,8 +572,8 @@ export function LessonWorkspace({
             <div className="absolute bottom-3 left-3 z-50 flex items-center gap-1 rounded-md border bg-background/95 p-1 shadow">
               <Button
                 size="sm"
-                variant={stacked ? "ghost" : "default"}
-                onClick={() => setStacked(false)}
+                variant={layout === "split" ? "default" : "ghost"}
+                onClick={() => setLayout("split")}
                 title="Split screen (side by side)"
               >
                 <Columns2 className="size-4" />
@@ -420,12 +581,21 @@ export function LessonWorkspace({
               </Button>
               <Button
                 size="sm"
-                variant={stacked ? "default" : "ghost"}
-                onClick={() => setStacked(true)}
+                variant={layout === "stacked" ? "default" : "ghost"}
+                onClick={() => setLayout("stacked")}
                 title="Stacked windows (one above the other)"
               >
                 <Rows2 className="size-4" />
                 Stacked
+              </Button>
+              <Button
+                size="sm"
+                variant={layout === "layered" ? "default" : "ghost"}
+                onClick={() => setLayout("layered")}
+                title="Layered windows (one floating on top of the other)"
+              >
+                <Layers className="size-4" />
+                Layered
               </Button>
               <Button size="sm" variant="secondary" onClick={togglePresentation} title="Exit presentation (Esc)">
                 <Minimize className="size-4" />
@@ -433,6 +603,116 @@ export function LessonWorkspace({
               </Button>
             </div>
           ) : null}
+          {layout === "layered" ? (
+            <div
+              ref={rowRef}
+              className="relative min-h-[80vh] min-w-0 lg:h-full lg:min-h-0 lg:flex-1"
+            >
+              {/* Back window fills the area */}
+              <div className="absolute inset-0">
+                {frontPane === "canvas" ? docNode : canvasNode}
+              </div>
+
+              {/* Front window floats on top: drag, stretch, minimise, maximise */}
+              <div
+                className="absolute z-30 flex flex-col overflow-hidden rounded-lg border bg-background shadow-xl"
+                style={
+                  floatState === "max"
+                    ? { left: 0, top: 0, width: "100%", height: "100%" }
+                    : floatState === "min"
+                      ? {
+                          left: `${floatRect.x}%`,
+                          top: `${floatRect.y}%`,
+                          width: `${floatRect.w}%`,
+                          height: "2.25rem",
+                        }
+                      : {
+                          left: `${floatRect.x}%`,
+                          top: `${floatRect.y}%`,
+                          width: `${floatRect.w}%`,
+                          height: `${floatRect.h}%`,
+                        }
+                }
+              >
+                <div
+                  onPointerDown={(event) => {
+                    if ((event.target as HTMLElement).closest("button")) return;
+                    startFloatDrag(event, "move");
+                  }}
+                  onDoubleClick={() =>
+                    setFloatState(floatState === "max" ? "window" : "max")
+                  }
+                  className="flex h-9 shrink-0 cursor-move items-center gap-1 border-b bg-muted/60 px-2"
+                  title="Drag to move, double-click to maximise"
+                >
+                  <Move className="size-3.5 text-muted-foreground" />
+                  <span className="truncate text-xs font-medium">
+                    {frontPane === "canvas" ? "Lesson canvas" : "Lesson Materials"}
+                  </span>
+                  <div className="ml-auto flex items-center gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-6"
+                      title="Swap which window is on top"
+                      aria-label="Swap which window is on top"
+                      onClick={() =>
+                        setFrontPane(frontPane === "canvas" ? "doc" : "canvas")
+                      }
+                    >
+                      <ArrowLeftRight className="size-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-6"
+                      title={floatState === "min" ? "Restore window" : "Minimise window"}
+                      aria-label={floatState === "min" ? "Restore window" : "Minimise window"}
+                      onClick={() =>
+                        setFloatState(floatState === "min" ? "window" : "min")
+                      }
+                    >
+                      {floatState === "min" ? (
+                        <ChevronDown className="size-3.5" />
+                      ) : (
+                        <Minus className="size-3.5" />
+                      )}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-6"
+                      title={floatState === "max" ? "Restore window" : "Maximise window"}
+                      aria-label={floatState === "max" ? "Restore window" : "Maximise window"}
+                      onClick={() =>
+                        setFloatState(floatState === "max" ? "window" : "max")
+                      }
+                    >
+                      {floatState === "max" ? (
+                        <Minimize className="size-3.5" />
+                      ) : (
+                        <Maximize className="size-3.5" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {floatState === "min" ? null : (
+                  <div className="min-h-0 flex-1">
+                    {frontPane === "canvas" ? canvasNode : docNode}
+                  </div>
+                )}
+
+                {floatState === "window" ? (
+                  <div
+                    onPointerDown={(event) => startFloatDrag(event, "resize")}
+                    className="absolute bottom-0 right-0 z-10 size-4 cursor-nwse-resize rounded-tl border-l border-t bg-muted"
+                    title="Drag to stretch this window"
+                  />
+                ) : null}
+              </div>
+            </div>
+          ) : (
           <div
             ref={rowRef}
             className={`flex min-w-0 flex-col gap-2 lg:h-full lg:min-h-0 lg:flex-1 lg:gap-0 ${
@@ -446,22 +726,7 @@ export function LessonWorkspace({
               }`}
               style={canvasStyle}
             >
-              <NotesCanvas
-                classId={classId}
-                sectionId={active.id}
-                canEdit={canManage}
-                initialBlocks={active.notes_blocks}
-                initialSummary={active.ai_summary}
-                initialTab={initialTab}
-                documentMaterialId={material?.id ?? null}
-                documentTitle={material?.title ?? null}
-
-                onConcept={(value) => {
-                  setConcept(value);
-                  setTutorOpen(true);
-                }}
-                onSaved={invalidateSections}
-              />
+              {canvasNode}
             </div>
 
             {/* Drag handle + minimise / maximise pane controls */}
@@ -527,105 +792,16 @@ export function LessonWorkspace({
 
             {/* Document — resizable pane */}
             <div
-              className={`flex flex-col rounded-lg border bg-card lg:min-h-0 ${
+              className={`flex flex-col lg:min-h-0 ${
                 paneMode === "canvas" ? "hidden" : "min-h-[70vh] lg:min-h-0"
               } ${stacked ? "lg:w-full" : "lg:h-full"}`}
               style={docStyle}
             >
-
-
-              <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
-                <p className="text-sm font-medium">Lesson Materials</p>
-                <Select
-                  value={currentDocId ?? "none"}
-                  onValueChange={(value) => {
-                    setDocOverride(value === "none" ? null : value);
-                    if (canManage) attachMutation.mutate(value === "none" ? null : value);
-                  }}
-                >
-                  <SelectTrigger className="ml-auto h-8 w-[190px] text-xs">
-                    <SelectValue placeholder="Choose a resource" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No document</SelectItem>
-                    {unit.materials.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-              </div>
-
-              <div className="min-h-0 flex-1 p-2">
-                {!material ? (
-                  <p className="p-4 text-sm text-muted-foreground">
-                    {canManage
-                      ? "Attach a PDF, slide deck or document from this unit's resources."
-                      : "No document attached to this section."}
-                  </p>
-                ) : docUrl.isLoading || !docUrl.data ? (
-                  <Skeleton className="h-full w-full" />
-                ) : material.kind === "video" ? (
-                  <video src={docUrl.data.url} controls className="h-full w-full rounded-md" />
-                ) : material.kind === "image" ? (
-                  <img
-                    src={docUrl.data.url}
-                    alt={material.title}
-                    className="h-full w-full rounded-md object-contain"
-                  />
-                ) : docFormat(material.storage_path ?? material.title) === "pptx" ? (
-                  <SlideDeckView
-                    url={docUrl.data.url}
-                    title={material.title}
-                    cacheKey={`material:${material.id}`}
-                    materialId={material.id}
-                    canPrepareShared={canManage}
-                    canDownload={canManage || material.allow_download !== false}
-                  />
-                ) : docFormat(material.storage_path ?? material.title) === "docx" ? (
-                  <OfficeDocView
-                    url={docUrl.data.url}
-                    title={material.title}
-                    cacheKey={`material:${material.id}`}
-                    materialId={material.id}
-                    canPrepareShared={canManage}
-                    canDownload={canManage || material.allow_download !== false}
-                    format="docx"
-                  />
-                ) : (
-                  <PdfDocView
-                    url={docUrl.data.url}
-                    title={material.title}
-                    canDownload={canManage || material.allow_download !== false}
-                    cacheKey={`material:${material.id}`}
-                  />
-                )}
-              </div>
-
-              <div className="flex gap-2 border-t p-2">
-                <Input
-                  value={term}
-                  onChange={(event) => setTerm(event.target.value)}
-                  placeholder="A term from this document…"
-                  className="h-8 text-xs"
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={!term.trim()}
-                  onClick={() => {
-                    setConcept(term.trim());
-                    setTutorOpen(true);
-                    setTerm("");
-                  }}
-                >
-                  Explain
-                </Button>
-              </div>
+              {docNode}
             </div>
           </div>
+          )}
+
 
           <div className="shrink-0 lg:ml-2 lg:h-full lg:min-h-0">
             {tutorOpen ? (

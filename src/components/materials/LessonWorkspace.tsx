@@ -25,6 +25,10 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import {
+  FormativeCheckButton,
+  FormativeCheckPanel,
+} from "@/components/materials/FormativeCheck";
 import { LessonTutorBar } from "@/components/materials/LessonTutorBar";
 import { NotesCanvas } from "@/components/materials/NotesCanvas";
 import { OfficeDocView } from "@/components/materials/OfficeDocView";
@@ -435,6 +439,7 @@ export function LessonWorkspace({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      <FormativeCheckPanel classId={classId} />
       <header className={`flex flex-wrap items-center gap-3 border-b px-4 py-2 ${presenting ? "hidden" : ""}`}>
         <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2">
           <ArrowLeft className="size-4" />
@@ -526,6 +531,9 @@ export function LessonWorkspace({
               ) : null}
               <UnitPlanDialog unit={unit} onSaved={onUnitChanged} />
             </>
+          ) : null}
+          {canManage ? (
+            <FormativeCheckButton classId={classId} sectionId={active?.id ?? null} />
           ) : null}
           <Button
             size="sm"

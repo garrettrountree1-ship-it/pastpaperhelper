@@ -111,11 +111,17 @@ export function LessonWorkspace({
   // Draggable divider between the lesson canvas and the document pane.
   const rowRef = useRef<HTMLDivElement | null>(null);
   const [split, setSplit] = useState(50);
+  // "split" shows both panes; "canvas"/"doc" give one pane the full width.
+  const [paneMode, setPaneMode] = useState<"split" | "canvas" | "doc">("split");
+  const canvasWidth = paneMode === "canvas" ? "100%" : paneMode === "doc" ? "0%" : `${split}%`;
+  const docWidth =
+    paneMode === "doc" ? "100%" : paneMode === "canvas" ? "0%" : `calc(${100 - split}% - 0.5rem)`;
 
   function startDrag(event: React.PointerEvent<HTMLDivElement>) {
     event.preventDefault();
     const row = rowRef.current;
     if (!row) return;
+    setPaneMode("split");
     const rect = row.getBoundingClientRect();
     const onMove = (move: PointerEvent) => {
       const pct = ((move.clientX - rect.left) / rect.width) * 100;
@@ -128,6 +134,7 @@ export function LessonWorkspace({
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
   }
+
 
   // Presentation mode: hide the top chrome and expand the three panes to fill
   // the whole viewport. ESC or the floating button exits.

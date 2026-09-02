@@ -44,6 +44,9 @@ export function SlideAnnotations({
   const hostRef = useRef<HTMLDivElement | null>(null);
   const drawing = useRef(false);
   const [live, setLive] = useState<SlideStroke | null>(null);
+  const { undo, redo } = useUndoHistory(value, onChange);
+
+
 
   function pointOf(event: React.PointerEvent) {
     const rect = hostRef.current?.getBoundingClientRect();

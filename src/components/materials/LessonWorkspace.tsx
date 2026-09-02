@@ -357,7 +357,7 @@ export function LessonWorkspace({
         </div>
       </header>
 
-      {active ? (
+      {active && !presenting ? (
         <PlanStrip
           key={active.id}
           unit={unit}

@@ -259,6 +259,31 @@ export function FreeCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canEdit, selectedId, blocks]);
 
+  // Word-style shortcuts: Ctrl/⌘ + B / I / U format the selected text block,
+  // Ctrl/⌘ + Z / Shift+Z / Y step through undo history.
+  useEffect(() => {
+    if (!canEdit) return;
+    const onKey = (event: KeyboardEvent) => {
+      const shortcut = textShortcutOf(event);
+      if (!shortcut) return;
+      if (shortcut === "undo" || shortcut === "redo") {
+        event.preventDefault();
+        if (shortcut === "undo") undo();
+        else redo();
+        return;
+      }
+      const block = blocks.find((b) => b.id === selectedId && b.type === "text");
+      if (!block || block.type !== "text") return;
+      event.preventDefault();
+      patch(block.id, { [shortcut]: !block[shortcut] });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canEdit, selectedId, blocks, undo, redo]);
+
+
+
 
   const erasing = useRef(false);
 

@@ -2,16 +2,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft,
+  ArrowLeftRight,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
   Columns2,
+  Layers,
+  Minus,
   Rows2,
 
   Maximize,
   Minimize,
+  Move,
   Pencil,
   PanelRightClose,
   PanelRightOpen,

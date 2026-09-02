@@ -134,6 +134,38 @@ export function SlideAnnotations({
           style={{ left: box.x, top: box.y, pointerEvents: "auto" }}
         >
           <div className="relative">
+            <div
+              className="absolute -top-8 left-0 flex items-center gap-1 rounded border bg-white/95 px-1 py-0.5 shadow"
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              {(
+                [
+                  ["bold", "B", "font-bold"],
+                  ["italic", "I", "italic"],
+                  ["underline", "U", "underline"],
+                ] as const
+              ).map(([key, label, cls]) => (
+                <button
+                  key={key}
+                  type="button"
+                  aria-label={`Toggle ${key}`}
+                  aria-pressed={Boolean(box[key])}
+                  onClick={() =>
+                    onChange({
+                      ...value,
+                      texts: value.texts.map((t, i) =>
+                        i === index ? { ...t, [key]: !t[key] } : t,
+                      ),
+                    })
+                  }
+                  className={`size-6 rounded text-xs text-neutral-800 ${cls} ${
+                    box[key] ? "bg-neutral-800 text-white" : "hover:bg-neutral-200"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <textarea
               autoFocus={box.text === ""}
               value={box.text}
@@ -146,8 +178,16 @@ export function SlideAnnotations({
                 onChange({ ...value, texts });
               }}
               className="min-h-[1.6em] w-[420px] resize rounded border border-dashed border-neutral-400 bg-white/85 p-1 outline-none"
-              style={{ color: box.color, fontSize: box.size, lineHeight: 1.25 }}
+              style={{
+                color: box.color,
+                fontSize: box.size,
+                lineHeight: 1.25,
+                fontWeight: box.bold ? 700 : 400,
+                fontStyle: box.italic ? "italic" : "normal",
+                textDecoration: box.underline ? "underline" : "none",
+              }}
             />
+
             <button
               type="button"
               aria-label="Delete text box"

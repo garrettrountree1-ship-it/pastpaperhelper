@@ -578,6 +578,94 @@ export type Database = {
           },
         ]
       }
+      formative_checks: {
+        Row: {
+          class_id: string
+          closed_at: string | null
+          created_at: string
+          ends_at: string
+          expected_answer: string | null
+          id: string
+          question: string
+          seconds: number
+          section_id: string | null
+          teacher_id: string
+        }
+        Insert: {
+          class_id: string
+          closed_at?: string | null
+          created_at?: string
+          ends_at: string
+          expected_answer?: string | null
+          id?: string
+          question: string
+          seconds?: number
+          section_id?: string | null
+          teacher_id: string
+        }
+        Update: {
+          class_id?: string
+          closed_at?: string | null
+          created_at?: string
+          ends_at?: string
+          expected_answer?: string | null
+          id?: string
+          question?: string
+          seconds?: number
+          section_id?: string | null
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formative_checks_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      formative_responses: {
+        Row: {
+          answer: string
+          attempt: number
+          check_id: string
+          created_at: string
+          feedback: string | null
+          id: string
+          student_id: string
+          verdict: string
+        }
+        Insert: {
+          answer: string
+          attempt?: number
+          check_id: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          student_id: string
+          verdict: string
+        }
+        Update: {
+          answer?: string
+          attempt?: number
+          check_id?: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          student_id?: string
+          verdict?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formative_responses_check_id_fkey"
+            columns: ["check_id"]
+            isOneToOne: false
+            referencedRelation: "formative_checks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_attempts: {
         Row: {
           answer_text: string

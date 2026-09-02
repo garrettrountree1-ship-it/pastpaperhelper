@@ -1,7 +1,10 @@
 import { GripVertical, RotateCw, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { useUndoHistory } from "@/hooks/use-undo-history";
+import { textShortcutOf } from "@/lib/text-shortcuts";
 import type { NoteBlock } from "@/lib/notes.functions";
+
 
 export type CanvasMode = "type" | "draw" | "erase";
 

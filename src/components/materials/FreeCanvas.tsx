@@ -1,4 +1,4 @@
-import { GripVertical, RotateCw, Trash2 } from "lucide-react";
+import { GripVertical, Pause, RotateCw, Trash2, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useUndoHistory } from "@/hooks/use-undo-history";
@@ -696,6 +696,98 @@ export function FreeCanvas({
         </p>
       ) : null}
     </div>
+    </div>
+  );
+}
+
+/**
+ * Small floating speaker pin for a teacher voice note. Teachers can drag it
+ * anywhere on the sheet; anyone can click it to replay the recording.
+ */
+function AudioPin({
+  block,
+  url,
+  canEdit,
+  selected,
+  onSelect,
+  onMove,
+  onDelete,
+}: {
+  block: Extract<NoteBlock, { type: "audio" }>;
+  url: string | undefined;
+  canEdit: boolean;
+  selected: boolean;
+  onSelect: () => void;
+  onMove: (event: React.PointerEvent) => void;
+  onDelete: () => void;
+}) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+
+  function toggle() {
+    const el = audioRef.current;
+    if (!el) return;
+    if (playing) {
+      el.pause();
+      return;
+    }
+    void el.play().catch(() => setPlaying(false));
+  }
+
+  const seconds = Math.round(block.seconds ?? 0);
+  const length = seconds
+    ? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
+    : "";
+
+  return (
+    <div
+      className={`group absolute z-30 flex items-center gap-1 rounded-full border bg-background/95 px-2 py-1 shadow-md ${
+        selected ? "ring-2 ring-primary" : ""
+      }`}
+      style={{ left: block.x ?? 24, top: block.y ?? 24 }}
+      onPointerDown={onSelect}
+    >
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={!url}
+        className="flex items-center gap-1 rounded-full px-1 text-primary disabled:opacity-50"
+        aria-label={playing ? "Pause voice note" : "Play voice note"}
+        title={block.label ?? "Voice note"}
+      >
+        {playing ? <Pause className="size-4" /> : <Volume2 className="size-4" />}
+        <span className="text-xs font-medium text-foreground">{length || "Voice note"}</span>
+      </button>
+      {canEdit ? (
+        <>
+          <span
+            onPointerDown={onMove}
+            className="cursor-grab text-muted-foreground"
+            aria-label="Move voice note"
+          >
+            <GripVertical className="size-3.5" />
+          </span>
+          <button
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={onDelete}
+            className="text-muted-foreground hover:text-destructive"
+            aria-label="Delete voice note"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        </>
+      ) : null}
+      {url ? (
+        <audio
+          ref={audioRef}
+          src={url}
+          preload="none"
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onEnded={() => setPlaying(false)}
+        />
+      ) : null}
     </div>
   );
 }

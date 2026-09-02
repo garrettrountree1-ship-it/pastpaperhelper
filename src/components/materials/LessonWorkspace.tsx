@@ -3,6 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   Maximize,
   Minimize,
   Pencil,
@@ -111,11 +113,17 @@ export function LessonWorkspace({
   // Draggable divider between the lesson canvas and the document pane.
   const rowRef = useRef<HTMLDivElement | null>(null);
   const [split, setSplit] = useState(50);
+  // "split" shows both panes; "canvas"/"doc" give one pane the full width.
+  const [paneMode, setPaneMode] = useState<"split" | "canvas" | "doc">("split");
+  const canvasWidth = paneMode === "canvas" ? "100%" : paneMode === "doc" ? "0%" : `${split}%`;
+  const docWidth =
+    paneMode === "doc" ? "100%" : paneMode === "canvas" ? "0%" : `calc(${100 - split}% - 0.5rem)`;
 
   function startDrag(event: React.PointerEvent<HTMLDivElement>) {
     event.preventDefault();
     const row = rowRef.current;
     if (!row) return;
+    setPaneMode("split");
     const rect = row.getBoundingClientRect();
     const onMove = (move: PointerEvent) => {
       const pct = ((move.clientX - rect.left) / rect.width) * 100;
@@ -128,6 +136,7 @@ export function LessonWorkspace({
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
   }
+
 
   // Presentation mode: hide the top chrome and expand the three panes to fill
   // the whole viewport. ESC or the floating button exits.
@@ -403,7 +412,10 @@ export function LessonWorkspace({
             className="flex min-w-0 flex-col gap-2 lg:h-full lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-0"
           >
             {/* Lesson canvas — resizable left half */}
-            <div className="min-h-[70vh] lg:h-full lg:min-h-0" style={{ width: `${split}%` }}>
+            <div
+              className={`lg:h-full lg:min-h-0 ${paneMode === "doc" ? "hidden" : "min-h-[70vh]"}`}
+              style={{ width: canvasWidth }}
+            >
               <NotesCanvas
                 classId={classId}
                 sectionId={active.id}
@@ -422,21 +434,53 @@ export function LessonWorkspace({
               />
             </div>
 
-            {/* Drag handle between canvas and document */}
+            {/* Drag handle + full-screen pane controls */}
             <div
               role="separator"
               aria-orientation="vertical"
-              onPointerDown={startDrag}
-              className="group hidden w-2 shrink-0 cursor-col-resize items-center justify-center lg:flex"
+              onPointerDown={(event) => {
+                if ((event.target as HTMLElement).closest("button")) return;
+                startDrag(event);
+              }}
+              onDoubleClick={() => setPaneMode("split")}
+              className="group hidden w-5 shrink-0 cursor-col-resize flex-col items-center justify-center gap-1 lg:flex"
+              title="Drag to resize, double-click to reset"
             >
-              <div className="h-16 w-1 rounded-full bg-border transition-colors group-hover:bg-primary" />
+              <button
+                type="button"
+                aria-label={paneMode === "canvas" ? "Back to split screen" : "Expand lesson canvas"}
+                title={paneMode === "canvas" ? "Back to split screen" : "Expand lesson canvas"}
+                onClick={() => setPaneMode(paneMode === "canvas" ? "split" : "canvas")}
+                className="rounded border bg-background p-0.5 text-muted-foreground hover:text-primary"
+              >
+                {paneMode === "canvas" ? (
+                  <ChevronRight className="size-3" />
+                ) : (
+                  <ChevronLeft className="size-3" />
+                )}
+              </button>
+              <div className="h-10 w-1 rounded-full bg-border transition-colors group-hover:bg-primary" />
+              <button
+                type="button"
+                aria-label={paneMode === "doc" ? "Back to split screen" : "Expand document"}
+                title={paneMode === "doc" ? "Back to split screen" : "Expand document"}
+                onClick={() => setPaneMode(paneMode === "doc" ? "split" : "doc")}
+                className="rounded border bg-background p-0.5 text-muted-foreground hover:text-primary"
+              >
+                {paneMode === "doc" ? (
+                  <ChevronLeft className="size-3" />
+                ) : (
+                  <ChevronRight className="size-3" />
+                )}
+              </button>
             </div>
 
             {/* Document — resizable right half */}
             <div
-              className="flex min-h-[70vh] flex-col rounded-lg border bg-card lg:h-full lg:min-h-0"
-              style={{ width: `calc(${100 - split}% - 0.5rem)` }}
+              className={`flex flex-col rounded-lg border bg-card lg:h-full lg:min-h-0 ${paneMode === "canvas" ? "hidden" : "min-h-[70vh]"}`}
+              style={{ width: docWidth }}
             >
+
               <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
                 <p className="text-sm font-medium">Lesson Materials</p>
                 <Select

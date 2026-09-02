@@ -43,7 +43,19 @@ const blockSchema = z.union([
     width: z.number(),
     bottom: z.number().optional(),
   }),
+  // Teacher voice note: a small speaker pin students can replay.
+  z.object({
+    id: z.string().max(60),
+    type: z.literal("audio"),
+    path: z.string().max(500),
+    label: z.string().max(200).optional(),
+    seconds: z.number().min(0).max(3600).optional(),
+    transcript: z.string().max(8000).optional(),
+    x: z.number().optional(),
+    y: z.number().optional(),
+  }),
 ]);
+
 
 
 export type NoteBlock = z.infer<typeof blockSchema>;
@@ -178,8 +190,11 @@ export const saveSectionNotes = createServerFn({ method: "POST" })
           ? block.text
           : block.type === "image"
             ? `[image: ${block.caption ?? "handwritten working"}]`
-            : "",
+            : block.type === "audio"
+              ? `[voice note: ${block.transcript || block.label || "teacher audio"}]`
+              : "",
       )
+
       .filter(Boolean)
       .join("\n")
       .trim();
@@ -361,4 +376,16 @@ export const askLessonTutor = createServerFn({ method: "POST" })
     });
 
     return { reply };
+  });
+
+/** Voice-to-text for the lesson canvas (teacher dictation). */
+export const transcribeVoiceNote = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ audioBase64: z.string().min(100).max(8_000_000) }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { transcribeWav } = await import("@/lib/voice-notes.server");
+    const text = await transcribeWav(data.audioBase64);
+    return { text };
   });

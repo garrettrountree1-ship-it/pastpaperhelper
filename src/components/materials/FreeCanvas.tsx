@@ -1,4 +1,4 @@
-import { GripVertical, RotateCw, Trash2 } from "lucide-react";
+import { GripVertical, Pause, RotateCw, Trash2, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useUndoHistory } from "@/hooks/use-undo-history";
@@ -151,11 +151,12 @@ export function FreeCanvas({
   }
 
 
-  function patch(id: string, changes: Partial<Extract<NoteBlock, { type: "image" | "text" }>>) {
+  function patch(id: string, changes: Record<string, unknown>) {
     onChange(
       blocks.map((block) => (block.id === id ? ({ ...block, ...changes } as NoteBlock) : block)),
     );
   }
+
 
   function remove(id: string) {
     onChange(blocks.filter((block) => block.id !== id));
@@ -192,7 +193,7 @@ export function FreeCanvas({
     event.preventDefault();
     event.stopPropagation();
     const block = blocks.find((b) => b.id === id);
-    if (!block || block.type === "ink") return;
+    if (!block || block.type === "ink" || block.type === "audio") return;
     const origin = point(event);
     const baseW = block.w ?? 420;
     const baseH = block.type === "image" ? (block.h ?? 0) : 0;
@@ -209,8 +210,9 @@ export function FreeCanvas({
       if (ratio) changes.h = Math.round(w * ratio);
       if (west) changes.x = Math.max(0, baseX + (baseW - w));
       if (north) changes.y = Math.max(0, baseY + ((ratio ? baseH : 0) - (changes.h ?? 0)));
-      patch(id, changes as Partial<Extract<NoteBlock, { type: "image" | "text" }>>);
+      patch(id, changes);
     };
+
 
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
@@ -423,11 +425,28 @@ export function FreeCanvas({
 
       {blocks.map((block) => {
         if (block.type === "ink") return null;
+
+        if (block.type === "audio") {
+          return (
+            <AudioPin
+              key={block.id}
+              block={block}
+              url={imageUrls?.[block.path]}
+              canEdit={canEdit}
+              selected={selectedId === block.id}
+              onSelect={() => setSelectedId(block.id)}
+              onMove={(event) => startMove(block.id, event)}
+              onDelete={() => remove(block.id)}
+            />
+          );
+        }
+
         const style = {
           left: block.x ?? 24,
           top: block.y ?? 24,
           width: block.w ?? 480,
         } as React.CSSProperties;
+
 
         if (block.type === "text") {
           const isSelectedText = selectedId === block.id;
@@ -677,6 +696,98 @@ export function FreeCanvas({
         </p>
       ) : null}
     </div>
+    </div>
+  );
+}
+
+/**
+ * Small floating speaker pin for a teacher voice note. Teachers can drag it
+ * anywhere on the sheet; anyone can click it to replay the recording.
+ */
+function AudioPin({
+  block,
+  url,
+  canEdit,
+  selected,
+  onSelect,
+  onMove,
+  onDelete,
+}: {
+  block: Extract<NoteBlock, { type: "audio" }>;
+  url: string | undefined;
+  canEdit: boolean;
+  selected: boolean;
+  onSelect: () => void;
+  onMove: (event: React.PointerEvent) => void;
+  onDelete: () => void;
+}) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+
+  function toggle() {
+    const el = audioRef.current;
+    if (!el) return;
+    if (playing) {
+      el.pause();
+      return;
+    }
+    void el.play().catch(() => setPlaying(false));
+  }
+
+  const seconds = Math.round(block.seconds ?? 0);
+  const length = seconds
+    ? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
+    : "";
+
+  return (
+    <div
+      className={`group absolute z-30 flex items-center gap-1 rounded-full border bg-background/95 px-2 py-1 shadow-md ${
+        selected ? "ring-2 ring-primary" : ""
+      }`}
+      style={{ left: block.x ?? 24, top: block.y ?? 24 }}
+      onPointerDown={onSelect}
+    >
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={!url}
+        className="flex items-center gap-1 rounded-full px-1 text-primary disabled:opacity-50"
+        aria-label={playing ? "Pause voice note" : "Play voice note"}
+        title={block.label ?? "Voice note"}
+      >
+        {playing ? <Pause className="size-4" /> : <Volume2 className="size-4" />}
+        <span className="text-xs font-medium text-foreground">{length || "Voice note"}</span>
+      </button>
+      {canEdit ? (
+        <>
+          <span
+            onPointerDown={onMove}
+            className="cursor-grab text-muted-foreground"
+            aria-label="Move voice note"
+          >
+            <GripVertical className="size-3.5" />
+          </span>
+          <button
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={onDelete}
+            className="text-muted-foreground hover:text-destructive"
+            aria-label="Delete voice note"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        </>
+      ) : null}
+      {url ? (
+        <audio
+          ref={audioRef}
+          src={url}
+          preload="none"
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onEnded={() => setPlaying(false)}
+        />
+      ) : null}
     </div>
   );
 }

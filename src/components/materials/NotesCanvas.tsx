@@ -3,13 +3,16 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   Eraser,
   ImagePlus,
+  Mic,
   Minus,
   PenLine,
   Plus,
   RefreshCw,
   Sparkles,
   SquarePlus,
+  Square,
   Type,
+  Volume2,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -21,9 +24,12 @@ import {
   generateSectionSummary,
   saveSectionNotes,
   signNotePaths,
+  transcribeVoiceNote,
   type NoteBlock,
 } from "@/lib/notes.functions";
 import { collectSummaryVisuals } from "@/lib/summary-visuals";
+import { blobToBase64, startVoiceRecording } from "@/lib/voice-recorder";
+
 
 
 const PEN_COLORS = ["#111827", "#dc2626", "#2563eb", "#16a34a", "#ea580c", "#7c3aed"];
@@ -54,13 +60,14 @@ function ClickableText({ text, onConcept }: { text: string; onConcept: (value: s
 function withPositions(blocks: NoteBlock[]): NoteBlock[] {
   let y = 24;
   return blocks.map((block) => {
-    if (block.type === "ink") return block;
+    if (block.type === "ink" || block.type === "audio") return block;
     if (block.x !== undefined && block.y !== undefined) return block;
     const placed = { ...block, x: 24, y, w: block.w ?? 520 } as NoteBlock;
     y += block.type === "image" ? 340 : 180;
     return placed;
   });
 }
+
 
 export function NotesCanvas({
   classId,
@@ -89,6 +96,11 @@ export function NotesCanvas({
   const save = useServerFn(saveSectionNotes);
   const regenerate = useServerFn(generateSectionSummary);
   const signPaths = useServerFn(signNotePaths);
+  const transcribe = useServerFn(transcribeVoiceNote);
+  const recorder = useRef<Awaited<ReturnType<typeof startVoiceRecording>> | null>(null);
+  const [recording, setRecording] = useState<"dictate" | "note" | null>(null);
+  const [busyVoice, setBusyVoice] = useState(false);
+
 
   const [blocks, setBlocks] = useState<NoteBlock[]>(withPositions(initialBlocks));
   const [summary, setSummary] = useState(initialSummary ?? "");
@@ -110,18 +122,23 @@ export function NotesCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionId]);
 
-  const imagePaths = useMemo(
+  // Canvas pictures and voice notes both live in the class-materials bucket.
+  const mediaPaths = useMemo(
     () =>
       blocks
-        .filter((b): b is Extract<NoteBlock, { type: "image" }> => b.type === "image")
+        .filter(
+          (b): b is Extract<NoteBlock, { type: "image" | "audio" }> =>
+            b.type === "image" || b.type === "audio",
+        )
         .map((b) => b.path),
     [blocks],
   );
   const urls = useQuery({
-    queryKey: ["note-image-urls", sectionId, imagePaths.join("|")],
-    queryFn: () => signPaths({ data: { paths: imagePaths } }),
-    enabled: imagePaths.length > 0,
+    queryKey: ["note-image-urls", sectionId, mediaPaths.join("|")],
+    queryFn: () => signPaths({ data: { paths: mediaPaths } }),
+    enabled: mediaPaths.length > 0,
   });
+
 
   const summaryMutation = useMutation({
     mutationFn: async () => {
@@ -178,6 +195,82 @@ export function NotesCanvas({
       { id: crypto.randomUUID(), type: "image", path, caption: file.name, x: 40, y: top, w: 360 },
     ]);
   }
+
+  /**
+   * Voice notes. "dictate" turns speech into a text box on the canvas;
+   * "note" leaves a draggable speaker pin students can replay.
+   */
+  async function beginRecording(kind: "dictate" | "note") {
+    try {
+      const session = await startVoiceRecording();
+      recorder.current = session;
+      setRecording(kind);
+    } catch {
+      toast.error("Microphone access is needed to record a voice note.");
+    }
+  }
+
+  async function finishRecording() {
+    const session = recorder.current;
+    const kind = recording;
+    recorder.current = null;
+    setRecording(null);
+    if (!session || !kind) return;
+    try {
+      setBusyVoice(true);
+      const { blob, seconds } = await session.stop();
+      const top = (scrollRef.current?.scrollTop ?? 0) + 40;
+
+      if (kind === "dictate") {
+        const { text } = await transcribe({ data: { audioBase64: await blobToBase64(blob) } });
+        if (!text) {
+          toast.error("Nothing was recognised — please try again.");
+          return;
+        }
+        update([
+          ...blocks,
+          { id: crypto.randomUUID(), type: "text", text, x: 40, y: top, w: 420, size: 15, box: true },
+        ]);
+        toast.success("Voice added as text.");
+        return;
+      }
+
+      const path = `${classId}/notes/${sectionId}/${crypto.randomUUID()}-voice-note.wav`;
+      const { error } = await supabase.storage
+        .from("class-materials")
+        .upload(path, blob, { contentType: "audio/wav" });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      // Transcribe in the background so the AI summary hears the voice note too.
+      let transcript = "";
+      try {
+        transcript = (await transcribe({ data: { audioBase64: await blobToBase64(blob) } })).text;
+      } catch {
+        transcript = "";
+      }
+      update([
+        ...blocks,
+        {
+          id: crypto.randomUUID(),
+          type: "audio",
+          path,
+          label: "Voice note",
+          seconds: Math.round(seconds),
+          ...(transcript ? { transcript } : {}),
+          x: 40,
+          y: top,
+        },
+      ]);
+      toast.success("Voice note added — drag the speaker anywhere.");
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setBusyVoice(false);
+    }
+  }
+
 
   function handlePaste(event: React.ClipboardEvent) {
     if (!canEdit) return;
@@ -378,6 +471,33 @@ export function NotesCanvas({
             <ImagePlus className="size-4" />
             Image
           </Button>
+          <Button
+            size="sm"
+            variant={recording === "dictate" ? "destructive" : "outline"}
+            disabled={busyVoice || recording === "note"}
+            onClick={() =>
+              recording === "dictate" ? void finishRecording() : void beginRecording("dictate")
+            }
+          >
+            {recording === "dictate" ? <Square className="size-4" /> : <Mic className="size-4" />}
+            {recording === "dictate" ? "Stop & insert text" : "Voice to text"}
+          </Button>
+          <Button
+            size="sm"
+            variant={recording === "note" ? "destructive" : "outline"}
+            disabled={busyVoice || recording === "dictate"}
+            onClick={() =>
+              recording === "note" ? void finishRecording() : void beginRecording("note")
+            }
+          >
+            {recording === "note" ? <Square className="size-4" /> : <Volume2 className="size-4" />}
+            {recording === "note" ? "Stop & save note" : "Voice note"}
+          </Button>
+          {busyVoice ? (
+            <span className="text-xs text-muted-foreground">Processing audio…</span>
+          ) : null}
+
+
 
           <input
             ref={fileInput}

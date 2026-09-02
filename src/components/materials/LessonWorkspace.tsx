@@ -457,8 +457,8 @@ export function LessonWorkspace({
             <div className="absolute bottom-3 left-3 z-50 flex items-center gap-1 rounded-md border bg-background/95 p-1 shadow">
               <Button
                 size="sm"
-                variant={stacked ? "ghost" : "default"}
-                onClick={() => setStacked(false)}
+                variant={layout === "split" ? "default" : "ghost"}
+                onClick={() => setLayout("split")}
                 title="Split screen (side by side)"
               >
                 <Columns2 className="size-4" />
@@ -466,12 +466,21 @@ export function LessonWorkspace({
               </Button>
               <Button
                 size="sm"
-                variant={stacked ? "default" : "ghost"}
-                onClick={() => setStacked(true)}
+                variant={layout === "stacked" ? "default" : "ghost"}
+                onClick={() => setLayout("stacked")}
                 title="Stacked windows (one above the other)"
               >
                 <Rows2 className="size-4" />
                 Stacked
+              </Button>
+              <Button
+                size="sm"
+                variant={layout === "layered" ? "default" : "ghost"}
+                onClick={() => setLayout("layered")}
+                title="Layered windows (one floating on top of the other)"
+              >
+                <Layers className="size-4" />
+                Layered
               </Button>
               <Button size="sm" variant="secondary" onClick={togglePresentation} title="Exit presentation (Esc)">
                 <Minimize className="size-4" />

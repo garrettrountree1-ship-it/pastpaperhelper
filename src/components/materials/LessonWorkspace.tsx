@@ -3,8 +3,13 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft,
   CalendarDays,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  Columns2,
+  Rows2,
+
   Maximize,
   Minimize,
   Pencil,

@@ -96,6 +96,11 @@ export function NotesCanvas({
   const save = useServerFn(saveSectionNotes);
   const regenerate = useServerFn(generateSectionSummary);
   const signPaths = useServerFn(signNotePaths);
+  const transcribe = useServerFn(transcribeVoiceNote);
+  const recorder = useRef<Awaited<ReturnType<typeof startVoiceRecording>> | null>(null);
+  const [recording, setRecording] = useState<"dictate" | "note" | null>(null);
+  const [busyVoice, setBusyVoice] = useState(false);
+
 
   const [blocks, setBlocks] = useState<NoteBlock[]>(withPositions(initialBlocks));
   const [summary, setSummary] = useState(initialSummary ?? "");

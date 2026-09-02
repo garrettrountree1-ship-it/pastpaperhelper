@@ -117,18 +117,23 @@ export function NotesCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionId]);
 
-  const imagePaths = useMemo(
+  // Canvas pictures and voice notes both live in the class-materials bucket.
+  const mediaPaths = useMemo(
     () =>
       blocks
-        .filter((b): b is Extract<NoteBlock, { type: "image" }> => b.type === "image")
+        .filter(
+          (b): b is Extract<NoteBlock, { type: "image" | "audio" }> =>
+            b.type === "image" || b.type === "audio",
+        )
         .map((b) => b.path),
     [blocks],
   );
   const urls = useQuery({
-    queryKey: ["note-image-urls", sectionId, imagePaths.join("|")],
-    queryFn: () => signPaths({ data: { paths: imagePaths } }),
-    enabled: imagePaths.length > 0,
+    queryKey: ["note-image-urls", sectionId, mediaPaths.join("|")],
+    queryFn: () => signPaths({ data: { paths: mediaPaths } }),
+    enabled: mediaPaths.length > 0,
   });
+
 
   const summaryMutation = useMutation({
     mutationFn: async () => {

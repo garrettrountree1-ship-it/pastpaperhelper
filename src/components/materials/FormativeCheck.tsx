@@ -166,7 +166,7 @@ export function FormativeCheckPanel({ classId }: { classId: string }) {
 
   const active = useQuery({
     queryKey: ["formative-active", classId],
-    queryFn: () => getActiveFormativeCheck({ data: { classId } }) ?? fetchActive,
+    queryFn: () => fetchActive({ data: { classId } }),
     refetchInterval: 5000,
   });
   const check = active.data ?? null;

@@ -151,11 +151,12 @@ export function FreeCanvas({
   }
 
 
-  function patch(id: string, changes: Partial<Extract<NoteBlock, { type: "image" | "text" }>>) {
+  function patch(id: string, changes: Record<string, unknown>) {
     onChange(
       blocks.map((block) => (block.id === id ? ({ ...block, ...changes } as NoteBlock) : block)),
     );
   }
+
 
   function remove(id: string) {
     onChange(blocks.filter((block) => block.id !== id));

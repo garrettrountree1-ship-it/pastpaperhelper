@@ -112,6 +112,9 @@ export function FreeCanvas({
   const [focusId, setFocusId] = useState<string | null>(null);
 
   const drawing = useRef(false);
+  const { undo, redo } = useUndoHistory(blocks, onChange);
+
+
 
 
   const bottom = blocks.reduce((max, block) => {

@@ -54,13 +54,14 @@ function ClickableText({ text, onConcept }: { text: string; onConcept: (value: s
 function withPositions(blocks: NoteBlock[]): NoteBlock[] {
   let y = 24;
   return blocks.map((block) => {
-    if (block.type === "ink") return block;
+    if (block.type === "ink" || block.type === "audio") return block;
     if (block.x !== undefined && block.y !== undefined) return block;
     const placed = { ...block, x: 24, y, w: block.w ?? 520 } as NoteBlock;
     y += block.type === "image" ? 340 : 180;
     return placed;
   });
 }
+
 
 export function NotesCanvas({
   classId,

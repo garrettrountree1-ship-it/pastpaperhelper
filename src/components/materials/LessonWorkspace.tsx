@@ -603,6 +603,116 @@ export function LessonWorkspace({
               </Button>
             </div>
           ) : null}
+          {layout === "layered" ? (
+            <div
+              ref={rowRef}
+              className="relative min-h-[80vh] min-w-0 lg:h-full lg:min-h-0 lg:flex-1"
+            >
+              {/* Back window fills the area */}
+              <div className="absolute inset-0">
+                {frontPane === "canvas" ? docNode : canvasNode}
+              </div>
+
+              {/* Front window floats on top: drag, stretch, minimise, maximise */}
+              <div
+                className="absolute z-30 flex flex-col overflow-hidden rounded-lg border bg-background shadow-xl"
+                style={
+                  floatState === "max"
+                    ? { left: 0, top: 0, width: "100%", height: "100%" }
+                    : floatState === "min"
+                      ? {
+                          left: `${floatRect.x}%`,
+                          top: `${floatRect.y}%`,
+                          width: `${floatRect.w}%`,
+                          height: "2.25rem",
+                        }
+                      : {
+                          left: `${floatRect.x}%`,
+                          top: `${floatRect.y}%`,
+                          width: `${floatRect.w}%`,
+                          height: `${floatRect.h}%`,
+                        }
+                }
+              >
+                <div
+                  onPointerDown={(event) => {
+                    if ((event.target as HTMLElement).closest("button")) return;
+                    startFloatDrag(event, "move");
+                  }}
+                  onDoubleClick={() =>
+                    setFloatState(floatState === "max" ? "window" : "max")
+                  }
+                  className="flex h-9 shrink-0 cursor-move items-center gap-1 border-b bg-muted/60 px-2"
+                  title="Drag to move, double-click to maximise"
+                >
+                  <Move className="size-3.5 text-muted-foreground" />
+                  <span className="truncate text-xs font-medium">
+                    {frontPane === "canvas" ? "Lesson canvas" : "Lesson Materials"}
+                  </span>
+                  <div className="ml-auto flex items-center gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-6"
+                      title="Swap which window is on top"
+                      aria-label="Swap which window is on top"
+                      onClick={() =>
+                        setFrontPane(frontPane === "canvas" ? "doc" : "canvas")
+                      }
+                    >
+                      <ArrowLeftRight className="size-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-6"
+                      title={floatState === "min" ? "Restore window" : "Minimise window"}
+                      aria-label={floatState === "min" ? "Restore window" : "Minimise window"}
+                      onClick={() =>
+                        setFloatState(floatState === "min" ? "window" : "min")
+                      }
+                    >
+                      {floatState === "min" ? (
+                        <ChevronDown className="size-3.5" />
+                      ) : (
+                        <Minus className="size-3.5" />
+                      )}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-6"
+                      title={floatState === "max" ? "Restore window" : "Maximise window"}
+                      aria-label={floatState === "max" ? "Restore window" : "Maximise window"}
+                      onClick={() =>
+                        setFloatState(floatState === "max" ? "window" : "max")
+                      }
+                    >
+                      {floatState === "max" ? (
+                        <Minimize className="size-3.5" />
+                      ) : (
+                        <Maximize className="size-3.5" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {floatState === "min" ? null : (
+                  <div className="min-h-0 flex-1">
+                    {frontPane === "canvas" ? canvasNode : docNode}
+                  </div>
+                )}
+
+                {floatState === "window" ? (
+                  <div
+                    onPointerDown={(event) => startFloatDrag(event, "resize")}
+                    className="absolute bottom-0 right-0 z-10 size-4 cursor-nwse-resize rounded-tl border-l border-t bg-muted"
+                    title="Drag to stretch this window"
+                  />
+                ) : null}
+              </div>
+            </div>
+          ) : (
           <div
             ref={rowRef}
             className={`flex min-w-0 flex-col gap-2 lg:h-full lg:min-h-0 lg:flex-1 lg:gap-0 ${
@@ -616,22 +726,7 @@ export function LessonWorkspace({
               }`}
               style={canvasStyle}
             >
-              <NotesCanvas
-                classId={classId}
-                sectionId={active.id}
-                canEdit={canManage}
-                initialBlocks={active.notes_blocks}
-                initialSummary={active.ai_summary}
-                initialTab={initialTab}
-                documentMaterialId={material?.id ?? null}
-                documentTitle={material?.title ?? null}
-
-                onConcept={(value) => {
-                  setConcept(value);
-                  setTutorOpen(true);
-                }}
-                onSaved={invalidateSections}
-              />
+              {canvasNode}
             </div>
 
             {/* Drag handle + minimise / maximise pane controls */}
@@ -697,105 +792,16 @@ export function LessonWorkspace({
 
             {/* Document — resizable pane */}
             <div
-              className={`flex flex-col rounded-lg border bg-card lg:min-h-0 ${
+              className={`flex flex-col lg:min-h-0 ${
                 paneMode === "canvas" ? "hidden" : "min-h-[70vh] lg:min-h-0"
               } ${stacked ? "lg:w-full" : "lg:h-full"}`}
               style={docStyle}
             >
-
-
-              <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
-                <p className="text-sm font-medium">Lesson Materials</p>
-                <Select
-                  value={currentDocId ?? "none"}
-                  onValueChange={(value) => {
-                    setDocOverride(value === "none" ? null : value);
-                    if (canManage) attachMutation.mutate(value === "none" ? null : value);
-                  }}
-                >
-                  <SelectTrigger className="ml-auto h-8 w-[190px] text-xs">
-                    <SelectValue placeholder="Choose a resource" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No document</SelectItem>
-                    {unit.materials.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-              </div>
-
-              <div className="min-h-0 flex-1 p-2">
-                {!material ? (
-                  <p className="p-4 text-sm text-muted-foreground">
-                    {canManage
-                      ? "Attach a PDF, slide deck or document from this unit's resources."
-                      : "No document attached to this section."}
-                  </p>
-                ) : docUrl.isLoading || !docUrl.data ? (
-                  <Skeleton className="h-full w-full" />
-                ) : material.kind === "video" ? (
-                  <video src={docUrl.data.url} controls className="h-full w-full rounded-md" />
-                ) : material.kind === "image" ? (
-                  <img
-                    src={docUrl.data.url}
-                    alt={material.title}
-                    className="h-full w-full rounded-md object-contain"
-                  />
-                ) : docFormat(material.storage_path ?? material.title) === "pptx" ? (
-                  <SlideDeckView
-                    url={docUrl.data.url}
-                    title={material.title}
-                    cacheKey={`material:${material.id}`}
-                    materialId={material.id}
-                    canPrepareShared={canManage}
-                    canDownload={canManage || material.allow_download !== false}
-                  />
-                ) : docFormat(material.storage_path ?? material.title) === "docx" ? (
-                  <OfficeDocView
-                    url={docUrl.data.url}
-                    title={material.title}
-                    cacheKey={`material:${material.id}`}
-                    materialId={material.id}
-                    canPrepareShared={canManage}
-                    canDownload={canManage || material.allow_download !== false}
-                    format="docx"
-                  />
-                ) : (
-                  <PdfDocView
-                    url={docUrl.data.url}
-                    title={material.title}
-                    canDownload={canManage || material.allow_download !== false}
-                    cacheKey={`material:${material.id}`}
-                  />
-                )}
-              </div>
-
-              <div className="flex gap-2 border-t p-2">
-                <Input
-                  value={term}
-                  onChange={(event) => setTerm(event.target.value)}
-                  placeholder="A term from this document…"
-                  className="h-8 text-xs"
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={!term.trim()}
-                  onClick={() => {
-                    setConcept(term.trim());
-                    setTutorOpen(true);
-                    setTerm("");
-                  }}
-                >
-                  Explain
-                </Button>
-              </div>
+              {docNode}
             </div>
           </div>
+          )}
+
 
           <div className="shrink-0 lg:ml-2 lg:h-full lg:min-h-0">
             {tutorOpen ? (

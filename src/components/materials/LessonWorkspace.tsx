@@ -403,25 +403,43 @@ export function LessonWorkspace({
           className={`relative flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto lg:flex-row lg:overflow-hidden ${presenting ? "p-0" : "p-2"}`}
         >
           {presenting ? (
-            <Button
-              size="sm"
-              variant="secondary"
-              className="absolute right-2 top-2 z-50 shadow"
-              onClick={togglePresentation}
-              title="Exit presentation (Esc)"
-            >
-              <Minimize className="size-4" />
-              Exit presentation
-            </Button>
+            <div className="absolute bottom-3 left-3 z-50 flex items-center gap-1 rounded-md border bg-background/95 p-1 shadow">
+              <Button
+                size="sm"
+                variant={stacked ? "ghost" : "default"}
+                onClick={() => setStacked(false)}
+                title="Split screen (side by side)"
+              >
+                <Columns2 className="size-4" />
+                Split
+              </Button>
+              <Button
+                size="sm"
+                variant={stacked ? "default" : "ghost"}
+                onClick={() => setStacked(true)}
+                title="Stacked windows (one above the other)"
+              >
+                <Rows2 className="size-4" />
+                Stacked
+              </Button>
+              <Button size="sm" variant="secondary" onClick={togglePresentation} title="Exit presentation (Esc)">
+                <Minimize className="size-4" />
+                Exit
+              </Button>
+            </div>
           ) : null}
           <div
             ref={rowRef}
-            className="flex min-w-0 flex-col gap-2 lg:h-full lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-0"
+            className={`flex min-w-0 flex-col gap-2 lg:h-full lg:min-h-0 lg:flex-1 lg:gap-0 ${
+              stacked ? "lg:flex-col" : "lg:flex-row"
+            }`}
           >
-            {/* Lesson canvas — resizable left half */}
+            {/* Lesson canvas — resizable pane */}
             <div
-              className={`lg:h-full lg:min-h-0 ${paneMode === "doc" ? "hidden" : "min-h-[70vh]"}`}
-              style={{ width: canvasWidth }}
+              className={`lg:min-h-0 ${paneMode === "doc" ? "hidden" : "min-h-[70vh] lg:min-h-0"} ${
+                stacked ? "lg:w-full" : "lg:h-full"
+              }`}
+              style={canvasStyle}
             >
               <NotesCanvas
                 classId={classId}
@@ -441,16 +459,20 @@ export function LessonWorkspace({
               />
             </div>
 
-            {/* Drag handle + full-screen pane controls */}
+            {/* Drag handle + minimise / maximise pane controls */}
             <div
               role="separator"
-              aria-orientation="vertical"
+              aria-orientation={stacked ? "horizontal" : "vertical"}
               onPointerDown={(event) => {
                 if ((event.target as HTMLElement).closest("button")) return;
                 startDrag(event);
               }}
               onDoubleClick={() => setPaneMode("split")}
-              className="group hidden w-5 shrink-0 cursor-col-resize flex-col items-center justify-center gap-1 lg:flex"
+              className={`group hidden shrink-0 items-center justify-center gap-1 lg:flex ${
+                stacked
+                  ? "h-5 w-full cursor-row-resize flex-row"
+                  : "w-5 cursor-col-resize flex-col"
+              }`}
               title="Drag to resize, double-click to reset"
             >
               <button
@@ -460,13 +482,23 @@ export function LessonWorkspace({
                 onClick={() => setPaneMode(paneMode === "canvas" ? "split" : "canvas")}
                 className="rounded border bg-background p-0.5 text-muted-foreground hover:text-primary"
               >
-                {paneMode === "canvas" ? (
+                {stacked ? (
+                  paneMode === "canvas" ? (
+                    <ChevronDown className="size-3" />
+                  ) : (
+                    <ChevronUp className="size-3" />
+                  )
+                ) : paneMode === "canvas" ? (
                   <ChevronRight className="size-3" />
                 ) : (
                   <ChevronLeft className="size-3" />
                 )}
               </button>
-              <div className="h-10 w-1 rounded-full bg-border transition-colors group-hover:bg-primary" />
+              <div
+                className={`rounded-full bg-border transition-colors group-hover:bg-primary ${
+                  stacked ? "h-1 w-10" : "h-10 w-1"
+                }`}
+              />
               <button
                 type="button"
                 aria-label={paneMode === "doc" ? "Back to split screen" : "Expand document"}
@@ -474,7 +506,13 @@ export function LessonWorkspace({
                 onClick={() => setPaneMode(paneMode === "doc" ? "split" : "doc")}
                 className="rounded border bg-background p-0.5 text-muted-foreground hover:text-primary"
               >
-                {paneMode === "doc" ? (
+                {stacked ? (
+                  paneMode === "doc" ? (
+                    <ChevronUp className="size-3" />
+                  ) : (
+                    <ChevronDown className="size-3" />
+                  )
+                ) : paneMode === "doc" ? (
                   <ChevronLeft className="size-3" />
                 ) : (
                   <ChevronRight className="size-3" />
@@ -482,11 +520,14 @@ export function LessonWorkspace({
               </button>
             </div>
 
-            {/* Document — resizable right half */}
+            {/* Document — resizable pane */}
             <div
-              className={`flex flex-col rounded-lg border bg-card lg:h-full lg:min-h-0 ${paneMode === "canvas" ? "hidden" : "min-h-[70vh]"}`}
-              style={{ width: docWidth }}
+              className={`flex flex-col rounded-lg border bg-card lg:min-h-0 ${
+                paneMode === "canvas" ? "hidden" : "min-h-[70vh] lg:min-h-0"
+              } ${stacked ? "lg:w-full" : "lg:h-full"}`}
+              style={docStyle}
             >
+
 
               <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
                 <p className="text-sm font-medium">Lesson Materials</p>

@@ -43,7 +43,19 @@ const blockSchema = z.union([
     width: z.number(),
     bottom: z.number().optional(),
   }),
+  // Teacher voice note: a small speaker pin students can replay.
+  z.object({
+    id: z.string().max(60),
+    type: z.literal("audio"),
+    path: z.string().max(500),
+    label: z.string().max(200).optional(),
+    seconds: z.number().min(0).max(3600).optional(),
+    transcript: z.string().max(8000).optional(),
+    x: z.number().optional(),
+    y: z.number().optional(),
+  }),
 ]);
+
 
 
 export type NoteBlock = z.infer<typeof blockSchema>;

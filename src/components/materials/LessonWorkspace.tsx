@@ -129,6 +129,42 @@ export function LessonWorkspace({
     window.addEventListener("pointerup", onUp);
   }
 
+  // Presentation mode: hide the top chrome and expand the three panes to fill
+  // the whole viewport. ESC or the floating button exits.
+  useEffect(() => {
+    if (!presenting) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPresenting(false);
+    };
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement) setPresenting(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+    };
+  }, [presenting]);
+
+  async function togglePresentation() {
+    const next = !presenting;
+    setPresenting(next);
+    if (next) {
+      try {
+        await document.documentElement.requestFullscreen();
+      } catch {
+        // Fullscreen is optional; the CSS expansion still covers the viewport.
+      }
+    } else {
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   const sections = useQuery({
     queryKey: ["unit-sections", unit.id],
     queryFn: () => fetchSections({ data: { unitId: unit.id } }),

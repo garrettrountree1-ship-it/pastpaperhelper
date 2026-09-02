@@ -177,6 +177,26 @@ export function SlideAnnotations({
               value={box.text}
               placeholder="Type here…"
               onPointerDown={(event) => event.stopPropagation()}
+              onKeyDown={(event) => {
+                const shortcut = textShortcutOf(event);
+                if (!shortcut) return;
+                event.preventDefault();
+                if (shortcut === "undo") {
+                  undo();
+                  return;
+                }
+                if (shortcut === "redo") {
+                  redo();
+                  return;
+                }
+                onChange({
+                  ...value,
+                  texts: value.texts.map((t, i) =>
+                    i === index ? { ...t, [shortcut]: !t[shortcut] } : t,
+                  ),
+                });
+              }}
+
               onChange={(event) => {
                 const texts = value.texts.map((t, i) =>
                   i === index ? { ...t, text: event.target.value } : t,

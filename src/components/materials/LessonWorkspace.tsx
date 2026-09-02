@@ -115,9 +115,13 @@ export function LessonWorkspace({
   const [split, setSplit] = useState(50);
   // "split" shows both panes; "canvas"/"doc" give one pane the full width.
   const [paneMode, setPaneMode] = useState<"split" | "canvas" | "doc">("split");
-  const canvasWidth = paneMode === "canvas" ? "100%" : paneMode === "doc" ? "0%" : `${split}%`;
-  const docWidth =
+  // Side-by-side columns, or stacked rows (one above the other).
+  const [stacked, setStacked] = useState(false);
+  const canvasSize = paneMode === "canvas" ? "100%" : paneMode === "doc" ? "0%" : `${split}%`;
+  const docSize =
     paneMode === "doc" ? "100%" : paneMode === "canvas" ? "0%" : `calc(${100 - split}% - 0.5rem)`;
+  const canvasStyle = stacked ? { height: canvasSize } : { width: canvasSize };
+  const docStyle = stacked ? { height: docSize } : { width: docSize };
 
   function startDrag(event: React.PointerEvent<HTMLDivElement>) {
     event.preventDefault();
@@ -126,7 +130,9 @@ export function LessonWorkspace({
     setPaneMode("split");
     const rect = row.getBoundingClientRect();
     const onMove = (move: PointerEvent) => {
-      const pct = ((move.clientX - rect.left) / rect.width) * 100;
+      const pct = stacked
+        ? ((move.clientY - rect.top) / rect.height) * 100
+        : ((move.clientX - rect.left) / rect.width) * 100;
       setSplit(Math.min(80, Math.max(20, pct)));
     };
     const onUp = () => {
@@ -136,6 +142,7 @@ export function LessonWorkspace({
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
   }
+
 
 
   // Presentation mode: hide the top chrome and expand the three panes to fill

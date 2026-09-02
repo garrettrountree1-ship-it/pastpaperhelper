@@ -374,3 +374,15 @@ export const askLessonTutor = createServerFn({ method: "POST" })
 
     return { reply };
   });
+
+/** Voice-to-text for the lesson canvas (teacher dictation). */
+export const transcribeVoiceNote = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ audioBase64: z.string().min(100).max(8_000_000) }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { transcribeWav } = await import("@/lib/voice-notes.server");
+    const text = await transcribeWav(data.audioBase64);
+    return { text };
+  });

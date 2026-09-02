@@ -190,8 +190,11 @@ export const saveSectionNotes = createServerFn({ method: "POST" })
           ? block.text
           : block.type === "image"
             ? `[image: ${block.caption ?? "handwritten working"}]`
-            : "",
+            : block.type === "audio"
+              ? `[voice note: ${block.transcript || block.label || "teacher audio"}]`
+              : "",
       )
+
       .filter(Boolean)
       .join("\n")
       .trim();

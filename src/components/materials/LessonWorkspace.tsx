@@ -345,6 +345,15 @@ export function LessonWorkspace({
               <UnitPlanDialog unit={unit} onSaved={onUnitChanged} />
             </>
           ) : null}
+          <Button
+            size="sm"
+            variant={presenting ? "default" : "outline"}
+            onClick={togglePresentation}
+            title={presenting ? "Exit presentation" : "Present to students"}
+          >
+            {presenting ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
+            <span className="hidden sm:inline">{presenting ? "Exit" : "Present"}</span>
+          </Button>
         </div>
       </header>
 

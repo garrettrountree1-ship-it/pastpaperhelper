@@ -318,6 +318,121 @@ export function LessonWorkspace({
     enabled: Boolean(material),
   });
 
+  // The two panes are built once so they can be arranged side by side, stacked,
+  // or layered as floating windows without duplicating their markup.
+  const canvasNode = active ? (
+    <NotesCanvas
+      classId={classId}
+      sectionId={active.id}
+      canEdit={canManage}
+      initialBlocks={active.notes_blocks}
+      initialSummary={active.ai_summary}
+      initialTab={initialTab}
+      documentMaterialId={material?.id ?? null}
+      documentTitle={material?.title ?? null}
+      onConcept={(value) => {
+        setConcept(value);
+        setTutorOpen(true);
+      }}
+      onSaved={invalidateSections}
+    />
+  ) : null;
+
+  const docNode = (
+    <div className="flex h-full min-h-0 flex-col rounded-lg border bg-card">
+      <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
+        <p className="text-sm font-medium">Lesson Materials</p>
+        <Select
+          value={currentDocId ?? "none"}
+          onValueChange={(value) => {
+            setDocOverride(value === "none" ? null : value);
+            if (canManage) attachMutation.mutate(value === "none" ? null : value);
+          }}
+        >
+          <SelectTrigger className="ml-auto h-8 w-[190px] text-xs">
+            <SelectValue placeholder="Choose a resource" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">No document</SelectItem>
+            {unit.materials.map((m) => (
+              <SelectItem key={m.id} value={m.id}>
+                {m.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="min-h-0 flex-1 p-2">
+        {!material ? (
+          <p className="p-4 text-sm text-muted-foreground">
+            {canManage
+              ? "Attach a PDF, slide deck or document from this unit's resources."
+              : "No document attached to this section."}
+          </p>
+        ) : docUrl.isLoading || !docUrl.data ? (
+          <Skeleton className="h-full w-full" />
+        ) : material.kind === "video" ? (
+          <video src={docUrl.data.url} controls className="h-full w-full rounded-md" />
+        ) : material.kind === "image" ? (
+          <img
+            src={docUrl.data.url}
+            alt={material.title}
+            className="h-full w-full rounded-md object-contain"
+          />
+        ) : docFormat(material.storage_path ?? material.title) === "pptx" ? (
+          <SlideDeckView
+            url={docUrl.data.url}
+            title={material.title}
+            cacheKey={`material:${material.id}`}
+            materialId={material.id}
+            canPrepareShared={canManage}
+            canDownload={canManage || material.allow_download !== false}
+          />
+        ) : docFormat(material.storage_path ?? material.title) === "docx" ? (
+          <OfficeDocView
+            url={docUrl.data.url}
+            title={material.title}
+            cacheKey={`material:${material.id}`}
+            materialId={material.id}
+            canPrepareShared={canManage}
+            canDownload={canManage || material.allow_download !== false}
+            format="docx"
+          />
+        ) : (
+          <PdfDocView
+            url={docUrl.data.url}
+            title={material.title}
+            canDownload={canManage || material.allow_download !== false}
+            cacheKey={`material:${material.id}`}
+          />
+        )}
+      </div>
+
+      <div className="flex gap-2 border-t p-2">
+        <Input
+          value={term}
+          onChange={(event) => setTerm(event.target.value)}
+          placeholder="A term from this document…"
+          className="h-8 text-xs"
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!term.trim()}
+          onClick={() => {
+            setConcept(term.trim());
+            setTutorOpen(true);
+            setTerm("");
+          }}
+        >
+          Explain
+        </Button>
+      </div>
+    </div>
+  );
+
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
       <header className={`flex flex-wrap items-center gap-3 border-b px-4 py-2 ${presenting ? "hidden" : ""}`}>

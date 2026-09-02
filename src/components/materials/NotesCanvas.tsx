@@ -191,6 +191,82 @@ export function NotesCanvas({
     ]);
   }
 
+  /**
+   * Voice notes. "dictate" turns speech into a text box on the canvas;
+   * "note" leaves a draggable speaker pin students can replay.
+   */
+  async function beginRecording(kind: "dictate" | "note") {
+    try {
+      const session = await startVoiceRecording();
+      recorder.current = session;
+      setRecording(kind);
+    } catch {
+      toast.error("Microphone access is needed to record a voice note.");
+    }
+  }
+
+  async function finishRecording() {
+    const session = recorder.current;
+    const kind = recording;
+    recorder.current = null;
+    setRecording(null);
+    if (!session || !kind) return;
+    try {
+      setBusyVoice(true);
+      const { blob, seconds } = await session.stop();
+      const top = (scrollRef.current?.scrollTop ?? 0) + 40;
+
+      if (kind === "dictate") {
+        const { text } = await transcribe({ data: { audioBase64: await blobToBase64(blob) } });
+        if (!text) {
+          toast.error("Nothing was recognised — please try again.");
+          return;
+        }
+        update([
+          ...blocks,
+          { id: crypto.randomUUID(), type: "text", text, x: 40, y: top, w: 420, size: 15, box: true },
+        ]);
+        toast.success("Voice added as text.");
+        return;
+      }
+
+      const path = `${classId}/notes/${sectionId}/${crypto.randomUUID()}-voice-note.wav`;
+      const { error } = await supabase.storage
+        .from("class-materials")
+        .upload(path, blob, { contentType: "audio/wav" });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      // Transcribe in the background so the AI summary hears the voice note too.
+      let transcript = "";
+      try {
+        transcript = (await transcribe({ data: { audioBase64: await blobToBase64(blob) } })).text;
+      } catch {
+        transcript = "";
+      }
+      update([
+        ...blocks,
+        {
+          id: crypto.randomUUID(),
+          type: "audio",
+          path,
+          label: "Voice note",
+          seconds: Math.round(seconds),
+          ...(transcript ? { transcript } : {}),
+          x: 40,
+          y: top,
+        },
+      ]);
+      toast.success("Voice note added — drag the speaker anywhere.");
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setBusyVoice(false);
+    }
+  }
+
+
   function handlePaste(event: React.ClipboardEvent) {
     if (!canEdit) return;
     const item = Array.from(event.clipboardData.items).find((i) => i.type.startsWith("image/"));

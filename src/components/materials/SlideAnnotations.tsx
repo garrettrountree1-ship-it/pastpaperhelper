@@ -1,5 +1,8 @@
 import { X } from "lucide-react";
 import { useRef, useState } from "react";
+import { useUndoHistory } from "@/hooks/use-undo-history";
+import { textShortcutOf } from "@/lib/text-shortcuts";
+
 
 export type SlideStroke = { points: Array<{ x: number; y: number }>; color: string; width: number };
 export type SlideTextBox = {
@@ -41,6 +44,9 @@ export function SlideAnnotations({
   const hostRef = useRef<HTMLDivElement | null>(null);
   const drawing = useRef(false);
   const [live, setLive] = useState<SlideStroke | null>(null);
+  const { undo, redo } = useUndoHistory(value, onChange);
+
+
 
   function pointOf(event: React.PointerEvent) {
     const rect = hostRef.current?.getBoundingClientRect();
@@ -171,6 +177,26 @@ export function SlideAnnotations({
               value={box.text}
               placeholder="Type here…"
               onPointerDown={(event) => event.stopPropagation()}
+              onKeyDown={(event) => {
+                const shortcut = textShortcutOf(event);
+                if (!shortcut) return;
+                event.preventDefault();
+                if (shortcut === "undo") {
+                  undo();
+                  return;
+                }
+                if (shortcut === "redo") {
+                  redo();
+                  return;
+                }
+                onChange({
+                  ...value,
+                  texts: value.texts.map((t, i) =>
+                    i === index ? { ...t, [shortcut]: !t[shortcut] } : t,
+                  ),
+                });
+              }}
+
               onChange={(event) => {
                 const texts = value.texts.map((t, i) =>
                   i === index ? { ...t, text: event.target.value } : t,

@@ -425,11 +425,28 @@ export function FreeCanvas({
 
       {blocks.map((block) => {
         if (block.type === "ink") return null;
+
+        if (block.type === "audio") {
+          return (
+            <AudioPin
+              key={block.id}
+              block={block}
+              url={imageUrls?.[block.path]}
+              canEdit={canEdit}
+              selected={selectedId === block.id}
+              onSelect={() => setSelectedId(block.id)}
+              onMove={(event) => startMove(block.id, event)}
+              onDelete={() => remove(block.id)}
+            />
+          );
+        }
+
         const style = {
           left: block.x ?? 24,
           top: block.y ?? 24,
           width: block.w ?? 480,
         } as React.CSSProperties;
+
 
         if (block.type === "text") {
           const isSelectedText = selectedId === block.id;

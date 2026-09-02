@@ -193,7 +193,7 @@ export function FreeCanvas({
     event.preventDefault();
     event.stopPropagation();
     const block = blocks.find((b) => b.id === id);
-    if (!block || block.type === "ink") return;
+    if (!block || block.type === "ink" || block.type === "audio") return;
     const origin = point(event);
     const baseW = block.w ?? 420;
     const baseH = block.type === "image" ? (block.h ?? 0) : 0;
@@ -210,8 +210,9 @@ export function FreeCanvas({
       if (ratio) changes.h = Math.round(w * ratio);
       if (west) changes.x = Math.max(0, baseX + (baseW - w));
       if (north) changes.y = Math.max(0, baseY + ((ratio ? baseH : 0) - (changes.h ?? 0)));
-      patch(id, changes as Partial<Extract<NoteBlock, { type: "image" | "text" }>>);
+      patch(id, changes);
     };
+
 
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);

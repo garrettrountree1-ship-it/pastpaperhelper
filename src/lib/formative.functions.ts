@@ -16,12 +16,24 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
         question: z.string().min(3).max(1000),
         expectedAnswer: z.string().max(2000).nullable().optional(),
         seconds: z.number().int().min(15).max(1800),
+        targetStudentId: z.string().uuid().nullable().optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertClassTeacher(supabase, data.classId, userId);
+
+    const target = data.targetStudentId ?? null;
+    if (target) {
+      const { data: member } = await supabase
+        .from("class_members")
+        .select("student_id")
+        .eq("class_id", data.classId)
+        .eq("student_id", target)
+        .maybeSingle();
+      if (!member) throw new Error("That student is not in this class.");
+    }
 
     // Only one live check at a time — close anything still running.
     await supabase
@@ -41,12 +53,14 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
         expected_answer: data.expectedAnswer?.trim() || null,
         seconds: data.seconds,
         ends_at: endsAt,
+        target_student_id: target,
       })
       .select("id, question, seconds, ends_at")
       .single();
     if (error) throw new Error(error.message);
     return { id: row.id as string, endsAt: row.ends_at as string };
   });
+
 
 /** The live check for a class (if any), plus the caller's own attempts. */
 export const getActiveFormativeCheck = createServerFn({ method: "POST" })

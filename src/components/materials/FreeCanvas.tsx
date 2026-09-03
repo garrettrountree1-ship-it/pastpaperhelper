@@ -393,7 +393,7 @@ export function FreeCanvas({
   const inks = blocks.filter((b): b is Extract<NoteBlock, { type: "ink" }> => b.type === "ink");
 
   return (
-    <div style={{ height: height * zoom, overflow: "hidden" }}>
+    <div style={{ height: height * zoom, overflow: "hidden", overflowAnchor: "none" }}>
     <div
       ref={surfaceRef}
       onClick={surfaceClick}

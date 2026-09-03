@@ -721,21 +721,21 @@ function AssignmentDialog({
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="title">Title *</Label>
               <Input
                 id="title"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                placeholder="June 2023 Paper 2 — Q1-Q4"
+                placeholder="Add text here"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="subject">Subject / topic</Label>
+              <Label htmlFor="subject">Subject / topic (optional)</Label>
               <Input
                 id="subject"
                 value={subject}
                 onChange={(event) => setSubject(event.target.value)}
-                placeholder="Rates of reaction"
+                placeholder="Add text here"
               />
             </div>
           </div>

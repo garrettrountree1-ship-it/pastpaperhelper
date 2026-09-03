@@ -228,31 +228,32 @@ function ClassPicker({ role }: { role: "teacher" | "student" }) {
         {role === "teacher" ? (
           <>
             <div className="space-y-2">
-              <Label htmlFor="class-name">New class</Label>
+              <Label htmlFor="class-name">New class *</Label>
               <Input
                 id="class-name"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder="Year 11 Chemistry"
+                placeholder="Add text here"
                 className="w-56"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="class-subject">Subject</Label>
+              <Label htmlFor="class-subject">Subject (optional)</Label>
               <Input
                 id="class-subject"
                 value={subject}
                 onChange={(event) => setSubject(event.target.value)}
-                placeholder="Chemistry"
+                placeholder="Add text here"
                 className="w-40"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="class-curriculum">Curriculum</Label>
+              <Label htmlFor="class-curriculum">Curriculum *</Label>
               <Input
                 id="class-curriculum"
                 value={curriculum}
                 onChange={(event) => setCurriculum(event.target.value)}
+                placeholder="Add text here"
                 className="w-32"
               />
             </div>

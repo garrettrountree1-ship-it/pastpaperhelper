@@ -207,12 +207,12 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="unit-title">Unit title</Label>
+                <Label htmlFor="unit-title">Unit title *</Label>
                 <Input
                   id="unit-title"
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
-                  placeholder="Unit 3 — Rates of reaction"
+                  placeholder="Add text here"
                 />
               </div>
               <div className="space-y-2">
@@ -221,7 +221,7 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
                   id="unit-description"
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
-                  placeholder="What this unit covers"
+                  placeholder="Add text here"
                 />
               </div>
             </div>

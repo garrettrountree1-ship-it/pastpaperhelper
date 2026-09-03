@@ -63,15 +63,12 @@ export function formatSelection(command: "bold" | "italic" | "underline" | "undo
     if (range.collapsed || selection.toString().length === 0) return;
 
     // Keep formatting inside the box the user is actually editing.
-    const host = (
+    const node =
       range.commonAncestorContainer.nodeType === 1
         ? (range.commonAncestorContainer as Element)
-        : range.commonAncestorContainer.parentElement
-    )?.closest("[contenteditable='true']");
-    if (!host || !host.contains(document.activeElement) && document.activeElement !== host) {
-      // Selection is not in a focused editable box — do nothing.
-      if (document.activeElement !== host) return;
-    }
+        : range.commonAncestorContainer.parentElement;
+    if (!node?.closest("[contenteditable='true']")) return;
+
 
     // Wrap the highlighted words in tags rather than styling the whole block.
     document.execCommand("styleWithCSS", false, "false");

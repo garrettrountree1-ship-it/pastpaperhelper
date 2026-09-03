@@ -119,16 +119,23 @@ export function FreeCanvas({
 
 
 
-  const bottom = blocks.reduce((max, block) => {
+  const contentBottom = blocks.reduce((max, block) => {
     if (block.type === "ink") return Math.max(max, block.bottom ?? 0);
     const height = block.type === "image" ? (block.h ?? 300) : 200;
     return Math.max(max, (block.y ?? 0) + height);
   }, 0);
 
-  // The sheet grows endlessly: whenever the teacher nears the bottom we add
-  // another page of blank space, so the canvas never runs out and never bounces
-  // back up.
-  const [grown, setGrown] = useState(0);
+  // A monotonic document extent behaves like a word processor: reaching the
+  // bottom appends one more viewport, while scrolling upward never changes the
+  // document or scrollbar size.
+  const [documentHeight, setDocumentHeight] = useState(() =>
+    Math.max(1800, contentBottom + 700),
+  );
+
+  useEffect(() => {
+    setDocumentHeight((current) => Math.max(current, contentBottom + 700, 1800));
+  }, [contentBottom]);
+
   useEffect(() => {
     const surface = surfaceRef.current;
     if (!surface) return;
@@ -148,21 +155,33 @@ export function FreeCanvas({
     if (!scroller) return;
 
     const pane = scroller;
+    let previousTop = pane.scrollTop;
+    let queued = false;
     const grow = () => {
-      if (pane.scrollTop + pane.clientHeight >= pane.scrollHeight - 600) {
-        setGrown((value) => value + 1600);
-      }
+      const currentTop = pane.scrollTop;
+      const movingDown = currentTop > previousTop;
+      previousTop = currentTop;
+      if (!movingDown || queued) return;
+
+      const remaining = pane.scrollHeight - currentTop - pane.clientHeight;
+      if (remaining > Math.min(400, pane.clientHeight * 0.5)) return;
+
+      queued = true;
+      setDocumentHeight((current) =>
+        current + Math.max(900, Math.ceil(pane.clientHeight / zoom)),
+      );
+      requestAnimationFrame(() => {
+        queued = false;
+        previousTop = pane.scrollTop;
+      });
     };
-    grow();
     pane.addEventListener("scroll", grow, { passive: true });
-    pane.addEventListener("wheel", grow, { passive: true });
     return () => {
       pane.removeEventListener("scroll", grow);
-      pane.removeEventListener("wheel", grow);
     };
   }, [zoom]);
 
-  const height = Math.max(1800, bottom + 700) + grown;
+  const height = Math.max(documentHeight, contentBottom + 700);
 
 
 
@@ -170,7 +189,9 @@ export function FreeCanvas({
   // Pointer positions arrive in screen pixels; the sheet may be zoomed, so
   // convert back into unscaled canvas coordinates.
   function point(event: { clientX: number; clientY: number }) {
-    const rect = surfaceRef.current!.getBoundingClientRect();
+    const surface = surfaceRef.current;
+    if (!surface) return { x: 0, y: 0 };
+    const rect = surface.getBoundingClientRect();
     return { x: (event.clientX - rect.left) / zoom, y: (event.clientY - rect.top) / zoom };
   }
 
@@ -274,14 +295,23 @@ export function FreeCanvas({
     window.addEventListener("pointerup", onUp);
   }
 
-  // Delete or Backspace removes the selected image (Word-like behaviour).
+  // Delete or Backspace may remove a selected image/audio pin, but must never
+  // remove an entire text passage while the user is editing its words.
 
   useEffect(() => {
     if (!canEdit || !selectedId) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Delete" && event.key !== "Backspace") return;
       const target = event.target as HTMLElement | null;
-      if (target && /INPUT|TEXTAREA/.test(target.tagName)) return;
+      if (
+        target?.closest(
+          "input, textarea, select, button, [contenteditable='true'], [role='textbox']",
+        )
+      ) {
+        return;
+      }
+      const selected = blocks.find((block) => block.id === selectedId);
+      if (!selected || selected.type === "text" || selected.type === "ink") return;
       event.preventDefault();
       remove(selectedId);
       setSelectedId(null);

@@ -11,7 +11,8 @@ import { useDemoView } from "@/lib/demo-view";
  */
 export function useMarkupScope() {
   const [userId, setUserId] = useState<string | null>(null);
-  const demoView = useDemoView(true, "teacher");
+  const { view } = useDemoView(true, "teacher");
+
 
   useEffect(() => {
     let cancelled = false;

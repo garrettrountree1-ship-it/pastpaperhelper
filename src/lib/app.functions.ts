@@ -736,8 +736,9 @@ export const getClassOverview = createServerFn({ method: "POST" })
         };
       });
       const marked = grades.filter(
-        (g) => g.awardedMarks !== null && g.status === "submitted" && g.resultsReleased,
+        (g) => g.awardedMarks !== null && g.status !== "not_started",
       );
+
       const earned = marked.reduce((sum, g) => sum + (g.awardedMarks ?? 0), 0);
       const possible = marked.reduce((sum, g) => sum + g.totalMarks, 0);
       return {

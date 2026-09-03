@@ -717,8 +717,8 @@ export function LessonWorkspace({
                   onDoubleClick={() =>
                     setFloatState(floatState === "max" ? "window" : "max")
                   }
-                  className="flex h-9 shrink-0 cursor-move items-center gap-1 border-b bg-muted/60 px-2"
-                  title="Drag to move, double-click to maximise"
+                  className="flex h-10 shrink-0 touch-none select-none items-center gap-1 border-b bg-muted/70 px-2 active:cursor-grabbing cursor-grab"
+                  title="Drag anywhere on this bar to move the window; double-click to maximise"
                 >
                   <Move className="size-3.5 text-muted-foreground" />
                   <span className="truncate text-xs font-medium">

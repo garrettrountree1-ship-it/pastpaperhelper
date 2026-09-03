@@ -558,32 +558,22 @@ export function FreeCanvas({
                       </button>
                     </div>
                   ) : null}
-                  <textarea
-                    value={block.text}
-                    onChange={(event) => patch(block.id, { text: event.target.value })}
-                    onFocus={() => setSelectedId(block.id)}
+                  <RichTextEditable
+                    html={block.html ?? escapeHtml(block.text ?? "")}
+                    autoFocus={focusId === block.id}
+                    onChange={({ html, text }) => patch(block.id, { html, text })}
+                    onFocus={() => {
+                      setSelectedId(block.id);
+                      if (focusId === block.id) setFocusId(null);
+                    }}
                     onBlur={() => {
                       if (!block.box && !block.text.trim()) remove(block.id);
                     }}
-
+                    onUndo={undo}
+                    onRedo={redo}
                     placeholder="Type here…"
-                    rows={1}
-                    className="w-full resize-none border-0 bg-transparent p-1 text-foreground outline-none focus:ring-0"
-                    style={{ ...textStyle, height: "auto", minHeight: 28 }}
-                    onInput={(event) => {
-                      const el = event.currentTarget;
-                      el.style.height = "auto";
-                      el.style.height = `${el.scrollHeight}px`;
-                    }}
-                    ref={(el) => {
-                      if (!el) return;
-                      el.style.height = "auto";
-                      el.style.height = `${el.scrollHeight}px`;
-                      if (focusId === block.id) {
-                        el.focus();
-                        setFocusId(null);
-                      }
-                    }}
+                    className="w-full border-0 bg-transparent p-1 text-foreground"
+                    style={{ ...textStyle, minHeight: 28 }}
                   />
                   <span
                     onPointerDown={(event) => startResize(block.id, event)}
@@ -592,11 +582,14 @@ export function FreeCanvas({
                     }`}
                   />
                 </>
+              ) : block.html ? (
+                <div style={textStyle} dangerouslySetInnerHTML={{ __html: block.html }} />
               ) : (
                 <div style={textStyle}>
                   <ClickableText text={block.text} onConcept={onConcept} />
                 </div>
               )}
+
             </div>
           );
         }

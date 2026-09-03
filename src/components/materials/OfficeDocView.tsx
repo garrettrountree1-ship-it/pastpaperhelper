@@ -24,6 +24,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { clearCachedDoc, readCachedJson, writeCachedJson } from "@/lib/doc-cache";
+import { scopedKey, useMarkupScope } from "@/lib/markup-scope";
+
 import {
   buildOfficeRender,
   fetchSharedRender,
@@ -75,8 +77,11 @@ export function OfficeDocView({
   // Increment when the renderer changes so old, incorrectly parsed decks are
   // never served forever from IndexedDB after a fidelity fix.
   const key = `office-render-v4:${format}:${cacheKey ?? title}`;
-  const notesKey = `office-annotations:${format}:${cacheKey ?? title}`;
-  const editsKey = `office-shape-edits:${format}:${cacheKey ?? title}`;
+  // Marks and slide edits are personal to the account viewing them.
+  const { ready: scopeReady, scope } = useMarkupScope();
+  const notesKey = scopedKey(`office-annotations:${format}:${cacheKey ?? title}`, scope);
+  const editsKey = scopedKey(`office-shape-edits:${format}:${cacheKey ?? title}`, scope);
+
 
   // Drawings and text boxes made on top of the slides, kept per slide index and
   // saved locally so they are still there next lesson.
@@ -104,17 +109,19 @@ export function OfficeDocView({
   const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
+    if (!scopeReady) return;
     let cancelled = false;
     void (async () => {
       const saved = await readCachedJson<Record<number, SlideAnnotation>>(notesKey);
-      if (!cancelled && saved) setNotes(saved);
+      if (!cancelled) setNotes(saved ?? {});
       const savedEdits = await readCachedJson<Record<string, ShapeEdit>>(editsKey);
-      if (!cancelled && savedEdits) setEdits(savedEdits);
+      if (!cancelled) setEdits(savedEdits ?? {});
     })();
     return () => {
       cancelled = true;
     };
-  }, [notesKey, editsKey]);
+  }, [notesKey, editsKey, scopeReady]);
+
 
   function updateNotes(index: number, next: SlideAnnotation) {
     setNotes((current) => {

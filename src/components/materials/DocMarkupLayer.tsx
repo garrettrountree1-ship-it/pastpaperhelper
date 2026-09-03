@@ -9,6 +9,8 @@ import {
 } from "@/components/materials/SlideAnnotations";
 import { Button } from "@/components/ui/button";
 import { readCachedJson, writeCachedJson } from "@/lib/doc-cache";
+import { scopedKey, useMarkupScope } from "@/lib/markup-scope";
+
 
 const SWATCHES = ["#dc2626", "#2563eb", "#16a34a", "#111827"];
 
@@ -21,12 +23,16 @@ export const MARKUP_WIDTH = 1000;
  * (or per document, for a flowing Word file) and kept locally so they are still
  * there next lesson.
  */
-export function useDocMarkup(storageKey: string) {
+export function useDocMarkup(baseKey: string) {
   const [tool, setTool] = useState<SlideTool>("none");
   const [penColor, setPenColor] = useState(SWATCHES[0]!);
   const [notes, setNotes] = useState<Record<number, SlideAnnotation>>({});
+  // Markup is personal: each account (and each demo view) keeps its own marks.
+  const { ready, scope } = useMarkupScope();
+  const storageKey = scopedKey(baseKey, scope);
 
   useEffect(() => {
+    if (!ready) return;
     let cancelled = false;
     void (async () => {
       const saved = await readCachedJson<Record<number, SlideAnnotation>>(storageKey);
@@ -35,7 +41,8 @@ export function useDocMarkup(storageKey: string) {
     return () => {
       cancelled = true;
     };
-  }, [storageKey]);
+  }, [storageKey, ready]);
+
 
   function annotationOf(index: number) {
     return notes[index] ?? emptyAnnotation;

@@ -149,6 +149,7 @@ export function LessonWorkspace({
   type FloatDrag = "move" | "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
   function startFloatDrag(event: React.PointerEvent<HTMLElement>, mode: FloatDrag) {
+    if (event.button !== undefined && event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     const row = rowRef.current;
@@ -163,43 +164,56 @@ export function LessonWorkspace({
     } catch {
       /* pointer capture is best-effort */
     }
-    const minW = 16;
-    const minH = 10;
-    const onMove = (move: PointerEvent) => {
+    // Stop text selection / iframe hijacking while a drag is in flight.
+    const prevSelect = document.body.style.userSelect;
+    const prevCursor = document.body.style.cursor;
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = mode === "move" ? "move" : `${mode}-resize`;
+    const minW = 14;
+    const minH = 8;
+    let frame = 0;
+    const apply = (move: PointerEvent) => {
       const dx = ((move.clientX - start.px) / rect.width) * 100;
       const dy = ((move.clientY - start.py) / rect.height) * 100;
       setFloatRect(() => {
         if (mode === "move") {
-          // The window travels anywhere in the area; a 10% sliver always stays
-          // visible so it can never be lost off an edge.
+          // Free movement; a slice always stays grabbable inside the area.
           return {
             ...start,
-            x: Math.min(90, Math.max(10 - start.w, start.x + dx)),
-            y: Math.min(94, Math.max(0, start.y + dy)),
+            x: Math.min(95, Math.max(-start.w + 12, start.x + dx)),
+            y: Math.min(95, Math.max(-1, start.y + dy)),
           };
         }
         const next = { ...start };
         if (mode === "e" || mode === "ne" || mode === "se") {
-          next.w = Math.max(minW, Math.min(100 - start.x, start.w + dx));
+          next.w = Math.max(minW, Math.min(160, start.w + dx));
         }
         if (mode === "w" || mode === "nw" || mode === "sw") {
-          const w = Math.max(minW, Math.min(start.x + start.w, start.w - dx));
+          const w = Math.max(minW, start.w - dx);
           next.x = start.x + start.w - w;
           next.w = w;
         }
         if (mode === "s" || mode === "se" || mode === "sw") {
-          next.h = Math.max(minH, Math.min(100 - start.y, start.h + dy));
+          next.h = Math.max(minH, Math.min(160, start.h + dy));
         }
         if (mode === "n" || mode === "ne" || mode === "nw") {
-          const h = Math.max(minH, Math.min(start.y + start.h, start.h - dy));
+          const h = Math.max(minH, start.h - dy);
           next.y = start.y + start.h - h;
           next.h = h;
         }
         return next;
       });
     };
+    const onMove = (move: PointerEvent) => {
+      // Coalesce to one update per frame so dragging stays smooth.
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => apply(move));
+    };
     const onUp = () => {
+      if (frame) cancelAnimationFrame(frame);
       setFloatDragging(false);
+      document.body.style.userSelect = prevSelect;
+      document.body.style.cursor = prevCursor;
       try {
         handle.releasePointerCapture(event.pointerId);
       } catch {
@@ -213,6 +227,7 @@ export function LessonWorkspace({
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);
   }
+
 
 
 
@@ -665,11 +680,15 @@ export function LessonWorkspace({
               </div>
 
               {/* Keeps drags alive over embedded documents / iframes */}
-              {floatDragging ? <div className="absolute inset-0 z-40" /> : null}
+              {floatDragging ? (
+                <div className="absolute inset-0 z-20 cursor-grabbing" />
+              ) : null}
 
               {/* Front window floats on top: drag, stretch, minimise, maximise */}
               <div
-                className="absolute z-30 flex flex-col overflow-hidden rounded-lg border bg-background shadow-xl"
+                className={`absolute z-30 flex touch-none flex-col overflow-hidden rounded-lg border-2 bg-background shadow-2xl ${
+                  floatDragging ? "border-primary" : "border-border"
+                }`}
                 style={
                   floatState === "max"
                     ? { left: 0, top: 0, width: "100%", height: "100%" }
@@ -698,8 +717,8 @@ export function LessonWorkspace({
                   onDoubleClick={() =>
                     setFloatState(floatState === "max" ? "window" : "max")
                   }
-                  className="flex h-9 shrink-0 cursor-move items-center gap-1 border-b bg-muted/60 px-2"
-                  title="Drag to move, double-click to maximise"
+                  className="flex h-10 shrink-0 touch-none select-none items-center gap-1 border-b bg-muted/70 px-2 active:cursor-grabbing cursor-grab"
+                  title="Drag anywhere on this bar to move the window; double-click to maximise"
                 >
                   <Move className="size-3.5 text-muted-foreground" />
                   <span className="truncate text-xs font-medium">
@@ -764,42 +783,42 @@ export function LessonWorkspace({
                     {/* Every edge and corner resizes, with generous hit areas */}
                     <div
                       onPointerDown={(event) => startFloatDrag(event, "n")}
-                      className="absolute left-0 top-0 z-10 h-1.5 w-full cursor-ns-resize"
+                      className="absolute left-0 top-0 z-10 h-2.5 w-full touch-none cursor-ns-resize"
                       title="Drag to change the window height"
                     />
                     <div
                       onPointerDown={(event) => startFloatDrag(event, "s")}
-                      className="absolute bottom-0 left-0 z-10 h-3 w-full cursor-ns-resize"
+                      className="absolute bottom-0 left-0 z-10 h-2.5 w-full touch-none cursor-ns-resize"
                       title="Drag to change the window height"
                     />
                     <div
                       onPointerDown={(event) => startFloatDrag(event, "w")}
-                      className="absolute left-0 top-0 z-10 h-full w-3 cursor-ew-resize"
+                      className="absolute left-0 top-0 z-10 h-full w-2.5 touch-none cursor-ew-resize"
                       title="Drag to change the window width"
                     />
                     <div
                       onPointerDown={(event) => startFloatDrag(event, "e")}
-                      className="absolute right-0 top-0 z-10 h-full w-3 cursor-ew-resize"
+                      className="absolute right-0 top-0 z-10 h-full w-2.5 touch-none cursor-ew-resize"
                       title="Drag to change the window width"
                     />
                     <div
                       onPointerDown={(event) => startFloatDrag(event, "nw")}
-                      className="absolute left-0 top-0 z-20 size-5 cursor-nwse-resize"
+                      className="absolute left-0 top-0 z-20 size-7 touch-none cursor-nwse-resize"
                       title="Drag to stretch this window"
                     />
                     <div
                       onPointerDown={(event) => startFloatDrag(event, "ne")}
-                      className="absolute right-0 top-0 z-20 size-5 cursor-nesw-resize"
+                      className="absolute right-0 top-0 z-20 size-7 touch-none cursor-nesw-resize"
                       title="Drag to stretch this window"
                     />
                     <div
                       onPointerDown={(event) => startFloatDrag(event, "sw")}
-                      className="absolute bottom-0 left-0 z-20 size-6 cursor-nesw-resize"
+                      className="absolute bottom-0 left-0 z-20 size-8 touch-none cursor-nesw-resize rounded-tr border-r border-t bg-muted/80"
                       title="Drag to stretch this window"
                     />
                     <div
                       onPointerDown={(event) => startFloatDrag(event, "se")}
-                      className="absolute bottom-0 right-0 z-20 size-6 cursor-nwse-resize rounded-tl border-l border-t bg-muted"
+                      className="absolute bottom-0 right-0 z-20 size-8 touch-none cursor-nwse-resize rounded-tl border-l border-t bg-muted/80"
                       title="Drag to stretch this window"
                     />
                   </>

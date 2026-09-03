@@ -149,7 +149,7 @@ function ClassRoster({ classId }: { classId: string }) {
               {students.map((s) => (
                 <tr key={s.id} className="border-t border-border">
                   <td className="py-2 pr-4">{s.name}</td>
-                  <td className="py-2 pr-4 text-muted-foreground">{s.email ?? "—"}</td>
+                  
                   <td className="py-2 text-muted-foreground">
                     {new Date(s.joinedAt).toLocaleDateString()}
                   </td>

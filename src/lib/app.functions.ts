@@ -709,10 +709,11 @@ export const getClassOverview = createServerFn({ method: "POST" })
         ).length,
         pastDue,
         behindCount,
-        /** Grades only appear in the gradebook once the deadline has passed. */
-        resultsReleased: a.due_at ? pastDue : true,
+        /** Live scores: grades update as students work; the deadline only freezes them. */
+        resultsReleased: true,
       };
     });
+
 
     const classDetail = (klass as { gradebook_detail?: boolean | null }).gradebook_detail !== false;
 

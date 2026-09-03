@@ -157,7 +157,14 @@ export function FormativeCheckButton({
  * Live panel shown to everyone in the lesson while a check is running: the
  * teacher watches results come in, students answer and get marked instantly.
  */
-export function FormativeCheckPanel({ classId }: { classId: string }) {
+export function FormativeCheckPanel({
+  classId,
+  asStudent = false,
+}: {
+  classId: string;
+  /** Demo accounts viewing the class as a student answer like a student. */
+  asStudent?: boolean;
+}) {
   const queryClient = useQueryClient();
   const fetchActive = useServerFn(getActiveFormativeCheck);
   const fetchResults = useServerFn(listFormativeResults);
@@ -169,7 +176,8 @@ export function FormativeCheckPanel({ classId }: { classId: string }) {
     queryFn: () => fetchActive({ data: { classId } }),
     refetchInterval: 5000,
   });
-  const check = active.data ?? null;
+  const raw = active.data ?? null;
+  const check = raw ? { ...raw, isTeacher: raw.isTeacher && !asStudent } : null;
   const countdown = useCountdown(check?.endsAt);
   const [answer, setAnswer] = useState("");
   const [dismissed, setDismissed] = useState<string | null>(null);

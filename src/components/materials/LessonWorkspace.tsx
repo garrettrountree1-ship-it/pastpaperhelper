@@ -149,6 +149,7 @@ export function LessonWorkspace({
   type FloatDrag = "move" | "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
   function startFloatDrag(event: React.PointerEvent<HTMLElement>, mode: FloatDrag) {
+    if (event.button !== undefined && event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     const row = rowRef.current;
@@ -163,43 +164,56 @@ export function LessonWorkspace({
     } catch {
       /* pointer capture is best-effort */
     }
-    const minW = 16;
-    const minH = 10;
-    const onMove = (move: PointerEvent) => {
+    // Stop text selection / iframe hijacking while a drag is in flight.
+    const prevSelect = document.body.style.userSelect;
+    const prevCursor = document.body.style.cursor;
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = mode === "move" ? "move" : `${mode}-resize`;
+    const minW = 14;
+    const minH = 8;
+    let frame = 0;
+    const apply = (move: PointerEvent) => {
       const dx = ((move.clientX - start.px) / rect.width) * 100;
       const dy = ((move.clientY - start.py) / rect.height) * 100;
       setFloatRect(() => {
         if (mode === "move") {
-          // The window travels anywhere in the area; a 10% sliver always stays
-          // visible so it can never be lost off an edge.
+          // Free movement; a slice always stays grabbable inside the area.
           return {
             ...start,
-            x: Math.min(90, Math.max(10 - start.w, start.x + dx)),
-            y: Math.min(94, Math.max(0, start.y + dy)),
+            x: Math.min(95, Math.max(-start.w + 12, start.x + dx)),
+            y: Math.min(95, Math.max(-1, start.y + dy)),
           };
         }
         const next = { ...start };
         if (mode === "e" || mode === "ne" || mode === "se") {
-          next.w = Math.max(minW, Math.min(100 - start.x, start.w + dx));
+          next.w = Math.max(minW, Math.min(160, start.w + dx));
         }
         if (mode === "w" || mode === "nw" || mode === "sw") {
-          const w = Math.max(minW, Math.min(start.x + start.w, start.w - dx));
+          const w = Math.max(minW, start.w - dx);
           next.x = start.x + start.w - w;
           next.w = w;
         }
         if (mode === "s" || mode === "se" || mode === "sw") {
-          next.h = Math.max(minH, Math.min(100 - start.y, start.h + dy));
+          next.h = Math.max(minH, Math.min(160, start.h + dy));
         }
         if (mode === "n" || mode === "ne" || mode === "nw") {
-          const h = Math.max(minH, Math.min(start.y + start.h, start.h - dy));
+          const h = Math.max(minH, start.h - dy);
           next.y = start.y + start.h - h;
           next.h = h;
         }
         return next;
       });
     };
+    const onMove = (move: PointerEvent) => {
+      // Coalesce to one update per frame so dragging stays smooth.
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => apply(move));
+    };
     const onUp = () => {
+      if (frame) cancelAnimationFrame(frame);
       setFloatDragging(false);
+      document.body.style.userSelect = prevSelect;
+      document.body.style.cursor = prevCursor;
       try {
         handle.releasePointerCapture(event.pointerId);
       } catch {
@@ -213,6 +227,7 @@ export function LessonWorkspace({
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);
   }
+
 
 
 

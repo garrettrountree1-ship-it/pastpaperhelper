@@ -198,3 +198,109 @@ export const closeFormativeCheck = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/**
+ * Teacher record book: every formative check ever sent in a class, with the
+ * lesson section it belonged to and every student answer with its verdict.
+ */
+export const listFormativeHistory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ classId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertClassTeacher(supabase, data.classId, userId);
+
+    const { data: checks } = await supabase
+      .from("formative_checks")
+      .select("id, question, expected_answer, seconds, ends_at, closed_at, created_at, section_id")
+      .eq("class_id", data.classId)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (!checks || checks.length === 0) return [];
+
+    const checkIds = checks.map((c) => c.id as string);
+    const { data: responses } = await supabase
+      .from("formative_responses")
+      .select("check_id, student_id, answer, verdict, feedback, attempt, created_at")
+      .in("check_id", checkIds)
+      .order("created_at", { ascending: true });
+
+    const sectionIds = [
+      ...new Set(checks.map((c) => c.section_id as string | null).filter(Boolean) as string[]),
+    ];
+    const sectionTitles = new Map<string, string>();
+    if (sectionIds.length > 0) {
+      const { data: sections } = await supabase
+        .from("unit_sections")
+        .select("id, title, unit_id, class_units(title)")
+        .in("id", sectionIds);
+      for (const section of sections ?? []) {
+        const unit = (section as { class_units?: { title?: string } | null }).class_units;
+        sectionTitles.set(
+          section.id as string,
+          unit?.title ? `${unit.title} · ${section.title as string}` : (section.title as string),
+        );
+      }
+    }
+
+    // Everyone in the class, so the teacher can also see who never answered.
+    const { data: members } = await supabase
+      .from("class_members")
+      .select("student_id")
+      .eq("class_id", data.classId);
+    const memberIds = (members ?? []).map((m) => m.student_id as string);
+    const ids = [...new Set([...memberIds, ...(responses ?? []).map((r) => r.student_id as string)])];
+    const names = new Map<string, string>();
+    if (ids.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", ids);
+      for (const p of profiles ?? []) {
+        names.set(
+          p.id as string,
+          ((p.full_name as string | null) || (p.email as string | null) || "Student") as string,
+        );
+      }
+    }
+
+    return checks.map((check) => {
+      const rows = (responses ?? []).filter((r) => r.check_id === check.id);
+      const perStudent = new Map<
+        string,
+        { attempts: number; verdict: string; answer: string; feedback: string }
+      >();
+      for (const row of rows) {
+        const prev = perStudent.get(row.student_id as string);
+        perStudent.set(row.student_id as string, {
+          attempts: (prev?.attempts ?? 0) + 1,
+          verdict: row.verdict as string,
+          answer: row.answer as string,
+          feedback: (row.feedback ?? "") as string,
+        });
+      }
+      const students = ids.map((id) => {
+        const entry = perStudent.get(id);
+        return {
+          studentId: id,
+          name: names.get(id) ?? "Student",
+          answered: Boolean(entry),
+          attempts: entry?.attempts ?? 0,
+          verdict: entry?.verdict ?? "",
+          answer: entry?.answer ?? "",
+          feedback: entry?.feedback ?? "",
+        };
+      });
+      return {
+        id: check.id as string,
+        question: check.question as string,
+        expectedAnswer: (check.expected_answer ?? null) as string | null,
+        seconds: check.seconds as number,
+        sentAt: check.created_at as string,
+        lesson: check.section_id ? (sectionTitles.get(check.section_id as string) ?? "Lesson") : "—",
+        answeredCount: students.filter((s) => s.answered).length,
+        correctCount: students.filter((s) => s.verdict === "correct").length,
+        students,
+      };
+    });
+  });

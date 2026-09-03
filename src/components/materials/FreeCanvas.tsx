@@ -2,7 +2,9 @@ import { GripVertical, Pause, RotateCw, Trash2, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useUndoHistory } from "@/hooks/use-undo-history";
+import { escapeHtml, formatSelection } from "@/lib/rich-text";
 import { textShortcutOf } from "@/lib/text-shortcuts";
+import { RichTextEditable } from "@/components/materials/RichTextEditable";
 import type { NoteBlock } from "@/lib/notes.functions";
 
 

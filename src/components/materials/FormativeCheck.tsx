@@ -26,6 +26,8 @@ import {
   listFormativeResults,
 } from "@/lib/formative.functions";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
+import { listClassRoster } from "@/lib/materials.functions";
+
 import { downloadXlsx } from "@/lib/xlsx-export";
 
 const TIMER_OPTIONS = [
@@ -60,10 +62,18 @@ export function FormativeCheckButton({
 }) {
   const queryClient = useQueryClient();
   const launch = useServerFn(launchFormativeCheck);
+  const roster = useServerFn(listClassRoster);
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [expected, setExpected] = useState("");
   const [seconds, setSeconds] = useState(60);
+  const [target, setTarget] = useState<string>("class");
+
+  const students = useQuery({
+    queryKey: ["class-roster", classId],
+    queryFn: () => roster({ data: { classId } }),
+    enabled: open,
+  });
 
   const send = useMutation({
     mutationFn: () =>
@@ -74,17 +84,20 @@ export function FormativeCheckButton({
           question: question.trim(),
           expectedAnswer: expected.trim() || null,
           seconds,
+          targetStudentId: target === "class" ? null : target,
         },
       }),
     onSuccess: async () => {
-      toast.success("Sent to the class");
+      toast.success(target === "class" ? "Sent to the class" : "Sent to that student");
       setOpen(false);
       setQuestion("");
       setExpected("");
+      setTarget("class");
       await queryClient.invalidateQueries({ queryKey: ["formative-active", classId] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -124,8 +137,36 @@ export function FormativeCheckButton({
             />
           </div>
           <div className="space-y-1">
+            <Label>Send to</Label>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={target === "class" ? "default" : "outline"}
+                onClick={() => setTarget("class")}
+              >
+                Whole class
+              </Button>
+              {(students.data ?? []).map((student) => (
+                <Button
+                  key={student.id}
+                  type="button"
+                  size="sm"
+                  variant={target === student.id ? "default" : "outline"}
+                  onClick={() => setTarget(student.id)}
+                >
+                  {student.name}
+                </Button>
+              ))}
+              {students.isPending && open ? (
+                <span className="text-xs text-muted-foreground">Loading students...</span>
+              ) : null}
+            </div>
+          </div>
+          <div className="space-y-1">
             <Label>Timer</Label>
             <div className="flex flex-wrap gap-2">
+
               {TIMER_OPTIONS.map((option) => (
                 <Button
                   key={option.value}

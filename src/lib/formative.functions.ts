@@ -16,12 +16,24 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
         question: z.string().min(3).max(1000),
         expectedAnswer: z.string().max(2000).nullable().optional(),
         seconds: z.number().int().min(15).max(1800),
+        targetStudentId: z.string().uuid().nullable().optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertClassTeacher(supabase, data.classId, userId);
+
+    const target = data.targetStudentId ?? null;
+    if (target) {
+      const { data: member } = await supabase
+        .from("class_members")
+        .select("student_id")
+        .eq("class_id", data.classId)
+        .eq("student_id", target)
+        .maybeSingle();
+      if (!member) throw new Error("That student is not in this class.");
+    }
 
     // Only one live check at a time — close anything still running.
     await supabase
@@ -41,12 +53,14 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
         expected_answer: data.expectedAnswer?.trim() || null,
         seconds: data.seconds,
         ends_at: endsAt,
+        target_student_id: target,
       })
       .select("id, question, seconds, ends_at")
       .single();
     if (error) throw new Error(error.message);
     return { id: row.id as string, endsAt: row.ends_at as string };
   });
+
 
 /** The live check for a class (if any), plus the caller's own attempts. */
 export const getActiveFormativeCheck = createServerFn({ method: "POST" })
@@ -56,14 +70,16 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: check } = await supabase
       .from("formative_checks")
-      .select("id, question, seconds, ends_at, teacher_id, expected_answer")
+      .select("id, question, seconds, ends_at, teacher_id, expected_answer, target_student_id")
       .eq("class_id", data.classId)
       .is("closed_at", null)
       .gt("ends_at", new Date().toISOString())
+      .or(`target_student_id.is.null,target_student_id.eq.${userId},teacher_id.eq.${userId}`)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
     if (!check) return null;
+
 
     const { data: mine } = await supabase
       .from("formative_responses")
@@ -79,6 +95,8 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
       endsAt: check.ends_at as string,
       isTeacher: check.teacher_id === userId,
       hasExpectedAnswer: Boolean(check.expected_answer),
+      targetStudentId: (check.target_student_id ?? null) as string | null,
+
       myAttempts: (mine ?? []).map((r) => ({
         id: r.id as string,
         answer: r.answer as string,
@@ -100,10 +118,18 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: check } = await supabase
       .from("formative_checks")
-      .select("id, question, expected_answer, ends_at, closed_at")
+      .select("id, question, expected_answer, ends_at, closed_at, teacher_id, target_student_id")
       .eq("id", data.checkId)
       .maybeSingle();
     if (!check) throw new Error("That class question is no longer available.");
+    if (
+      check.target_student_id &&
+      check.target_student_id !== userId &&
+      check.teacher_id !== userId
+    ) {
+      throw new Error("That question was sent to another student.");
+    }
+
     if (check.closed_at || new Date(check.ends_at as string).getTime() < Date.now()) {
       throw new Error("Time is up for this question.");
     }

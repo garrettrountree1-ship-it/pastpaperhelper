@@ -621,6 +621,7 @@ export type Database = {
           question: string
           seconds: number
           section_id: string | null
+          target_student_id: string | null
           teacher_id: string
         }
         Insert: {
@@ -633,6 +634,7 @@ export type Database = {
           question: string
           seconds?: number
           section_id?: string | null
+          target_student_id?: string | null
           teacher_id: string
         }
         Update: {
@@ -645,6 +647,7 @@ export type Database = {
           question?: string
           seconds?: number
           section_id?: string | null
+          target_student_id?: string | null
           teacher_id?: string
         }
         Relationships: [

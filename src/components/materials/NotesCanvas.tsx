@@ -113,12 +113,29 @@ export function NotesCanvas({
   const dirty = useRef(false);
   const fileInput = useRef<HTMLInputElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  /** Latest edit, so a flush always saves the newest work for the right section. */
+  const latest = useRef<{ sectionId: string; blocks: NoteBlock[] }>({ sectionId, blocks });
+  const draftKey = `notes-draft:${sectionId}`;
 
-  // Reset when the teacher switches section.
+  // Reset when the teacher switches section, restoring any unsaved local draft
+  // (e.g. the tab closed or the network dropped before the last save landed).
   useEffect(() => {
+    let cancelled = false;
     setBlocks(withPositions(initialBlocks));
     setSummary(initialSummary ?? "");
     dirty.current = false;
+    latest.current = { sectionId, blocks: withPositions(initialBlocks) };
+    void (async () => {
+      const draft = await readCachedJson<NoteBlock[]>(`notes-draft:${sectionId}`);
+      if (!cancelled && canEdit && draft && draft.length > 0) {
+        setBlocks(withPositions(draft));
+        latest.current = { sectionId, blocks: withPositions(draft) };
+        dirty.current = true;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionId]);
 
@@ -153,31 +170,70 @@ export function NotesCanvas({
     onError: (error: Error) => toast.error(error.message),
   });
 
+  /** Writes the newest work to the server right away. */
+  const flush = useRef(async () => {});
+  flush.current = async () => {
+    if (!canEdit || !dirty.current) return;
+    const snapshot = latest.current;
+    dirty.current = false;
+    setStatus("saving");
+    try {
+      await save({ data: { sectionId: snapshot.sectionId, blocks: snapshot.blocks } });
+      setStatus("saved");
+      onSaved?.();
+      // Server has it — the local safety copy is no longer needed.
+      await writeCachedJson(`notes-draft:${snapshot.sectionId}`, []);
+    } catch (error) {
+      // Keep it dirty so the next tick (or flush) tries again; the local draft
+      // still holds the work either way.
+      dirty.current = true;
+      setStatus("idle");
+      toast.error((error as Error).message);
+    }
+  };
 
-  // Continuous autosave, then a fresh AI summary once typing settles.
+  // Autosave almost immediately after any typing, drawing or image, then
+  // refresh the AI summary once editing settles.
   useEffect(() => {
     if (!canEdit || !dirty.current) return;
     setStatus("saving");
     const saveTimer = setTimeout(async () => {
-      try {
-        await save({ data: { sectionId, blocks } });
-        setStatus("saved");
-        dirty.current = false;
-        onSaved?.();
-        summaryMutation.mutate();
-      } catch (error) {
-        setStatus("idle");
-        toast.error((error as Error).message);
-      }
-    }, 1500);
+      await flush.current();
+      if (!dirty.current) summaryMutation.mutate();
+    }, 400);
     return () => clearTimeout(saveTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blocks, canEdit, sectionId]);
 
+  // Never lose work when the pane closes, the section changes, the tab is
+  // hidden or the window is closed.
+  useEffect(() => {
+    const onHide = () => void flush.current();
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      void flush.current();
+      if (dirty.current) event.preventDefault();
+    };
+    window.addEventListener("blur", onHide);
+    window.addEventListener("pagehide", onHide);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      window.removeEventListener("blur", onHide);
+      window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("visibilitychange", onHide);
+      void flush.current();
+    };
+  }, []);
+
   function update(next: NoteBlock[]) {
     dirty.current = true;
+    latest.current = { sectionId, blocks: next };
     setBlocks(next);
+    // Instant local safety copy, so nothing can be lost before the save lands.
+    void writeCachedJson(draftKey, next);
   }
+
 
   async function uploadImage(file: File) {
     const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_") || "pasted.png";

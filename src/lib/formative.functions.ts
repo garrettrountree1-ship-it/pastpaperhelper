@@ -118,10 +118,18 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: check } = await supabase
       .from("formative_checks")
-      .select("id, question, expected_answer, ends_at, closed_at")
+      .select("id, question, expected_answer, ends_at, closed_at, teacher_id, target_student_id")
       .eq("id", data.checkId)
       .maybeSingle();
     if (!check) throw new Error("That class question is no longer available.");
+    if (
+      check.target_student_id &&
+      check.target_student_id !== userId &&
+      check.teacher_id !== userId
+    ) {
+      throw new Error("That question was sent to another student.");
+    }
+
     if (check.closed_at || new Date(check.ends_at as string).getTime() < Date.now()) {
       throw new Error("Time is up for this question.");
     }

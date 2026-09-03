@@ -761,23 +761,50 @@ export function LessonWorkspace({
 
                 {floatState === "window" ? (
                   <>
+                    {/* Every edge and corner resizes, with generous hit areas */}
                     <div
-                      onPointerDown={(event) => startFloatDrag(event, "e")}
-                      className="absolute right-0 top-0 z-10 h-full w-2 cursor-ew-resize"
-                      title="Drag to change the window width"
-                    />
-                    <div
-                      onPointerDown={(event) => startFloatDrag(event, "s")}
-                      className="absolute bottom-0 left-0 z-10 h-2 w-full cursor-ns-resize"
+                      onPointerDown={(event) => startFloatDrag(event, "n")}
+                      className="absolute left-0 top-0 z-10 h-1.5 w-full cursor-ns-resize"
                       title="Drag to change the window height"
                     />
                     <div
+                      onPointerDown={(event) => startFloatDrag(event, "s")}
+                      className="absolute bottom-0 left-0 z-10 h-3 w-full cursor-ns-resize"
+                      title="Drag to change the window height"
+                    />
+                    <div
+                      onPointerDown={(event) => startFloatDrag(event, "w")}
+                      className="absolute left-0 top-0 z-10 h-full w-3 cursor-ew-resize"
+                      title="Drag to change the window width"
+                    />
+                    <div
+                      onPointerDown={(event) => startFloatDrag(event, "e")}
+                      className="absolute right-0 top-0 z-10 h-full w-3 cursor-ew-resize"
+                      title="Drag to change the window width"
+                    />
+                    <div
+                      onPointerDown={(event) => startFloatDrag(event, "nw")}
+                      className="absolute left-0 top-0 z-20 size-5 cursor-nwse-resize"
+                      title="Drag to stretch this window"
+                    />
+                    <div
+                      onPointerDown={(event) => startFloatDrag(event, "ne")}
+                      className="absolute right-0 top-0 z-20 size-5 cursor-nesw-resize"
+                      title="Drag to stretch this window"
+                    />
+                    <div
+                      onPointerDown={(event) => startFloatDrag(event, "sw")}
+                      className="absolute bottom-0 left-0 z-20 size-6 cursor-nesw-resize"
+                      title="Drag to stretch this window"
+                    />
+                    <div
                       onPointerDown={(event) => startFloatDrag(event, "se")}
-                      className="absolute bottom-0 right-0 z-20 size-4 cursor-nwse-resize rounded-tl border-l border-t bg-muted"
+                      className="absolute bottom-0 right-0 z-20 size-6 cursor-nwse-resize rounded-tl border-l border-t bg-muted"
                       title="Drag to stretch this window"
                     />
                   </>
                 ) : null}
+
 
               </div>
             </div>

@@ -23,7 +23,7 @@ export function useContentProtection(enabled: boolean) {
       const combo = event.metaKey || event.ctrlKey;
       if (
         key === "printscreen" ||
-        (combo && ["c", "x", "p", "s"].includes(key)) ||
+        (combo && ["c", "x", "p", "s"].includes(key) && !isEditable(event.target)) ||
         (combo && event.shiftKey && ["s", "3", "4", "5"].includes(key))
       ) {
         event.preventDefault();

@@ -2,7 +2,6 @@ import { X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useUndoHistory } from "@/hooks/use-undo-history";
 import { escapeHtml, formatSelection } from "@/lib/rich-text";
-import { textShortcutOf } from "@/lib/text-shortcuts";
 import { RichTextEditable } from "@/components/materials/RichTextEditable";
 
 

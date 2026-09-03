@@ -109,17 +109,19 @@ export function OfficeDocView({
   const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
+    if (!scopeReady) return;
     let cancelled = false;
     void (async () => {
       const saved = await readCachedJson<Record<number, SlideAnnotation>>(notesKey);
-      if (!cancelled && saved) setNotes(saved);
+      if (!cancelled) setNotes(saved ?? {});
       const savedEdits = await readCachedJson<Record<string, ShapeEdit>>(editsKey);
-      if (!cancelled && savedEdits) setEdits(savedEdits);
+      if (!cancelled) setEdits(savedEdits ?? {});
     })();
     return () => {
       cancelled = true;
     };
-  }, [notesKey, editsKey]);
+  }, [notesKey, editsKey, scopeReady]);
+
 
   function updateNotes(index: number, next: SlideAnnotation) {
     setNotes((current) => {

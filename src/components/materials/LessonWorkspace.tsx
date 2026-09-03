@@ -142,41 +142,67 @@ export function LessonWorkspace({
   const [frontPane, setFrontPane] = useState<"canvas" | "doc">("canvas");
   const [floatRect, setFloatRect] = useState({ x: 6, y: 6, w: 52, h: 62 });
   const [floatState, setFloatState] = useState<"window" | "min" | "max">("window");
+  // While dragging, an invisible sheet sits over the panes so embedded
+  // documents / iframes can't swallow the pointer and stall the drag.
+  const [floatDragging, setFloatDragging] = useState(false);
 
   function startFloatDrag(
     event: React.PointerEvent<HTMLElement>,
-    mode: "move" | "resize",
+    mode: "move" | "e" | "s" | "se",
   ) {
     event.preventDefault();
+    event.stopPropagation();
     const row = rowRef.current;
     if (!row) return;
     setFloatState("window");
+    setFloatDragging(true);
     const rect = row.getBoundingClientRect();
     const start = { px: event.clientX, py: event.clientY, ...floatRect };
+    const handle = event.currentTarget;
+    try {
+      handle.setPointerCapture(event.pointerId);
+    } catch {
+      /* pointer capture is best-effort */
+    }
     const onMove = (move: PointerEvent) => {
       const dx = ((move.clientX - start.px) / rect.width) * 100;
       const dy = ((move.clientY - start.py) / rect.height) * 100;
-      setFloatRect(() =>
-        mode === "move"
-          ? {
-              ...start,
-              x: Math.min(100 - start.w, Math.max(0, start.x + dx)),
-              y: Math.min(100 - start.h, Math.max(0, start.y + dy)),
-            }
-          : {
-              ...start,
-              w: Math.min(100 - start.x, Math.max(20, start.w + dx)),
-              h: Math.min(100 - start.y, Math.max(15, start.h + dy)),
-            },
-      );
+      setFloatRect(() => {
+        if (mode === "move") {
+          // Keep a slice of the window on screen, but let it travel to every
+          // edge, including all the way right and down.
+          return {
+            ...start,
+            x: Math.min(100 - Math.min(start.w, 14), Math.max(Math.min(start.w, 14) - start.w, start.x + dx)),
+            y: Math.min(97, Math.max(0, start.y + dy)),
+          };
+        }
+        const next = { ...start };
+        if (mode === "e" || mode === "se") {
+          next.w = Math.min(100 - Math.max(0, start.x), Math.max(18, start.w + dx));
+        }
+        if (mode === "s" || mode === "se") {
+          next.h = Math.min(100 - Math.max(0, start.y), Math.max(12, start.h + dy));
+        }
+        return next;
+      });
     };
     const onUp = () => {
+      setFloatDragging(false);
+      try {
+        handle.releasePointerCapture(event.pointerId);
+      } catch {
+        /* already released */
+      }
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
   }
+
 
   function startDrag(event: React.PointerEvent<HTMLDivElement>) {
     event.preventDefault();
@@ -626,6 +652,9 @@ export function LessonWorkspace({
                 {frontPane === "canvas" ? docNode : canvasNode}
               </div>
 
+              {/* Keeps drags alive over embedded documents / iframes */}
+              {floatDragging ? <div className="absolute inset-0 z-40" /> : null}
+
               {/* Front window floats on top: drag, stretch, minimise, maximise */}
               <div
                 className="absolute z-30 flex flex-col overflow-hidden rounded-lg border bg-background shadow-xl"
@@ -634,9 +663,10 @@ export function LessonWorkspace({
                     ? { left: 0, top: 0, width: "100%", height: "100%" }
                     : floatState === "min"
                       ? {
-                          left: `${floatRect.x}%`,
-                          top: `${floatRect.y}%`,
-                          width: `${floatRect.w}%`,
+                          // Minimised windows dock to the bottom of the area.
+                          left: `${Math.min(floatRect.x, 70)}%`,
+                          bottom: 0,
+                          width: `${Math.max(28, Math.min(floatRect.w, 46))}%`,
                           height: "2.25rem",
                         }
                       : {
@@ -647,6 +677,7 @@ export function LessonWorkspace({
                         }
                 }
               >
+
                 <div
                   onPointerDown={(event) => {
                     if ((event.target as HTMLElement).closest("button")) return;
@@ -717,12 +748,25 @@ export function LessonWorkspace({
                 )}
 
                 {floatState === "window" ? (
-                  <div
-                    onPointerDown={(event) => startFloatDrag(event, "resize")}
-                    className="absolute bottom-0 right-0 z-10 size-4 cursor-nwse-resize rounded-tl border-l border-t bg-muted"
-                    title="Drag to stretch this window"
-                  />
+                  <>
+                    <div
+                      onPointerDown={(event) => startFloatDrag(event, "e")}
+                      className="absolute right-0 top-0 z-10 h-full w-2 cursor-ew-resize"
+                      title="Drag to change the window width"
+                    />
+                    <div
+                      onPointerDown={(event) => startFloatDrag(event, "s")}
+                      className="absolute bottom-0 left-0 z-10 h-2 w-full cursor-ns-resize"
+                      title="Drag to change the window height"
+                    />
+                    <div
+                      onPointerDown={(event) => startFloatDrag(event, "se")}
+                      className="absolute bottom-0 right-0 z-20 size-4 cursor-nwse-resize rounded-tl border-l border-t bg-muted"
+                      title="Drag to stretch this window"
+                    />
+                  </>
                 ) : null}
+
               </div>
             </div>
           ) : (

@@ -233,6 +233,38 @@ export type Database = {
           },
         ]
       }
+      class_coteachers: {
+        Row: {
+          added_by: string | null
+          class_id: string
+          created_at: string
+          id: string
+          teacher_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          class_id: string
+          created_at?: string
+          id?: string
+          teacher_id: string
+        }
+        Update: {
+          added_by?: string | null
+          class_id?: string
+          created_at?: string
+          id?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_coteachers_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_game_settings: {
         Row: {
           class_id: string
@@ -1646,7 +1678,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_class_coteacher: {
+        Args: { _class_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_class_member: {
+        Args: { _class_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_class_owner: {
         Args: { _class_id: string; _user_id: string }
         Returns: boolean
       }

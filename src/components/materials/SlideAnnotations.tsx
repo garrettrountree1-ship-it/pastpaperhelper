@@ -1,7 +1,8 @@
 import { X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useUndoHistory } from "@/hooks/use-undo-history";
-import { textShortcutOf } from "@/lib/text-shortcuts";
+import { escapeHtml, formatSelection } from "@/lib/rich-text";
+import { RichTextEditable } from "@/components/materials/RichTextEditable";
 
 
 export type SlideStroke = { points: Array<{ x: number; y: number }>; color: string; width: number };
@@ -9,6 +10,8 @@ export type SlideTextBox = {
   x: number;
   y: number;
   text: string;
+  /** Inline formatting for the words the user highlighted. */
+  html?: string;
   color: string;
   size: number;
   bold?: boolean;
@@ -155,64 +158,36 @@ export function SlideAnnotations({
                   key={key}
                   type="button"
                   aria-label={`Toggle ${key}`}
-                  aria-pressed={Boolean(box[key])}
-                  onClick={() =>
-                    onChange({
-                      ...value,
-                      texts: value.texts.map((t, i) =>
-                        i === index ? { ...t, [key]: !t[key] } : t,
-                      ),
-                    })
-                  }
-                  className={`size-6 rounded text-xs text-neutral-800 ${cls} ${
-                    box[key] ? "bg-neutral-800 text-white" : "hover:bg-neutral-200"
-                  }`}
+                  title={`${label} (applies to highlighted text)`}
+                  // Keep the highlighted words selected while clicking.
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => formatSelection(key)}
+                  className={`size-6 rounded text-xs text-neutral-800 hover:bg-neutral-200 ${cls}`}
                 >
                   {label}
                 </button>
               ))}
             </div>
-            <textarea
+            <RichTextEditable
               autoFocus={box.text === ""}
-              value={box.text}
+              html={box.html ?? escapeHtml(box.text)}
               placeholder="Type here…"
-              onPointerDown={(event) => event.stopPropagation()}
-              onKeyDown={(event) => {
-                const shortcut = textShortcutOf(event);
-                if (!shortcut) return;
-                event.preventDefault();
-                if (shortcut === "undo") {
-                  undo();
-                  return;
-                }
-                if (shortcut === "redo") {
-                  redo();
-                  return;
-                }
-                onChange({
-                  ...value,
-                  texts: value.texts.map((t, i) =>
-                    i === index ? { ...t, [shortcut]: !t[shortcut] } : t,
-                  ),
-                });
-              }}
-
-              onChange={(event) => {
+              onUndo={undo}
+              onRedo={redo}
+              onChange={({ html, text }) => {
                 const texts = value.texts.map((t, i) =>
-                  i === index ? { ...t, text: event.target.value } : t,
+                  i === index ? { ...t, html, text } : t,
                 );
                 onChange({ ...value, texts });
               }}
-              className="min-h-[1.6em] w-[420px] resize rounded border border-dashed border-neutral-400 bg-white/85 p-1 outline-none"
+              className="min-h-[1.6em] w-[420px] overflow-auto rounded border border-dashed border-neutral-400 bg-white/85 p-1"
               style={{
                 color: box.color,
                 fontSize: box.size,
                 lineHeight: 1.25,
-                fontWeight: box.bold ? 700 : 400,
-                fontStyle: box.italic ? "italic" : "normal",
-                textDecoration: box.underline ? "underline" : "none",
               }}
             />
+
 
             <button
               type="button"

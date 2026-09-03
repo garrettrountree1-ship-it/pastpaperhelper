@@ -2,7 +2,9 @@ import { GripVertical, Pause, RotateCw, Trash2, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useUndoHistory } from "@/hooks/use-undo-history";
+import { escapeHtml, formatSelection } from "@/lib/rich-text";
 import { textShortcutOf } from "@/lib/text-shortcuts";
+import { RichTextEditable } from "@/components/materials/RichTextEditable";
 import type { NoteBlock } from "@/lib/notes.functions";
 
 
@@ -267,28 +269,25 @@ export function FreeCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canEdit, selectedId, blocks]);
 
-  // Word-style shortcuts: Ctrl/⌘ + B / I / U format the selected text block,
-  // Ctrl/⌘ + Z / Shift+Z / Y step through undo history.
+  // Word-style shortcuts: Ctrl/⌘ + Z / Shift+Z / Y step through undo history.
+  // B / I / U are handled inside the text box itself so they format only the
+  // highlighted words.
   useEffect(() => {
     if (!canEdit) return;
     const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.isContentEditable) return;
       const shortcut = textShortcutOf(event);
-      if (!shortcut) return;
-      if (shortcut === "undo" || shortcut === "redo") {
-        event.preventDefault();
-        if (shortcut === "undo") undo();
-        else redo();
-        return;
-      }
-      const block = blocks.find((b) => b.id === selectedId && b.type === "text");
-      if (!block || block.type !== "text") return;
+      if (shortcut !== "undo" && shortcut !== "redo") return;
       event.preventDefault();
-      patch(block.id, { [shortcut]: !block[shortcut] });
+      if (shortcut === "undo") undo();
+      else redo();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canEdit, selectedId, blocks, undo, redo]);
+
 
 
 
@@ -495,15 +494,16 @@ export function FreeCanvas({
                         <button
                           key={key}
                           type="button"
-                          onClick={() => patch(block.id, { [key]: !block[key] })}
-                          aria-pressed={Boolean(block[key])}
-                          className={`size-6 rounded text-xs ${cls} ${
-                            block[key] ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-                          }`}
+                          // Keep the text selection alive, then format just it.
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => formatSelection(key)}
+                          title={`${label} (applies to highlighted text)`}
+                          className={`size-6 rounded text-xs ${cls} hover:bg-muted`}
                         >
                           {label}
                         </button>
                       ))}
+
                       {(["left", "center", "right"] as const).map((align) => (
                         <button
                           key={align}
@@ -560,32 +560,22 @@ export function FreeCanvas({
                       </button>
                     </div>
                   ) : null}
-                  <textarea
-                    value={block.text}
-                    onChange={(event) => patch(block.id, { text: event.target.value })}
-                    onFocus={() => setSelectedId(block.id)}
+                  <RichTextEditable
+                    html={block.html ?? escapeHtml(block.text ?? "")}
+                    autoFocus={focusId === block.id}
+                    onChange={({ html, text }) => patch(block.id, { html, text })}
+                    onFocus={() => {
+                      setSelectedId(block.id);
+                      if (focusId === block.id) setFocusId(null);
+                    }}
                     onBlur={() => {
                       if (!block.box && !block.text.trim()) remove(block.id);
                     }}
-
+                    onUndo={undo}
+                    onRedo={redo}
                     placeholder="Type here…"
-                    rows={1}
-                    className="w-full resize-none border-0 bg-transparent p-1 text-foreground outline-none focus:ring-0"
-                    style={{ ...textStyle, height: "auto", minHeight: 28 }}
-                    onInput={(event) => {
-                      const el = event.currentTarget;
-                      el.style.height = "auto";
-                      el.style.height = `${el.scrollHeight}px`;
-                    }}
-                    ref={(el) => {
-                      if (!el) return;
-                      el.style.height = "auto";
-                      el.style.height = `${el.scrollHeight}px`;
-                      if (focusId === block.id) {
-                        el.focus();
-                        setFocusId(null);
-                      }
-                    }}
+                    className="w-full border-0 bg-transparent p-1 text-foreground"
+                    style={{ ...textStyle, minHeight: 28 }}
                   />
                   <span
                     onPointerDown={(event) => startResize(block.id, event)}
@@ -594,11 +584,14 @@ export function FreeCanvas({
                     }`}
                   />
                 </>
+              ) : block.html ? (
+                <div style={textStyle} dangerouslySetInnerHTML={{ __html: block.html }} />
               ) : (
                 <div style={textStyle}>
                   <ClickableText text={block.text} onConcept={onConcept} />
                 </div>
               )}
+
             </div>
           );
         }

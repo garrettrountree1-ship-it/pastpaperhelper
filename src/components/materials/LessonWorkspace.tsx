@@ -680,11 +680,15 @@ export function LessonWorkspace({
               </div>
 
               {/* Keeps drags alive over embedded documents / iframes */}
-              {floatDragging ? <div className="absolute inset-0 z-40" /> : null}
+              {floatDragging ? (
+                <div className="absolute inset-0 z-20 cursor-grabbing" />
+              ) : null}
 
               {/* Front window floats on top: drag, stretch, minimise, maximise */}
               <div
-                className="absolute z-30 flex flex-col overflow-hidden rounded-lg border bg-background shadow-xl"
+                className={`absolute z-30 flex touch-none flex-col overflow-hidden rounded-lg border-2 bg-background shadow-2xl ${
+                  floatDragging ? "border-primary" : "border-border"
+                }`}
                 style={
                   floatState === "max"
                     ? { left: 0, top: 0, width: "100%", height: "100%" }

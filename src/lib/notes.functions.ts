@@ -11,6 +11,8 @@ const blockSchema = z.union([
     id: z.string().max(60),
     type: z.literal("text"),
     text: z.string().max(20000),
+    // Inline formatting (bold / italic / underline on selected words).
+    html: z.string().max(60000).optional(),
     x: z.number().optional(),
     y: z.number().optional(),
     w: z.number().optional(),

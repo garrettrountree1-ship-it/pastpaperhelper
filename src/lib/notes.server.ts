@@ -91,8 +91,7 @@ export async function summariseTeacherNotes(input: {
 export type TutorTurn = { role: "user" | "assistant"; content: string };
 
 /**
- * Always-on lesson tutor. It never dumps an answer: every reply ends with a
- * leading question that probes for the learning gap.
+ * Always-on lesson tutor. During lessons it answers directly and accurately.
  */
 export async function lessonTutorReply(input: {
   question: string;
@@ -108,23 +107,28 @@ export async function lessonTutorReply(input: {
 }): Promise<string> {
   const levelRule =
     input.level === "beginner"
-      ? "Very simple English, short sentences, one small step at a time (max 70 words)."
+      ? "Very simple English, short sentences, define any hard term (max 110 words)."
       : input.level === "advanced"
-        ? "Technical, exam-level language; expect independent reasoning (max 140 words)."
-        : "Clear exam-style coaching (max 110 words).";
+        ? "Technical, exam-level language and full scientific detail (max 180 words)."
+        : "Clear exam-style explanation with correct terminology (max 150 words).";
 
   const system = [
     "You are the in-class AI tutor for a past-paper study app, used live during lessons.",
-    "Ground every answer in the teacher's notes and the lesson topic supplied below.",
-    "NEVER give a final answer to an exam-style question. Explain the underlying idea briefly,",
-    "then diagnose: finish EVERY reply with exactly one specific leading question that finds the learner's gap.",
-    "Never reply with an empty prompt or a generic 'what would you like to know?' — always give substance plus one question.",
+    "Answer the learner's question directly, precisely and scientifically correctly.",
+    "Give the actual answer first (state the fact, definition, value, equation or worked steps),",
+    "then a brief explanation of the science or reasoning behind it.",
+    "Show calculations step by step with units, and name the correct scientific terms.",
+    "Do NOT reply with only leading questions and do NOT withhold the answer.",
+    "You may end with at most one short check-for-understanding question, but only after a complete answer.",
+    "Ground answers in the teacher's notes and lesson topic below; if the notes conflict with established science, say so plainly.",
+    "If you are unsure, say what is certain and what is not — never invent facts.",
     levelRule,
     `Reply in ${input.language}. Keep scientific and technical terms in English.`,
     input.isTeacher
       ? "The person asking is the teacher: you may also suggest how to explain or check understanding."
       : "The person asking is a student.",
   ].join("\n");
+
 
   const promptParts = [
     `Subject: ${input.subject}`,

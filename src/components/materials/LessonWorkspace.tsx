@@ -652,6 +652,9 @@ export function LessonWorkspace({
                 {frontPane === "canvas" ? docNode : canvasNode}
               </div>
 
+              {/* Keeps drags alive over embedded documents / iframes */}
+              {floatDragging ? <div className="absolute inset-0 z-40" /> : null}
+
               {/* Front window floats on top: drag, stretch, minimise, maximise */}
               <div
                 className="absolute z-30 flex flex-col overflow-hidden rounded-lg border bg-background shadow-xl"
@@ -660,9 +663,10 @@ export function LessonWorkspace({
                     ? { left: 0, top: 0, width: "100%", height: "100%" }
                     : floatState === "min"
                       ? {
-                          left: `${floatRect.x}%`,
-                          top: `${floatRect.y}%`,
-                          width: `${floatRect.w}%`,
+                          // Minimised windows dock to the bottom of the area.
+                          left: `${Math.min(floatRect.x, 70)}%`,
+                          bottom: 0,
+                          width: `${Math.max(28, Math.min(floatRect.w, 46))}%`,
                           height: "2.25rem",
                         }
                       : {
@@ -673,6 +677,7 @@ export function LessonWorkspace({
                         }
                 }
               >
+
                 <div
                   onPointerDown={(event) => {
                     if ((event.target as HTMLElement).closest("button")) return;

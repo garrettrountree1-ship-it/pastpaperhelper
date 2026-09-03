@@ -24,7 +24,7 @@ export function useMarkupScope() {
     };
   }, []);
 
-  return { ready: userId !== null, scope: `${userId ?? "anon"}:${demoView ?? "self"}` };
+  return { ready: userId !== null, scope: `${userId ?? "anon"}:${view}` };
 }
 
 /** Suffix a markup storage key with the personal scope. */

@@ -95,6 +95,8 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
       endsAt: check.ends_at as string,
       isTeacher: check.teacher_id === userId,
       hasExpectedAnswer: Boolean(check.expected_answer),
+      targetStudentId: (check.target_student_id ?? null) as string | null,
+
       myAttempts: (mine ?? []).map((r) => ({
         id: r.id as string,
         answer: r.answer as string,

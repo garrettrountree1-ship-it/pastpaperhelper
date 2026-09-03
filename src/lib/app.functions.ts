@@ -8,6 +8,7 @@ import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { LOCKED_MESSAGE } from "@/lib/integrity";
 import { isDemoEmail } from "@/lib/demo";
 import { isPhotoMode, resolvePhotoMode } from "@/lib/photo-mode";
+import { teachesClass, teachingClassIds } from "@/lib/teach-access";
 
 
 
@@ -98,7 +99,7 @@ export const listTeacherClasses = createServerFn({ method: "GET" })
     const { data: classes, error } = await supabase
       .from("classes")
       .select("id, name, curriculum, subject, join_code, created_at")
-      .eq("teacher_id", userId)
+      .in("id", await teachingClassIds(supabase, userId))
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
 
@@ -174,7 +175,9 @@ export const updateClass = createServerFn({ method: "POST" })
       .eq("id", data.classId)
       .maybeSingle();
     if (classError) throw new Error(classError.message);
-    if (!klass || klass.teacher_id !== userId) throw new Error("You do not own this class.");
+    if (!klass || !(await teachesClass(supabase, klass.id, userId))) {
+      throw new Error("You do not teach this class.");
+    }
 
     const joinCode = data.regenerateJoinCode
       ? makeJoinCode()
@@ -404,7 +407,9 @@ export const createAssignment = createServerFn({ method: "POST" })
       .eq("id", data.classId)
       .maybeSingle();
     if (classError) throw new Error(classError.message);
-    if (!klass || klass.teacher_id !== userId) throw new Error("You do not own this class.");
+    if (!klass || !(await teachesClass(supabase, klass.id, userId))) {
+      throw new Error("You do not teach this class.");
+    }
 
     const { data: assignment, error } = await supabase
       .from("assignments")
@@ -626,7 +631,9 @@ export const getClassOverview = createServerFn({ method: "POST" })
       .eq("id", data.classId)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    if (!klass || klass.teacher_id !== userId) throw new Error("Class not found.");
+    if (!klass || !(await teachesClass(supabase, klass.id, userId))) {
+      throw new Error("Class not found.");
+    }
 
     const db = await admin();
 
@@ -1465,7 +1472,9 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
       .eq("id", data.classId)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    if (!klass || klass.teacher_id !== userId) throw new Error("You do not own this class.");
+    if (!klass || !(await teachesClass(supabase, klass.id, userId))) {
+      throw new Error("You do not teach this class.");
+    }
 
     const { extractQuestionsFromPapers } = await import("./paper-extract.server");
     const questions = await extractQuestionsFromPapers({

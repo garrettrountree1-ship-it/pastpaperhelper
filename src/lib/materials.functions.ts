@@ -7,6 +7,7 @@ import {
   assertMaterialTeacher,
   assertUnitTeacher,
 } from "@/lib/materials.server";
+import { teachesClass, teachingClassIds } from "@/lib/teach-access";
 
 export const MATERIAL_KINDS = ["slides", "video", "document", "image", "link"] as const;
 export type MaterialKind = (typeof MATERIAL_KINDS)[number];
@@ -21,7 +22,7 @@ export const listMaterialClasses = createServerFn({ method: "GET" })
       supabase
         .from("classes")
         .select("id, name, subject, curriculum, join_code")
-        .eq("teacher_id", userId)
+        .in("id", await teachingClassIds(supabase, userId))
         .order("created_at", { ascending: false }),
       supabase.from("class_members").select("class_id").eq("student_id", userId),
     ]);
@@ -283,12 +284,8 @@ export const getMaterialUrl = createServerFn({ method: "POST" })
     if (!material) throw new Error("Material not found.");
 
     if (data.download && material.allow_download === false) {
-      const { data: cls } = await supabase
-        .from("classes")
-        .select("teacher_id")
-        .eq("id", material.class_id)
-        .maybeSingle();
-      if (cls?.teacher_id !== context.userId) {
+      const teaches = await teachesClass(supabase, material.class_id, context.userId);
+      if (!teaches) {
         throw new Error("Downloads are turned off for this resource.");
       }
     }

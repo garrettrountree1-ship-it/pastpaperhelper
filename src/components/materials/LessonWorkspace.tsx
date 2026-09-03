@@ -146,10 +146,9 @@ export function LessonWorkspace({
   // documents / iframes can't swallow the pointer and stall the drag.
   const [floatDragging, setFloatDragging] = useState(false);
 
-  function startFloatDrag(
-    event: React.PointerEvent<HTMLElement>,
-    mode: "move" | "e" | "s" | "se",
-  ) {
+  type FloatDrag = "move" | "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
+
+  function startFloatDrag(event: React.PointerEvent<HTMLElement>, mode: FloatDrag) {
     event.preventDefault();
     event.stopPropagation();
     const row = rowRef.current;
@@ -164,25 +163,37 @@ export function LessonWorkspace({
     } catch {
       /* pointer capture is best-effort */
     }
+    const minW = 16;
+    const minH = 10;
     const onMove = (move: PointerEvent) => {
       const dx = ((move.clientX - start.px) / rect.width) * 100;
       const dy = ((move.clientY - start.py) / rect.height) * 100;
       setFloatRect(() => {
         if (mode === "move") {
-          // Keep a slice of the window on screen, but let it travel to every
-          // edge, including all the way right and down.
+          // The window travels anywhere in the area; a 10% sliver always stays
+          // visible so it can never be lost off an edge.
           return {
             ...start,
-            x: Math.min(100 - Math.min(start.w, 14), Math.max(Math.min(start.w, 14) - start.w, start.x + dx)),
-            y: Math.min(97, Math.max(0, start.y + dy)),
+            x: Math.min(90, Math.max(10 - start.w, start.x + dx)),
+            y: Math.min(94, Math.max(0, start.y + dy)),
           };
         }
         const next = { ...start };
-        if (mode === "e" || mode === "se") {
-          next.w = Math.min(100 - Math.max(0, start.x), Math.max(18, start.w + dx));
+        if (mode === "e" || mode === "ne" || mode === "se") {
+          next.w = Math.max(minW, Math.min(100 - start.x, start.w + dx));
         }
-        if (mode === "s" || mode === "se") {
-          next.h = Math.min(100 - Math.max(0, start.y), Math.max(12, start.h + dy));
+        if (mode === "w" || mode === "nw" || mode === "sw") {
+          const w = Math.max(minW, Math.min(start.x + start.w, start.w - dx));
+          next.x = start.x + start.w - w;
+          next.w = w;
+        }
+        if (mode === "s" || mode === "se" || mode === "sw") {
+          next.h = Math.max(minH, Math.min(100 - start.y, start.h + dy));
+        }
+        if (mode === "n" || mode === "ne" || mode === "nw") {
+          const h = Math.max(minH, Math.min(start.y + start.h, start.h - dy));
+          next.y = start.y + start.h - h;
+          next.h = h;
         }
         return next;
       });
@@ -202,6 +213,7 @@ export function LessonWorkspace({
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);
   }
+
 
 
   function startDrag(event: React.PointerEvent<HTMLDivElement>) {

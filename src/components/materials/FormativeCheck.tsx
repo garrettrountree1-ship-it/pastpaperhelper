@@ -137,8 +137,36 @@ export function FormativeCheckButton({
             />
           </div>
           <div className="space-y-1">
+            <Label>Send to</Label>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={target === "class" ? "default" : "outline"}
+                onClick={() => setTarget("class")}
+              >
+                Whole class
+              </Button>
+              {(students.data ?? []).map((student) => (
+                <Button
+                  key={student.id}
+                  type="button"
+                  size="sm"
+                  variant={target === student.id ? "default" : "outline"}
+                  onClick={() => setTarget(student.id)}
+                >
+                  {student.name}
+                </Button>
+              ))}
+              {students.isPending && open ? (
+                <span className="text-xs text-muted-foreground">Loading students...</span>
+              ) : null}
+            </div>
+          </div>
+          <div className="space-y-1">
             <Label>Timer</Label>
             <div className="flex flex-wrap gap-2">
+
               {TIMER_OPTIONS.map((option) => (
                 <Button
                   key={option.value}

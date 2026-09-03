@@ -1514,7 +1514,7 @@ function ClassSettingsDialog({
                 id="class-curriculum"
                 value={curriculum}
                 onChange={(e) => setCurriculum(e.target.value)}
-                placeholder="IGCSE, A-Level, IB"
+                placeholder="Add text here"
               />
             </div>
             <div>

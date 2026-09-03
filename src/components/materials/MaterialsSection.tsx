@@ -589,7 +589,7 @@ function UploadDialog({
               id="material-title"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="Lesson 1 slides"
+              placeholder="Add text here"
             />
           </div>
 

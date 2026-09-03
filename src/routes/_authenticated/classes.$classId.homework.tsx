@@ -345,7 +345,9 @@ function ClassPageContent({ classId }: { classId: string }) {
                 </TableBody>
               </Table>
               <p className="p-3 text-xs text-muted-foreground">
-                Scores appear once an assignment&apos;s deadline has passed. * still in progress.
+                Scores update live as students work. * still in progress; scores freeze at the due
+                date.
+
                 Click a score to review answers and adjust marks. Turn detail on — for the class
                 above or per student in the last column — to see time spent, tutor questions and
                 every attempt.

@@ -94,7 +94,12 @@ function ClassHome() {
               })}
             </div>
 
-            {role === "teacher" ? <ClassRoster classId={classId} /> : null}
+            {role === "teacher" ? (
+              <>
+                <ClassRoster classId={classId} />
+                <TeacherMessagesPanel classId={classId} />
+              </>
+            ) : null}
           </>
         )}
       </main>

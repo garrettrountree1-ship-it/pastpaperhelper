@@ -24,6 +24,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { clearCachedDoc, readCachedJson, writeCachedJson } from "@/lib/doc-cache";
+import { scopedKey, useMarkupScope } from "@/lib/markup-scope";
+
 import {
   buildOfficeRender,
   fetchSharedRender,

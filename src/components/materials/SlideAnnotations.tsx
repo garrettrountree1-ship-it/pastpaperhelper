@@ -11,6 +11,8 @@ export type SlideTextBox = {
   x: number;
   y: number;
   text: string;
+  /** Inline formatting for the words the user highlighted. */
+  html?: string;
   color: string;
   size: number;
   bold?: boolean;

@@ -141,7 +141,7 @@ function ClassRoster({ classId }: { classId: string }) {
             <thead className="text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="py-2 pr-4 font-medium">Name</th>
-                <th className="py-2 pr-4 font-medium">Email</th>
+                
                 <th className="py-2 font-medium">Joined</th>
               </tr>
             </thead>

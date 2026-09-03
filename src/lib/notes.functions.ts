@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { teachesClass } from "@/lib/teach-access";
 import { assertClassTeacher, assertUnitTeacher } from "@/lib/materials.server";
 import { lessonTutorReply, summariseTeacherNotes } from "@/lib/notes.server";
 import { effectiveTutorSettings } from "@/lib/tutor-settings.server";
@@ -330,7 +331,8 @@ export const askLessonTutor = createServerFn({ method: "POST" })
       .maybeSingle();
     if (classError) throw new Error(classError.message);
     if (!klass) throw new Error("Class not found.");
-    const isTeacher = klass.teacher_id === userId;
+    const isTeacher =
+      klass.teacher_id === userId || (await teachesClass(supabase, klass.id, userId));
 
     let contextNotes = "";
     let unitTitle = "This class";

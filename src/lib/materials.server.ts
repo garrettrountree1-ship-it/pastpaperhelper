@@ -7,13 +7,11 @@ export async function assertClassTeacher(
   classId: string,
   userId: string,
 ) {
-  const { data } = await supabase
-    .from("classes")
-    .select("id")
-    .eq("id", classId)
-    .eq("teacher_id", userId)
-    .maybeSingle();
-  if (!data) throw new Error("Only the class teacher can change class materials.");
+  const { data } = await supabase.rpc("is_class_teacher", {
+    _class_id: classId,
+    _user_id: userId,
+  });
+  if (data !== true) throw new Error("Only the class teacher can change class materials.");
 }
 
 /** Resolves a unit's class then checks teacher ownership. */

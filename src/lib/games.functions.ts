@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { teachingClassIds } from "@/lib/teach-access";
 import { DAILY_TOKEN_CAP, uniqueAlias } from "@/lib/game-alias";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 
@@ -178,7 +179,10 @@ export const getGamesOverview = createServerFn({ method: "GET" })
     const db = await admin();
 
     const [{ data: taught }, { data: memberships }, { data: authUser }] = await Promise.all([
-      supabase.from("classes").select("id, name, subject").eq("teacher_id", userId),
+      supabase
+        .from("classes")
+        .select("id, name, subject")
+        .in("id", await teachingClassIds(supabase, userId)),
       supabase
         .from("class_members")
         .select("class_id, classes(id, name, subject)")

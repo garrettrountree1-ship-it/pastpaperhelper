@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { BookOpen, Gamepad2, NotebookPen, Timer, Users } from "lucide-react";
 
 import { AppHeader } from "@/components/AppHeader";
+import { CoteacherPanel } from "@/components/classes/CoteacherPanel";
 import { TeacherMessagesPanel } from "@/components/messaging/TeacherMessagesPanel";
 import { useMyClasses } from "@/components/SectionShell";
 import { Button } from "@/components/ui/button";
@@ -98,9 +99,11 @@ function ClassHome() {
             {role === "teacher" ? (
               <>
                 <ClassRoster classId={classId} />
+                <CoteacherPanel classId={classId} />
                 <TeacherMessagesPanel classId={classId} />
               </>
             ) : null}
+
           </>
         )}
       </main>

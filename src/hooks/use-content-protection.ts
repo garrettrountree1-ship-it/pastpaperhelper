@@ -6,6 +6,18 @@ import { useEffect, useState } from "react";
  * while the window is not focused (screenshot and screen-share tools take the
  * page after focus is lost).
  */
+/** True when the user is typing in a field, where copy/paste must keep working. */
+function isEditable(target: EventTarget | null) {
+  const el = target as HTMLElement | null;
+  if (!el || !el.tagName) return false;
+  return (
+    el.isContentEditable ||
+    el.tagName === "INPUT" ||
+    el.tagName === "TEXTAREA" ||
+    Boolean(el.closest?.("input, textarea, [contenteditable='true']"))
+  );
+}
+
 export function useContentProtection(enabled: boolean) {
   const [hidden, setHidden] = useState(false);
 
@@ -15,7 +27,11 @@ export function useContentProtection(enabled: boolean) {
       return;
     }
 
-    const block = (event: Event) => event.preventDefault();
+    const block = (event: Event) => {
+      if (isEditable(event.target)) return;
+      event.preventDefault();
+    };
+
     const conceal = () => setHidden(true);
     const reveal = () => setHidden(false);
     const onKey = (event: KeyboardEvent) => {

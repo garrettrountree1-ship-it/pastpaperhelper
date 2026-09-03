@@ -748,12 +748,25 @@ export function LessonWorkspace({
                 )}
 
                 {floatState === "window" ? (
-                  <div
-                    onPointerDown={(event) => startFloatDrag(event, "resize")}
-                    className="absolute bottom-0 right-0 z-10 size-4 cursor-nwse-resize rounded-tl border-l border-t bg-muted"
-                    title="Drag to stretch this window"
-                  />
+                  <>
+                    <div
+                      onPointerDown={(event) => startFloatDrag(event, "e")}
+                      className="absolute right-0 top-0 z-10 h-full w-2 cursor-ew-resize"
+                      title="Drag to change the window width"
+                    />
+                    <div
+                      onPointerDown={(event) => startFloatDrag(event, "s")}
+                      className="absolute bottom-0 left-0 z-10 h-2 w-full cursor-ns-resize"
+                      title="Drag to change the window height"
+                    />
+                    <div
+                      onPointerDown={(event) => startFloatDrag(event, "se")}
+                      className="absolute bottom-0 right-0 z-20 size-4 cursor-nwse-resize rounded-tl border-l border-t bg-muted"
+                      title="Drag to stretch this window"
+                    />
+                  </>
                 ) : null}
+
               </div>
             </div>
           ) : (

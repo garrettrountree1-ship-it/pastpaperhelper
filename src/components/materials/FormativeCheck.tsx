@@ -26,6 +26,8 @@ import {
   listFormativeResults,
 } from "@/lib/formative.functions";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
+import { listClassRoster } from "@/lib/materials.functions";
+
 import { downloadXlsx } from "@/lib/xlsx-export";
 
 const TIMER_OPTIONS = [

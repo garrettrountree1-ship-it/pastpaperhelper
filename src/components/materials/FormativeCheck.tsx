@@ -104,13 +104,13 @@ export function FormativeCheckButton({
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1">
-            <Label htmlFor="formative-question">Question</Label>
+            <Label htmlFor="formative-question">Question *</Label>
             <Textarea
               id="formative-question"
               rows={3}
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              placeholder="e.g. Why does the rate of reaction increase when the temperature rises?"
+              placeholder="Add text here"
             />
           </div>
           <div className="space-y-1">

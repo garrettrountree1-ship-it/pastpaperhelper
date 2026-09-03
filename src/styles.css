@@ -179,3 +179,9 @@
   );
   padding-inline: 0.1em;
 }
+
+/* Placeholders are hints, not filled-in text: always italic and faded. */
+::placeholder {
+  font-style: italic;
+  opacity: 0.55;
+}

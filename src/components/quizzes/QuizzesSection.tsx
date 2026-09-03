@@ -329,21 +329,21 @@ function QuizDialog({ classId, onSaved }: { classId: string; onSaved: () => void
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="quiz-title">Title</Label>
+              <Label htmlFor="quiz-title">Title *</Label>
               <Input
                 id="quiz-title"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                placeholder="Unit 3 timed quiz"
+                placeholder="Add text here"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="quiz-subject">Subject</Label>
+              <Label htmlFor="quiz-subject">Subject (optional)</Label>
               <Input
                 id="quiz-subject"
                 value={subject}
                 onChange={(event) => setSubject(event.target.value)}
-                placeholder="Physics"
+                placeholder="Add text here"
               />
             </div>
           </div>

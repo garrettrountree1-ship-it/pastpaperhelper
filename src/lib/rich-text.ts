@@ -48,12 +48,33 @@ export function richTextToPlain(html: string): string {
 
 /**
  * Applies bold / italic / underline to the current selection inside a focused
- * contenteditable element.
+ * contenteditable element. Formatting is deliberately ignored when nothing is
+ * highlighted, so a shortcut can never restyle the whole text box by accident.
  */
 export function formatSelection(command: "bold" | "italic" | "underline" | "undo" | "redo") {
   try {
+    if (command === "undo" || command === "redo") {
+      document.execCommand(command, false);
+      return;
+    }
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+    if (range.collapsed || selection.toString().length === 0) return;
+
+    // Keep formatting inside the box the user is actually editing.
+    const node =
+      range.commonAncestorContainer.nodeType === 1
+        ? (range.commonAncestorContainer as Element)
+        : range.commonAncestorContainer.parentElement;
+    if (!node?.closest("[contenteditable='true']")) return;
+
+
+    // Wrap the highlighted words in tags rather than styling the whole block.
+    document.execCommand("styleWithCSS", false, "false");
     document.execCommand(command, false);
   } catch {
     /* older browsers simply skip the command */
   }
 }
+

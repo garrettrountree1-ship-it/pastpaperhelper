@@ -529,7 +529,11 @@ export function NotesCanvas({
       ) : null}
 
       {tab === "notes" ? (
-        <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
+        <div
+          ref={scrollRef}
+          className="min-h-0 flex-1 overflow-auto [overflow-anchor:none] [overscroll-behavior:contain]"
+        >
+
           <FreeCanvas
             blocks={blocks}
             canEdit={canEdit}

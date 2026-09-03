@@ -125,24 +125,46 @@ export function FreeCanvas({
     return Math.max(max, (block.y ?? 0) + height);
   }, 0);
 
-  // The sheet grows endlessly: every time the teacher scrolls near the bottom
-  // we add another page of blank space, so the canvas never runs out.
+  // The sheet grows endlessly: whenever the teacher nears the bottom we add
+  // another page of blank space, so the canvas never runs out and never bounces
+  // back up.
   const [grown, setGrown] = useState(0);
   useEffect(() => {
-    let el = surfaceRef.current?.parentElement ?? null;
-    while (el && el.scrollHeight <= el.clientHeight + 1) el = el.parentElement;
-    if (!el) return;
-    const scroller = el;
-    const onScroll = () => {
-      if (scroller.scrollTop + scroller.clientHeight > scroller.scrollHeight - 800) {
-        setGrown((value) => value + 1200);
+    const surface = surfaceRef.current;
+    if (!surface) return;
+
+    // Find the pane that actually scrolls (its own CSS overflow, not just its
+    // current content height — an empty sheet would otherwise be skipped).
+    let el: HTMLElement | null = surface.parentElement;
+    let scroller: HTMLElement | null = null;
+    while (el) {
+      const overflow = window.getComputedStyle(el).overflowY;
+      if (overflow === "auto" || overflow === "scroll") {
+        scroller = el;
+        break;
+      }
+      el = el.parentElement;
+    }
+    if (!scroller) return;
+
+    const pane = scroller;
+    const grow = () => {
+      if (pane.scrollTop + pane.clientHeight >= pane.scrollHeight - 600) {
+        setGrown((value) => value + 1600);
       }
     };
-    scroller.addEventListener("scroll", onScroll, { passive: true });
-    return () => scroller.removeEventListener("scroll", onScroll);
+    grow();
+    pane.addEventListener("scroll", grow, { passive: true });
+    pane.addEventListener("wheel", grow, { passive: true });
+    return () => {
+      pane.removeEventListener("scroll", grow);
+      pane.removeEventListener("wheel", grow);
+    };
   }, [zoom]);
 
   const height = Math.max(1800, bottom + 700) + grown;
+
+
 
 
   // Pointer positions arrive in screen pixels; the sheet may be zoomed, so
@@ -371,7 +393,7 @@ export function FreeCanvas({
   const inks = blocks.filter((b): b is Extract<NoteBlock, { type: "ink" }> => b.type === "ink");
 
   return (
-    <div style={{ height: height * zoom, overflow: "hidden" }}>
+    <div style={{ height: height * zoom, overflow: "hidden", overflowAnchor: "none" }}>
     <div
       ref={surfaceRef}
       onClick={surfaceClick}
@@ -452,12 +474,12 @@ export function FreeCanvas({
           const textStyle: React.CSSProperties = {
             fontSize: block.size ?? 15,
             lineHeight: 1.5,
-            fontWeight: block.bold ? 700 : 400,
-            fontStyle: block.italic ? "italic" : "normal",
-            textDecoration: block.underline ? "underline" : "none",
+            // Bold / italic / underline live inline on the highlighted words
+            // only — never on the whole text box.
             color: block.color ?? undefined,
             textAlign: block.align ?? "left",
           };
+
           return (
             <div
               key={block.id}

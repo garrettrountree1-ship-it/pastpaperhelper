@@ -70,14 +70,16 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: check } = await supabase
       .from("formative_checks")
-      .select("id, question, seconds, ends_at, teacher_id, expected_answer")
+      .select("id, question, seconds, ends_at, teacher_id, expected_answer, target_student_id")
       .eq("class_id", data.classId)
       .is("closed_at", null)
       .gt("ends_at", new Date().toISOString())
+      .or(`target_student_id.is.null,target_student_id.eq.${userId},teacher_id.eq.${userId}`)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
     if (!check) return null;
+
 
     const { data: mine } = await supabase
       .from("formative_responses")

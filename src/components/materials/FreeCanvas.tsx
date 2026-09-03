@@ -492,15 +492,16 @@ export function FreeCanvas({
                         <button
                           key={key}
                           type="button"
-                          onClick={() => patch(block.id, { [key]: !block[key] })}
-                          aria-pressed={Boolean(block[key])}
-                          className={`size-6 rounded text-xs ${cls} ${
-                            block[key] ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-                          }`}
+                          // Keep the text selection alive, then format just it.
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => formatSelection(key)}
+                          title={`${label} (applies to highlighted text)`}
+                          className={`size-6 rounded text-xs ${cls} hover:bg-muted`}
                         >
                           {label}
                         </button>
                       ))}
+
                       {(["left", "center", "right"] as const).map((align) => (
                         <button
                           key={align}

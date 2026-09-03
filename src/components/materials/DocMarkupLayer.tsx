@@ -9,6 +9,8 @@ import {
 } from "@/components/materials/SlideAnnotations";
 import { Button } from "@/components/ui/button";
 import { readCachedJson, writeCachedJson } from "@/lib/doc-cache";
+import { scopedKey, useMarkupScope } from "@/lib/markup-scope";
+
 
 const SWATCHES = ["#dc2626", "#2563eb", "#16a34a", "#111827"];
 

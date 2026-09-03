@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { NotebookPen, PartyPopper, Send, Sparkles, Timer, X } from "lucide-react";
+import { Download, NotebookPen, PartyPopper, Send, Sparkles, Timer, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -26,6 +26,7 @@ import {
   listFormativeResults,
 } from "@/lib/formative.functions";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
+import { downloadXlsx } from "@/lib/xlsx-export";
 
 const TIMER_OPTIONS = [
   { label: "30 sec", value: 30 },
@@ -325,7 +326,6 @@ export function FormativeCheckPanel({
 export function FormativeRecordBook({ classId }: { classId: string }) {
   const fetchHistory = useServerFn(listFormativeHistory);
   const [open, setOpen] = useState(false);
-  const [expanded, setExpanded] = useState<string | null>(null);
 
   const history = useQuery({
     queryKey: ["formative-history", classId],

@@ -452,12 +452,12 @@ export function FreeCanvas({
           const textStyle: React.CSSProperties = {
             fontSize: block.size ?? 15,
             lineHeight: 1.5,
-            fontWeight: block.bold ? 700 : 400,
-            fontStyle: block.italic ? "italic" : "normal",
-            textDecoration: block.underline ? "underline" : "none",
+            // Bold / italic / underline live inline on the highlighted words
+            // only — never on the whole text box.
             color: block.color ?? undefined,
             textAlign: block.align ?? "left",
           };
+
           return (
             <div
               key={block.id}

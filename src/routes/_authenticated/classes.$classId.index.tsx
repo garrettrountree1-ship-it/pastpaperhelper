@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { BookOpen, Gamepad2, NotebookPen, Timer, Users } from "lucide-react";
 
 import { AppHeader } from "@/components/AppHeader";
+import { TeacherMessagesPanel } from "@/components/messaging/TeacherMessagesPanel";
 import { useMyClasses } from "@/components/SectionShell";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -94,7 +95,12 @@ function ClassHome() {
               })}
             </div>
 
-            {role === "teacher" ? <ClassRoster classId={classId} /> : null}
+            {role === "teacher" ? (
+              <>
+                <ClassRoster classId={classId} />
+                <TeacherMessagesPanel classId={classId} />
+              </>
+            ) : null}
           </>
         )}
       </main>
@@ -135,7 +141,7 @@ function ClassRoster({ classId }: { classId: string }) {
             <thead className="text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="py-2 pr-4 font-medium">Name</th>
-                <th className="py-2 pr-4 font-medium">Email</th>
+                
                 <th className="py-2 font-medium">Joined</th>
               </tr>
             </thead>
@@ -143,7 +149,7 @@ function ClassRoster({ classId }: { classId: string }) {
               {students.map((s) => (
                 <tr key={s.id} className="border-t border-border">
                   <td className="py-2 pr-4">{s.name}</td>
-                  <td className="py-2 pr-4 text-muted-foreground">{s.email ?? "—"}</td>
+                  
                   <td className="py-2 text-muted-foreground">
                     {new Date(s.joinedAt).toLocaleDateString()}
                   </td>

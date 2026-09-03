@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { NotebookPen, PartyPopper, Send, Sparkles, Timer, X } from "lucide-react";
+import { Download, NotebookPen, PartyPopper, Send, Sparkles, Timer, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -26,6 +26,7 @@ import {
   listFormativeResults,
 } from "@/lib/formative.functions";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
+import { downloadXlsx } from "@/lib/xlsx-export";
 
 const TIMER_OPTIONS = [
   { label: "30 sec", value: 30 },
@@ -325,13 +326,64 @@ export function FormativeCheckPanel({
 export function FormativeRecordBook({ classId }: { classId: string }) {
   const fetchHistory = useServerFn(listFormativeHistory);
   const [open, setOpen] = useState(false);
-  const [expanded, setExpanded] = useState<string | null>(null);
 
   const history = useQuery({
     queryKey: ["formative-history", classId],
     queryFn: () => fetchHistory({ data: { classId } }),
     enabled: open,
   });
+
+  const checks = history.data ?? [];
+  // Students down the side, each formative check across the top — the same
+  // shape as the gradebook so teachers read it the same way.
+  const students = (() => {
+    const map = new Map<string, string>();
+    for (const check of checks) for (const s of check.students) map.set(s.studentId, s.name);
+    return [...map.entries()].map(([id, name]) => ({ id, name })).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+  })();
+
+  function cellFor(checkId: string, studentId: string) {
+    const check = checks.find((c) => c.id === checkId);
+    return check?.students.find((s) => s.studentId === studentId);
+  }
+
+  function cellLabel(entry: ReturnType<typeof cellFor>) {
+    if (!entry || !entry.answered) return "—";
+    const tries = `${entry.attempts} ${entry.attempts === 1 ? "try" : "tries"}`;
+    return `${entry.verdict === "correct" ? "Correct" : "Incorrect"} · ${tries}`;
+  }
+
+  function download() {
+    const header = [
+      "Student",
+      ...checks.map((c) => `${c.lesson} — ${c.question} (${new Date(c.sentAt).toLocaleDateString()})`),
+    ];
+    const rows: (string | number | null)[][] = [header];
+    for (const student of students) {
+      rows.push([
+        student.name,
+        ...checks.map((check) => {
+          const entry = cellFor(check.id, student.id);
+          return entry?.answered ? `${cellLabel(entry)}: ${entry.answer}` : "No answer";
+        }),
+      ]);
+    }
+    rows.push([]);
+    rows.push(["Question", "Lesson", "Sent", "Answered", "Correct", "Expected answer"]);
+    for (const check of checks) {
+      rows.push([
+        check.question,
+        check.lesson,
+        new Date(check.sentAt).toLocaleString(),
+        check.answeredCount,
+        check.correctCount,
+        check.expectedAnswer ?? "",
+      ]);
+    }
+    downloadXlsx("formative-record-book.xlsx", "Formative checks", rows);
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -341,74 +393,97 @@ export function FormativeRecordBook({ classId }: { classId: string }) {
           Formative record book
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-5xl">
         <DialogHeader>
           <DialogTitle>Formative record book</DialogTitle>
           <DialogDescription>
             Every quick class question you sent, and how each student answered.
           </DialogDescription>
         </DialogHeader>
-        <div className="max-h-[65vh] space-y-3 overflow-y-auto pr-1">
-          {history.isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
-          {history.data && history.data.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={download} disabled={checks.length === 0}>
+            <Download className="size-4" />
+            Download .xlsx
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            {checks.length} check{checks.length === 1 ? "" : "s"} · {students.length} student
+            {students.length === 1 ? "" : "s"}
+          </span>
+        </div>
+
+        <div className="max-h-[65vh] overflow-auto rounded-lg border">
+          {history.isLoading ? (
+            <p className="p-3 text-sm text-muted-foreground">Loading…</p>
+          ) : checks.length === 0 ? (
+            <p className="p-3 text-sm text-muted-foreground">
               No formative checks sent in this class yet.
             </p>
-          ) : null}
-          {(history.data ?? []).map((check) => (
-            <div key={check.id} className="rounded-lg border p-3">
-              <button
-                type="button"
-                className="w-full text-left"
-                onClick={() => setExpanded(expanded === check.id ? null : check.id)}
-              >
-                <p className="text-sm font-medium">{check.question}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {check.lesson} · {new Date(check.sentAt).toLocaleString()} ·{" "}
-                  {check.answeredCount} answered · {check.correctCount} correct
-                </p>
-              </button>
-              {expanded === check.id ? (
-                <div className="mt-3 space-y-1">
-                  {check.expectedAnswer ? (
-                    <p className="text-xs text-muted-foreground">
-                      Expected answer: {check.expectedAnswer}
-                    </p>
-                  ) : null}
-                  {check.students.map((student) => (
-                    <div
-                      key={student.studentId}
-                      className="rounded-md bg-secondary/40 px-2 py-1 text-xs"
+          ) : (
+            <table className="w-full border-collapse text-xs">
+              <thead className="sticky top-0 bg-card">
+                <tr>
+                  <th className="sticky left-0 z-10 min-w-40 border-b border-r bg-card p-2 text-left font-medium">
+                    Student
+                  </th>
+                  {checks.map((check) => (
+                    <th
+                      key={check.id}
+                      className="min-w-44 border-b border-r p-2 text-left align-top font-medium"
+                      title={check.expectedAnswer ?? undefined}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="truncate font-medium">{student.name}</span>
-                        <span
-                          className={
-                            student.verdict === "correct"
-                              ? "text-primary"
-                              : student.answered
-                                ? "text-destructive"
-                                : "text-muted-foreground"
-                          }
-                        >
-                          {!student.answered
-                            ? "No answer"
-                            : student.verdict === "correct"
-                              ? `Correct · ${student.attempts} ${student.attempts === 1 ? "try" : "tries"}`
-                              : `Incorrect · ${student.attempts} ${student.attempts === 1 ? "try" : "tries"}`}
-                        </span>
-                      </div>
-                      {student.answered ? (
-                        <p className="mt-0.5 text-muted-foreground">“{student.answer}”</p>
-                      ) : null}
-                    </div>
+                      <span className="line-clamp-2">{check.question}</span>
+                      <span className="mt-0.5 block font-normal text-muted-foreground">
+                        {check.lesson} · {new Date(check.sentAt).toLocaleDateString()}
+                      </span>
+                    </th>
                   ))}
-                </div>
-              ) : null}
-            </div>
-          ))}
+                </tr>
+              </thead>
+              <tbody>
+                {students.map((student) => (
+                  <tr key={student.id} className="odd:bg-secondary/20">
+                    <td className="sticky left-0 z-10 border-b border-r bg-card p-2 font-medium">
+                      {student.name}
+                    </td>
+                    {checks.map((check) => {
+                      const entry = cellFor(check.id, student.id);
+                      return (
+                        <td
+                          key={check.id}
+                          className={`border-b border-r p-2 align-top ${
+                            !entry?.answered
+                              ? "text-muted-foreground"
+                              : entry.verdict === "correct"
+                                ? "text-primary"
+                                : "text-destructive"
+                          }`}
+                        >
+                          {cellLabel(entry)}
+                          {entry?.answered ? (
+                            <span className="mt-0.5 block text-muted-foreground">
+                              “{entry.answer}”
+                            </span>
+                          ) : null}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+                <tr className="bg-secondary/40 font-medium">
+                  <td className="sticky left-0 z-10 border-r bg-secondary/40 p-2">Class correct</td>
+                  {checks.map((check) => (
+                    <td key={check.id} className="border-r p-2">
+                      {check.correctCount}/{check.answeredCount || 0} answered
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          )}
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+

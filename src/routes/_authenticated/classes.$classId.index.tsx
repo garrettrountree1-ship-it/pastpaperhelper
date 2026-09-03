@@ -98,9 +98,11 @@ function ClassHome() {
             {role === "teacher" ? (
               <>
                 <ClassRoster classId={classId} />
+                <CoteacherPanel classId={classId} />
                 <TeacherMessagesPanel classId={classId} />
               </>
             ) : null}
+
           </>
         )}
       </main>

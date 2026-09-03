@@ -20,6 +20,10 @@ import { SlideDeckView } from "@/components/materials/SlideDeckView";
 import { prerenderUploadedMaterial } from "@/lib/office-prerender";
 import { docFormat } from "@/lib/doc-kind";
 
+import {
+  FormativeCheckPanel,
+  FormativeRecordBook,
+} from "@/components/materials/FormativeCheck";
 import { LessonWorkspace } from "@/components/materials/LessonWorkspace";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -186,6 +190,12 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
 
   return (
     <div className="space-y-4">
+      <FormativeCheckPanel classId={classId} asStudent={!canManage} />
+      {canManage ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <FormativeRecordBook classId={classId} />
+        </div>
+      ) : null}
       {canManage ? (
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>

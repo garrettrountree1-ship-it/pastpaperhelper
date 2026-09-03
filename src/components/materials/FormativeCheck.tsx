@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { PartyPopper, Send, Sparkles, Timer, X } from "lucide-react";
+import { NotebookPen, PartyPopper, Send, Sparkles, Timer, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -22,6 +22,7 @@ import {
   closeFormativeCheck,
   getActiveFormativeCheck,
   launchFormativeCheck,
+  listFormativeHistory,
   listFormativeResults,
 } from "@/lib/formative.functions";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
@@ -314,5 +315,100 @@ export function FormativeCheckPanel({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Teacher record book: every formative check sent in this class, the lesson it
+ * belonged to, and how each student answered.
+ */
+export function FormativeRecordBook({ classId }: { classId: string }) {
+  const fetchHistory = useServerFn(listFormativeHistory);
+  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  const history = useQuery({
+    queryKey: ["formative-history", classId],
+    queryFn: () => fetchHistory({ data: { classId } }),
+    enabled: open,
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline">
+          <NotebookPen className="size-4" />
+          Formative record book
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Formative record book</DialogTitle>
+          <DialogDescription>
+            Every quick class question you sent, and how each student answered.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[65vh] space-y-3 overflow-y-auto pr-1">
+          {history.isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
+          {history.data && history.data.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No formative checks sent in this class yet.
+            </p>
+          ) : null}
+          {(history.data ?? []).map((check) => (
+            <div key={check.id} className="rounded-lg border p-3">
+              <button
+                type="button"
+                className="w-full text-left"
+                onClick={() => setExpanded(expanded === check.id ? null : check.id)}
+              >
+                <p className="text-sm font-medium">{check.question}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {check.lesson} · {new Date(check.sentAt).toLocaleString()} ·{" "}
+                  {check.answeredCount} answered · {check.correctCount} correct
+                </p>
+              </button>
+              {expanded === check.id ? (
+                <div className="mt-3 space-y-1">
+                  {check.expectedAnswer ? (
+                    <p className="text-xs text-muted-foreground">
+                      Expected answer: {check.expectedAnswer}
+                    </p>
+                  ) : null}
+                  {check.students.map((student) => (
+                    <div
+                      key={student.studentId}
+                      className="rounded-md bg-secondary/40 px-2 py-1 text-xs"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate font-medium">{student.name}</span>
+                        <span
+                          className={
+                            student.verdict === "correct"
+                              ? "text-primary"
+                              : student.answered
+                                ? "text-destructive"
+                                : "text-muted-foreground"
+                          }
+                        >
+                          {!student.answered
+                            ? "No answer"
+                            : student.verdict === "correct"
+                              ? `Correct · ${student.attempts} ${student.attempts === 1 ? "try" : "tries"}`
+                              : `Incorrect · ${student.attempts} ${student.attempts === 1 ? "try" : "tries"}`}
+                        </span>
+                      </div>
+                      {student.answered ? (
+                        <p className="mt-0.5 text-muted-foreground">“{student.answer}”</p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { FreeCanvas, type CanvasMode } from "@/components/materials/FreeCanvas";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { readCachedJson, writeCachedJson } from "@/lib/doc-cache";
 import {
   generateSectionSummary,
   saveSectionNotes,

@@ -267,28 +267,25 @@ export function FreeCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canEdit, selectedId, blocks]);
 
-  // Word-style shortcuts: Ctrl/⌘ + B / I / U format the selected text block,
-  // Ctrl/⌘ + Z / Shift+Z / Y step through undo history.
+  // Word-style shortcuts: Ctrl/⌘ + Z / Shift+Z / Y step through undo history.
+  // B / I / U are handled inside the text box itself so they format only the
+  // highlighted words.
   useEffect(() => {
     if (!canEdit) return;
     const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.isContentEditable) return;
       const shortcut = textShortcutOf(event);
-      if (!shortcut) return;
-      if (shortcut === "undo" || shortcut === "redo") {
-        event.preventDefault();
-        if (shortcut === "undo") undo();
-        else redo();
-        return;
-      }
-      const block = blocks.find((b) => b.id === selectedId && b.type === "text");
-      if (!block || block.type !== "text") return;
+      if (shortcut !== "undo" && shortcut !== "redo") return;
       event.preventDefault();
-      patch(block.id, { [shortcut]: !block[shortcut] });
+      if (shortcut === "undo") undo();
+      else redo();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canEdit, selectedId, blocks, undo, redo]);
+
 
 
 

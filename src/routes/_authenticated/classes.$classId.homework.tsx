@@ -2076,16 +2076,10 @@ function StudentReport({
                 {assignment.aiFlagCount > 0 ? ` · ${assignment.aiFlagCount} AI warning(s)` : ""}
               </p>
             </div>
-            <LockControls
-              assignmentId={assignment.assignmentId}
-              studentId={studentId}
-              locked={assignment.locked}
-              penaltyPercent={assignment.penaltyPercent}
-              onDone={() => {
-                report.refetch();
-                onChanged();
-              }}
-            />
+            {assignment.penaltyPercent > 0 ? (
+              <Badge variant="secondary">−{assignment.penaltyPercent}% cheating deduction</Badge>
+            ) : null}
+
           </div>
           {assignment.locked ? (
             <p className="mt-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">

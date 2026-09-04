@@ -1313,19 +1313,24 @@ export const gradeAnswer = createServerFn({ method: "POST" })
 
 
     /* ---- academic integrity: reject copied AI / web / peer answers ---- */
-    const [{ detectAiAnswer }, { findCopiedFromPeers }] = await Promise.all([
-      import("./ai-detect.server"),
-      import("./originality.server"),
-    ]);
-    const [detection, peerCopy] = await Promise.all([
+    const [{ detectAiAnswer }, { findCopiedFromPeers }, { checkHandDrawnPhotos }] =
+      await Promise.all([
+        import("./ai-detect.server"),
+        import("./originality.server"),
+        import("./photo-authenticity.server"),
+      ]);
+    const [detection, peerCopy, photoCheck] = await Promise.all([
       detectAiAnswer({
         question: question.question_text,
         answer: data.answerText,
         marks: question.marks,
       }),
       findCopiedFromPeers(db, data.questionId, guardSubmission.id, data.answerText),
+      checkHandDrawnPhotos(await signWorkImages(db, imagePaths)),
     ]);
-    const violation = peerCopy ?? (detection.isAi ? detection : null);
+    const violation = photoCheck.ok
+      ? (peerCopy ?? (detection.isAi ? detection : null))
+      : { reason: photoCheck.reason, confidence: photoCheck.confidence };
     if (violation) {
       const strikes = (guardSubmission.ai_flag_count ?? 0) + 1;
       await db.from("integrity_flags").insert({

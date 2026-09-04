@@ -1821,6 +1821,91 @@ function GradebookRow({
   );
 }
 
+/**
+ * Per-question teacher overrides for one student, shown on the question bar
+ * inside that student's detailed report.
+ */
+function QuestionRowActions({
+  classId,
+  assignmentId,
+  questionId,
+  studentId,
+  marks,
+  onDone,
+}: {
+  classId: string;
+  assignmentId: string;
+  questionId: string;
+  studentId: string;
+  marks: number;
+  onDone: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const bulkGrade = useServerFn(bulkGradeQuestion);
+  const exclude = useServerFn(setQuestionExclusion);
+  const [unassigned, setUnassigned] = useState(false);
+
+  function done() {
+    queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });
+    onDone();
+  }
+
+  const grade = useMutation({
+    mutationFn: (action: "credit" | "reject") =>
+      bulkGrade({ data: { assignmentId, questionId, action, studentIds: [studentId] } }),
+    onSuccess: (_result, action) => {
+      toast.success(
+        action === "credit" ? `Full marks (${marks}) given` : "Sent back to the student to redo",
+      );
+      done();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const unassign = useMutation({
+    mutationFn: (next: boolean) =>
+      exclude({ data: { questionId, studentId, excluded: next } }),
+    onSuccess: (_result, next) => {
+      setUnassigned(next);
+      toast.success(next ? "Question unassigned for this student" : "Question reassigned");
+      done();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const busy = grade.isPending || unassign.isPending;
+
+  return (
+    <span
+      className="flex shrink-0 flex-wrap gap-1"
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+    >
+      <Button size="sm" variant="outline" disabled={busy} onClick={() => grade.mutate("credit")}>
+        Credit
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={busy}
+        onClick={() => grade.mutate("reject")}
+      >
+        Reject answer
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={busy}
+        onClick={() => unassign.mutate(!unassigned)}
+      >
+        {unassigned ? "Reassign question" : "Unassign question"}
+      </Button>
+    </span>
+  );
+}
+
 function StudentReport({
   classId,
   studentId,

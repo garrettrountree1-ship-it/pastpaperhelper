@@ -36,6 +36,7 @@ import {
   listQuizzes,
   listStudentQuizzes,
   releaseQuiz,
+  setQuizRevealMarkScheme,
 } from "@/lib/quizzes.functions";
 
 export function QuizzesSection({
@@ -69,6 +70,7 @@ function TeacherQuizzes({ classId }: { classId: string }) {
   const release = useServerFn(releaseQuiz);
   const end = useServerFn(endQuiz);
   const remove = useServerFn(deleteQuiz);
+  const reveal = useServerFn(setQuizRevealMarkScheme);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["quizzes", activeClassId] });
 
@@ -96,6 +98,14 @@ function TeacherQuizzes({ classId }: { classId: string }) {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+  const revealMutation = useMutation({
+    mutationFn: (input: { quizId: string; reveal: boolean }) => reveal({ data: input }),
+    onSuccess: (_r, input) => {
+      toast.success(input.reveal ? "Mark scheme released to students" : "Mark scheme hidden from students");
+      refresh();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   return (
     <div className="space-y-6">
@@ -104,7 +114,8 @@ function TeacherQuizzes({ classId }: { classId: string }) {
           <h2 className="text-3xl">Timed quizzes</h2>
           <p className="mt-1 max-w-prose text-sm text-muted-foreground">
             Upload a past paper and mark scheme, set the time limit, then release the quiz when the
-            class is ready. Nothing is marked or explained until the timer ends.
+            class is ready. Copy, paste, screenshots and snipping tools are blocked for students,
+            there is no AI tutor, and nothing is marked or explained until the timer ends.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
@@ -172,6 +183,16 @@ function TeacherQuizzes({ classId }: { classId: string }) {
                       Release quiz
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    variant={quiz.revealMarkScheme ? "secondary" : "outline"}
+                    onClick={() =>
+                      revealMutation.mutate({ quizId: quiz.id, reveal: !quiz.revealMarkScheme })
+                    }
+                    disabled={revealMutation.isPending}
+                  >
+                    {quiz.revealMarkScheme ? "Hide mark scheme" : "Release mark scheme"}
+                  </Button>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -495,8 +516,9 @@ function StudentQuizzes({ classId }: { classId: string }) {
       <div className="paper p-5">
         <h2 className="text-3xl">Your quizzes</h2>
         <p className="mt-1 max-w-prose text-sm text-muted-foreground">
-          Quizzes are timed. Once you open one the clock starts, there is no tutor and nothing is
-          marked until you submit or the time runs out.
+          Quizzes are timed and exam conditions apply: copy, paste, screenshots and snipping tools
+          are blocked, there is no AI tutor, and nothing is marked until you submit or the timer
+          runs out.
         </p>
       </div>
 

@@ -97,13 +97,6 @@ export function StudentClassHomework({ classId }: { classId: string }) {
                       {[klass.subject, klass.curriculum].filter(Boolean).join(" · ")} ·{" "}
                       {items.length} {items.length === 1 ? "assignment" : "assignments"}
                     </p>
-                    <MessageTeacherDialog
-                      classId={klass.id}
-                      className={klass.name}
-                      assignmentOptions={(work.data?.assignments ?? [])
-                        .filter((a) => a.classId === klass.id)
-                        .map((a) => ({ id: a.id, title: a.title }))}
-                    />
                   </div>
                 </div>
 

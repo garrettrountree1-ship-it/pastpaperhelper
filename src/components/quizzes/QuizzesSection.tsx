@@ -70,6 +70,7 @@ function TeacherQuizzes({ classId }: { classId: string }) {
   const release = useServerFn(releaseQuiz);
   const end = useServerFn(endQuiz);
   const remove = useServerFn(deleteQuiz);
+  const reveal = useServerFn(setQuizRevealMarkScheme);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["quizzes", activeClassId] });
 

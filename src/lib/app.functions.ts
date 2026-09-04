@@ -638,6 +638,32 @@ export const updateAssignment = createServerFn({ method: "POST" })
     return { id: data.assignmentId };
   });
 
+/**
+ * Archive or restore a homework. Archived homework disappears for students
+ * (and from the teacher's active list) but keeps every submission, so the
+ * teacher can restore it or delete it for good from the archive.
+ */
+export const setAssignmentArchived = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ assignmentId: z.string().uuid(), archived: z.boolean() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: canTeach } = await supabase.rpc("can_teach_assignment", {
+      _assignment_id: data.assignmentId,
+      _user_id: userId,
+    });
+    if (!canTeach) throw new Error("You do not teach this assignment.");
+
+    const { error } = await supabase
+      .from("assignments")
+      .update({ archived_at: data.archived ? new Date().toISOString() : null })
+      .eq("id", data.assignmentId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const deleteAssignment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ assignmentId: z.string().uuid() }).parse(input))

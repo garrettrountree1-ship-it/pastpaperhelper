@@ -153,16 +153,15 @@ export function ClassBulletinBoard({ classId }: { classId: string }) {
   const [seenAt, setSeenAt] = useState<number | null>(null);
   const seenKey = `class-bulletin-seen:${classId}`;
   const rows = posts.data ?? [];
-  const latest = rows.reduce((max, p) => Math.max(max, new Date(p.created_at).getTime()), 0);
 
   useEffect(() => {
     const stored = Number(window.localStorage.getItem(seenKey) ?? 0);
     setSeenAt(Number.isFinite(stored) ? stored : 0);
   }, [seenKey]);
 
-  useEffect(() => {
-    if (latest > 0) window.localStorage.setItem(seenKey, String(latest));
-  }, [latest, seenKey]);
+  // Note: the "seen" marker is only written when the student dismisses the
+  // bulletin pop-up, so new notices keep popping up until acknowledged.
+
 
   return (
     <section className="paper mt-6 p-6">
@@ -270,12 +269,7 @@ export function ClassBulletinPopup({ classId }: { classId: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <div className="mt-6 flex justify-end">
-        <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-          <Megaphone className="mr-2 size-4" />
-          Class bulletin ({rows.length})
-        </Button>
-      </div>
     </>
+
   );
 }

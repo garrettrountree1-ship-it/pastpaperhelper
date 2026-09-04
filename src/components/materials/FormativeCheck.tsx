@@ -67,7 +67,8 @@ export function FormativeCheckButton({
   const [question, setQuestion] = useState("");
   const [expected, setExpected] = useState("");
   const [seconds, setSeconds] = useState(60);
-  const [target, setTarget] = useState<string>("class");
+  const [selected, setSelected] = useState<string[]>([]);
+  const wholeClass = selected.length === 0;
 
   const students = useQuery({
     queryKey: ["class-roster", classId],
@@ -84,15 +85,19 @@ export function FormativeCheckButton({
           question: question.trim(),
           expectedAnswer: expected.trim() || null,
           seconds,
-          targetStudentId: target === "class" ? null : target,
+          targetStudentIds: selected,
         },
       }),
     onSuccess: async () => {
-      toast.success(target === "class" ? "Sent to the class" : "Sent to that student");
+      toast.success(
+        wholeClass
+          ? "Sent to the class"
+          : `Sent to ${selected.length} student${selected.length === 1 ? "" : "s"}`,
+      );
       setOpen(false);
       setQuestion("");
       setExpected("");
-      setTarget("class");
+      setSelected([]);
       await queryClient.invalidateQueries({ queryKey: ["formative-active", classId] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -138,12 +143,15 @@ export function FormativeCheckButton({
           </div>
           <div className="space-y-1">
             <Label>Send to</Label>
+            <p className="text-xs text-muted-foreground">
+              Pick the whole class, or tap one or more students to send it to just them.
+            </p>
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
                 size="sm"
-                variant={target === "class" ? "default" : "outline"}
-                onClick={() => setTarget("class")}
+                variant={wholeClass ? "default" : "outline"}
+                onClick={() => setSelected([])}
               >
                 Whole class
               </Button>
@@ -152,8 +160,14 @@ export function FormativeCheckButton({
                   key={student.id}
                   type="button"
                   size="sm"
-                  variant={target === student.id ? "default" : "outline"}
-                  onClick={() => setTarget(student.id)}
+                  variant={selected.includes(student.id) ? "default" : "outline"}
+                  onClick={() =>
+                    setSelected((prev) =>
+                      prev.includes(student.id)
+                        ? prev.filter((id) => id !== student.id)
+                        : [...prev, student.id],
+                    )
+                  }
                 >
                   {student.name}
                 </Button>

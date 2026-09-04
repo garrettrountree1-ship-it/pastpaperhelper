@@ -622,6 +622,7 @@ export type Database = {
           seconds: number
           section_id: string | null
           target_student_id: string | null
+          target_student_ids: string[]
           teacher_id: string
         }
         Insert: {
@@ -635,6 +636,7 @@ export type Database = {
           seconds?: number
           section_id?: string | null
           target_student_id?: string | null
+          target_student_ids?: string[]
           teacher_id: string
         }
         Update: {
@@ -648,6 +650,7 @@ export type Database = {
           seconds?: number
           section_id?: string | null
           target_student_id?: string | null
+          target_student_ids?: string[]
           teacher_id?: string
         }
         Relationships: [

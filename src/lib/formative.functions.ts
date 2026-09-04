@@ -17,6 +17,7 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
         expectedAnswer: z.string().max(2000).nullable().optional(),
         seconds: z.number().int().min(15).max(1800),
         targetStudentId: z.string().uuid().nullable().optional(),
+        targetStudentIds: z.array(z.string().uuid()).max(200).optional(),
       })
       .parse(input),
   )
@@ -24,15 +25,19 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await assertClassTeacher(supabase, data.classId, userId);
 
-    const target = data.targetStudentId ?? null;
-    if (target) {
-      const { data: member } = await supabase
+    const targets = [
+      ...new Set([...(data.targetStudentIds ?? []), ...(data.targetStudentId ? [data.targetStudentId] : [])]),
+    ];
+    if (targets.length > 0) {
+      const { data: members } = await supabase
         .from("class_members")
         .select("student_id")
         .eq("class_id", data.classId)
-        .eq("student_id", target)
-        .maybeSingle();
-      if (!member) throw new Error("That student is not in this class.");
+        .in("student_id", targets);
+      const inClass = new Set((members ?? []).map((m) => m.student_id as string));
+      if (targets.some((id) => !inClass.has(id))) {
+        throw new Error("One of those students is not in this class.");
+      }
     }
 
     // Only one live check at a time — close anything still running.
@@ -53,7 +58,8 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
         expected_answer: data.expectedAnswer?.trim() || null,
         seconds: data.seconds,
         ends_at: endsAt,
-        target_student_id: target,
+        target_student_id: targets.length === 1 ? (targets[0] ?? null) : null,
+        target_student_ids: targets,
       })
       .select("id, question, seconds, ends_at")
       .single();
@@ -70,11 +76,15 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: check } = await supabase
       .from("formative_checks")
-      .select("id, question, seconds, ends_at, teacher_id, expected_answer, target_student_id")
+      .select(
+        "id, question, seconds, ends_at, teacher_id, expected_answer, target_student_id, target_student_ids",
+      )
       .eq("class_id", data.classId)
       .is("closed_at", null)
       .gt("ends_at", new Date().toISOString())
-      .or(`target_student_id.is.null,target_student_id.eq.${userId},teacher_id.eq.${userId}`)
+      .or(
+        `and(target_student_id.is.null,target_student_ids.eq.{}),target_student_ids.cs.{${userId}},target_student_id.eq.${userId},teacher_id.eq.${userId}`,
+      )
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -96,6 +106,7 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
       isTeacher: check.teacher_id === userId,
       hasExpectedAnswer: Boolean(check.expected_answer),
       targetStudentId: (check.target_student_id ?? null) as string | null,
+      targetStudentIds: ((check.target_student_ids ?? []) as string[]),
 
       myAttempts: (mine ?? []).map((r) => ({
         id: r.id as string,
@@ -118,15 +129,17 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: check } = await supabase
       .from("formative_checks")
-      .select("id, question, expected_answer, ends_at, closed_at, teacher_id, target_student_id")
+      .select(
+        "id, question, expected_answer, ends_at, closed_at, teacher_id, target_student_id, target_student_ids",
+      )
       .eq("id", data.checkId)
       .maybeSingle();
     if (!check) throw new Error("That class question is no longer available.");
-    if (
-      check.target_student_id &&
-      check.target_student_id !== userId &&
-      check.teacher_id !== userId
-    ) {
+    const allowed = new Set<string>([
+      ...((check.target_student_ids ?? []) as string[]),
+      ...(check.target_student_id ? [check.target_student_id as string] : []),
+    ]);
+    if (allowed.size > 0 && !allowed.has(userId) && check.teacher_id !== userId) {
       throw new Error("That question was sent to another student.");
     }
 

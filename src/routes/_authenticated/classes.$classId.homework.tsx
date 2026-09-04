@@ -35,6 +35,8 @@ import {
   Wand2,
   ShieldAlert,
   Languages,
+  Archive,
+  RotateCcw,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -76,6 +78,7 @@ import {
   createAssignment,
   creditQuestionForAll,
   deleteAssignment,
+  setAssignmentArchived,
   deleteClass,
   removeStudentFromClass,
 
@@ -378,6 +381,7 @@ type TeacherAssignment = {
   submittedCount: number;
   pastDue: boolean;
   behindCount: number;
+  archivedAt?: string | null;
 };
 
 function AssignmentList({
@@ -392,11 +396,15 @@ function AssignmentList({
   const [filter, setFilter] = useState<"all" | AssignmentStatusKey>("all");
   const [sort, setSort] = useState<"due" | "title">("due");
 
-  const tagged = assignments.map((a) => {
+  const archivedList = assignments.filter((a) => Boolean(a.archivedAt));
+  const active = assignments.filter((a) => !a.archivedAt);
+
+  const tagged = active.map((a) => {
     const behindAll = studentCount > 0 && a.behindCount >= studentCount;
     const key: AssignmentStatusKey = !a.pastDue ? "active" : behindAll ? "past_due" : "closed";
     return { ...a, statusKey: key };
   });
+
 
   const counts = {
     all: tagged.length,
@@ -438,6 +446,7 @@ function AssignmentList({
           ))}
         </div>
         <div className="flex items-center gap-2">
+          <ArchivedAssignmentsDialog classId={classId} assignments={archivedList} />
           <span className="text-sm text-muted-foreground">Sort by</span>
           <Select value={sort} onValueChange={(v) => setSort(v as "due" | "title")}>
             <SelectTrigger className="w-[150px]">
@@ -469,7 +478,7 @@ function AssignmentList({
 
       {visible.length === 0 ? (
         <div className="paper p-8 text-center text-muted-foreground">
-          No {statusLabels[filter as AssignmentStatusKey].toLowerCase()} assignments.
+          No {filter === "all" ? "" : `${statusLabels[filter].toLowerCase()} `}assignments to show.
         </div>
       ) : (
         visible.map((assignment) => (
@@ -549,7 +558,7 @@ function AssignmentList({
                     </Button>
                   }
                 />
-                <DeleteAssignmentButton
+                <ArchiveAssignmentButton
                   classId={classId}
                   assignmentId={assignment.id}
                   title={assignment.title}
@@ -1363,7 +1372,7 @@ function QuestionEditorDialog({
   );
 }
 
-function DeleteAssignmentButton({
+function ArchiveAssignmentButton({
   classId,
   assignmentId,
   title,
@@ -1373,11 +1382,11 @@ function DeleteAssignmentButton({
   title: string;
 }) {
   const queryClient = useQueryClient();
-  const remove = useServerFn(deleteAssignment);
+  const archive = useServerFn(setAssignmentArchived);
   const mutation = useMutation({
-    mutationFn: () => remove({ data: { assignmentId } }),
+    mutationFn: () => archive({ data: { assignmentId, archived: true } }),
     onSuccess: () => {
-      toast.success("Assignment deleted");
+      toast.success("Assignment archived — students can no longer see it");
       queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -1385,17 +1394,129 @@ function DeleteAssignmentButton({
 
   return (
     <Button
-      variant="ghost"
+      variant="outline"
       size="sm"
       disabled={mutation.isPending}
       onClick={() => {
-        if (window.confirm(`Delete "${title}" and all its submissions?`)) mutation.mutate();
+        if (
+          window.confirm(
+            `Archive "${title}"? Students will no longer see it. You can restore or delete it from the archive.`,
+          )
+        ) {
+          mutation.mutate();
+        }
       }}
     >
-      <Trash2 className="size-4" />
+      <Archive className="size-4" />
+      Archive
     </Button>
   );
 }
+
+/** Teacher-only archive: restore homework to students or delete it for good. */
+function ArchivedAssignmentsDialog({
+  classId,
+  assignments,
+}: {
+  classId: string;
+  assignments: TeacherAssignment[];
+}) {
+  const [open, setOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const archive = useServerFn(setAssignmentArchived);
+  const remove = useServerFn(deleteAssignment);
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });
+
+  const restore = useMutation({
+    mutationFn: (assignmentId: string) => archive({ data: { assignmentId, archived: false } }),
+    onSuccess: () => {
+      toast.success("Assignment restored for students");
+      invalidate();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const destroy = useMutation({
+    mutationFn: (assignmentId: string) => remove({ data: { assignmentId } }),
+    onSuccess: () => {
+      toast.success("Assignment deleted");
+      invalidate();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Archive className="size-4" />
+          Archive ({assignments.length})
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Archived homework</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Archived homework is hidden from students. Reactivate it to make it visible again, or
+          delete it permanently along with all its submissions.
+        </p>
+        {assignments.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            Nothing archived yet.
+          </p>
+        ) : (
+          <ul className="divide-y">
+            {assignments.map((assignment) => (
+              <li
+                key={assignment.id}
+                className="flex flex-wrap items-center justify-between gap-2 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{assignment.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {assignment.questionCount} question(s) · {assignment.submittedCount} submitted
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={restore.isPending}
+                    onClick={() => restore.mutate(assignment.id)}
+                  >
+                    <RotateCcw className="size-4" />
+                    Reactivate
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive"
+                    disabled={destroy.isPending}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Delete "${assignment.title}" and all its submissions? This cannot be undone.`,
+                        )
+                      ) {
+                        destroy.mutate(assignment.id);
+                      }
+                    }}
+                  >
+                    <Trash2 className="size-4" />
+                    Delete
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 /** Demo account only: fill the roster with sample students to explore teacher views. */
 function DemoStudentSeeder({ classId, onSeeded }: { classId: string; onSeeded: () => void }) {

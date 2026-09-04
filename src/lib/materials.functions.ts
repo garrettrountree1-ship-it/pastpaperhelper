@@ -60,7 +60,7 @@ export const listUnits = createServerFn({ method: "GET" })
     const { data: units, error } = await supabase
       .from("class_units")
       .select(
-        "id, title, description, position, created_at, planned_start, planned_end, planned_classes",
+        "id, title, description, position, created_at, planned_start, planned_end, planned_classes, archived_at",
       )
       .eq("class_id", data.classId)
       .order("position", { ascending: true })
@@ -164,6 +164,25 @@ export const updateUnit = createServerFn({ method: "POST" })
         planned_start: data.plannedStart || null,
         planned_end: data.plannedEnd || null,
         planned_classes: data.plannedClasses ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.unitId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Archive or restore a unit. Archived units are hidden from students. */
+export const setUnitArchived = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ unitId: z.string().uuid(), archived: z.boolean() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertUnitTeacher(context.supabase, data.unitId, context.userId);
+    const { error } = await context.supabase
+      .from("class_units")
+      .update({
+        archived_at: data.archived ? new Date().toISOString() : null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", data.unitId);

@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { GlossaryText } from "@/components/assignments/GlossaryText";
+import { cleanTutorText, TutorText } from "@/lib/tutor-text";
 import { getQuestionGlossary, getTutorGlossary } from "@/lib/tutor-settings.functions";
 
 import { CameraCapture } from "@/components/assignments/CameraCapture";
@@ -333,7 +334,7 @@ export function QuestionExperience({
             </span>
           </div>
           {result.feedback ? (
-            <p className="mt-2 whitespace-pre-wrap text-sm">{result.feedback}</p>
+            <TutorText className="mt-2 space-y-1 text-sm" text={result.feedback} />
           ) : null}
           {verdict !== "correct" ? (
             <p className="mt-2 text-xs text-muted-foreground">
@@ -359,7 +360,7 @@ export function QuestionExperience({
                   {message.role === "tutor" ? (
                     <GlossaryText
                       className="whitespace-pre-wrap"
-                      text={message.content}
+                      text={cleanTutorText(message.content)}
                       terms={tutorTerms}
                     />
                   ) : (

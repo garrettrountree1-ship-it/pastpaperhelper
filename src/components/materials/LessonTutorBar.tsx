@@ -104,10 +104,14 @@ export function LessonTutorBar({
             className={
               turn.role === "user"
                 ? "ml-6 rounded-md bg-secondary px-3 py-2 text-sm"
-                : "rounded-md border px-3 py-2 text-sm whitespace-pre-wrap"
+                : "rounded-md border px-3 py-2 text-sm"
             }
           >
-            {turn.content}
+            {turn.role === "user" ? (
+              turn.content
+            ) : (
+              <TutorText className="space-y-1" text={turn.content} />
+            )}
           </div>
         ))}
         {send.isPending ? (

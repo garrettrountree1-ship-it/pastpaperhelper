@@ -337,13 +337,23 @@ function SubmissionPage() {
                       ) : null}
                     </div>
 
+                    {answer?.rejected_at ? (
+                      <p className="mt-4 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm">
+                        Sent back to redo on {new Date(answer.rejected_at).toLocaleString()}
+                        {answer.rejection_note ? ` — ${answer.rejection_note}` : ""}
+                      </p>
+                    ) : null}
+
                     {answer ? (
-                      <MarkOverride
-                        answerId={answer.id}
-                        maxMarks={question.marks}
-                        current={answer.awarded_marks ?? 0}
-                        queryKey={queryKey}
-                      />
+                      <>
+                        <MarkOverride
+                          answerId={answer.id}
+                          maxMarks={question.marks}
+                          current={answer.awarded_marks ?? 0}
+                          queryKey={queryKey}
+                        />
+                        <SendBack answerId={answer.id} queryKey={queryKey} />
+                      </>
                     ) : null}
                   </section>
                 );

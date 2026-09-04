@@ -365,16 +365,9 @@ function QuestionCard({
     question.photoMode ?? "auto",
   );
   const [showPhoto, setShowPhoto] = useState(requiresPhoto);
-  const secondsRef = useRef(0);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const { secondsRef, reset: resetActiveTime } = useActiveTime(cardRef);
 
-  useEffect(() => {
-    const tick = setInterval(() => {
-      if (typeof document !== "undefined" && document.visibilityState === "visible") {
-        secondsRef.current += 1;
-      }
-    }, 1000);
-    return () => clearInterval(tick);
-  }, []);
 
   const gradeMutation = useMutation({
     mutationFn: async () => {

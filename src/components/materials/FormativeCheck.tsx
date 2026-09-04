@@ -490,13 +490,11 @@ export function FormativeRecordBook({ classId }: { classId: string }) {
       rows.push([
         student.name,
         ...cells,
-        total > 0 ? Math.round((attempted / total) * 100) / 100 : 0,
-        total > 0 ? Math.round((correct / total) * 100) / 100 : 0,
+        total > 0 ? `${Math.round((attempted / total) * 100)}%` : "0%",
+        total > 0 ? `${Math.round((correct / total) * 100)}%` : "0%",
       ]);
     }
-    downloadXlsx("formative-record-book.xlsx", "Formative checks", rows, {
-      percentColumns: [ordered.length + 1, ordered.length + 2],
-    });
+    downloadXlsx("formative-record-book.xlsx", "Formative checks", rows);
   }
 
 

@@ -1,0 +1,1 @@
+ALTER TABLE public.assignments ADD COLUMN IF NOT EXISTS protect_questions boolean NOT NULL DEFAULT false;

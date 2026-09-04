@@ -265,6 +265,8 @@ function ClassPageContent({ classId }: { classId: string }) {
         </TabsContent>
 
         <TabsContent value="gradebook" className="mt-4">
+          <DemoStudentSeeder classId={classId} onSeeded={() => overview.refetch()} />
+
           {data.students.length === 0 ? (
             <div className="paper p-8 text-center text-muted-foreground">
               No students have joined yet.

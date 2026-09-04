@@ -227,11 +227,6 @@ function ClassPageContent({ classId }: { classId: string }) {
             onSaved={() => overview.refetch()}
           />
           <TutorSettingsDialog classId={classId} />
-          <ClassSettingsDialog
-            classId={classId}
-            klass={data.klass}
-            onSaved={() => overview.refetch()}
-          />
           <AssignmentDialog classId={classId} trigger={<Button>New assignment</Button>} />
         </div>
       </div>

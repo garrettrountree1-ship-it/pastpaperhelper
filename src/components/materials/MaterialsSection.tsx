@@ -323,6 +323,7 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
                     <Button
                       variant="outline"
                       size="sm"
+                      className="ml-2"
                       onClick={() => {
                         if (
                           confirm(

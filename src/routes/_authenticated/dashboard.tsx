@@ -110,8 +110,10 @@ function Dashboard() {
   return (
     <div className="min-h-screen">
       <AppHeader name={me.data?.fullName || me.data?.email} role={role} />
+      <RedoAlerts enabled={!me.isPending && role === "student"} />
       <main className="mx-auto max-w-6xl px-4 py-8">
         {isDemo ? <DemoViewSwitcher role={view} onSwitch={setDemoView} /> : null}
+
 
         {me.isPending ? (
           <Skeleton className="h-40 w-full" />

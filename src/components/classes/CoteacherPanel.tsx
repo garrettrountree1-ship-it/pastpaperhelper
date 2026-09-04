@@ -52,14 +52,29 @@ export function CoteacherPanel({ classId }: { classId: string }) {
 
   return (
     <section className="paper mt-6 p-6">
-      <div className="mb-2 flex items-center gap-2">
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 text-left"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
         <UserPlus className="size-5 text-primary" />
         <h2 className="font-display text-xl">Teachers for this class</h2>
-      </div>
-      <p className="mb-4 text-sm text-muted-foreground">
+        <span className="text-sm text-muted-foreground">
+          {list.isPending ? "" : `· ${coteachers.length + (list.data?.owner ? 1 : 0)}`}
+        </span>
+        <ChevronDown
+          className={`ml-auto size-5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open ? (
+        <>
+      <p className="mb-4 mt-4 text-sm text-muted-foreground">
         Coteachers see and manage everything in this class — homework, quizzes, lesson materials,
         games and the gradebook. Only you, the class creator, can add or remove them.
       </p>
+
+
 
       {list.isPending ? (
         <Skeleton className="h-24 w-full" />

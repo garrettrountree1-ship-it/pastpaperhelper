@@ -141,6 +141,8 @@ export function CoteacherPanel({ classId }: { classId: string }) {
           The teacher must already have a PastPaperHelper.AI account with that email.
         </p>
       ) : null}
+        </>
+      ) : null}
     </section>
   );
 }

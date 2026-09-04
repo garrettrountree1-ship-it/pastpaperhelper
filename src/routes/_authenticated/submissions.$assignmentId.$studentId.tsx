@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { questionBody, questionLabel } from "@/lib/question-label";
 
 import { AppHeader } from "@/components/AppHeader";
+import { RejectReasonDialog } from "@/components/homework/RejectReasonDialog";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -15,6 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -67,8 +68,16 @@ export function FormativeCheckButton({
   const [question, setQuestion] = useState("");
   const [expected, setExpected] = useState("");
   const [seconds, setSeconds] = useState(60);
+  const [customTimer, setCustomTimer] = useState(false);
+  const [customMinutes, setCustomMinutes] = useState("1");
+  const [customSeconds, setCustomSeconds] = useState("30");
   const [selected, setSelected] = useState<string[]>([]);
   const wholeClass = selected.length === 0;
+  const customTotal =
+    Math.max(0, Math.floor(Number(customMinutes) || 0)) * 60 +
+    Math.max(0, Math.floor(Number(customSeconds) || 0));
+  const effectiveSeconds = customTimer ? customTotal : seconds;
+  const timerValid = effectiveSeconds >= 15 && effectiveSeconds <= 1800;
 
   const students = useQuery({
     queryKey: ["class-roster", classId],
@@ -84,7 +93,7 @@ export function FormativeCheckButton({
           sectionId,
           question: question.trim(),
           expectedAnswer: expected.trim() || null,
-          seconds,
+          seconds: effectiveSeconds,
           targetStudentIds: selected,
         },
       }),
@@ -98,6 +107,7 @@ export function FormativeCheckButton({
       setQuestion("");
       setExpected("");
       setSelected([]);
+      setCustomTimer(false);
       await queryClient.invalidateQueries({ queryKey: ["formative-active", classId] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -240,7 +250,7 @@ export function FormativeCheckButton({
         <DialogFooter>
           <Button
             onClick={() => send.mutate()}
-            disabled={question.trim().length < 3 || send.isPending}
+            disabled={question.trim().length < 3 || !timerValid || send.isPending}
           >
             <Send className="size-4" />
             {send.isPending ? "Sending..." : "Send to students"}

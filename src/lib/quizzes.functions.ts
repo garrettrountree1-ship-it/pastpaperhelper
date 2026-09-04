@@ -142,7 +142,7 @@ export const createQuiz = createServerFn({ method: "POST" })
         quiz_id: quiz.id,
         position: index + 1,
         question_text: cleanMathText(q.questionText),
-        mark_scheme: q.markScheme,
+        mark_scheme: cleanMathText(q.markScheme),
         marks: q.marks,
         image_paths: q.imagePaths,
       })),

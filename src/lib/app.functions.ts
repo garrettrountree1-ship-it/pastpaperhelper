@@ -6,6 +6,7 @@ import type { Json } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { LOCKED_MESSAGE } from "@/lib/integrity";
+import { cleanMathText } from "@/lib/math-text";
 import { isDemoEmail } from "@/lib/demo";
 import { isPhotoMode, resolvePhotoMode } from "@/lib/photo-mode";
 import { teachesClass, teachingClassIds } from "@/lib/teach-access";
@@ -458,8 +459,8 @@ export const createAssignment = createServerFn({ method: "POST" })
       data.questions.map((q, index) => ({
         assignment_id: assignment.id,
         position: index + 1,
-        question_text: q.questionText,
-        mark_scheme: q.markScheme,
+        question_text: cleanMathText(q.questionText),
+        mark_scheme: cleanMathText(q.markScheme),
         marks: q.marks,
         image_paths: q.imagePaths ?? [],
       })),
@@ -596,8 +597,8 @@ export const updateAssignment = createServerFn({ method: "POST" })
     const keptIds: string[] = [];
     for (const [index, q] of data.questions.entries()) {
       const payload = {
-        question_text: q.questionText,
-        mark_scheme: q.markScheme,
+        question_text: cleanMathText(q.questionText),
+        mark_scheme: cleanMathText(q.markScheme),
         marks: q.marks,
         position: index + 1,
         image_paths: q.imagePaths ?? [],

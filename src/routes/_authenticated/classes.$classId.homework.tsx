@@ -562,7 +562,7 @@ function AssignmentDialog({
   const [paperFiles, setPaperFiles] = useState<File[]>([]);
   const [schemeFiles, setSchemeFiles] = useState<File[]>([]);
   const [questions, setQuestions] = useState<QuestionDraft[]>([emptyQuestion()]);
-  const [protectQuestions, setProtectQuestions] = useState(false);
+  const [protectQuestions, setProtectQuestions] = useState(true);
 
   const editing = Boolean(assignmentId);
 

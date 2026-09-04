@@ -1765,17 +1765,23 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
 
     // Same integrity check students face; strikes are counted in the preview
     // session only (nothing is written to the real submission).
-    const { detectAiAnswer } = await import("./ai-detect.server");
-    const previewDetection = await detectAiAnswer({
-      question: question.question_text,
-      answer: data.answerText,
-      marks: question.marks,
-    });
-    if (previewDetection.isAi) {
+    const [{ detectAiAnswer }, { checkHandDrawnPhotos }] = await Promise.all([
+      import("./ai-detect.server"),
+      import("./photo-authenticity.server"),
+    ]);
+    const [previewDetection, previewPhotoCheck] = await Promise.all([
+      detectAiAnswer({
+        question: question.question_text,
+        answer: data.answerText,
+        marks: question.marks,
+      }),
+      checkHandDrawnPhotos(previewImages),
+    ]);
+    if (!previewPhotoCheck.ok || previewDetection.isAi) {
       const strikes = (data.priorFlags ?? 0) + 1;
       if (strikes > previewLimit) throw new Error(LOCKED_MESSAGE);
       throw new Error(
-        `This answer looks AI-generated or copied, so it was not accepted. Write it in your own words. Warning ${strikes} of ${previewLimit} — one more AI answer locks the homework and marks it as a fail until a teacher unlocks it.`,
+        `${previewPhotoCheck.ok ? "This answer looks AI-generated or copied, so it was not accepted. Write it in your own words." : previewPhotoCheck.reason} Warning ${strikes} of ${previewLimit} — one more rejected answer locks the homework and marks it as a fail until a teacher unlocks it.`,
       );
     }
 

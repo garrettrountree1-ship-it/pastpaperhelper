@@ -2032,6 +2032,8 @@ function StudentReport({
                       questionId={question.id}
                       studentId={studentId}
                       marks={question.marks}
+                      credited={(question.awardedMarks ?? 0) >= question.marks}
+
                       onDone={() => {
                         report.refetch();
                         onChanged();

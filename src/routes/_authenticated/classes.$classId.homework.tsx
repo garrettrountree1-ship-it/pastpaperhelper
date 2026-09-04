@@ -521,13 +521,6 @@ function AssignmentList({
                     </Button>
                   }
                 />
-                <CopyProtectionDialog
-                  classId={classId}
-                  assignmentId={assignment.id}
-                  protectQuestions={Boolean(
-                    (assignment as { protectQuestions?: boolean }).protectQuestions,
-                  )}
-                />
                 <LanguageSettingsDialog
                   classId={classId}
                   assignmentId={assignment.id}

@@ -146,7 +146,7 @@ function QuizPage() {
               {workspace.data.questions.map((question) => (
                 <section key={question.id} className="paper p-5">
                   <div className="flex items-start justify-between gap-3">
-                    <p className="whitespace-pre-wrap text-sm">{question.questionText}</p>
+                    <p className="whitespace-pre-wrap text-sm">{cleanMathText(question.questionText)}</p>
                     <Badge variant="outline">{question.marks} marks</Badge>
                   </div>
                   {question.imageUrls.map((url) => (

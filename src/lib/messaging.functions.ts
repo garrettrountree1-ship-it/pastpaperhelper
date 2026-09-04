@@ -73,6 +73,26 @@ export const deleteAnnouncement = createServerFn({ method: "POST" })
 const messageSelect =
   "id, class_id, student_id, sender_id, sender_role, assignment_id, question_id, topic, body, created_at";
 
+/** Look up the question text for messages that reference a specific question. */
+async function attachQuestionText<T extends { question_id: string | null }>(
+  supabase: { from: (t: string) => any },
+  rows: T[],
+) {
+  const ids = [...new Set(rows.map((r) => r.question_id).filter((id): id is string => !!id))];
+  const questions = ids.length
+    ? ((await supabase.from("questions").select("id, position, question_text").in("id", ids))
+        .data ?? [])
+    : [];
+  return rows.map((row) => {
+    const q = questions.find((item: { id: string }) => item.id === row.question_id);
+    return {
+      ...row,
+      questionText: (q?.question_text as string | undefined) ?? null,
+      questionPosition: (q?.position as number | undefined) ?? null,
+    };
+  });
+}
+
 /** Student's own conversation with their teachers (never other students'). */
 export const listMyMessages = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -84,7 +104,7 @@ export const listMyMessages = createServerFn({ method: "GET" })
       .eq("student_id", userId)
       .order("created_at");
     if (error) throw new Error(error.message);
-    return rows ?? [];
+    return attachQuestionText(supabase, rows ?? []);
   });
 
 export const sendMessageToTeacher = createServerFn({ method: "POST" })
@@ -133,7 +153,8 @@ export const listClassMessages = createServerFn({ method: "POST" })
     const { data: profiles } = studentIds.length
       ? await supabase.from("profiles").select("id, full_name, email").in("id", studentIds)
       : { data: [] as { id: string; full_name: string; email: string | null }[] };
-    return (rows ?? []).map((row) => {
+    const withQuestions = await attachQuestionText(supabase, rows ?? []);
+    return withQuestions.map((row) => {
       const profile = (profiles ?? []).find((p) => p.id === row.student_id);
       return {
         ...row,

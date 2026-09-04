@@ -907,6 +907,41 @@ export const rejectAnswer = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/**
+ * Student-facing: every question a teacher has sent back to be redone, newest
+ * first. Used for the pop-up shown when a student opens the app.
+ */
+export const listRedoAlerts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data, error } = await supabase
+      .from("answers")
+      .select(
+        "id, rejected_at, rejection_note, questions(position), submissions!inner(student_id, assignment_id, assignments(title))",
+      )
+      .eq("submissions.student_id", userId)
+      .not("rejected_at", "is", null)
+      .order("rejected_at", { ascending: false })
+      .limit(20);
+    if (error) throw new Error(error.message);
+
+    return (data ?? []).map((row) => {
+      const submission = row.submissions as unknown as {
+        assignment_id: string;
+        assignments: { title: string } | null;
+      };
+      const question = row.questions as unknown as { position: number } | null;
+      return {
+        answerId: row.id as string,
+        rejectedAt: row.rejected_at as string,
+        note: (row.rejection_note as string | null) ?? null,
+        assignmentId: submission?.assignment_id ?? "",
+        assignmentTitle: submission?.assignments?.title ?? "Homework",
+        questionPosition: question?.position ?? null,
+      };
+    });
+  });
 
 
 /**

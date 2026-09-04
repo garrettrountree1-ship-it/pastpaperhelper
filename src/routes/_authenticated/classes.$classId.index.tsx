@@ -112,9 +112,11 @@ function ClassHome() {
               <>
                 <ClassRoster classId={classId} />
                 <CoteacherPanel classId={classId} />
-                <TeacherMessagesPanel classId={classId} />
+                <TeacherMessagesPanel classId={classId} role="teacher" />
               </>
-            ) : null}
+            ) : (
+              <TeacherMessagesPanel classId={classId} role="student" />
+            )}
 
           </>
         )}

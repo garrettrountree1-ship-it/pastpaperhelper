@@ -46,7 +46,17 @@ function ClassHome() {
   const { classId } = Route.useParams();
   const classes = useMyClasses();
   const klass = (classes.data ?? []).find((c) => c.id === classId) ?? null;
-  const role = klass?.canManage ? "teacher" : "student";
+  const me = useQuery({ queryKey: ["me"], queryFn: useServerFn(getMe), retry: 2 });
+  const isDemo = Boolean(me.data?.isDemo);
+  const { view } = useDemoView(isDemo, me.data?.role ?? "student");
+  const accountRole = (isDemo ? view : me.data?.role) ?? "student";
+  const role: "teacher" | "student" = isDemo
+    ? accountRole
+    : klass
+      ? klass.canManage
+        ? "teacher"
+        : "student"
+      : accountRole;
 
   return (
     <div className="min-h-screen">

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { cleanMathText } from "@/lib/math-text";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -264,7 +265,7 @@ function SubmissionPage() {
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">
                         Mark scheme
                       </p>
-                      <p className="mt-1 whitespace-pre-wrap text-sm">{question.mark_scheme}</p>
+                      <p className="mt-1 whitespace-pre-wrap text-sm">{cleanMathText(question.mark_scheme)}</p>
                     </div>
 
                     {(() => {

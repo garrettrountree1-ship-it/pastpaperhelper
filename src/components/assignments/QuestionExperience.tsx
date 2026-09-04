@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { GlossaryText } from "@/components/assignments/GlossaryText";
+import { cleanMathText } from "@/lib/math-text";
 import { cleanTutorText, TutorText } from "@/lib/tutor-text";
 import { getQuestionGlossary, getTutorGlossary } from "@/lib/tutor-settings.functions";
 
@@ -205,7 +206,7 @@ export function QuestionExperience({
       {markScheme ? (
         <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
           <p className="text-sm font-medium">Mark scheme (released by your teacher)</p>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{markScheme}</p>
+          <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{cleanMathText(markScheme)}</p>
         </div>
       ) : null}
 

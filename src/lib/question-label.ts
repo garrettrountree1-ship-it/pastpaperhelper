@@ -1,3 +1,5 @@
+import { cleanMathText } from "@/lib/math-text";
+
 /**
  * Past-paper questions keep their printed part labels (1(a), 1(b)(ii), 7c ...).
  * The extractor writes the label at the start of the question text, so headings
@@ -32,11 +34,11 @@ export function questionLabel(questionText: string, fallbackIndex: number): stri
 
 /** Strips the leading label (even when the paper repeats it) so it isn't shown twice. */
 export function questionBody(questionText: string): string {
-  let text = (questionText ?? "").trim();
+  let text = cleanMathText((questionText ?? "").trim());
   const first = parseOnce(text);
   if (!first) return text;
   text = first.rest;
   const again = parseOnce(text);
   if (again && again.label === first.label && again.rest) text = again.rest;
-  return text.trim() || (questionText ?? "").trim();
+  return text.trim() || cleanMathText((questionText ?? "").trim());
 }

@@ -1,4 +1,6 @@
 import { unzipSync } from "fflate";
+import { cleanMathText } from "@/lib/math-text";
+
 import { TUTOR_MODEL } from "./ai-gateway.server";
 
 export type ExtractedQuestion = {
@@ -70,7 +72,8 @@ const DETAIL_SYSTEM = [
   "Keep the printed line structure, bracketed instructions, blank-line dots and \"[2]\" style mark tags out of the wording only if they are page furniture; everything the student reads stays exactly as printed.",
   "If part of the wording is unreadable in the scan, transcribe what is legible and put [unclear] at that spot — never guess or paraphrase a replacement.",
   "NEVER describe or re-draw a figure, diagram, graph, table, circuit or chemical structure in words: the original paper page image is attached to the question for the student to look at. Instead transcribe the wording and refer to it as printed (e.g. \"Fig. 2.1\").",
-  "Equations, formulae and expressions must be transcribed exactly as printed, keeping symbols, indices, fractions and units; use plain text/LaTeX-style notation only where unavoidable.",
+  "Equations, formulae and expressions must be transcribed exactly as printed, keeping symbols, indices, fractions and units.",
+  "NEVER use LaTeX or markdown: no $ or $$ delimiters, no \\\\frac, \\\\text, \\\\times, ^{ }, _{ }, no ** bold. Write maths in plain text with real Unicode characters instead — nuclide symbols as ²³⁵₉₂U, indices as m², formulae as H₂O, and fractions as (y - b)/m, with °C, °F, ×, ÷, ≤, ≥, ≈, →, π, Δ, Ω, µ, ± typed directly.",
   "markScheme: the official marking points for that exact part, verbatim where possible, with accepted alternatives and mark allocation. The mark scheme may sit far away from the question in the upload, or immediately under it — search the whole document for it.",
   "For multiple choice, the mark scheme is the correct option letter plus a one-line reason, e.g. \"C (1 mark) — ...\".",
   "If no mark scheme is supplied anywhere for that part, write a concise expected answer with marking points instead.",
@@ -500,7 +503,9 @@ function parseJson(text: string): Record<string, unknown> {
  * superscripts, mojibake from mis-decoded UTF-8) so the printed notation is kept.
  */
 export function normaliseSymbols(input: string): string {
-  let text = input;
+  // Strip any LaTeX / markdown the model transcribed ("$^{235}_{92}\\text{U}$")
+  // so students read ²³⁵₉₂U instead of raw markup.
+  let text = cleanMathText(input);
 
   // Mojibake: UTF-8 bytes read as Latin-1 (e.g. "Â°C", "Î©", "Âµ").
   if (/[ÂÃÎ][\u0080-\u00bf\u0090-\u00ff]/.test(text)) {

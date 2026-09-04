@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { cleanMathText } from "@/lib/math-text";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
@@ -176,7 +177,7 @@ function QuizPage() {
                         <div className="rounded-md border p-3 text-sm">
                           <p className="font-medium">Mark scheme</p>
                           <p className="mt-1 whitespace-pre-wrap text-muted-foreground">
-                            {question.markScheme}
+                            {cleanMathText(question.markScheme)}
                           </p>
                         </div>
                       ) : null}

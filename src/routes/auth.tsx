@@ -157,12 +157,23 @@ function AuthPage() {
       return;
     }
     setBusy(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${emailLinkOrigin()}/reset-password`,
-    });
+    let error: { message: string } | null = null;
+    try {
+      ({ error } = await withAuthRetry(() =>
+        supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${emailLinkOrigin()}/reset-password`,
+        }),
+      ));
+    } catch (thrown) {
+      setBusy(false);
+      setNetworkIssue(isNetworkAuthError(thrown));
+      toast.error(describeAuthError(thrown));
+      return;
+    }
     setBusy(false);
     if (error) {
-      toast.error(error.message);
+      setNetworkIssue(isNetworkAuthError(error));
+      toast.error(describeAuthError(error, error.message));
       return;
     }
     toast.success("Password reset link sent — check your inbox and spam folder.");

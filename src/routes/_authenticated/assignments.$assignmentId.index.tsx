@@ -14,6 +14,7 @@ import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { AppHeader } from "@/components/AppHeader";
 import { VocabSheet } from "@/components/assignments/VocabSheet";
 import { StudentTutorControls } from "@/components/assignments/StudentTutorControls";
+import { useActiveTime } from "@/hooks/use-active-time";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
 import { MessageTeacherDialog } from "@/components/messaging/MessageTeacherDialog";
@@ -365,16 +366,9 @@ function QuestionCard({
     question.photoMode ?? "auto",
   );
   const [showPhoto, setShowPhoto] = useState(requiresPhoto);
-  const secondsRef = useRef(0);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const { secondsRef, reset: resetActiveTime } = useActiveTime(cardRef);
 
-  useEffect(() => {
-    const tick = setInterval(() => {
-      if (typeof document !== "undefined" && document.visibilityState === "visible") {
-        secondsRef.current += 1;
-      }
-    }, 1000);
-    return () => clearInterval(tick);
-  }, []);
 
   const gradeMutation = useMutation({
     mutationFn: async () => {
@@ -408,7 +402,7 @@ function QuestionCard({
       });
     },
     onSuccess: () => {
-      secondsRef.current = 0;
+      resetActiveTime();
       setPhotos([]);
       queryClient.invalidateQueries({ queryKey });
     },
@@ -434,6 +428,7 @@ function QuestionCard({
 
   const thread = answer ? messages.filter((m) => m.answer_id === answer.id) : [];
   return (
+    <div ref={cardRef}>
     <QuestionExperience
       question={question}
       index={index}
@@ -493,5 +488,6 @@ function QuestionCard({
       }
 
     />
+    </div>
   );
 }

@@ -701,7 +701,7 @@ export const getClassOverview = createServerFn({ method: "POST" })
       db.from("class_members").select("student_id, joined_at").eq("class_id", data.classId),
       db
         .from("assignments")
-        .select("id, title, subject, due_at, created_at, protect_questions")
+        .select("id, title, subject, due_at, created_at, protect_questions, archived_at")
         .eq("class_id", data.classId)
         .order("created_at", { ascending: false }),
     ]);

@@ -153,7 +153,6 @@ export function ClassBulletinBoard({ classId }: { classId: string }) {
   const [seenAt, setSeenAt] = useState<number | null>(null);
   const seenKey = `class-bulletin-seen:${classId}`;
   const rows = posts.data ?? [];
-  const latest = rows.reduce((max, p) => Math.max(max, new Date(p.created_at).getTime()), 0);
 
   useEffect(() => {
     const stored = Number(window.localStorage.getItem(seenKey) ?? 0);

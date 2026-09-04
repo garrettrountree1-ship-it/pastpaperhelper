@@ -119,8 +119,10 @@ function ClassHome() {
             ) : (
               <>
                 <ClassBulletinBoard classId={classId} />
+                <ClassBulletinPopup classId={classId} />
               </>
             )}
+
 
           </>
         )}

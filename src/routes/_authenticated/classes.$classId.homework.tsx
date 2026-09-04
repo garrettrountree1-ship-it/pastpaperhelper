@@ -882,9 +882,11 @@ function AssignmentDialog({
                 wording of this homework.
               </p>
               <p className="text-sm font-medium">
-                Pasting is permanently blocked: students can never paste into an answer box or the
-                tutor chat, on every homework. This cannot be switched off.
+                Always on and not switchable: screenshots, the Windows snipping tool and printing
+                are blocked, questions blur whenever the student leaves the tab, and students can
+                never paste into an answer box or the tutor chat.
               </p>
+
 
             </div>
             <Switch

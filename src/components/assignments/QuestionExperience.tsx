@@ -177,11 +177,20 @@ export function QuestionExperience({
         </div>
       </div>
 
+      {/* Question wording is never selectable or copyable for students, regardless
+          of the teacher's wider copy setting. */}
       <div
-        className={protectQuestions ? "select-none [-webkit-touch-callout:none]" : undefined}
-        onCopy={protectQuestions ? (event) => event.preventDefault() : undefined}
-        onContextMenu={protectQuestions ? (event) => event.preventDefault() : undefined}
+        className="select-none [-webkit-touch-callout:none] [-webkit-user-select:none]"
+        onCopy={(event) => event.preventDefault()}
+        onCut={(event) => event.preventDefault()}
+        onDragStart={(event) => event.preventDefault()}
+        onContextMenu={(event) => event.preventDefault()}
+        onMouseDown={(event) => {
+          // Stops double/triple-click selection of the wording.
+          if (event.detail > 1) event.preventDefault();
+        }}
       >
+
         <GlossaryText
           className="mt-3 whitespace-pre-wrap"
           text={questionBody(question.question_text)}

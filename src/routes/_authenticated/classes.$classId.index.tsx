@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { BookOpen, Gamepad2, NotebookPen, Timer, Users } from "lucide-react";
+import { BookOpen, ChevronDown, Gamepad2, NotebookPen, Timer, Users } from "lucide-react";
 
 import { AppHeader } from "@/components/AppHeader";
 import { CoteacherPanel } from "@/components/classes/CoteacherPanel";
+import { RemoveStudentButton } from "@/components/classes/RemoveStudentButton";
 import { TeacherMessagesPanel } from "@/components/messaging/TeacherMessagesPanel";
 import { useMyClasses } from "@/components/SectionShell";
 import { Button } from "@/components/ui/button";

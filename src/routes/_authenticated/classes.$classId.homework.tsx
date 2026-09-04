@@ -443,6 +443,7 @@ function AssignmentList({
           ))}
         </div>
         <div className="flex items-center gap-2">
+          <ArchivedAssignmentsDialog classId={classId} assignments={archivedList} />
           <span className="text-sm text-muted-foreground">Sort by</span>
           <Select value={sort} onValueChange={(v) => setSort(v as "due" | "title")}>
             <SelectTrigger className="w-[150px]">

@@ -1070,16 +1070,13 @@ function QuestionControlsDialog({
 }) {
   const [open, setOpen] = useState(Boolean(asPanel));
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [marking, setMarking] = useState<string | null>(null);
-  const [markSelected, setMarkSelected] = useState<string[]>([]);
-  const [markNote, setMarkNote] = useState("");
   const queryClient = useQueryClient();
   const load = useServerFn(getAssignmentQuestionControls);
   const credit = useServerFn(creditQuestionForAll);
   const remove = useServerFn(deleteQuestion);
   const exclude = useServerFn(setQuestionExclusion);
   const savePhotoMode = useServerFn(setQuestionPhotoMode);
-  const bulkGrade = useServerFn(bulkGradeQuestion);
+
 
   const overrideMarking = useMutation({
     mutationFn: (vars: {

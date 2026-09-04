@@ -784,6 +784,95 @@ export const overrideAnswerMarks = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/**
+ * Teacher-only: sends one answer back to the student to redo. Marks and
+ * feedback for that question are cleared, the question re-opens in the
+ * student's workspace, and the student gets a class message about it.
+ */
+export const rejectAnswer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({ answerId: z.string().uuid(), note: z.string().max(600).optional() })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: teaches } = await supabase.rpc("teaches_answer", {
+      _answer_id: data.answerId,
+      _user_id: userId,
+    });
+    if (!teaches) throw new Error("Not allowed.");
+
+    const db = await admin();
+    const { data: answer, error } = await db
+      .from("answers")
+      .select("id, submission_id, question_id")
+      .eq("id", data.answerId)
+      .single();
+    if (error) throw new Error(error.message);
+
+    const note = (data.note ?? "").trim();
+    await db
+      .from("answers")
+      .update({
+        verdict: null,
+        awarded_marks: 0,
+        feedback: note ? `Sent back by your teacher: ${note}` : "Sent back by your teacher to redo.",
+        resolved: false,
+        mark_breakdown: [],
+        rejected_at: new Date().toISOString(),
+        rejected_by: userId,
+        rejection_note: note || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.answerId);
+
+    const { data: submission } = await db
+      .from("submissions")
+      .select("id, assignment_id, student_id")
+      .eq("id", answer.submission_id)
+      .single();
+
+    if (submission) {
+      await db
+        .from("submissions")
+        .update({ status: "in_progress", submitted_at: null })
+        .eq("id", submission.id);
+
+      const { data: assignmentRow } = await db
+        .from("assignments")
+        .select("class_id, title")
+        .eq("id", submission.assignment_id)
+        .maybeSingle();
+      const { data: questionRow } = await db
+        .from("questions")
+        .select("position")
+        .eq("id", answer.question_id)
+        .maybeSingle();
+
+      if (assignmentRow) {
+        await db.from("class_messages").insert({
+          class_id: assignmentRow.class_id,
+          student_id: submission.student_id,
+          sender_id: userId,
+          sender_role: "teacher",
+          assignment_id: submission.assignment_id,
+          question_id: answer.question_id,
+          topic: `Redo question ${questionRow?.position ?? ""} — ${assignmentRow.title}`.trim(),
+          body: note
+            ? `Your teacher sent this question back for you to redo. ${note}`
+            : "Your teacher sent this question back for you to redo. Open the homework and answer it again in your own work.",
+        });
+      }
+    }
+
+    await recalcSubmission(db, answer.submission_id);
+    return { ok: true };
+  });
+
+
+
 export const getSubmissionDetail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
@@ -826,7 +915,7 @@ export const getSubmissionDetail = createServerFn({ method: "POST" })
       ? await db
           .from("answers")
           .select(
-            "id, question_id, answer_text, image_paths, verdict, awarded_marks, feedback, attempts, time_spent_seconds, mark_breakdown",
+            "id, question_id, answer_text, image_paths, verdict, awarded_marks, feedback, attempts, time_spent_seconds, mark_breakdown, rejected_at, rejection_note",
           )
           .eq("submission_id", submission.id)
       : { data: [] };
@@ -1193,7 +1282,7 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     const { data: answers } = await db
       .from("answers")
       .select(
-        "id, question_id, answer_text, image_paths, verdict, awarded_marks, feedback, attempts, resolved",
+        "id, question_id, answer_text, image_paths, verdict, awarded_marks, feedback, attempts, resolved, rejected_at, rejection_note",
       )
       .eq("submission_id", submission.id);
 
@@ -1313,19 +1402,24 @@ export const gradeAnswer = createServerFn({ method: "POST" })
 
 
     /* ---- academic integrity: reject copied AI / web / peer answers ---- */
-    const [{ detectAiAnswer }, { findCopiedFromPeers }] = await Promise.all([
-      import("./ai-detect.server"),
-      import("./originality.server"),
-    ]);
-    const [detection, peerCopy] = await Promise.all([
+    const [{ detectAiAnswer }, { findCopiedFromPeers }, { checkHandDrawnPhotos }] =
+      await Promise.all([
+        import("./ai-detect.server"),
+        import("./originality.server"),
+        import("./photo-authenticity.server"),
+      ]);
+    const [detection, peerCopy, photoCheck] = await Promise.all([
       detectAiAnswer({
         question: question.question_text,
         answer: data.answerText,
         marks: question.marks,
       }),
       findCopiedFromPeers(db, data.questionId, guardSubmission.id, data.answerText),
+      checkHandDrawnPhotos(await signWorkImages(db, imagePaths)),
     ]);
-    const violation = peerCopy ?? (detection.isAi ? detection : null);
+    const violation = photoCheck.ok
+      ? (peerCopy ?? (detection.isAi ? detection : null))
+      : { reason: photoCheck.reason, confidence: photoCheck.confidence };
     if (violation) {
       const strikes = (guardSubmission.ai_flag_count ?? 0) + 1;
       await db.from("integrity_flags").insert({
@@ -1408,6 +1502,9 @@ export const gradeAnswer = createServerFn({ method: "POST" })
         (existing?.time_spent_seconds ?? 0) + Math.round(data.timeSpentSeconds ?? 0),
       mark_breakdown: result.markPoints ?? [],
       resolved: result.verdict === "correct",
+      rejected_at: null,
+      rejected_by: null,
+      rejection_note: null,
       updated_at: new Date().toISOString(),
     };
 
@@ -1760,17 +1857,23 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
 
     // Same integrity check students face; strikes are counted in the preview
     // session only (nothing is written to the real submission).
-    const { detectAiAnswer } = await import("./ai-detect.server");
-    const previewDetection = await detectAiAnswer({
-      question: question.question_text,
-      answer: data.answerText,
-      marks: question.marks,
-    });
-    if (previewDetection.isAi) {
+    const [{ detectAiAnswer }, { checkHandDrawnPhotos }] = await Promise.all([
+      import("./ai-detect.server"),
+      import("./photo-authenticity.server"),
+    ]);
+    const [previewDetection, previewPhotoCheck] = await Promise.all([
+      detectAiAnswer({
+        question: question.question_text,
+        answer: data.answerText,
+        marks: question.marks,
+      }),
+      checkHandDrawnPhotos(previewImages),
+    ]);
+    if (!previewPhotoCheck.ok || previewDetection.isAi) {
       const strikes = (data.priorFlags ?? 0) + 1;
       if (strikes > previewLimit) throw new Error(LOCKED_MESSAGE);
       throw new Error(
-        `This answer looks AI-generated or copied, so it was not accepted. Write it in your own words. Warning ${strikes} of ${previewLimit} — one more AI answer locks the homework and marks it as a fail until a teacher unlocks it.`,
+        `${previewPhotoCheck.ok ? "This answer looks AI-generated or copied, so it was not accepted. Write it in your own words." : previewPhotoCheck.reason} Warning ${strikes} of ${previewLimit} — one more rejected answer locks the homework and marks it as a fail until a teacher unlocks it.`,
       );
     }
 

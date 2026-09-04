@@ -49,6 +49,9 @@ export type Database = {
           image_paths: string[]
           mark_breakdown: Json
           question_id: string
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_note: string | null
           resolved: boolean
           submission_id: string
           time_spent_seconds: number
@@ -65,6 +68,9 @@ export type Database = {
           image_paths?: string[]
           mark_breakdown?: Json
           question_id: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_note?: string | null
           resolved?: boolean
           submission_id: string
           time_spent_seconds?: number
@@ -81,6 +87,9 @@ export type Database = {
           image_paths?: string[]
           mark_breakdown?: Json
           question_id?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_note?: string | null
           resolved?: boolean
           submission_id?: string
           time_spent_seconds?: number

@@ -282,6 +282,8 @@ type Answer = {
   feedback: string | null;
   attempts: number;
   resolved: boolean;
+  rejected_at?: string | null;
+  rejection_note?: string | null;
 };
 type Message = { id: string; answer_id: string; role: string; content: string };
 
@@ -440,8 +442,11 @@ function QuestionCard({
       photoUrls={answer?.imageUrls ?? []}
       onPhotosChange={(files) => setPhotos(Array.from(files ?? []).slice(0, 6))}
       onAddDrawing={(file) => setPhotos((prev) => [...prev, file].slice(0, 6))}
+      sentBack={
+        answer?.rejected_at ? { at: answer.rejected_at, note: answer.rejection_note ?? null } : null
+      }
       result={
-        answer
+        answer && !answer.rejected_at
           ? {
               verdict: answer.verdict ?? "incorrect",
               awardedMarks: answer.awarded_marks ?? 0,

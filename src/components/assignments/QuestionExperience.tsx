@@ -86,6 +86,7 @@ export function QuestionExperience({
   keywordTranslation = false,
   protectQuestions = false,
   assignmentId,
+  sentBack = null,
 
 
 }: {
@@ -126,6 +127,8 @@ export function QuestionExperience({
   protectQuestions?: boolean;
   /** Needed to gloss the AI tutor's replies in the student's language. */
   assignmentId?: string;
+  /** Set when the teacher sent this question back to be redone. */
+  sentBack?: { at: string; note: string | null } | null;
 }) {
   const verdict = result?.verdict ?? null;
   const glossary = useQuery({
@@ -190,6 +193,15 @@ export function QuestionExperience({
         ) : null}
       </div>
 
+      {sentBack ? (
+        <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4">
+          <p className="text-sm font-medium">Your teacher sent this question back to redo</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {sentBack.note ?? "Answer it again in your own words and your own hand-drawn working."}
+          </p>
+        </div>
+      ) : null}
+
       {markScheme ? (
         <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
           <p className="text-sm font-medium">Mark scheme (released by your teacher)</p>
@@ -248,8 +260,10 @@ export function QuestionExperience({
             {requiresPhoto ? <Badge variant="secondary">recommended here</Badge> : null}
           </Label>
           <p className="mt-1 text-xs text-muted-foreground">
-            Upload a photo, take one with your device camera, or write it on the pad below —
-            whichever is easiest. This is optional if you typed your answer.
+            Photograph your own hand-written or hand-drawn work, take one with your device camera,
+            or draw it on the pad below. Diagrams or images copied from websites, textbooks,
+            screenshots or apps are rejected as plagiarism. This is optional if you typed your
+            answer.
           </p>
           <Input
             id={`photo-${question.id}`}

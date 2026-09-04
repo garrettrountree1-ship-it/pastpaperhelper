@@ -9,8 +9,14 @@ import { AppHeader } from "@/components/AppHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getSubmissionDetail, overrideAnswerMarks, unlockSubmission } from "@/lib/app.functions";
+import {
+  getSubmissionDetail,
+  overrideAnswerMarks,
+  rejectAnswer,
+  unlockSubmission,
+} from "@/lib/app.functions";
 
 type MarkPoint = { point: string; marks: number; awarded: boolean };
 
@@ -337,13 +343,23 @@ function SubmissionPage() {
                       ) : null}
                     </div>
 
+                    {answer?.rejected_at ? (
+                      <p className="mt-4 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm">
+                        Sent back to redo on {new Date(answer.rejected_at).toLocaleString()}
+                        {answer.rejection_note ? ` — ${answer.rejection_note}` : ""}
+                      </p>
+                    ) : null}
+
                     {answer ? (
-                      <MarkOverride
-                        answerId={answer.id}
-                        maxMarks={question.marks}
-                        current={answer.awarded_marks ?? 0}
-                        queryKey={queryKey}
-                      />
+                      <>
+                        <MarkOverride
+                          answerId={answer.id}
+                          maxMarks={question.marks}
+                          current={answer.awarded_marks ?? 0}
+                          queryKey={queryKey}
+                        />
+                        <SendBack answerId={answer.id} queryKey={queryKey} />
+                      </>
                     ) : null}
                   </section>
                 );
@@ -396,6 +412,58 @@ function MarkOverride({
       <Button variant="secondary" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
         Override marks
       </Button>
+    </div>
+  );
+}
+
+function SendBack({ answerId, queryKey }: { answerId: string; queryKey: string[] }) {
+  const queryClient = useQueryClient();
+  const reject = useServerFn(rejectAnswer);
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: () => reject({ data: { answerId, note } }),
+    onSuccess: () => {
+      toast.success("Sent back to the student to redo");
+      setOpen(false);
+      setNote("");
+      queryClient.invalidateQueries({ queryKey });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  if (!open) {
+    return (
+      <Button variant="outline" className="mt-3" onClick={() => setOpen(true)}>
+        Reject &amp; send back to redo
+      </Button>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-2 rounded-xl border border-border p-3">
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+        Reason sent to the student
+      </p>
+      <Textarea
+        value={note}
+        onChange={(event) => setNote(event.target.value.slice(0, 600))}
+        placeholder="e.g. This diagram was copied from a website — redo it as your own hand-drawn work."
+        rows={3}
+      />
+      <div className="flex gap-2">
+        <Button
+          variant="destructive"
+          onClick={() => mutation.mutate()}
+          disabled={mutation.isPending}
+        >
+          Send back to redo
+        </Button>
+        <Button variant="ghost" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+      </div>
     </div>
   );
 }

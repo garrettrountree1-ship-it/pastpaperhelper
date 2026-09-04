@@ -58,7 +58,7 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
         expected_answer: data.expectedAnswer?.trim() || null,
         seconds: data.seconds,
         ends_at: endsAt,
-        target_student_id: targets.length === 1 ? targets[0] : null,
+        target_student_id: targets.length === 1 ? (targets[0] ?? null) : null,
         target_student_ids: targets,
       })
       .select("id, question, seconds, ends_at")

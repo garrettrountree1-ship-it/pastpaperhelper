@@ -10,6 +10,8 @@ import {
   Presentation,
   Sparkles,
   Trash2,
+  Archive,
+  RotateCcw,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -54,6 +56,7 @@ import {
   createUnit,
   deleteMaterial,
   deleteUnit,
+  setUnitArchived,
   getMaterialUrl,
   setMaterialDownload,
   updateUnit,
@@ -137,6 +140,7 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
   });
   const create = useServerFn(createUnit);
   const removeUnit = useServerFn(deleteUnit);
+  const archiveUnit = useServerFn(setUnitArchived);
   const [open, setOpen] = useState(false);
   const [openUnitId, setOpenUnitId] = useState<string | null>(null);
   const [openMaterialId, setOpenMaterialId] = useState<string | null>(null);
@@ -167,9 +171,28 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const archiveMutation = useMutation({
+    mutationFn: (vars: { unitId: string; archived: boolean }) => archiveUnit({ data: vars }),
+    onSuccess: (_result, vars) => {
+      toast.success(
+        vars.archived ? "Unit archived — students can no longer see it" : "Unit reactivated",
+      );
+      invalidate();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   if (units.isLoading) return <Skeleton className="h-40 w-full" />;
 
-  const openUnit = (units.data ?? []).find((unit) => unit.id === openUnitId);
+  const allUnits = units.data ?? [];
+  const archivedUnits = allUnits.filter(
+    (unit) => Boolean((unit as { archived_at?: string | null }).archived_at),
+  );
+  const activeUnits = allUnits.filter(
+    (unit) => !(unit as { archived_at?: string | null }).archived_at,
+  );
+
+  const openUnit = allUnits.find((unit) => unit.id === openUnitId);
   if (openUnit) {
     return (
       <LessonWorkspace
@@ -237,12 +260,21 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
         </Dialog>
       ) : null}
 
-      {(units.data ?? []).length === 0 ? (
+      {canManage ? (
+        <ArchivedUnitsDialog
+          units={archivedUnits}
+          onRestore={(unitId) => archiveMutation.mutate({ unitId, archived: false })}
+          onDelete={(unitId) => deleteMutation.mutate(unitId)}
+          busy={archiveMutation.isPending || deleteMutation.isPending}
+        />
+      ) : null}
+
+      {activeUnits.length === 0 ? (
         <div className="paper p-8 text-center text-muted-foreground">
           {canManage ? "No units yet. Create your first unit." : "No materials posted yet."}
         </div>
       ) : (
-        (units.data ?? []).map((unit) => (
+        activeUnits.map((unit) => (
           <section key={unit.id} className="paper p-5">
             <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-3">
               <div>
@@ -292,12 +324,17 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        if (confirm(`Delete "${unit.title}" and all of its resources?`)) {
-                          deleteMutation.mutate(unit.id);
+                        if (
+                          confirm(
+                            `Archive "${unit.title}"? Students will no longer see it. You can restore or delete it from the archive.`,
+                          )
+                        ) {
+                          archiveMutation.mutate({ unitId: unit.id, archived: true });
                         }
                       }}
                     >
-                      <Trash2 className="size-4" />
+                      <Archive className="size-4" />
+                      Archive
                     </Button>
                   </>
                 ) : null}
@@ -711,6 +748,76 @@ function EditUnitDialog({
             Save changes
           </Button>
         </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Teacher-only archive of units: reactivate for students or delete for good. */
+function ArchivedUnitsDialog({
+  units,
+  onRestore,
+  onDelete,
+  busy,
+}: {
+  units: Array<{ id: string; title: string }>;
+  onRestore: (unitId: string) => void;
+  onDelete: (unitId: string) => void;
+  busy: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Archive className="size-4" />
+          Archive ({units.length})
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Archived units</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Archived units are hidden from students. Reactivate one to make it visible again, or
+          delete it permanently along with its resources.
+        </p>
+        {units.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Nothing archived yet.</p>
+        ) : (
+          <ul className="divide-y">
+            {units.map((unit) => (
+              <li key={unit.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
+                <p className="min-w-0 truncate font-medium">{unit.title}</p>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="outline" disabled={busy} onClick={() => onRestore(unit.id)}>
+                    <RotateCcw className="size-4" />
+                    Reactivate
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive"
+                    disabled={busy}
+                    onClick={() => {
+                      if (
+                        confirm(
+                          `Delete "${unit.title}" and all of its resources? This cannot be undone.`,
+                        )
+                      ) {
+                        onDelete(unit.id);
+                      }
+                    }}
+                  >
+                    <Trash2 className="size-4" />
+                    Delete
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </DialogContent>
     </Dialog>
   );

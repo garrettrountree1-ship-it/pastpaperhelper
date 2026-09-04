@@ -85,7 +85,7 @@ export function QuestionExperience({
   markScheme = null,
   headerAction = null,
   keywordTranslation = false,
-  protectQuestions = false,
+  
   assignmentId,
   sentBack = null,
 

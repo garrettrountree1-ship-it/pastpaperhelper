@@ -2211,21 +2211,25 @@ function StudentReport({
   );
 }
 
-/** Tick the box to unlock a locked homework, optionally deducting a percentage. */
-function LockControls({
+/**
+ * Lock flag shown beside the student name in the gradebook. Clicking a locked
+ * flag opens a dialog where the teacher sets the cheating deduction and unlocks.
+ */
+function UnlockFlag({
   assignmentId,
   studentId,
-  locked,
+  title,
   penaltyPercent,
   onDone,
 }: {
   assignmentId: string;
   studentId: string;
-  locked: boolean;
+  title: string;
   penaltyPercent: number;
   onDone: () => void;
 }) {
   const unlock = useServerFn(unlockSubmission);
+  const [open, setOpen] = useState(false);
   const [penalty, setPenalty] = useState(String(penaltyPercent || ""));
 
   const mutation = useMutation({
@@ -2243,52 +2247,61 @@ function LockControls({
           ? `Unlocked with a ${Number(penalty)}% deduction.`
           : "Homework unlocked — the student can try again.",
       );
+      setOpen(false);
       onDone();
     },
     onError: (error: Error) => toast.error(error.message),
   });
 
-  if (!locked) {
-    return penaltyPercent > 0 ? (
-      <Badge variant="secondary">−{penaltyPercent}% applied</Badge>
-    ) : (
-      <Badge variant="secondary">
-        <Unlock className="size-3" /> unlocked
-      </Badge>
-    );
-  }
-
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <label className="flex items-center gap-2 text-sm">
-        <Checkbox
-          checked={false}
-          disabled={mutation.isPending}
-          onCheckedChange={(value) => {
-            if (value) mutation.mutate();
-          }}
-        />
-        Unlock this homework
-      </label>
-      <div className="flex items-center gap-2">
-        <Label htmlFor={`penalty-${assignmentId}-${studentId}`} className="text-xs">
-          Deduct
-        </Label>
-        <Input
-          id={`penalty-${assignmentId}-${studentId}`}
-          type="number"
-          min={0}
-          max={100}
-          value={penalty}
-          onChange={(event) => setPenalty(event.target.value)}
-          className="h-8 w-20"
-          placeholder="0"
-        />
-        <span className="text-xs text-muted-foreground">%</span>
-      </div>
-    </div>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          title={`${title} — locked for AI or copied answers. Click to unlock.`}
+          className="inline-flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-xs font-medium text-destructive-foreground"
+        >
+          <Lock className="size-3" /> Locked
+        </button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Unlock {title}</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          This homework was locked after repeated AI-generated or copied answers. Choose the
+          percentage to deduct for cheating, then unlock so the student can continue. The deduction
+          is shown beside their score.
+        </p>
+        <div className="flex items-center gap-2">
+          <Label htmlFor={`penalty-${assignmentId}-${studentId}`} className="text-sm">
+            Deduct
+          </Label>
+          <Input
+            id={`penalty-${assignmentId}-${studentId}`}
+            type="number"
+            min={0}
+            max={100}
+            value={penalty}
+            onChange={(event) => setPenalty(event.target.value)}
+            className="h-9 w-24"
+            placeholder="0"
+          />
+          <span className="text-sm text-muted-foreground">%</span>
+        </div>
+        <DialogFooter>
+          <Button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending}
+          >
+            <Unlock className="size-4" /> Unlock homework
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
+
 
 /** Exports every student's grade for every assignment in the class. */
 function downloadGradebook(

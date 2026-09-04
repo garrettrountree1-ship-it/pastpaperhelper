@@ -475,7 +475,7 @@ function AssignmentList({
 
       {visible.length === 0 ? (
         <div className="paper p-8 text-center text-muted-foreground">
-          No {statusLabels[filter as AssignmentStatusKey].toLowerCase()} assignments.
+          No {filter === "all" ? "" : `${statusLabels[filter].toLowerCase()} `}assignments to show.
         </div>
       ) : (
         visible.map((assignment) => (

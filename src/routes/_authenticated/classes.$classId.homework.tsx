@@ -562,82 +562,75 @@ function AssignmentList({
 function CopyProtectionDialog({
   classId,
   assignmentId,
+  protectQuestions,
 }: {
   classId: string;
   assignmentId: string;
+  protectQuestions: boolean;
 }) {
   const queryClient = useQueryClient();
-  const loadForEdit = useServerFn(getAssignmentForEdit);
-  const update = useServerFn(updateAssignment);
+  const setProtection = useServerFn(setQuestionProtection);
   const [open, setOpen] = useState(false);
 
-  const existing = useQuery({
-    queryKey: ["assignment-copy-protection", assignmentId],
-    queryFn: () => loadForEdit({ data: { assignmentId } }),
-    enabled: open,
-  });
-
   const mutation = useMutation({
-    mutationFn: (protectQuestions: boolean) =>
-      update({ data: { assignmentId, protectQuestions } }),
-    onSuccess: (_data, protectQuestions) => {
+    mutationFn: (next: boolean) =>
+      setProtection({ data: { assignmentId, protectQuestions: next } }),
+    onSuccess: (_data, next) => {
       toast.success(
-        protectQuestions
+        next
           ? "Copying of these questions is now blocked"
           : "Students can copy these questions again",
       );
-      queryClient.invalidateQueries({ queryKey: ["assignment-copy-protection", assignmentId] });
       queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });
+      queryClient.invalidateQueries({ queryKey: ["assignment-for-edit", assignmentId] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const protectQuestions = Boolean(existing.data?.protectQuestions);
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Lock className="size-4" />
-          Copy protection
+        <Button variant={protectQuestions ? "default" : "outline"} size="sm">
+          {protectQuestions ? <Lock className="size-4" /> : <LockOpen className="size-4" />}
+          {protectQuestions ? "Copying blocked" : "Copying allowed"}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Copy &amp; paste protection</DialogTitle>
         </DialogHeader>
-        {existing.isLoading ? (
-          <Skeleton className="h-24 w-full" />
-        ) : (
-          <div className="space-y-4">
-            <div className="flex items-start justify-between gap-4 rounded-xl border border-border bg-secondary/30 p-4">
-              <div className="space-y-1">
-                <Label htmlFor={`protect-${assignmentId}`}>Block copying of the questions</Label>
-                <p className="text-sm text-muted-foreground">
-                  Optional. When on, students can read the questions but cannot select, copy or
-                  right-click the wording of this homework.
-                </p>
-              </div>
-              <Switch
-                id={`protect-${assignmentId}`}
-                checked={protectQuestions}
-                disabled={mutation.isPending}
-                onCheckedChange={(checked) => mutation.mutate(checked === true)}
-              />
-            </div>
-            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
-              <p className="text-sm font-medium">Pasting is permanently blocked</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Students can never paste text into an answer box or the tutor chat — on every
-                homework, in every class. This cannot be switched off.
+        <div className="space-y-4">
+          <div className="flex items-start justify-between gap-4 rounded-xl border border-border bg-secondary/30 p-4">
+            <div className="space-y-1">
+              <Label htmlFor={`protect-${assignmentId}`}>Block copying of the questions</Label>
+              <p className="text-sm text-muted-foreground">
+                Optional. When on, students can read the questions but cannot select, copy or
+                right-click the wording of this homework.
+              </p>
+              <p className="text-sm font-medium">
+                Currently {protectQuestions ? "ON — copying is blocked" : "OFF — copying is allowed"}
               </p>
             </div>
+            <Switch
+              id={`protect-${assignmentId}`}
+              checked={protectQuestions}
+              disabled={mutation.isPending}
+              onCheckedChange={(checked) => mutation.mutate(checked === true)}
+            />
           </div>
-        )}
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+            <p className="text-sm font-medium">Pasting is permanently blocked</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Students can never paste text into an answer box or the tutor chat — on every
+              homework, in every class. This cannot be switched off.
+            </p>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
 }
+
 
 
 

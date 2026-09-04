@@ -53,11 +53,14 @@ export async function checkHandDrawnPhotos(imageUrls: string[]): Promise<PhotoCh
       const end = text.lastIndexOf("}");
       const parsed = schema.parse(JSON.parse(text.slice(start >= 0 ? start : 0, end + 1)));
       const confidence = Math.max(0, Math.min(1, parsed.confidence));
-      if (!parsed.handDrawn && confidence >= 0.5) {
+      // Uploads must show positive evidence of hand-drawn work: an unsure
+      // verdict is rejected too, so only clear handwriting/paper passes.
+      const unsure = parsed.handDrawn && confidence < 0.55;
+      if (!parsed.handDrawn || unsure) {
         const kind = parsed.kind.trim();
         return {
           ok: false,
-          confidence,
+          confidence: parsed.handDrawn ? 1 - confidence : confidence,
           reason: `Only photos of your own hand-drawn or hand-written work are accepted. This upload looks like ${kind || "a computer-generated or copied image"}, not something you drew by hand.`,
         };
       }

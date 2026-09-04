@@ -521,16 +521,6 @@ function AssignmentList({
                     </Button>
                   }
                 />
-                <LanguageSettingsDialog
-                  classId={classId}
-                  assignmentId={assignment.id}
-                  trigger={
-                    <Button variant="outline" size="sm">
-                      <Languages className="size-4" />
-                      HW Language Settings
-                    </Button>
-                  }
-                />
                 <ArchiveAssignmentButton
                   classId={classId}
                   assignmentId={assignment.id}

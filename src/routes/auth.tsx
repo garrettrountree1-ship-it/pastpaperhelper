@@ -10,6 +10,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lovable } from "@/integrations/lovable/index";
 import { emailLinkOrigin } from "@/lib/app-origin";
+import {
+  NETWORK_AUTH_MESSAGE,
+  describeAuthError,
+  isNetworkAuthError,
+  withAuthRetry,
+} from "@/lib/auth-errors";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth")({
@@ -44,6 +50,7 @@ function AuthPage() {
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<"student" | "teacher">("student");
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [networkIssue, setNetworkIssue] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {

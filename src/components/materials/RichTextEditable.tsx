@@ -91,8 +91,8 @@ export function RichTextEditable({
           // restored value is immediately overwritten by the old text.
           const handler = shortcut === "undo" ? onUndo : onRedo;
           if (handler) {
-            // Flush the in-progress keystrokes first so one step is enough.
-            emit();
+            // Every keystroke is already emitted on input, so the history is
+            // current — just step it back without re-reading the DOM.
             handler();
           } else {
             formatSelection(shortcut);

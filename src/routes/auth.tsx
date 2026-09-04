@@ -107,19 +107,32 @@ function AuthPage() {
   async function handleSignUp(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: emailLinkOrigin(),
-        data: { full_name: fullName, role },
-      },
-    });
-    setBusy(false);
-    if (error) {
-      toast.error(error.message);
+    let data: Awaited<ReturnType<typeof supabase.auth.signUp>>["data"];
+    let error: { message: string } | null = null;
+    try {
+      ({ data, error } = await withAuthRetry(() =>
+        supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: emailLinkOrigin(),
+            data: { full_name: fullName, role },
+          },
+        }),
+      ));
+    } catch (thrown) {
+      setBusy(false);
+      setNetworkIssue(isNetworkAuthError(thrown));
+      toast.error(describeAuthError(thrown));
       return;
     }
+    setBusy(false);
+    if (error) {
+      setNetworkIssue(isNetworkAuthError(error));
+      toast.error(describeAuthError(error, error.message));
+      return;
+    }
+
     if (!data.session) {
       const alreadyRegistered = data.user?.identities?.length === 0;
       setPendingEmail(email);

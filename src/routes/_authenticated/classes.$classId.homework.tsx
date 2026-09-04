@@ -35,6 +35,8 @@ import {
   Wand2,
   ShieldAlert,
   Languages,
+  Archive,
+  RotateCcw,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -76,6 +78,7 @@ import {
   createAssignment,
   creditQuestionForAll,
   deleteAssignment,
+  setAssignmentArchived,
   deleteClass,
   removeStudentFromClass,
 
@@ -555,7 +558,7 @@ function AssignmentList({
                     </Button>
                   }
                 />
-                <DeleteAssignmentButton
+                <ArchiveAssignmentButton
                   classId={classId}
                   assignmentId={assignment.id}
                   title={assignment.title}

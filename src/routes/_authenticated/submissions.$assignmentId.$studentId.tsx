@@ -437,12 +437,16 @@ function SendBack({
   const queryClient = useQueryClient();
   const reject = useServerFn(rejectAnswer);
   const [open, setOpen] = useState(false);
+  const [notifiedOpen, setNotifiedOpen] = useState(false);
+  const [notifiedReason, setNotifiedReason] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: (note: string) => reject({ data: { answerId, note } }),
-    onSuccess: () => {
+    onSuccess: (_result, note) => {
       toast.success("Sent back to the student to redo");
       setOpen(false);
+      setNotifiedReason(note || null);
+      setNotifiedOpen(true);
       queryClient.invalidateQueries({ queryKey });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -464,6 +468,12 @@ function SendBack({
         onOpenChange={setOpen}
         busy={mutation.isPending}
         onConfirm={(note) => mutation.mutate(note)}
+      />
+
+      <StudentNotifiedDialog
+        open={notifiedOpen}
+        onOpenChange={setNotifiedOpen}
+        reason={notifiedReason}
       />
     </>
   );

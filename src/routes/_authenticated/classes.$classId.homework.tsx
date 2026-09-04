@@ -378,6 +378,7 @@ type TeacherAssignment = {
   submittedCount: number;
   pastDue: boolean;
   behindCount: number;
+  archivedAt?: string | null;
 };
 
 function AssignmentList({
@@ -392,11 +393,15 @@ function AssignmentList({
   const [filter, setFilter] = useState<"all" | AssignmentStatusKey>("all");
   const [sort, setSort] = useState<"due" | "title">("due");
 
-  const tagged = assignments.map((a) => {
+  const archivedList = assignments.filter((a) => Boolean(a.archivedAt));
+  const active = assignments.filter((a) => !a.archivedAt);
+
+  const tagged = active.map((a) => {
     const behindAll = studentCount > 0 && a.behindCount >= studentCount;
     const key: AssignmentStatusKey = !a.pastDue ? "active" : behindAll ? "past_due" : "closed";
     return { ...a, statusKey: key };
   });
+
 
   const counts = {
     all: tagged.length,

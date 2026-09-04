@@ -7,11 +7,9 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
   Columns2,
   Layers,
   Minus,
-  Rows2,
 
   Maximize,
   Minimize,
@@ -372,7 +370,7 @@ export function LessonWorkspace({
     enabled: Boolean(material),
   });
 
-  // The two panes are built once so they can be arranged side by side, stacked,
+  // The two panes are built once so they can be arranged side by side
   // or layered as floating windows without duplicating their markup.
   const canvasNode = active ? (
     <NotesCanvas

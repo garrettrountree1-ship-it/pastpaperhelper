@@ -51,6 +51,19 @@ const STYLE_PATTERNS: RegExp[] = [
   /\brespectively\b/i,
   /\boverall,\s/i,
   /\*\*[^*]+\*\*/,
+  /\bin (other words|essence|general)\b/i,
+  /\bthis (demonstrates|indicates|suggests|shows) that\b/i,
+  /\bhence,?\s|\bthus,?\s|\btherefore,?\s/i,
+  /\bwhich (is|are|means|results in|leads to) \w+/i,
+  /\bas a result\b|\bfor instance\b|\bfor example,\s/i,
+  /\bkey (point|idea|concept)s?\b/i,
+  /\bstep \d\b/i,
+  /\brefers to\b|\bis defined as\b|\bis known as\b/i,
+  /\bensur(e|ing|es) that\b/i,
+  /\bthe (process|value|result|concept) of \w+/i,
+  /\bsince the \w+ (is|are)\b/i,
+  /\bnote that\b/i,
+  /\bboth \w+ and \w+ (are|have|share)\b/i,
 ];
 
 function wordCount(text: string) {
@@ -103,13 +116,13 @@ export async function detectAiAnswer(input: {
     };
   }
 
-  // Very short answers are exam shorthand; nothing to judge.
-  if (words < 20) return { isAi: false, confidence: 0, reason: "" };
+  // Only true exam shorthand escapes review.
+  if (words < 12) return { isAi: false, confidence: 0, reason: "" };
 
   const style = styleScore(answer);
 
   // Overwhelming surface evidence: flag without waiting on the model.
-  if (style >= 5 && words >= 35) {
+  if ((style >= 3 && words >= 30) || (style >= 2 && bulletedProse(answer))) {
     return {
       isAi: true,
       confidence: 0.9,
@@ -144,8 +157,8 @@ export async function detectAiAnswer(input: {
     const parsed = schema.parse(JSON.parse(text.slice(start >= 0 ? start : 0, end + 1)));
     // Surface markers raise the model's confidence; the threshold is strict but
     // no longer needs near-certainty from the classifier alone.
-    const confidence = Math.max(0, Math.min(1, parsed.confidence + style * 0.06));
-    const threshold = style >= 3 ? 0.45 : style >= 1 ? 0.55 : 0.65;
+    const confidence = Math.max(0, Math.min(1, parsed.confidence + style * 0.1));
+    const threshold = style >= 3 ? 0.25 : style >= 1 ? 0.35 : 0.45;
     return {
       isAi: parsed.isAi && confidence >= threshold,
       confidence,
@@ -155,10 +168,10 @@ export async function detectAiAnswer(input: {
     };
   } catch {
     // Model unavailable: fall back to the surface markers alone.
-    if (style >= 4 && words >= 30) {
+    if (style >= 2 && words >= 25) {
       return {
         isAi: true,
-        confidence: 0.75,
+        confidence: 0.8,
         reason:
           "The answer is written in a generated, textbook-style register rather than in the student's own words.",
       };

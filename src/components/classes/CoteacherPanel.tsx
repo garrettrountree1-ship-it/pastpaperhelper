@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { UserPlus, X } from "lucide-react";
+import { ChevronDown, UserPlus, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -20,6 +20,7 @@ export function CoteacherPanel({ classId }: { classId: string }) {
   const add = useServerFn(addCoteacher);
   const remove = useServerFn(removeCoteacher);
   const [email, setEmail] = useState("");
+  const [open, setOpen] = useState(false);
 
   const list = useQuery({
     queryKey: ["coteachers", classId],
@@ -52,14 +53,29 @@ export function CoteacherPanel({ classId }: { classId: string }) {
 
   return (
     <section className="paper mt-6 p-6">
-      <div className="mb-2 flex items-center gap-2">
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 text-left"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
         <UserPlus className="size-5 text-primary" />
         <h2 className="font-display text-xl">Teachers for this class</h2>
-      </div>
-      <p className="mb-4 text-sm text-muted-foreground">
+        <span className="text-sm text-muted-foreground">
+          {list.isPending ? "" : `· ${coteachers.length + (list.data?.owner ? 1 : 0)}`}
+        </span>
+        <ChevronDown
+          className={`ml-auto size-5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open ? (
+        <>
+      <p className="mb-4 mt-4 text-sm text-muted-foreground">
         Coteachers see and manage everything in this class — homework, quizzes, lesson materials,
         games and the gradebook. Only you, the class creator, can add or remove them.
       </p>
+
+
 
       {list.isPending ? (
         <Skeleton className="h-24 w-full" />
@@ -125,6 +141,8 @@ export function CoteacherPanel({ classId }: { classId: string }) {
         <p className="mt-2 text-xs text-muted-foreground">
           The teacher must already have a PastPaperHelper.AI account with that email.
         </p>
+      ) : null}
+        </>
       ) : null}
     </section>
   );

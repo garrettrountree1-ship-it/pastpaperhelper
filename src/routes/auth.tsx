@@ -251,6 +251,17 @@ function AuthPage() {
             Teachers set the homework. Students work through it with a tutor beside them.
           </p>
 
+          {networkIssue ? (
+            <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm">
+              <p className="font-medium">Can’t reach the login service</p>
+              <p className="mt-1 text-muted-foreground">
+                Your email and password are fine — the request never left your device or network.
+                Try mobile data instead of school Wi-Fi, switch a VPN or proxy off (or on, if your
+                network filters traffic), then sign in again.
+              </p>
+            </div>
+          ) : null}
+
           {pendingEmail ? (
             <div className="mt-4 rounded-lg border border-primary/40 bg-primary/5 p-3 text-sm">
               <p className="font-medium">Not verified yet — check your email</p>

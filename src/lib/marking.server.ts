@@ -201,6 +201,7 @@ export async function tutorStep(input: TutorInput): Promise<string> {
     "Also tell the student what a full-mark response needs structurally — how many distinct points, and what type each one is (statement, reason, comparison, unit, working step) — without supplying their content.",
     "Confirm briefly what they already earned so they do not delete correct work.",
     "No markdown headings.",
+    "Write equations and symbols as plain readable text with real Unicode characters (°C, °F, ×, ÷, ≠, ≤, ≥, →, π, Δ, m², H₂O, x = (y - b)/m). Never use LaTeX or maths delimiters ($, $$, \\frac, \\(, \\[) and never use code fences.",
     LEVEL_STYLE[level] ?? LEVEL_STYLE["medium"]!,
     language.toLowerCase().startsWith("english")
       ? "Reply in English."

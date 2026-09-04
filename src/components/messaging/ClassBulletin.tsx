@@ -160,9 +160,9 @@ export function ClassBulletinBoard({ classId }: { classId: string }) {
     setSeenAt(Number.isFinite(stored) ? stored : 0);
   }, [seenKey]);
 
-  useEffect(() => {
-    if (latest > 0) window.localStorage.setItem(seenKey, String(latest));
-  }, [latest, seenKey]);
+  // Note: the "seen" marker is only written when the student dismisses the
+  // bulletin pop-up, so new notices keep popping up until acknowledged.
+
 
   return (
     <section className="paper mt-6 p-6">

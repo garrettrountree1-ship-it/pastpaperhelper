@@ -1818,18 +1818,21 @@ function formatDuration(seconds: number) {
 function GradebookRow({
   classId,
   student,
+  titles,
   columns,
   onChanged,
   onToggleDetail,
 }: {
   classId: string;
   student: GradebookStudent;
+  titles: Record<string, string>;
   columns: number;
   onChanged: () => void;
   onToggleDetail: (enabled: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
   const detailEnabled = student.detailEnabled !== false;
+  const lockedGrades = student.grades.filter((grade) => grade.locked);
 
   return (
     <>
@@ -1847,12 +1850,19 @@ function GradebookRow({
           ) : null}
         </TableCell>
         <TableCell className="font-medium">
-          {student.name}
-          {student.grades.some((grade) => grade.locked) ? (
-            <Badge variant="destructive" className="ml-2">
-              <Lock className="size-3" /> locked
-            </Badge>
-          ) : null}
+          <span className="flex flex-wrap items-center gap-2">
+            {student.name}
+            {lockedGrades.map((grade) => (
+              <UnlockFlag
+                key={grade.assignmentId}
+                assignmentId={grade.assignmentId}
+                studentId={student.id}
+                title={titles[grade.assignmentId] ?? "this homework"}
+                penaltyPercent={grade.penaltyPercent}
+                onDone={onChanged}
+              />
+            ))}
+          </span>
         </TableCell>
         {student.grades.map((grade) => (
           <TableCell key={grade.assignmentId}>
@@ -1861,23 +1871,31 @@ function GradebookRow({
             ) : grade.status === "not_started" ? (
               <span className="text-muted-foreground">—</span>
             ) : (
-              <Link
-                to="/submissions/$assignmentId/$studentId"
-                params={{ assignmentId: grade.assignmentId, studentId: student.id }}
-                className="underline decoration-accent decoration-2 underline-offset-4"
-              >
-                {grade.awardedMarks ?? 0}/{grade.totalMarks}
-                {grade.totalMarks > 0
-                  ? ` (${Math.round(((grade.awardedMarks ?? 0) / grade.totalMarks) * 100)}%)`
-                  : ""}
-                {grade.status === "in_progress" ? "*" : ""}
-              </Link>
+              <span className="flex flex-wrap items-center gap-2">
+                <Link
+                  to="/submissions/$assignmentId/$studentId"
+                  params={{ assignmentId: grade.assignmentId, studentId: student.id }}
+                  className="underline decoration-accent decoration-2 underline-offset-4"
+                >
+                  {grade.awardedMarks ?? 0}/{grade.totalMarks}
+                  {grade.totalMarks > 0
+                    ? ` (${Math.round(((grade.awardedMarks ?? 0) / grade.totalMarks) * 100)}%)`
+                    : ""}
+                  {grade.status === "in_progress" ? "*" : ""}
+                </Link>
+                {grade.penaltyPercent > 0 ? (
+                  <Badge variant="secondary" title="Deduction applied for cheating">
+                    −{grade.penaltyPercent}%
+                  </Badge>
+                ) : null}
+              </span>
             )}
           </TableCell>
         ))}
         <TableCell className="font-display">
           {student.average === null ? "—" : `${student.average}%`}
         </TableCell>
+
         <TableCell>
           <Switch
             checked={detailEnabled}

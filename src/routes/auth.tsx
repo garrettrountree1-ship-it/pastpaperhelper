@@ -54,9 +54,25 @@ function AuthPage() {
   async function handleSignIn(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    let error: { message: string } | null = null;
+    try {
+      ({ error } = await withAuthRetry(() =>
+        supabase.auth.signInWithPassword({ email, password }),
+      ));
+    } catch (thrown) {
+      setBusy(false);
+      setNetworkIssue(isNetworkAuthError(thrown));
+      toast.error(describeAuthError(thrown));
+      return;
+    }
     if (error) {
       setBusy(false);
+      if (isNetworkAuthError(error)) {
+        setNetworkIssue(true);
+        toast.error(NETWORK_AUTH_MESSAGE);
+        return;
+      }
+      setNetworkIssue(false);
       if (/not confirmed/i.test(error.message)) {
         setPendingEmail(email);
         toast.error(
@@ -67,6 +83,7 @@ function AuthPage() {
       toast.error(error.message);
       return;
     }
+    setNetworkIssue(false);
 
     // Wait until the session is readable so the auth gate can't bounce us back.
     for (let i = 0; i < 20; i += 1) {
@@ -77,6 +94,7 @@ function AuthPage() {
     setBusy(false);
     navigate({ to: "/dashboard", replace: true });
   }
+
 
 
   async function handleSignUp(event: React.FormEvent) {

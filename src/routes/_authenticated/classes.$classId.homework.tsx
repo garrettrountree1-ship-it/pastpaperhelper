@@ -501,9 +501,9 @@ function AssignmentList({
         visible.map((assignment) => (
           <div
             key={assignment.id}
-            className="paper flex flex-wrap items-center justify-between gap-4 p-5"
+            className="paper flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between"
           >
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-xl">{assignment.title}</h2>
                 <Badge variant={statusBadgeVariant[assignment.statusKey]}>
@@ -524,62 +524,63 @@ function AssignmentList({
                   : ""}
               </p>
             </div>
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <Badge variant="secondary">{assignment.submittedCount} submitted</Badge>
-              <Button variant="outline" size="sm" asChild>
-                <Link
-                  to="/assignments/$assignmentId/preview"
-                  params={{ assignmentId: assignment.id }}
-                >
-                  <Eye className="size-4" />
-                  Student view
-                </Link>
-              </Button>
-
-              <QuestionEditorDialog
-                classId={classId}
-                assignmentId={assignment.id}
-                trigger={
-                  <Button variant="outline" size="sm">
-                    <Pencil className="size-4" />
-                    Question editor
-                  </Button>
-                }
-              />
-
-              <AccessControlsDialog
-                classId={classId}
-                assignmentId={assignment.id}
-                trigger={
-                  <Button variant="outline" size="sm">
-                    <CalendarClock className="size-4" />
-                    Due Date &amp; Answer Release
-                  </Button>
-                }
-              />
-              <CopyProtectionDialog
-                classId={classId}
-                assignmentId={assignment.id}
-                protectQuestions={Boolean(
-                  (assignment as { protectQuestions?: boolean }).protectQuestions,
-                )}
-              />
-              <LanguageSettingsDialog
-                classId={classId}
-                assignmentId={assignment.id}
-                trigger={
-                  <Button variant="outline" size="sm">
-                    <Languages className="size-4" />
-                    HW Language Settings
-                  </Button>
-                }
-              />
-
-              <DeleteAssignmentButton
-                classId={classId}
-                assignmentId={assignment.id}
-                title={assignment.title}
-              />
+            <div className="flex flex-col gap-2 sm:items-end">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary">{assignment.submittedCount} submitted</Badge>
+                <Button variant="outline" size="sm" asChild>
+                  <Link
+                    to="/assignments/$assignmentId/preview"
+                    params={{ assignmentId: assignment.id }}
+                  >
+                    <Eye className="size-4" />
+                    Student view
+                  </Link>
+                </Button>
+                <QuestionEditorDialog
+                  classId={classId}
+                  assignmentId={assignment.id}
+                  trigger={
+                    <Button variant="outline" size="sm">
+                      <Pencil className="size-4" />
+                      Question editor
+                    </Button>
+                  }
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <AccessControlsDialog
+                  classId={classId}
+                  assignmentId={assignment.id}
+                  trigger={
+                    <Button variant="outline" size="sm">
+                      <CalendarClock className="size-4" />
+                      Due Date &amp; Answer Release
+                    </Button>
+                  }
+                />
+                <CopyProtectionDialog
+                  classId={classId}
+                  assignmentId={assignment.id}
+                  protectQuestions={Boolean(
+                    (assignment as { protectQuestions?: boolean }).protectQuestions,
+                  )}
+                />
+                <LanguageSettingsDialog
+                  classId={classId}
+                  assignmentId={assignment.id}
+                  trigger={
+                    <Button variant="outline" size="sm">
+                      <Languages className="size-4" />
+                      HW Language Settings
+                    </Button>
+                  }
+                />
+                <DeleteAssignmentButton
+                  classId={classId}
+                  assignmentId={assignment.id}
+                  title={assignment.title}
+                />
+              </div>
             </div>
           </div>
         ))

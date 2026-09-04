@@ -217,8 +217,7 @@ function ClassPageContent({ classId }: { classId: string }) {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm text-muted-foreground">
-            {data.klass.curriculum} · {data.klass.subject} · join code{" "}
-            <span className="font-mono highlight-underline">{data.klass.join_code}</span>
+            {data.klass.curriculum} · {data.klass.subject}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -233,10 +232,11 @@ function ClassPageContent({ classId }: { classId: string }) {
       </div>
 
       <Tabs defaultValue="assignments" className="mt-6">
-        <TabsList>
+        <TabsList className="h-auto flex-wrap gap-1.5 p-1.5">
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
           <TabsTrigger value="gradebook">Gradebook</TabsTrigger>
-          <TabsTrigger value="messages">Student messages</TabsTrigger>
+          <TabsTrigger value="messages">Student Messages</TabsTrigger>
+
         </TabsList>
 
         <TabsContent value="assignments" className="mt-4 space-y-3">

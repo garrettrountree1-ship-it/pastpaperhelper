@@ -850,12 +850,18 @@ function AssignmentDialog({
 
           <div className="flex items-start justify-between gap-4 rounded-xl border border-border bg-secondary/30 p-4">
             <div className="space-y-1">
-              <Label htmlFor="protect-questions">Block copying of the questions</Label>
+              <Label htmlFor="protect-questions">
+                Block copying of the questions (optional)
+              </Label>
               <p className="text-sm text-muted-foreground">
-                Students can read the questions but cannot select, copy or right-click the wording
-                of this homework. Pasting into an answer or the tutor chat is always blocked, on
-                every assignment.
+                When on, students can read the questions but cannot select, copy or right-click the
+                wording of this homework.
               </p>
+              <p className="text-sm font-medium">
+                Pasting is permanently blocked: students can never paste into an answer box or the
+                tutor chat, on every homework. This cannot be switched off.
+              </p>
+
             </div>
             <Switch
               id="protect-questions"

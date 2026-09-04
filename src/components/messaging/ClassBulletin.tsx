@@ -143,6 +143,73 @@ export function ClassBulletinPanel({ classId }: { classId: string }) {
   );
 }
 
+/** Read-only bulletin box shown open on a student's class home page. */
+export function ClassBulletinBoard({ classId }: { classId: string }) {
+  const fetchPosts = useServerFn(listClassBulletin);
+  const posts = useQuery({
+    queryKey: ["class-bulletin", classId],
+    queryFn: () => fetchPosts({ data: { classId } }),
+  });
+  const [seenAt, setSeenAt] = useState<number | null>(null);
+  const seenKey = `class-bulletin-seen:${classId}`;
+  const rows = posts.data ?? [];
+  const latest = rows.reduce((max, p) => Math.max(max, new Date(p.created_at).getTime()), 0);
+
+  useEffect(() => {
+    const stored = Number(window.localStorage.getItem(seenKey) ?? 0);
+    setSeenAt(Number.isFinite(stored) ? stored : 0);
+  }, [seenKey]);
+
+  useEffect(() => {
+    if (latest > 0) window.localStorage.setItem(seenKey, String(latest));
+  }, [latest, seenKey]);
+
+  return (
+    <section className="paper mt-6 p-6">
+      <div className="flex items-center gap-2">
+        <Megaphone className="size-5 text-primary" />
+        <h2 className="font-display text-xl">Class bulletin</h2>
+        <span className="text-sm text-muted-foreground">· {rows.length}</span>
+      </div>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Notices from your teacher. You cannot reply to bulletin posts.
+      </p>
+      <div className="mt-4 space-y-3">
+        {posts.isPending ? (
+          <Skeleton className="h-20 w-full" />
+        ) : rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No notices yet.</p>
+        ) : (
+          rows.map((item) => {
+            const isNew = seenAt !== null && new Date(item.created_at).getTime() > seenAt;
+            return (
+              <div
+                key={item.id}
+                className={`rounded-lg border p-3 ${isNew ? "border-primary bg-primary/5" : "border-border"}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    {item.title ? <p className="font-medium">{item.title}</p> : null}
+                    <p className="mt-1 whitespace-pre-wrap text-sm">{item.body}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {formatDueDate(item.created_at)}
+                    </p>
+                  </div>
+                  {isNew ? (
+                    <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+                      New
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </section>
+  );
+}
+
 /** Read-only bulletin pop-up shown to a student when they open their class home page. */
 export function ClassBulletinPopup({ classId }: { classId: string }) {
   const fetchPosts = useServerFn(listClassBulletin);

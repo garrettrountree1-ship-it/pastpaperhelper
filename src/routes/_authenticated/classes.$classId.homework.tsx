@@ -1913,7 +1913,7 @@ function QuestionRowActions({
         open={rejectOpen}
         onOpenChange={setRejectOpen}
         busy={grade.isPending}
-        onConfirm={(note) => grade.mutate({ action: "reject", note: note || undefined })}
+        onConfirm={(note) => grade.mutate(note ? { action: "reject", note } : { action: "reject" })}
       />
 
       <Button

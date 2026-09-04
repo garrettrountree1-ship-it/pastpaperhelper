@@ -37,7 +37,7 @@ export function TeacherMessagesPanel({ classId }: { classId: string }) {
     <section className="paper mt-6 p-6">
       <div className="mb-2 flex items-center gap-2">
         <MessageSquare className="size-5 text-primary" />
-        <h2 className="font-display text-xl">Student messages</h2>
+        <h2 className="font-display text-xl">Teacher messages</h2>
         <span className="text-sm text-muted-foreground">
           {messages.isPending ? "" : `· ${studentIds.length}`}
         </span>

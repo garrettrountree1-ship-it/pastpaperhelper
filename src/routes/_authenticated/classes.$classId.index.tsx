@@ -9,6 +9,8 @@ import { TeacherMessagesPanel } from "@/components/messaging/TeacherMessagesPane
 import { useMyClasses } from "@/components/SectionShell";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getMe } from "@/lib/app.functions";
+import { useDemoView } from "@/lib/demo-view";
 import { listClassRoster } from "@/lib/materials.functions";
 import { SECTIONS, type SectionKey } from "@/lib/sections";
 
@@ -44,7 +46,17 @@ function ClassHome() {
   const { classId } = Route.useParams();
   const classes = useMyClasses();
   const klass = (classes.data ?? []).find((c) => c.id === classId) ?? null;
-  const role = klass?.canManage ? "teacher" : "student";
+  const me = useQuery({ queryKey: ["me"], queryFn: useServerFn(getMe), retry: 2 });
+  const isDemo = Boolean(me.data?.isDemo);
+  const { view } = useDemoView(isDemo, me.data?.role ?? "student");
+  const accountRole = (isDemo ? view : me.data?.role) ?? "student";
+  const role: "teacher" | "student" = isDemo
+    ? accountRole
+    : klass
+      ? klass.canManage
+        ? "teacher"
+        : "student"
+      : accountRole;
 
   return (
     <div className="min-h-screen">

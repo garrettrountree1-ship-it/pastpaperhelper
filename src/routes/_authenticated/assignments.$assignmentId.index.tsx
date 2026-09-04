@@ -200,8 +200,8 @@ function AssignmentPage() {
             >
               {protection.concealed ? (
                 <p className="paper p-4 text-sm text-muted-foreground">
-                  Questions are hidden while this tab is not in focus — your teacher has turned on
-                  screenshot and copy protection.
+                  Questions are hidden while this tab is not in focus. Screenshots, the snipping
+                  tool, printing and pasting are blocked on homework.
                 </p>
               ) : null}
               {groupByPage(data.questions).map((group) => (

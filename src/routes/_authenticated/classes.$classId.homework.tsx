@@ -247,7 +247,7 @@ function ClassPageContent({ classId }: { classId: string }) {
         <TabsList>
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
           <TabsTrigger value="gradebook">Gradebook</TabsTrigger>
-          <TabsTrigger value="students">Students</TabsTrigger>
+          
           <TabsTrigger value="bulletin">Bulletin &amp; Messages</TabsTrigger>
         </TabsList>
 

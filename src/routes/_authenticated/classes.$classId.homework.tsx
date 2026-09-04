@@ -1,4 +1,6 @@
 import { DateTime24Input } from "@/components/assignments/DateTime24Input";
+import { RejectReasonDialog } from "@/components/homework/RejectReasonDialog";
+
 import {
   Select,
   SelectContent,

@@ -1,4 +1,6 @@
 import { unzipSync } from "fflate";
+import { cleanMathText } from "@/lib/math-text";
+
 import { TUTOR_MODEL } from "./ai-gateway.server";
 
 export type ExtractedQuestion = {

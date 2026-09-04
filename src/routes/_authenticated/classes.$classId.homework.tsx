@@ -331,12 +331,16 @@ function ClassPageContent({ classId }: { classId: string }) {
                       key={student.id}
                       classId={classId}
                       student={student}
+                      titles={Object.fromEntries(
+                        data.assignments.map((a) => [a.id, a.title] as const),
+                      )}
                       columns={data.assignments.length + 4}
                       onToggleDetail={(enabled) =>
                         detailMutation.mutate({ studentId: student.id, enabled })
                       }
                       onChanged={() => overview.refetch()}
                     />
+
                   ))}
                 </TableBody>
               </Table>
@@ -1814,18 +1818,21 @@ function formatDuration(seconds: number) {
 function GradebookRow({
   classId,
   student,
+  titles,
   columns,
   onChanged,
   onToggleDetail,
 }: {
   classId: string;
   student: GradebookStudent;
+  titles: Record<string, string>;
   columns: number;
   onChanged: () => void;
   onToggleDetail: (enabled: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
   const detailEnabled = student.detailEnabled !== false;
+  const lockedGrades = student.grades.filter((grade) => grade.locked);
 
   return (
     <>
@@ -1843,12 +1850,19 @@ function GradebookRow({
           ) : null}
         </TableCell>
         <TableCell className="font-medium">
-          {student.name}
-          {student.grades.some((grade) => grade.locked) ? (
-            <Badge variant="destructive" className="ml-2">
-              <Lock className="size-3" /> locked
-            </Badge>
-          ) : null}
+          <span className="flex flex-wrap items-center gap-2">
+            {student.name}
+            {lockedGrades.map((grade) => (
+              <UnlockFlag
+                key={grade.assignmentId}
+                assignmentId={grade.assignmentId}
+                studentId={student.id}
+                title={titles[grade.assignmentId] ?? "this homework"}
+                penaltyPercent={grade.penaltyPercent}
+                onDone={onChanged}
+              />
+            ))}
+          </span>
         </TableCell>
         {student.grades.map((grade) => (
           <TableCell key={grade.assignmentId}>
@@ -1857,23 +1871,31 @@ function GradebookRow({
             ) : grade.status === "not_started" ? (
               <span className="text-muted-foreground">—</span>
             ) : (
-              <Link
-                to="/submissions/$assignmentId/$studentId"
-                params={{ assignmentId: grade.assignmentId, studentId: student.id }}
-                className="underline decoration-accent decoration-2 underline-offset-4"
-              >
-                {grade.awardedMarks ?? 0}/{grade.totalMarks}
-                {grade.totalMarks > 0
-                  ? ` (${Math.round(((grade.awardedMarks ?? 0) / grade.totalMarks) * 100)}%)`
-                  : ""}
-                {grade.status === "in_progress" ? "*" : ""}
-              </Link>
+              <span className="flex flex-wrap items-center gap-2">
+                <Link
+                  to="/submissions/$assignmentId/$studentId"
+                  params={{ assignmentId: grade.assignmentId, studentId: student.id }}
+                  className="underline decoration-accent decoration-2 underline-offset-4"
+                >
+                  {grade.awardedMarks ?? 0}/{grade.totalMarks}
+                  {grade.totalMarks > 0
+                    ? ` (${Math.round(((grade.awardedMarks ?? 0) / grade.totalMarks) * 100)}%)`
+                    : ""}
+                  {grade.status === "in_progress" ? "*" : ""}
+                </Link>
+                {grade.penaltyPercent > 0 ? (
+                  <Badge variant="secondary" title="Deduction applied for cheating">
+                    −{grade.penaltyPercent}%
+                  </Badge>
+                ) : null}
+              </span>
             )}
           </TableCell>
         ))}
         <TableCell className="font-display">
           {student.average === null ? "—" : `${student.average}%`}
         </TableCell>
+
         <TableCell>
           <Switch
             checked={detailEnabled}
@@ -2076,16 +2098,10 @@ function StudentReport({
                 {assignment.aiFlagCount > 0 ? ` · ${assignment.aiFlagCount} AI warning(s)` : ""}
               </p>
             </div>
-            <LockControls
-              assignmentId={assignment.assignmentId}
-              studentId={studentId}
-              locked={assignment.locked}
-              penaltyPercent={assignment.penaltyPercent}
-              onDone={() => {
-                report.refetch();
-                onChanged();
-              }}
-            />
+            {assignment.penaltyPercent > 0 ? (
+              <Badge variant="secondary">−{assignment.penaltyPercent}% cheating deduction</Badge>
+            ) : null}
+
           </div>
           {assignment.locked ? (
             <p className="mt-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
@@ -2211,21 +2227,25 @@ function StudentReport({
   );
 }
 
-/** Tick the box to unlock a locked homework, optionally deducting a percentage. */
-function LockControls({
+/**
+ * Lock flag shown beside the student name in the gradebook. Clicking a locked
+ * flag opens a dialog where the teacher sets the cheating deduction and unlocks.
+ */
+function UnlockFlag({
   assignmentId,
   studentId,
-  locked,
+  title,
   penaltyPercent,
   onDone,
 }: {
   assignmentId: string;
   studentId: string;
-  locked: boolean;
+  title: string;
   penaltyPercent: number;
   onDone: () => void;
 }) {
   const unlock = useServerFn(unlockSubmission);
+  const [open, setOpen] = useState(false);
   const [penalty, setPenalty] = useState(String(penaltyPercent || ""));
 
   const mutation = useMutation({
@@ -2243,52 +2263,61 @@ function LockControls({
           ? `Unlocked with a ${Number(penalty)}% deduction.`
           : "Homework unlocked — the student can try again.",
       );
+      setOpen(false);
       onDone();
     },
     onError: (error: Error) => toast.error(error.message),
   });
 
-  if (!locked) {
-    return penaltyPercent > 0 ? (
-      <Badge variant="secondary">−{penaltyPercent}% applied</Badge>
-    ) : (
-      <Badge variant="secondary">
-        <Unlock className="size-3" /> unlocked
-      </Badge>
-    );
-  }
-
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <label className="flex items-center gap-2 text-sm">
-        <Checkbox
-          checked={false}
-          disabled={mutation.isPending}
-          onCheckedChange={(value) => {
-            if (value) mutation.mutate();
-          }}
-        />
-        Unlock this homework
-      </label>
-      <div className="flex items-center gap-2">
-        <Label htmlFor={`penalty-${assignmentId}-${studentId}`} className="text-xs">
-          Deduct
-        </Label>
-        <Input
-          id={`penalty-${assignmentId}-${studentId}`}
-          type="number"
-          min={0}
-          max={100}
-          value={penalty}
-          onChange={(event) => setPenalty(event.target.value)}
-          className="h-8 w-20"
-          placeholder="0"
-        />
-        <span className="text-xs text-muted-foreground">%</span>
-      </div>
-    </div>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          title={`${title} — locked for AI or copied answers. Click to unlock.`}
+          className="inline-flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-xs font-medium text-destructive-foreground"
+        >
+          <Lock className="size-3" /> Locked
+        </button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Unlock {title}</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          This homework was locked after repeated AI-generated or copied answers. Choose the
+          percentage to deduct for cheating, then unlock so the student can continue. The deduction
+          is shown beside their score.
+        </p>
+        <div className="flex items-center gap-2">
+          <Label htmlFor={`penalty-${assignmentId}-${studentId}`} className="text-sm">
+            Deduct
+          </Label>
+          <Input
+            id={`penalty-${assignmentId}-${studentId}`}
+            type="number"
+            min={0}
+            max={100}
+            value={penalty}
+            onChange={(event) => setPenalty(event.target.value)}
+            className="h-9 w-24"
+            placeholder="0"
+          />
+          <span className="text-sm text-muted-foreground">%</span>
+        </div>
+        <DialogFooter>
+          <Button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending}
+          >
+            <Unlock className="size-4" /> Unlock homework
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
+
 
 /** Exports every student's grade for every assignment in the class. */
 function downloadGradebook(

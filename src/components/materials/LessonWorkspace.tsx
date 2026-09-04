@@ -681,164 +681,184 @@ export function LessonWorkspace({
             </div>
           ) : null}
           {layout === "layered" ? (
-            <div
-              ref={rowRef}
-              className="relative min-h-[80vh] min-w-0 lg:h-full lg:min-h-0 lg:flex-1"
-            >
-              {/* Back window fills the area */}
-              <div className="absolute inset-0">
-                {frontPane === "canvas" ? docNode : canvasNode}
-              </div>
-
-              {/* Keeps drags alive over embedded documents / iframes */}
-              {floatDragging ? (
-                <div className="absolute inset-0 z-20 cursor-grabbing" />
-              ) : null}
-
-              {/* Front window floats on top: drag, stretch, minimise, maximise */}
-              <div
-                className={`absolute z-30 flex touch-none flex-col overflow-hidden rounded-lg border-2 bg-background shadow-2xl ${
-                  floatDragging ? "border-primary" : "border-border"
-                }`}
-                style={
-                  floatState === "max"
-                    ? { left: 0, top: 0, width: "100%", height: "100%" }
-                    : floatState === "min"
-                      ? {
-                          // Minimised windows dock to the bottom of the area.
-                          left: `${Math.min(floatRect.x, 70)}%`,
-                          bottom: 0,
-                          width: `${Math.max(28, Math.min(floatRect.w, 46))}%`,
-                          height: "2.25rem",
-                        }
-                      : {
-                          left: `${floatRect.x}%`,
-                          top: `${floatRect.y}%`,
-                          width: `${floatRect.w}%`,
-                          height: `${floatRect.h}%`,
-                        }
-                }
-              >
-
+            (() => {
+              const r = floatRect ?? { x: 24, y: 20, w: 520, h: 380 };
+              const minW = Math.max(320, Math.min(r.w, 480));
+              const frontStyle: React.CSSProperties =
+                floatState === "max"
+                  ? { left: 0, top: 0, width: "100%", height: "100%" }
+                  : floatState === "min"
+                    ? {
+                        left: Math.max(0, Math.min(r.x, (areaSize.w || minW) - minW)),
+                        top: Math.max(0, (areaSize.h || BAR_H) - BAR_H),
+                        width: minW,
+                        height: BAR_H,
+                      }
+                    : { left: r.x, top: r.y, width: r.w, height: r.h };
+              const backStyle: React.CSSProperties = { left: 0, top: 0, right: 0, bottom: 0 };
+              const paneWrapper = (pane: "canvas" | "doc") => {
+                const isFront = frontPane === pane;
+                return {
+                  className: `absolute flex min-h-0 flex-col overflow-hidden ${
+                    isFront
+                      ? `z-30 rounded-lg border-2 bg-background shadow-2xl ${
+                          floatDragging ? "border-primary" : "border-border"
+                        }`
+                      : "z-0"
+                  }`,
+                  style: isFront ? { ...frontStyle, zIndex: 30 } : backStyle,
+                };
+              };
+              const canvasWrap = paneWrapper("canvas");
+              const docWrap = paneWrapper("doc");
+              const contentStyle = (pane: "canvas" | "doc"): React.CSSProperties =>
+                frontPane === pane
+                  ? {
+                      paddingTop: BAR_H,
+                      display: floatState === "min" ? "none" : undefined,
+                    }
+                  : {};
+              return (
                 <div
-                  onPointerDown={(event) => {
-                    if ((event.target as HTMLElement).closest("button")) return;
-                    startFloatDrag(event, "move");
-                  }}
-                  onDoubleClick={() =>
-                    setFloatState(floatState === "max" ? "window" : "max")
-                  }
-                  className="flex h-10 shrink-0 touch-none select-none items-center gap-1 border-b bg-muted/70 px-2 active:cursor-grabbing cursor-grab"
-                  title="Drag anywhere on this bar to move the window; double-click to maximise"
+                  ref={rowRef}
+                  className="relative min-h-[80vh] min-w-0 lg:h-full lg:min-h-0 lg:flex-1"
                 >
-                  <Move className="size-3.5 text-muted-foreground" />
-                  <span className="truncate text-xs font-medium">
-                    {frontPane === "canvas" ? "Lesson canvas" : "Lesson Materials"}
-                  </span>
-                  <div className="ml-auto flex items-center gap-1">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-6"
-                      title="Swap which window is on top"
-                      aria-label="Swap which window is on top"
-                      onClick={() =>
-                        setFrontPane(frontPane === "canvas" ? "doc" : "canvas")
-                      }
-                    >
-                      <ArrowLeftRight className="size-3.5" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-6"
-                      title={floatState === "min" ? "Restore window" : "Minimise window"}
-                      aria-label={floatState === "min" ? "Restore window" : "Minimise window"}
-                      onClick={() =>
-                        setFloatState(floatState === "min" ? "window" : "min")
-                      }
-                    >
-                      {floatState === "min" ? (
-                        <ChevronDown className="size-3.5" />
-                      ) : (
-                        <Minus className="size-3.5" />
-                      )}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-6"
-                      title={floatState === "max" ? "Restore window" : "Maximise window"}
-                      aria-label={floatState === "max" ? "Restore window" : "Maximise window"}
-                      onClick={() =>
+                  {/* Both panes stay mounted; only their position changes when
+                      swapping, so scroll / canvas position never resets. */}
+                  <div className={canvasWrap.className} style={canvasWrap.style}>
+                    <div className="min-h-0 flex-1" style={contentStyle("canvas")}>
+                      {canvasNode}
+                    </div>
+                  </div>
+                  <div className={docWrap.className} style={docWrap.style}>
+                    <div className="min-h-0 flex-1" style={contentStyle("doc")}>
+                      {docNode}
+                    </div>
+                  </div>
+
+                  {/* Keeps drags alive over embedded documents / iframes */}
+                  {floatDragging ? (
+                    <div className="absolute inset-0 z-40 cursor-grabbing" />
+                  ) : null}
+
+                  {/* Window chrome sits above the front pane so the pane itself
+                      never has to be re-mounted while dragging or swapping. */}
+                  <div className="pointer-events-none absolute z-50" style={frontStyle}>
+                    <div
+                      onPointerDown={(event) => {
+                        if ((event.target as HTMLElement).closest("button")) return;
+                        startFloatDrag(event, "move");
+                      }}
+                      onDoubleClick={() =>
                         setFloatState(floatState === "max" ? "window" : "max")
                       }
+                      style={{ height: BAR_H }}
+                      className="pointer-events-auto flex touch-none select-none items-center gap-1 rounded-t-lg border-b bg-muted/80 px-2 cursor-grab active:cursor-grabbing"
+                      title="Drag anywhere on this bar to move the window; double-click to maximise"
                     >
-                      {floatState === "max" ? (
-                        <Minimize className="size-3.5" />
-                      ) : (
-                        <Maximize className="size-3.5" />
-                      )}
-                    </Button>
+                      <Move className="size-3.5 text-muted-foreground" />
+                      <span className="truncate text-xs font-medium">
+                        {frontPane === "canvas" ? "Lesson canvas" : "Lesson Materials"}
+                      </span>
+                      <div className="ml-auto flex items-center gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-6"
+                          title="Swap which window is on top"
+                          aria-label="Swap which window is on top"
+                          onClick={() =>
+                            setFrontPane(frontPane === "canvas" ? "doc" : "canvas")
+                          }
+                        >
+                          <ArrowLeftRight className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-6"
+                          title={floatState === "min" ? "Restore window" : "Minimise window"}
+                          aria-label={floatState === "min" ? "Restore window" : "Minimise window"}
+                          onClick={() =>
+                            setFloatState(floatState === "min" ? "window" : "min")
+                          }
+                        >
+                          {floatState === "min" ? (
+                            <ChevronDown className="size-3.5" />
+                          ) : (
+                            <Minus className="size-3.5" />
+                          )}
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-6"
+                          title={floatState === "max" ? "Restore window" : "Maximise window"}
+                          aria-label={floatState === "max" ? "Restore window" : "Maximise window"}
+                          onClick={() =>
+                            setFloatState(floatState === "max" ? "window" : "max")
+                          }
+                        >
+                          {floatState === "max" ? (
+                            <Minimize className="size-3.5" />
+                          ) : (
+                            <Maximize className="size-3.5" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {floatState === "window" ? (
+                      <>
+                        {/* Every edge and corner resizes, with generous hit areas */}
+                        <div
+                          onPointerDown={(event) => startFloatDrag(event, "n")}
+                          className="pointer-events-auto absolute left-0 top-0 h-2 w-full touch-none cursor-ns-resize"
+                          title="Drag to change the window height"
+                        />
+                        <div
+                          onPointerDown={(event) => startFloatDrag(event, "s")}
+                          className="pointer-events-auto absolute bottom-0 left-0 h-2.5 w-full touch-none cursor-ns-resize"
+                          title="Drag to change the window height"
+                        />
+                        <div
+                          onPointerDown={(event) => startFloatDrag(event, "w")}
+                          className="pointer-events-auto absolute left-0 top-0 h-full w-2.5 touch-none cursor-ew-resize"
+                          title="Drag to change the window width"
+                        />
+                        <div
+                          onPointerDown={(event) => startFloatDrag(event, "e")}
+                          className="pointer-events-auto absolute right-0 top-0 h-full w-2.5 touch-none cursor-ew-resize"
+                          title="Drag to change the window width"
+                        />
+                        <div
+                          onPointerDown={(event) => startFloatDrag(event, "nw")}
+                          className="pointer-events-auto absolute left-0 top-0 size-6 touch-none cursor-nwse-resize"
+                          title="Drag to stretch this window"
+                        />
+                        <div
+                          onPointerDown={(event) => startFloatDrag(event, "ne")}
+                          className="pointer-events-auto absolute right-0 top-0 size-6 touch-none cursor-nesw-resize"
+                          title="Drag to stretch this window"
+                        />
+                        <div
+                          onPointerDown={(event) => startFloatDrag(event, "sw")}
+                          className="pointer-events-auto absolute bottom-0 left-0 size-8 touch-none cursor-nesw-resize rounded-tr border-r border-t bg-muted/80"
+                          title="Drag to stretch this window"
+                        />
+                        <div
+                          onPointerDown={(event) => startFloatDrag(event, "se")}
+                          className="pointer-events-auto absolute bottom-0 right-0 size-8 touch-none cursor-nwse-resize rounded-tl border-l border-t bg-muted/80"
+                          title="Drag to stretch this window"
+                        />
+                      </>
+                    ) : null}
                   </div>
                 </div>
-
-                {floatState === "min" ? null : (
-                  <div className="min-h-0 flex-1">
-                    {frontPane === "canvas" ? canvasNode : docNode}
-                  </div>
-                )}
-
-                {floatState === "window" ? (
-                  <>
-                    {/* Every edge and corner resizes, with generous hit areas */}
-                    <div
-                      onPointerDown={(event) => startFloatDrag(event, "n")}
-                      className="absolute left-0 top-0 z-10 h-2.5 w-full touch-none cursor-ns-resize"
-                      title="Drag to change the window height"
-                    />
-                    <div
-                      onPointerDown={(event) => startFloatDrag(event, "s")}
-                      className="absolute bottom-0 left-0 z-10 h-2.5 w-full touch-none cursor-ns-resize"
-                      title="Drag to change the window height"
-                    />
-                    <div
-                      onPointerDown={(event) => startFloatDrag(event, "w")}
-                      className="absolute left-0 top-0 z-10 h-full w-2.5 touch-none cursor-ew-resize"
-                      title="Drag to change the window width"
-                    />
-                    <div
-                      onPointerDown={(event) => startFloatDrag(event, "e")}
-                      className="absolute right-0 top-0 z-10 h-full w-2.5 touch-none cursor-ew-resize"
-                      title="Drag to change the window width"
-                    />
-                    <div
-                      onPointerDown={(event) => startFloatDrag(event, "nw")}
-                      className="absolute left-0 top-0 z-20 size-7 touch-none cursor-nwse-resize"
-                      title="Drag to stretch this window"
-                    />
-                    <div
-                      onPointerDown={(event) => startFloatDrag(event, "ne")}
-                      className="absolute right-0 top-0 z-20 size-7 touch-none cursor-nesw-resize"
-                      title="Drag to stretch this window"
-                    />
-                    <div
-                      onPointerDown={(event) => startFloatDrag(event, "sw")}
-                      className="absolute bottom-0 left-0 z-20 size-8 touch-none cursor-nesw-resize rounded-tr border-r border-t bg-muted/80"
-                      title="Drag to stretch this window"
-                    />
-                    <div
-                      onPointerDown={(event) => startFloatDrag(event, "se")}
-                      className="absolute bottom-0 right-0 z-20 size-8 touch-none cursor-nwse-resize rounded-tl border-l border-t bg-muted/80"
-                      title="Drag to stretch this window"
-                    />
-                  </>
-                ) : null}
-
-
-              </div>
-            </div>
+              );
+            })()
           ) : (
+
           <div
             ref={rowRef}
             className="flex min-w-0 flex-col gap-2 lg:h-full lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-0"

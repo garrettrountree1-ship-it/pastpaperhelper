@@ -361,9 +361,14 @@ function SubmissionPage() {
                           current={answer.awarded_marks ?? 0}
                           queryKey={queryKey}
                         />
-                        <SendBack answerId={answer.id} queryKey={queryKey} />
+                        <SendBack
+                          answerId={answer.id}
+                          queryKey={queryKey}
+                          alreadyRejected={Boolean(answer.rejected_at)}
+                        />
                       </>
                     ) : null}
+
                   </section>
                 );
               })}

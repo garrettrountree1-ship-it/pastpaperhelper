@@ -1844,6 +1844,8 @@ function QuestionRowActions({
   const bulkGrade = useServerFn(bulkGradeQuestion);
   const exclude = useServerFn(setQuestionExclusion);
   const [unassigned, setUnassigned] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
+
 
   function done() {
     queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });

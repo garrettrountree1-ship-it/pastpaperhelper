@@ -194,19 +194,21 @@ function PreviewPage() {
                   {group.imageUrls.length > 0 ? (
                     <div className="paper space-y-2 p-4">
                       {group.imageUrls.map((url) => (
-                        <a key={url} href={url} target="_blank" rel="noreferrer" className="block">
-                          <img
-                            src={url}
-                            alt="Past-paper page for the questions below"
-                            loading="lazy"
-                            className="w-full rounded-lg border border-border bg-card object-contain"
-                          />
-                        </a>
+                        <img
+                          key={url}
+                          src={url}
+                          alt="Past-paper page for the questions below"
+                          loading="lazy"
+                          draggable={false}
+                          onContextMenu={(event) => event.preventDefault()}
+                          onDragStart={(event) => event.preventDefault()}
+                          className="pointer-events-none w-full select-none rounded-lg border border-border bg-card object-contain"
+                        />
                       ))}
                       <p className="text-xs text-muted-foreground">
-                        Original past-paper page — tap to open full size. The questions below are
-                        from this page.
+                        Original past-paper page. The questions below are from this page.
                       </p>
+
                     </div>
                   ) : null}
 

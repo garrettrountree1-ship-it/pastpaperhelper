@@ -98,14 +98,6 @@ import {
   updateClass,
 } from "@/lib/app.functions";
 import { addDemoStudents } from "@/lib/demo.functions";
-
-import {
-  deleteAnnouncement,
-  listClassBulletin,
-  listClassMessages,
-  postAnnouncement,
-  replyToStudent,
-} from "@/lib/messaging.functions";
 import { filesToPages } from "@/lib/pdf-pages";
 import { PhotoModeControl } from "@/components/assignments/PhotoModeControl";
 import type { PhotoMode } from "@/lib/photo-mode";

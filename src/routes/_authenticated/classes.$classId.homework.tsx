@@ -331,12 +331,16 @@ function ClassPageContent({ classId }: { classId: string }) {
                       key={student.id}
                       classId={classId}
                       student={student}
+                      titles={Object.fromEntries(
+                        data.assignments.map((a) => [a.id, a.title] as const),
+                      )}
                       columns={data.assignments.length + 4}
                       onToggleDetail={(enabled) =>
                         detailMutation.mutate({ studentId: student.id, enabled })
                       }
                       onChanged={() => overview.refetch()}
                     />
+
                   ))}
                 </TableBody>
               </Table>

@@ -75,7 +75,6 @@ import {
   creditQuestionForAll,
   deleteAssignment,
   setAssignmentArchived,
-  deleteClass,
   removeStudentFromClass,
 
   deleteQuestion,

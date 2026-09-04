@@ -2124,21 +2124,19 @@ function downloadGradebook(
 ) {
   const header = [
     "Student",
-    "Email",
-    ...assignments.map((a) => `${a.title} (/${a.totalMarks})`),
+    ...assignments.map((a) => `${a.title} (%)`),
     "Average %",
   ];
   const rows = students.map((student) => [
     student.name,
-    student.email,
-    ...student.grades.map((grade) =>
-      grade.resultsReleased === false
-        ? "Pending"
-        : grade.status === "not_started"
-          ? "Not started"
-          : (grade.awardedMarks ?? 0),
-    ),
-    student.average === null ? "" : student.average,
+    ...student.grades.map((grade) => {
+      if (grade.resultsReleased === false) return "Pending";
+      if (grade.status === "not_started") return "Not started";
+      if (!grade.totalMarks) return "—";
+      const pct = ((grade.awardedMarks ?? 0) / grade.totalMarks) * 100;
+      return `${Math.round(pct)}%`;
+    }),
+    student.average === null ? "" : `${Math.round(student.average)}%`,
   ]);
   downloadXlsx(`${className} gradebook`, "Gradebook", [header, ...rows]);
 }

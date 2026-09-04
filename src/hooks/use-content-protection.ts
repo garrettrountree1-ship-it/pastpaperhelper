@@ -131,9 +131,11 @@ export function useContentProtection(
     };
     // Capture overlays (snipping tool, screen recorders) can steal focus without
     // firing blur, so poll for it as a backstop.
-    const focusPoll = window.setInterval(() => {
-      if (!document.hasFocus()) conceal();
-    }, 200);
+    const focusPoll = blockCapture
+      ? window.setInterval(() => {
+          if (!document.hasFocus()) conceal();
+        }, 200)
+      : 0;
 
 
     if (blockCopy) {

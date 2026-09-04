@@ -239,6 +239,8 @@ export function ClassBulletinPopup({ classId }: { classId: string }) {
   }
 
   if (rows.length === 0) return null;
+  const unseen = seenAt === null ? [] : rows.filter((p) => new Date(p.created_at).getTime() > seenAt);
+
 
   return (
     <>
@@ -250,11 +252,12 @@ export function ClassBulletinPopup({ classId }: { classId: string }) {
               Class bulletin
             </DialogTitle>
             <DialogDescription>
-              A notice from your teacher. You cannot reply to bulletin posts.
+              {unseen.length > 1 ? "New notices" : "A new notice"} from your teacher. You cannot
+              reply to bulletin posts.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[50vh] space-y-3 overflow-y-auto">
-            {rows.map((item) => (
+            {unseen.map((item) => (
               <div key={item.id} className="rounded-lg border border-border p-3">
                 {item.title ? <p className="font-medium">{item.title}</p> : null}
                 <p className="mt-1 whitespace-pre-wrap text-sm">{item.body}</p>
@@ -263,6 +266,7 @@ export function ClassBulletinPopup({ classId }: { classId: string }) {
                 </p>
               </div>
             ))}
+
           </div>
           <DialogFooter>
             <Button onClick={dismiss}>Got it</Button>

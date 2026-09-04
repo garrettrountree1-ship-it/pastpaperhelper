@@ -107,6 +107,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
               <h3 className="font-display text-lg">Whole class</h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 These apply to every student unless you set an individual override below.
+                Copying, pasting and screenshots of questions are always blocked on homework.
               </p>
 
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -158,22 +159,6 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
               </div>
 
               <div className="mt-4 space-y-3">
-                <label className="flex items-start gap-3 text-sm">
-                  <Checkbox
-                    checked={klass.protectQuestions}
-                    onCheckedChange={(checked) =>
-                      classMutation.mutate({ classId, protectQuestions: checked === true })
-                    }
-                  />
-                  <span>
-                    Block copy, paste and screenshots of questions
-                    <span className="block text-xs text-muted-foreground">
-                      Disables copying, right-click and printing, and hides the questions whenever
-                      the student leaves the tab or presses a screenshot shortcut.
-                    </span>
-                  </span>
-                </label>
-
                 <label className="flex items-start gap-3 text-sm">
                   <Checkbox
                     checked={klass.studentCanChangeLevel}

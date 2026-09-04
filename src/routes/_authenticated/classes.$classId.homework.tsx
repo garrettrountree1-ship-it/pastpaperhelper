@@ -2379,7 +2379,7 @@ function MessagesPanel({ classId }: { classId: string }) {
 
   return (
     <section className="paper p-5">
-      <h2 className="font-display text-2xl">Teacher messages</h2>
+      <h2 className="font-display text-2xl">Student messages</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         Students message you about a specific question. Students never see each other&apos;s
         messages.

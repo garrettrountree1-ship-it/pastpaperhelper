@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MessageTeacherDialog } from "@/components/messaging/MessageTeacherDialog";
+
 import {
   assignmentStatus,
   statusBadgeVariant,

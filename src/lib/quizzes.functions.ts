@@ -200,6 +200,26 @@ export const releaseQuiz = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const setQuizRevealMarkScheme = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ quizId: z.string().uuid(), reveal: z.boolean() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: canTeach } = await supabase.rpc("can_teach_quiz", {
+      _quiz_id: data.quizId,
+      _user_id: userId,
+    });
+    if (!canTeach) throw new Error("You do not teach this quiz.");
+    const { error } = await supabase
+      .from("quizzes")
+      .update({ reveal_mark_scheme: data.reveal })
+      .eq("id", data.quizId);
+    if (error) throw new Error(error.message);
+    return { ok: true, reveal: data.reveal };
+  });
+
 export const deleteQuiz = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ quizId: z.string().uuid() }).parse(input))

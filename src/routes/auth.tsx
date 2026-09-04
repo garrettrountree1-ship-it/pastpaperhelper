@@ -133,8 +133,8 @@ function AuthPage() {
       return;
     }
 
-    if (!data.session) {
-      const alreadyRegistered = data.user?.identities?.length === 0;
+    if (!data!.session) {
+      const alreadyRegistered = data!.user?.identities?.length === 0;
       setPendingEmail(email);
       if (alreadyRegistered) {
         toast.info(

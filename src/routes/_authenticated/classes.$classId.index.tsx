@@ -6,7 +6,7 @@ import { BookOpen, ChevronDown, Gamepad2, NotebookPen, Timer, Users } from "luci
 
 import { AppHeader } from "@/components/AppHeader";
 import { CoteacherPanel } from "@/components/classes/CoteacherPanel";
-import { ClassBulletinPanel, ClassBulletinPopup } from "@/components/messaging/ClassBulletin";
+import { ClassBulletinBoard, ClassBulletinPanel } from "@/components/messaging/ClassBulletin";
 import { RemoveStudentButton } from "@/components/classes/RemoveStudentButton";
 import { useMyClasses } from "@/components/SectionShell";
 import { Button } from "@/components/ui/button";
@@ -118,7 +118,7 @@ function ClassHome() {
               </>
             ) : (
               <>
-                <ClassBulletinPopup classId={classId} />
+                <ClassBulletinBoard classId={classId} />
               </>
             )}
 

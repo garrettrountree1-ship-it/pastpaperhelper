@@ -483,12 +483,18 @@ function AssignmentList({
             key={assignment.id}
             className="paper flex flex-wrap items-center justify-between gap-4 p-5"
           >
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-xl">{assignment.title}</h2>
                 <Badge variant={statusBadgeVariant[assignment.statusKey]}>
                   {statusLabels[assignment.statusKey]}
                 </Badge>
+                {(assignment as { protectQuestions?: boolean }).protectQuestions ? (
+                  <Badge variant="outline" className="gap-1">
+                    <Lock className="size-3" />
+                    Copying blocked
+                  </Badge>
+                ) : null}
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
                 {assignment.questionCount} questions · {assignment.totalMarks} marks

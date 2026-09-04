@@ -463,15 +463,12 @@ function AssignmentList({
       <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
         <p className="flex items-center gap-2 text-sm font-medium">
           <Lock className="size-4" />
-          Exam-integrity deterrents are always on for homework
+          Exam-integrity protections are always on for homework
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Pasting into an answer box or the tutor chat is fully blocked. Screenshot, snipping-tool
-          and print shortcuts are intercepted while the page has focus, and the questions blur
-          whenever the tab or window loses focus — so most capture attempts get a blurred page. No
-          website can stop the operating system or a phone camera, so treat this as a strong
-          deterrent, not a guarantee. Blocking copying of the question wording is optional per
-          assignment — use the &ldquo;Copying blocked / allowed&rdquo; button on any homework below.
+          Screen capture, snipping tools and pasting into answer or tutor boxes are fully blocked.
+          Copying question text is optional per assignment. A student using a second phone to
+          photograph the screen cannot be prevented by any website.
         </p>
       </div>
 

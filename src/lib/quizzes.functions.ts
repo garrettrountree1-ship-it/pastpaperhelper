@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { cleanMathText } from "@/lib/math-text";
+
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 
@@ -139,8 +141,8 @@ export const createQuiz = createServerFn({ method: "POST" })
       data.questions.map((q, index) => ({
         quiz_id: quiz.id,
         position: index + 1,
-        question_text: q.questionText,
-        mark_scheme: q.markScheme,
+        question_text: cleanMathText(q.questionText),
+        mark_scheme: cleanMathText(q.markScheme),
         marks: q.marks,
         image_paths: q.imagePaths,
       })),

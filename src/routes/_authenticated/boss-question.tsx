@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { cleanMathText } from "@/lib/math-text";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
@@ -116,7 +117,7 @@ function BossQuestionPage() {
             </div>
 
             <section className="paper p-5">
-              <p className="whitespace-pre-wrap text-sm">{round.data.questionText}</p>
+              <p className="whitespace-pre-wrap text-sm">{cleanMathText(round.data.questionText)}</p>
               {round.data.imageUrls.map((url) => (
                 <img key={url} src={url} alt="Question" className="mt-3 w-full rounded-md border" />
               ))}

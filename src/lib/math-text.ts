@@ -90,6 +90,8 @@ function mathToText(input: string): string {
     );
   }
   out = out.replace(/\\sqrt\s*\{([^{}]*)\}/g, "√($1)");
+  // "25^\\circ C" / "25^{\\circ}C" is a degree sign, not a superscript.
+  out = out.replace(/\^\s*\{?\s*\\(?:circ|degree)\s*\}?/g, "°");
 
   for (const [pattern, replacement] of SYMBOLS) out = out.replace(pattern, replacement);
 

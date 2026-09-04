@@ -6,6 +6,7 @@ import { BookOpen, ChevronDown, Gamepad2, NotebookPen, Timer, Users } from "luci
 
 import { AppHeader } from "@/components/AppHeader";
 import { CoteacherPanel } from "@/components/classes/CoteacherPanel";
+import { ClassBulletinPanel, ClassBulletinPopup } from "@/components/messaging/ClassBulletin";
 import { RemoveStudentButton } from "@/components/classes/RemoveStudentButton";
 import { TeacherMessagesPanel } from "@/components/messaging/TeacherMessagesPanel";
 import { useMyClasses } from "@/components/SectionShell";
@@ -114,10 +115,14 @@ function ClassHome() {
               <>
                 <ClassRoster classId={classId} />
                 <CoteacherPanel classId={classId} />
+                <ClassBulletinPanel classId={classId} />
                 <TeacherMessagesPanel classId={classId} role="teacher" />
               </>
             ) : (
-              <TeacherMessagesPanel classId={classId} role="student" />
+              <>
+                <ClassBulletinPopup classId={classId} />
+                <TeacherMessagesPanel classId={classId} role="student" />
+              </>
             )}
 
           </>

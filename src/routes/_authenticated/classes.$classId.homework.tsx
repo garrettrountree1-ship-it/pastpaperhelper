@@ -1891,16 +1891,32 @@ function StudentReport({
             {assignment.questions.map((question) => (
               <details key={question.id} className="rounded-md border border-border bg-background p-3">
                 <summary className="cursor-pointer text-sm">
-                  <span className="font-medium">
-                    Q{questionLabel(question.questionText, question.position - 1)}
-                  </span>{" "}
-                  <span className="text-muted-foreground">
-                    {question.awardedMarks ?? 0}/{question.marks} marks · {question.attempts}{" "}
-                    attempts · {formatDuration(question.timeSpentSeconds)} ·{" "}
-                    {question.tutorPrompts.filter((m) => m.role === "student").length} tutor
-                    questions
+                  <span className="inline-flex w-[calc(100%-1.5rem)] flex-wrap items-center justify-between gap-2 align-middle">
+                    <span className="min-w-0">
+                      <span className="font-medium">
+                        Q{questionLabel(question.questionText, question.position - 1)}
+                      </span>{" "}
+                      <span className="text-muted-foreground">
+                        {question.awardedMarks ?? 0}/{question.marks} marks · {question.attempts}{" "}
+                        attempts · {formatDuration(question.timeSpentSeconds)} ·{" "}
+                        {question.tutorPrompts.filter((m) => m.role === "student").length} tutor
+                        questions
+                      </span>
+                    </span>
+                    <QuestionRowActions
+                      classId={classId}
+                      assignmentId={assignment.assignmentId}
+                      questionId={question.id}
+                      studentId={studentId}
+                      marks={question.marks}
+                      onDone={() => {
+                        report.refetch();
+                        onChanged();
+                      }}
+                    />
                   </span>
                 </summary>
+
 
                 {question.history.length > 0 ? (
                   <div className="mt-3">

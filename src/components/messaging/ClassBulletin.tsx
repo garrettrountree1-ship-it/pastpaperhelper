@@ -239,6 +239,8 @@ export function ClassBulletinPopup({ classId }: { classId: string }) {
   }
 
   if (rows.length === 0) return null;
+  const unseen = seenAt === null ? [] : rows.filter((p) => new Date(p.created_at).getTime() > seenAt);
+
 
   return (
     <>

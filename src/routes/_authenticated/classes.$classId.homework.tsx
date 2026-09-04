@@ -904,10 +904,13 @@ function AssignmentDialog({
                 wording of this homework.
               </p>
               <p className="text-sm font-medium">
-                Always on and not switchable: screenshots, the Windows snipping tool and printing
-                are blocked, questions blur whenever the student leaves the tab, and students can
-                never paste into an answer box or the tutor chat.
+                Always on and not switchable: pasting into an answer box or the tutor chat is fully
+                blocked; screenshot, snipping-tool and print shortcuts are intercepted and the
+                questions blur whenever the tab loses focus. Screenshots taken by the operating
+                system itself (or a phone camera) can&apos;t be stopped by any website, so this is a
+                strong deterrent rather than a guarantee.
               </p>
+
 
 
             </div>

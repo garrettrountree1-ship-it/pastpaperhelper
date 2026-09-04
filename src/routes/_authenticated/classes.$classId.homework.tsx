@@ -578,6 +578,7 @@ function AssignmentDialog({
   const [paperFiles, setPaperFiles] = useState<File[]>([]);
   const [schemeFiles, setSchemeFiles] = useState<File[]>([]);
   const [questions, setQuestions] = useState<QuestionDraft[]>([emptyQuestion()]);
+  const [protectQuestions, setProtectQuestions] = useState(false);
 
   const editing = Boolean(assignmentId);
 
@@ -606,6 +607,7 @@ function AssignmentDialog({
     setSubject(existing.data.subject);
     setInstructions(existing.data.instructions);
     setDueAt(toLocalInput(existing.data.dueAt));
+    setProtectQuestions(Boolean(existing.data.protectQuestions));
     setQuestions(
       existing.data.questions.length > 0
         ? existing.data.questions.map((q) => ({
@@ -660,6 +662,7 @@ function AssignmentDialog({
             subject,
             instructions,
             dueAt: fromLocalInput(dueAt),
+            protectQuestions,
             questions: payloadQuestions,
           },
         });
@@ -671,6 +674,7 @@ function AssignmentDialog({
           subject,
           instructions,
           dueAt: fromLocalInput(dueAt),
+          protectQuestions,
           questions: payloadQuestions.map(({ id: _id, ...rest }) => rest),
         },
       });
@@ -683,6 +687,7 @@ function AssignmentDialog({
         setSubject("");
         setInstructions("");
         setDueAt("");
+        setProtectQuestions(false);
         setPaperFiles([]);
         setSchemeFiles([]);
         setQuestions([emptyQuestion()]);
@@ -753,6 +758,22 @@ function AssignmentDialog({
               <DateTime24Input id="due" value={dueAt} onChange={setDueAt} />
             </div>
 
+          </div>
+
+          <div className="flex items-start justify-between gap-4 rounded-xl border border-border bg-secondary/30 p-4">
+            <div className="space-y-1">
+              <Label htmlFor="protect-questions">Block copying of the questions</Label>
+              <p className="text-sm text-muted-foreground">
+                Students can read the questions but cannot select, copy or right-click the wording
+                of this homework. Pasting into an answer or the tutor chat is always blocked, on
+                every assignment.
+              </p>
+            </div>
+            <Switch
+              id="protect-questions"
+              checked={protectQuestions}
+              onCheckedChange={setProtectQuestions}
+            />
           </div>
 
           <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-4">

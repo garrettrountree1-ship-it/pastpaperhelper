@@ -70,7 +70,7 @@ export async function tutorSettingsForAssignment(
 ): Promise<EffectiveTutorSettings> {
   const { data: assignment } = await db
     .from("assignments")
-    .select("class_id, keyword_translation, vocab_translation, vocab_language")
+    .select("class_id, keyword_translation, vocab_translation, vocab_language, protect_questions")
     .eq("id", assignmentId)
     .maybeSingle();
   if (!assignment?.class_id) {
@@ -116,6 +116,8 @@ export async function tutorSettingsForAssignment(
   return {
     ...base,
     keywordTranslation,
+    // Either switch can lock the question wording down for this homework.
+    protectQuestions: base.protectQuestions || assignment.protect_questions === true,
     // Class switch is the default; a homework can only turn translations further off.
     vocabTranslation: base.vocabTranslation && assignment.vocab_translation !== false,
     vocabLanguage: (assignment.vocab_language as string | null) ?? base.vocabLanguage,

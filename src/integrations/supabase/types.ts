@@ -157,6 +157,7 @@ export type Database = {
           keyword_translation: boolean | null
           mark_scheme_revealed: boolean
           photo_mode: string
+          protect_questions: boolean
           published: boolean
           subject: string
           title: string
@@ -174,6 +175,7 @@ export type Database = {
           keyword_translation?: boolean | null
           mark_scheme_revealed?: boolean
           photo_mode?: string
+          protect_questions?: boolean
           published?: boolean
           subject?: string
           title: string
@@ -191,6 +193,7 @@ export type Database = {
           keyword_translation?: boolean | null
           mark_scheme_revealed?: boolean
           photo_mode?: string
+          protect_questions?: boolean
           published?: boolean
           subject?: string
           title?: string

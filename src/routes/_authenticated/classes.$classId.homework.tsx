@@ -744,31 +744,20 @@ function AssignmentDialog({
 
           </div>
 
-          <div className="flex items-start justify-between gap-4 rounded-xl border border-border bg-secondary/30 p-4">
+          <div className="rounded-xl border border-border bg-secondary/30 p-4">
             <div className="space-y-1">
-              <Label htmlFor="protect-questions">
-                Block copying of the questions (optional)
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                When on, students can read the questions but cannot select, copy or right-click the
-                wording of this homework.
-              </p>
               <p className="text-sm font-medium">
-                Always on and not switchable: pasting into an answer box or the tutor chat is fully
-                blocked; screenshot, snipping-tool and print shortcuts are intercepted and the
-                questions blur whenever the tab loses focus. Screenshots taken by the operating
-                system itself (or a phone camera) can&apos;t be stopped by any website, so this is a
-                strong deterrent rather than a guarantee.
+                Copying the questions is blocked
               </p>
-
-
-
+              <p className="text-sm text-muted-foreground">
+                Students can read the questions but cannot select, copy or right-click the wording
+                of this homework. Pasting into an answer box or the tutor chat is also fully blocked;
+                screenshot, snipping-tool and print shortcuts are intercepted and the questions blur
+                whenever the tab loses focus. Screenshots taken by the operating system itself (or
+                a phone camera) can&apos;t be stopped by any website, so this is a strong deterrent
+                rather than a guarantee.
+              </p>
             </div>
-            <Switch
-              id="protect-questions"
-              checked={protectQuestions}
-              onCheckedChange={setProtectQuestions}
-            />
           </div>
 
           <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-4">

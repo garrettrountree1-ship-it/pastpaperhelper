@@ -32,6 +32,7 @@ export function TeacherMessagesPanel({
   const reply = useServerFn(replyToStudent);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [open, setOpen] = useState(false);
+  const [openThreads, setOpenThreads] = useState<Record<string, boolean>>({});
   const [seenAt, setSeenAt] = useState(0);
   const seenKey = `class-messages-seen:${classId}:${role}`;
 

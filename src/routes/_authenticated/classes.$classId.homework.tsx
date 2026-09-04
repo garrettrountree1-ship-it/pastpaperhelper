@@ -15,7 +15,7 @@ import {
   type AssignmentStatusKey,
 } from "@/lib/assignment-status";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
   ChevronDown,
@@ -26,10 +26,8 @@ import {
   LockOpen,
   Pencil,
   Plus,
-  RefreshCw,
   ListChecks,
   CalendarClock,
-  Settings,
   Trash2,
   Unlock,
   Wand2,
@@ -77,7 +75,6 @@ import {
   creditQuestionForAll,
   deleteAssignment,
   setAssignmentArchived,
-  deleteClass,
   removeStudentFromClass,
 
   deleteQuestion,
@@ -227,11 +224,6 @@ function ClassPageContent({ classId }: { classId: string }) {
             onSaved={() => overview.refetch()}
           />
           <TutorSettingsDialog classId={classId} />
-          <ClassSettingsDialog
-            classId={classId}
-            klass={data.klass}
-            onSaved={() => overview.refetch()}
-          />
           <AssignmentDialog classId={classId} trigger={<Button>New assignment</Button>} />
         </div>
       </div>
@@ -1500,163 +1492,6 @@ function AiWarningLimitDialog({
   );
 }
 
-function ClassSettingsDialog({
-
-  classId,
-  klass,
-  onSaved,
-}: {
-  classId: string;
-  klass: { name: string; curriculum: string; subject: string; join_code: string };
-  onSaved: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState(klass.name);
-  const [curriculum, setCurriculum] = useState(klass.curriculum);
-  const [subject, setSubject] = useState(klass.subject);
-  const [joinCode, setJoinCode] = useState(klass.join_code);
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const save = useServerFn(updateClass);
-  const deleteClassFn = useServerFn(deleteClass);
-
-
-  useEffect(() => {
-    if (!open) return;
-    setName(klass.name);
-    setCurriculum(klass.curriculum);
-    setSubject(klass.subject);
-    setJoinCode(klass.join_code);
-  }, [open, klass.name, klass.curriculum, klass.subject, klass.join_code]);
-
-  const mutation = useMutation({
-    mutationFn: (input: { regenerate?: boolean }) =>
-      save({
-        data: {
-          classId,
-          name: name.trim(),
-          curriculum: curriculum.trim(),
-          subject: subject.trim(),
-          ...(input.regenerate
-            ? { regenerateJoinCode: true }
-            : joinCode.trim().toUpperCase() !== klass.join_code
-              ? { joinCode: joinCode.trim() }
-              : {}),
-        },
-      }),
-    onSuccess: (updated) => {
-      setJoinCode(updated.join_code);
-      queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });
-      queryClient.invalidateQueries({ queryKey: ["teacher-classes"] });
-      onSaved();
-      toast.success("Class updated");
-      setOpen(false);
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: () => deleteClassFn({ data: { classId } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["teacher-classes"] });
-      toast.success("Class deleted");
-      setOpen(false);
-      navigate({ to: "/dashboard" });
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline">
-          <Settings className="size-4" />
-          Class settings
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Class settings</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="class-name">Class name</Label>
-            <Input id="class-name" value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="class-curriculum">Curriculum</Label>
-              <Input
-                id="class-curriculum"
-                value={curriculum}
-                onChange={(e) => setCurriculum(e.target.value)}
-                placeholder="Add text here"
-              />
-            </div>
-            <div>
-              <Label htmlFor="class-subject">Subject</Label>
-              <Input
-                id="class-subject"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-              />
-            </div>
-          </div>
-          <div>
-            <Label htmlFor="class-code">Join code</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="class-code"
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                className="font-mono uppercase"
-                maxLength={10}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                disabled={mutation.isPending}
-                onClick={() => mutation.mutate({ regenerate: true })}
-              >
-                <RefreshCw className="size-4" />
-                New code
-              </Button>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Changing the code stops the old one from working — share the new code with students.
-            </p>
-          </div>
-        </div>
-        <DialogFooter className="sm:justify-between">
-          <Button
-            variant="destructive"
-            disabled={deleteMutation.isPending}
-            onClick={() => {
-              if (
-                window.confirm(
-                  "Delete this class? All its assignments, student work and messages will be permanently removed.",
-                )
-              ) {
-                deleteMutation.mutate();
-              }
-            }}
-          >
-            <Trash2 className="size-4" />
-            {deleteMutation.isPending ? "Deleting…" : "Delete class"}
-          </Button>
-          <Button
-            disabled={mutation.isPending || name.trim().length === 0 || joinCode.trim().length < 4}
-            onClick={() => mutation.mutate({})}
-          >
-            {mutation.isPending ? "Saving…" : "Save changes"}
-          </Button>
-        </DialogFooter>
-
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 type GradebookStudent = {
   id: string;

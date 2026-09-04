@@ -50,7 +50,6 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
       classId: string;
       tutorLanguage?: string;
       tutorLevel?: string;
-      protectQuestions?: boolean;
       keywordTranslation?: boolean;
       studentCanChangeLevel?: boolean;
       vocabTranslation?: boolean;

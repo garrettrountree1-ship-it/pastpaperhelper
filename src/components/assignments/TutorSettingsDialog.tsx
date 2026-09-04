@@ -266,7 +266,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
                     >
                       <div className="min-w-0">
                         <p className="truncate font-medium">{student.name}</p>
-                        <p className="truncate text-xs text-muted-foreground">{student.email}</p>
+                        
                       </div>
 
                       <Select

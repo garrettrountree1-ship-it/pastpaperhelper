@@ -10,6 +10,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lovable } from "@/integrations/lovable/index";
 import { emailLinkOrigin } from "@/lib/app-origin";
+import {
+  NETWORK_AUTH_MESSAGE,
+  describeAuthError,
+  isNetworkAuthError,
+  withAuthRetry,
+} from "@/lib/auth-errors";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth")({
@@ -44,6 +50,7 @@ function AuthPage() {
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<"student" | "teacher">("student");
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [networkIssue, setNetworkIssue] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -54,9 +61,25 @@ function AuthPage() {
   async function handleSignIn(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    let error: { message: string } | null = null;
+    try {
+      ({ error } = await withAuthRetry(() =>
+        supabase.auth.signInWithPassword({ email, password }),
+      ));
+    } catch (thrown) {
+      setBusy(false);
+      setNetworkIssue(isNetworkAuthError(thrown));
+      toast.error(describeAuthError(thrown));
+      return;
+    }
     if (error) {
       setBusy(false);
+      if (isNetworkAuthError(error)) {
+        setNetworkIssue(true);
+        toast.error(NETWORK_AUTH_MESSAGE);
+        return;
+      }
+      setNetworkIssue(false);
       if (/not confirmed/i.test(error.message)) {
         setPendingEmail(email);
         toast.error(
@@ -67,6 +90,7 @@ function AuthPage() {
       toast.error(error.message);
       return;
     }
+    setNetworkIssue(false);
 
     // Wait until the session is readable so the auth gate can't bounce us back.
     for (let i = 0; i < 20; i += 1) {
@@ -79,24 +103,38 @@ function AuthPage() {
   }
 
 
+
   async function handleSignUp(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: emailLinkOrigin(),
-        data: { full_name: fullName, role },
-      },
-    });
-    setBusy(false);
-    if (error) {
-      toast.error(error.message);
+    let data: Awaited<ReturnType<typeof supabase.auth.signUp>>["data"];
+    let error: { message: string } | null = null;
+    try {
+      ({ data, error } = await withAuthRetry(() =>
+        supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: emailLinkOrigin(),
+            data: { full_name: fullName, role },
+          },
+        }),
+      ));
+    } catch (thrown) {
+      setBusy(false);
+      setNetworkIssue(isNetworkAuthError(thrown));
+      toast.error(describeAuthError(thrown));
       return;
     }
-    if (!data.session) {
-      const alreadyRegistered = data.user?.identities?.length === 0;
+    setBusy(false);
+    if (error) {
+      setNetworkIssue(isNetworkAuthError(error));
+      toast.error(describeAuthError(error, error.message));
+      return;
+    }
+
+    if (!data!.session) {
+      const alreadyRegistered = data!.user?.identities?.length === 0;
       setPendingEmail(email);
       if (alreadyRegistered) {
         toast.info(
@@ -119,12 +157,23 @@ function AuthPage() {
       return;
     }
     setBusy(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${emailLinkOrigin()}/reset-password`,
-    });
+    let error: { message: string } | null = null;
+    try {
+      ({ error } = await withAuthRetry(() =>
+        supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${emailLinkOrigin()}/reset-password`,
+        }),
+      ));
+    } catch (thrown) {
+      setBusy(false);
+      setNetworkIssue(isNetworkAuthError(thrown));
+      toast.error(describeAuthError(thrown));
+      return;
+    }
     setBusy(false);
     if (error) {
-      toast.error(error.message);
+      setNetworkIssue(isNetworkAuthError(error));
+      toast.error(describeAuthError(error, error.message));
       return;
     }
     toast.success("Password reset link sent — check your inbox and spam folder.");
@@ -137,14 +186,25 @@ function AuthPage() {
       return;
     }
     setBusy(true);
-    const { error } = await supabase.auth.resend({
-      type: "signup",
-      email: target,
-      options: { emailRedirectTo: emailLinkOrigin() },
-    });
+    let error: { message: string } | null = null;
+    try {
+      ({ error } = await withAuthRetry(() =>
+        supabase.auth.resend({
+          type: "signup",
+          email: target,
+          options: { emailRedirectTo: emailLinkOrigin() },
+        }),
+      ));
+    } catch (thrown) {
+      setBusy(false);
+      setNetworkIssue(isNetworkAuthError(thrown));
+      toast.error(describeAuthError(thrown));
+      return;
+    }
     setBusy(false);
     if (error) {
-      toast.error(error.message);
+      setNetworkIssue(isNetworkAuthError(error));
+      toast.error(describeAuthError(error, error.message));
       return;
     }
     toast.success("Verification email sent again — check your inbox and spam folder.");
@@ -190,6 +250,17 @@ function AuthPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Teachers set the homework. Students work through it with a tutor beside them.
           </p>
+
+          {networkIssue ? (
+            <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm">
+              <p className="font-medium">Can’t reach the login service</p>
+              <p className="mt-1 text-muted-foreground">
+                Your email and password are fine — the request never left your device or network.
+                Try mobile data instead of school Wi-Fi, switch a VPN or proxy off (or on, if your
+                network filters traffic), then sign in again.
+              </p>
+            </div>
+          ) : null}
 
           {pendingEmail ? (
             <div className="mt-4 rounded-lg border border-primary/40 bg-primary/5 p-3 text-sm">

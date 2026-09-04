@@ -20,6 +20,7 @@ import {
   Download,
   Eye,
   Lock,
+  LockOpen,
   Pencil,
   Plus,
   RefreshCw,
@@ -77,6 +78,7 @@ import {
   deleteQuestion,
   getAssignmentQuestionControls,
   setQuestionPhotoMode,
+  setQuestionProtection,
   setQuestionExclusion,
   extractPaperQuestions,
   getAssignmentForEdit,
@@ -496,7 +498,7 @@ function AssignmentList({
                   : ""}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <Badge variant="secondary">{assignment.submittedCount} submitted</Badge>
               <Button variant="outline" size="sm" asChild>
                 <Link
@@ -529,7 +531,13 @@ function AssignmentList({
                   </Button>
                 }
               />
-              <CopyProtectionDialog classId={classId} assignmentId={assignment.id} />
+              <CopyProtectionDialog
+                classId={classId}
+                assignmentId={assignment.id}
+                protectQuestions={Boolean(
+                  (assignment as { protectQuestions?: boolean }).protectQuestions,
+                )}
+              />
               <LanguageSettingsDialog
                 classId={classId}
                 assignmentId={assignment.id}

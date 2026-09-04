@@ -247,7 +247,7 @@ function ClassPageContent({ classId }: { classId: string }) {
         <TabsList>
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
           <TabsTrigger value="gradebook">Gradebook</TabsTrigger>
-          <TabsTrigger value="students">Students</TabsTrigger>
+          
           <TabsTrigger value="bulletin">Bulletin &amp; Messages</TabsTrigger>
         </TabsList>
 
@@ -265,6 +265,8 @@ function ClassPageContent({ classId }: { classId: string }) {
         </TabsContent>
 
         <TabsContent value="gradebook" className="mt-4">
+          <DemoStudentSeeder classId={classId} onSeeded={() => overview.refetch()} />
+
           {data.students.length === 0 ? (
             <div className="paper p-8 text-center text-muted-foreground">
               No students have joined yet.
@@ -362,34 +364,6 @@ function ClassPageContent({ classId }: { classId: string }) {
           )}
         </TabsContent>
 
-        <TabsContent value="students" className="mt-4">
-          <DemoStudentSeeder classId={classId} onSeeded={() => overview.refetch()} />
-          <div className="paper divide-y divide-border">
-            {data.students.length === 0 ? (
-              <p className="p-6 text-center text-muted-foreground">
-                Share the join code so students can add themselves.
-              </p>
-            ) : (
-              data.students.map((student) => (
-                <div
-                  key={student.id}
-                  className="flex flex-wrap items-center justify-between gap-3 p-4"
-                >
-                  <span>{student.name}</span>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-muted-foreground">{student.email}</span>
-                    <RemoveStudentButton
-                      classId={classId}
-                      studentId={student.id}
-                      studentName={student.name || student.email}
-                      onRemoved={() => overview.refetch()}
-                    />
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </TabsContent>
       </Tabs>
     </div>
   );
@@ -1459,52 +1433,6 @@ function DemoStudentSeeder({ classId, onSeeded }: { classId: string; onSeeded: (
   );
 }
 
-function RemoveStudentButton({
-
-  classId,
-  studentId,
-  studentName,
-  onRemoved,
-}: {
-  classId: string;
-  studentId: string;
-  studentName: string;
-  onRemoved: () => void;
-}) {
-  const queryClient = useQueryClient();
-  const remove = useServerFn(removeStudentFromClass);
-  const mutation = useMutation({
-    mutationFn: () => remove({ data: { classId, studentId } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });
-      queryClient.invalidateQueries({ queryKey: ["teacher-classes"] });
-      onRemoved();
-      toast.success("Student removed");
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="text-destructive"
-      disabled={mutation.isPending}
-      onClick={() => {
-        if (
-          window.confirm(
-            `Remove ${studentName} from this class? Their submissions and work for this class will be deleted.`,
-          )
-        ) {
-          mutation.mutate();
-        }
-      }}
-    >
-      <Trash2 className="size-4" />
-      {mutation.isPending ? "Removing…" : "Remove"}
-    </Button>
-  );
-}
 
 function AiWarningLimitDialog({
   classId,

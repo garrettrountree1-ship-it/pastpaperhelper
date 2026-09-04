@@ -266,6 +266,33 @@ export const removeStudentFromClass = createServerFn({ method: "POST" })
       .eq("class_id", data.classId)
       .eq("student_id", data.studentId);
     if (error) throw new Error(error.message);
+
+    // Purge the student from the rest of the platform too.
+    const { data: quizAttempts } = await supabaseAdmin
+      .from("quiz_attempts")
+      .select("id")
+      .eq("student_id", data.studentId);
+    const attemptIds = (quizAttempts ?? []).map((a) => a.id);
+    if (attemptIds.length > 0) {
+      await supabaseAdmin.from("quiz_answers").delete().in("attempt_id", attemptIds);
+      await supabaseAdmin.from("quiz_attempts").delete().in("id", attemptIds);
+    }
+    await supabaseAdmin.from("game_attempts").delete().eq("student_id", data.studentId);
+    await supabaseAdmin.from("game_rounds").delete().eq("student_id", data.studentId);
+    await supabaseAdmin.from("game_profiles").delete().eq("student_id", data.studentId);
+    await supabaseAdmin.from("daily_doubles").delete().eq("student_id", data.studentId);
+    await supabaseAdmin.from("token_ledger").delete().eq("student_id", data.studentId);
+    await supabaseAdmin.from("formative_responses").delete().eq("student_id", data.studentId);
+    await supabaseAdmin.from("question_exclusions").delete().eq("student_id", data.studentId);
+    await supabaseAdmin.from("class_student_settings").delete().eq("student_id", data.studentId);
+    await supabaseAdmin.from("activity_events").delete().eq("user_id", data.studentId);
+    await supabaseAdmin.from("support_messages").delete().eq("user_id", data.studentId);
+    await supabaseAdmin.from("class_messages").delete().eq("student_id", data.studentId);
+    await supabaseAdmin.from("class_members").delete().eq("student_id", data.studentId);
+    await supabaseAdmin.from("user_roles").delete().eq("user_id", data.studentId);
+    await supabaseAdmin.from("profiles").delete().eq("id", data.studentId);
+    await supabaseAdmin.auth.admin.deleteUser(data.studentId).catch(() => undefined);
+
     return { ok: true };
   });
 

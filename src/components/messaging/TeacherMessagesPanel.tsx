@@ -115,9 +115,31 @@ export function TeacherMessagesPanel({
               {studentIds.map((studentId) => {
                 const thread = rows.filter((m) => m.student_id === studentId);
                 const name = thread[0]?.studentName ?? "Student";
+                const threadOpen = openThreads[studentId] ?? false;
                 return (
                   <div key={studentId} className="rounded-lg border border-border p-3">
-                    {role === "teacher" ? <p className="font-medium">{name}</p> : null}
+                    <button
+                      type="button"
+                      aria-expanded={threadOpen}
+                      onClick={() =>
+                        setOpenThreads((prev) => ({ ...prev, [studentId]: !threadOpen }))
+                      }
+                      className="flex w-full items-center gap-2 text-left"
+                    >
+                      {threadOpen ? (
+                        <ChevronDown className="size-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="size-4 text-muted-foreground" />
+                      )}
+                      <span className="font-medium">
+                        {role === "teacher" ? name : "Your teacher"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        · {thread.length} {thread.length === 1 ? "message" : "messages"}
+                      </span>
+                    </button>
+                    {threadOpen ? (
+                      <>
                     <div className="mt-2 space-y-2">
                       {thread.map((m) => (
                         <div
@@ -163,6 +185,8 @@ export function TeacherMessagesPanel({
                           Reply
                         </Button>
                       </div>
+                    ) : null}
+                      </>
                     ) : null}
                   </div>
                 );

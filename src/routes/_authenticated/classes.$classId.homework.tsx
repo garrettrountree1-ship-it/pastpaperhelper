@@ -654,24 +654,30 @@ function CopyProtectionDialog({
           </div>
           <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
             <p className="text-sm font-medium">
-              Always on, on every homework: screenshots, snipping tool and pasting
+              Always on, on every homework — what it actually does
             </p>
             <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-              <li>Screenshot keys, Windows snipping tool shortcuts and printing are blocked.</li>
               <li>
-                Questions are blurred and hidden the moment the student leaves the tab or the window
-                loses focus, so capture and screen-share tools get a blank page.
+                Pasting into an answer box or the tutor chat is fully blocked, flagged and rejected.
               </li>
               <li>
-                Students can never paste text into an answer box or the tutor chat — pasting is
-                flagged and rejected.
+                Screenshot, snipping-tool and print keyboard shortcuts are intercepted while the
+                homework page has focus, and the questions blur for a moment afterwards.
+              </li>
+              <li>
+                The questions blur whenever the tab or window loses focus, so a snipping tool or
+                screen-share opened over the page captures a blurred page.
               </li>
             </ul>
             <p className="mt-2 text-xs text-muted-foreground">
-              These cannot be switched off. Only copying of the question wording (above) is
-              optional.
+              Honest limit: screenshots are taken by the operating system, not the web page, so no
+              website can block Print Screen from the Start menu, a phone photo of the screen, or a
+              recording app. This is a strong deterrent, not a guarantee — for a hard block you need
+              a locked-down exam browser or supervised devices. Only copying of the question wording
+              (above) is optional.
             </p>
           </div>
+
         </div>
       </DialogContent>
     </Dialog>

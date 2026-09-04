@@ -116,8 +116,8 @@ export async function tutorSettingsForAssignment(
   return {
     ...base,
     keywordTranslation,
-    // Either switch can lock the question wording down for this homework.
-    protectQuestions: base.protectQuestions || assignment.protect_questions === true,
+    // Copying question wording is always blocked on the student homework portal.
+    protectQuestions: true,
     // Class switch is the default; a homework can only turn translations further off.
     vocabTranslation: base.vocabTranslation && assignment.vocab_translation !== false,
     vocabLanguage: (assignment.vocab_language as string | null) ?? base.vocabLanguage,

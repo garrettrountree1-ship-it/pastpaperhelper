@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { TutorText } from "@/lib/tutor-text";
 import { askLessonTutor } from "@/lib/notes.functions";
 
 type Turn = { role: "user" | "assistant"; content: string };

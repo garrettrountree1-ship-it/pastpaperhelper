@@ -1220,7 +1220,6 @@ function QuestionControlsDialog({
                         </Button>
                         <Button
 
-                        <Button
                           variant="outline"
                           size="sm"
                           onClick={() =>

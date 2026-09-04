@@ -116,6 +116,8 @@ export function useContentProtection(
       document.removeEventListener("contextmenu", block);
       document.removeEventListener("dragstart", block);
       document.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", onKeyDownCapture, true);
+      document.removeEventListener("keyup", onKeyUp, true);
       window.removeEventListener("blur", conceal);
       window.removeEventListener("focus", reveal);
       document.removeEventListener("visibilitychange", onVisibility);

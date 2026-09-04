@@ -20,6 +20,28 @@ function isEditable(target: EventTarget | null) {
   );
 }
 
+/** A DOM-level mask painted synchronously, before React can re-render. */
+const OVERLAY_ID = "pph-capture-mask";
+function showOverlay() {
+  if (typeof document === "undefined") return;
+  let el = document.getElementById(OVERLAY_ID);
+  if (!el) {
+    el = document.createElement("div");
+    el.id = OVERLAY_ID;
+    el.setAttribute("aria-hidden", "true");
+    el.style.cssText =
+      "position:fixed;inset:0;z-index:2147483647;background:#111;color:#fff;display:flex;" +
+      "align-items:center;justify-content:center;font:600 16px/1.4 system-ui,sans-serif;" +
+      "text-align:center;padding:24px;";
+    el.textContent = "Screen capture is not allowed on homework.";
+    document.body.appendChild(el);
+  }
+  el.style.display = "flex";
+}
+function hideOverlay() {
+  document.getElementById(OVERLAY_ID)?.remove();
+}
+
 export function useContentProtection(
   options: boolean | { blockCopy?: boolean; blockCapture?: boolean } = {},
 ) {
@@ -40,7 +62,10 @@ export function useContentProtection(
     };
 
     const conceal = () => setHidden(true);
-    const reveal = () => setHidden(false);
+    const reveal = () => {
+      hideOverlay();
+      setHidden(false);
+    };
     const onVisibility = () => (document.hidden ? conceal() : reveal());
 
     /** Print Screen copies the screen at the OS level, so the best we can do is
@@ -55,18 +80,26 @@ export function useContentProtection(
         /* clipboard permission denied — nothing else we can do */
       }
     };
+    let revealTimer = 0;
     const onCapture = () => {
+      // Paint the mask synchronously — a React re-render is one frame too slow.
+      showOverlay();
       setHidden(true);
-      scrubClipboard();
-      window.setTimeout(scrubClipboard, 150);
-      window.setTimeout(() => setHidden(false), 1500);
+      for (const delay of [0, 60, 200, 500, 1200, 2500]) {
+        window.setTimeout(scrubClipboard, delay);
+      }
+      window.clearTimeout(revealTimer);
+      revealTimer = window.setTimeout(reveal, 2500);
     };
 
     const isPrintScreen = (event: KeyboardEvent) =>
       event.key === "PrintScreen" ||
       event.code === "PrintScreen" ||
       event.keyCode === 44 ||
-      event.key === "F13";
+      event.key === "F13" ||
+      // Some keyboards/layouts report the key with no name at all.
+      event.code === "F13" ||
+      event.code === "Snapshot";
 
     const onKey = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
@@ -80,8 +113,7 @@ export function useContentProtection(
 
       if ((blockCapture && captureCombo) || (blockCopy && copyCombo)) {
         event.preventDefault();
-        setHidden(true);
-        window.setTimeout(() => setHidden(false), 1200);
+        onCapture();
       }
     };
 
@@ -89,10 +121,22 @@ export function useContentProtection(
     const onKeyUp = (event: KeyboardEvent) => {
       if (blockCapture && isPrintScreen(event)) onCapture();
     };
-    // Some setups only fire keydown; blank pre-emptively there too.
+    // Fires before React can render: mask via direct DOM in the capture phase.
     const onKeyDownCapture = (event: KeyboardEvent) => {
-      if (blockCapture && isPrintScreen(event)) onCapture();
+      if (!blockCapture) return;
+      // Pre-emptively mask as soon as the Windows key or Print Screen is touched.
+      if (isPrintScreen(event) || event.key === "Meta" || event.getModifierState?.("Meta")) {
+        onCapture();
+      }
     };
+    // Capture overlays (snipping tool, screen recorders) can steal focus without
+    // firing blur, so poll for it as a backstop.
+    const focusPoll = blockCapture
+      ? window.setInterval(() => {
+          if (!document.hasFocus()) conceal();
+        }, 200)
+      : 0;
+
 
     if (blockCopy) {
       document.addEventListener("copy", block);
@@ -121,6 +165,9 @@ export function useContentProtection(
       window.removeEventListener("blur", conceal);
       window.removeEventListener("focus", reveal);
       document.removeEventListener("visibilitychange", onVisibility);
+      window.clearInterval(focusPoll);
+      window.clearTimeout(revealTimer);
+      hideOverlay();
     };
   }, [blockCopy, blockCapture]);
 

@@ -487,6 +487,32 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
     };
   });
 
+/** Toggle question copy-protection for one assignment without resending the whole form. */
+export const setQuestionProtection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        assignmentId: z.string().uuid(),
+        protectQuestions: z.boolean(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: canTeach } = await supabase.rpc("can_teach_assignment", {
+      _assignment_id: data.assignmentId,
+      _user_id: userId,
+    });
+    if (!canTeach) throw new Error("You do not teach this assignment.");
+    const { error } = await supabase
+      .from("assignments")
+      .update({ protect_questions: data.protectQuestions })
+      .eq("id", data.assignmentId);
+    if (error) throw new Error(error.message);
+    return { ok: true, protectQuestions: data.protectQuestions };
+  });
+
 export const updateAssignment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
@@ -648,7 +674,7 @@ export const getClassOverview = createServerFn({ method: "POST" })
       db.from("class_members").select("student_id, joined_at").eq("class_id", data.classId),
       db
         .from("assignments")
-        .select("id, title, subject, due_at, created_at")
+        .select("id, title, subject, due_at, created_at, protect_questions")
         .eq("class_id", data.classId)
         .order("created_at", { ascending: false }),
     ]);
@@ -723,6 +749,9 @@ export const getClassOverview = createServerFn({ method: "POST" })
         ).length,
         pastDue,
         behindCount,
+        protectQuestions: Boolean(
+          (a as { protect_questions?: boolean | null }).protect_questions,
+        ),
         /** Live scores: grades update as students work; the deadline only freezes them. */
         resultsReleased: true,
       };

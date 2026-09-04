@@ -270,12 +270,7 @@ export function ClassBulletinPopup({ classId }: { classId: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <div className="mt-6 flex justify-end">
-        <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-          <Megaphone className="mr-2 size-4" />
-          Class bulletin ({rows.length})
-        </Button>
-      </div>
     </>
+
   );
 }

@@ -1070,37 +1070,14 @@ function QuestionControlsDialog({
 }) {
   const [open, setOpen] = useState(Boolean(asPanel));
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [marking, setMarking] = useState<string | null>(null);
-  const [markSelected, setMarkSelected] = useState<string[]>([]);
-  const [markNote, setMarkNote] = useState("");
   const queryClient = useQueryClient();
   const load = useServerFn(getAssignmentQuestionControls);
   const credit = useServerFn(creditQuestionForAll);
   const remove = useServerFn(deleteQuestion);
   const exclude = useServerFn(setQuestionExclusion);
   const savePhotoMode = useServerFn(setQuestionPhotoMode);
-  const bulkGrade = useServerFn(bulkGradeQuestion);
 
-  const overrideMarking = useMutation({
-    mutationFn: (vars: {
-      questionId: string;
-      action: "credit" | "incorrect" | "reject";
-      studentIds: string[];
-      note?: string | undefined;
-    }) => bulkGrade({ data: { assignmentId, ...vars } }),
-    onSuccess: (result, vars) => {
-      toast.success(
-        vars.action === "credit"
-          ? `Full marks given to ${result.changed} student(s)`
-          : vars.action === "incorrect"
-            ? `Marked incorrect for ${result.changed} student(s)`
-            : `Sent back to ${result.changed} student(s) to redo`,
-      );
-      setMarkNote("");
-      refresh();
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
+
 
   const questionPhotoMode = useMutation({
     mutationFn: (vars: { questionId: string; photoMode: PhotoMode }) =>
@@ -1219,19 +1196,7 @@ function QuestionControlsDialog({
                           Credit all students
                         </Button>
                         <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setMarking((current) =>
-                              current === question.id ? null : question.id,
-                            );
-                            setMarkSelected([]);
-                            setMarkNote("");
-                          }}
-                        >
-                          {marking === question.id ? "Hide override" : "Override marking"}
-                        </Button>
-                        <Button
+
                           variant="outline"
                           size="sm"
                           onClick={() =>
@@ -1278,99 +1243,8 @@ function QuestionControlsDialog({
                       </div>
                     </div>
 
-                    {marking === question.id ? (
-                      <div className="mt-4 space-y-3 border-t border-border pt-3">
-                        <p className="text-xs text-muted-foreground">
-                          Override the AI marking for this question. Pick students, or leave none
-                          selected to apply to the whole class.
-                        </p>
-                        {controls.data.students.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">
-                            No students have joined this class yet.
-                          </p>
-                        ) : (
-                          <div className="flex flex-wrap gap-2">
-                            {controls.data.students.map((student) => {
-                              const picked = markSelected.includes(student.id);
-                              return (
-                                <Button
-                                  key={student.id}
-                                  type="button"
-                                  size="sm"
-                                  variant={picked ? "default" : "outline"}
-                                  onClick={() =>
-                                    setMarkSelected((current) =>
-                                      current.includes(student.id)
-                                        ? current.filter((id) => id !== student.id)
-                                        : [...current, student.id],
-                                    )
-                                  }
-                                >
-                                  {student.name}
-                                </Button>
-                              );
-                            })}
-                          </div>
-                        )}
-                        <Input
-                          value={markNote}
-                          maxLength={600}
-                          placeholder="Optional note for the student (shown as feedback)"
-                          onChange={(event) => setMarkNote(event.target.value)}
-                        />
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            disabled={overrideMarking.isPending}
-                            onClick={() =>
-                              overrideMarking.mutate({
-                                questionId: question.id,
-                                action: "credit",
-                                studentIds: markSelected,
-                                note: markNote.trim() || undefined,
-                              })
-                            }
-                          >
-                            Give full marks ({question.marks})
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={overrideMarking.isPending}
-                            onClick={() =>
-                              overrideMarking.mutate({
-                                questionId: question.id,
-                                action: "incorrect",
-                                studentIds: markSelected,
-                                note: markNote.trim() || undefined,
-                              })
-                            }
-                          >
-                            Mark incorrect (0)
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            disabled={overrideMarking.isPending}
-                            onClick={() =>
-                              overrideMarking.mutate({
-                                questionId: question.id,
-                                action: "reject",
-                                studentIds: markSelected,
-                                note: markNote.trim() || undefined,
-                              })
-                            }
-                          >
-                            Reject &amp; send back to redo
-                          </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {markSelected.length === 0
-                            ? "Applies to every student in the class."
-                            : `Applies to ${markSelected.length} selected student(s).`}
-                        </p>
-                      </div>
-                    ) : null}
+
+
 
                     {expanded === question.id ? (
                       <div className="mt-4 space-y-2 border-t border-border pt-3">
@@ -1947,6 +1821,91 @@ function GradebookRow({
   );
 }
 
+/**
+ * Per-question teacher overrides for one student, shown on the question bar
+ * inside that student's detailed report.
+ */
+function QuestionRowActions({
+  classId,
+  assignmentId,
+  questionId,
+  studentId,
+  marks,
+  onDone,
+}: {
+  classId: string;
+  assignmentId: string;
+  questionId: string;
+  studentId: string;
+  marks: number;
+  onDone: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const bulkGrade = useServerFn(bulkGradeQuestion);
+  const exclude = useServerFn(setQuestionExclusion);
+  const [unassigned, setUnassigned] = useState(false);
+
+  function done() {
+    queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });
+    onDone();
+  }
+
+  const grade = useMutation({
+    mutationFn: (action: "credit" | "reject") =>
+      bulkGrade({ data: { assignmentId, questionId, action, studentIds: [studentId] } }),
+    onSuccess: (_result, action) => {
+      toast.success(
+        action === "credit" ? `Full marks (${marks}) given` : "Sent back to the student to redo",
+      );
+      done();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const unassign = useMutation({
+    mutationFn: (next: boolean) =>
+      exclude({ data: { questionId, studentId, excluded: next } }),
+    onSuccess: (_result, next) => {
+      setUnassigned(next);
+      toast.success(next ? "Question unassigned for this student" : "Question reassigned");
+      done();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const busy = grade.isPending || unassign.isPending;
+
+  return (
+    <span
+      className="flex shrink-0 flex-wrap gap-1"
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+    >
+      <Button size="sm" variant="outline" disabled={busy} onClick={() => grade.mutate("credit")}>
+        Credit
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={busy}
+        onClick={() => grade.mutate("reject")}
+      >
+        Reject answer
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={busy}
+        onClick={() => unassign.mutate(!unassigned)}
+      >
+        {unassigned ? "Reassign question" : "Unassign question"}
+      </Button>
+    </span>
+  );
+}
+
 function StudentReport({
   classId,
   studentId,
@@ -2017,16 +1976,32 @@ function StudentReport({
             {assignment.questions.map((question) => (
               <details key={question.id} className="rounded-md border border-border bg-background p-3">
                 <summary className="cursor-pointer text-sm">
-                  <span className="font-medium">
-                    Q{questionLabel(question.questionText, question.position - 1)}
-                  </span>{" "}
-                  <span className="text-muted-foreground">
-                    {question.awardedMarks ?? 0}/{question.marks} marks · {question.attempts}{" "}
-                    attempts · {formatDuration(question.timeSpentSeconds)} ·{" "}
-                    {question.tutorPrompts.filter((m) => m.role === "student").length} tutor
-                    questions
+                  <span className="inline-flex w-[calc(100%-1.5rem)] flex-wrap items-center justify-between gap-2 align-middle">
+                    <span className="min-w-0">
+                      <span className="font-medium">
+                        Q{questionLabel(question.questionText, question.position - 1)}
+                      </span>{" "}
+                      <span className="text-muted-foreground">
+                        {question.awardedMarks ?? 0}/{question.marks} marks · {question.attempts}{" "}
+                        attempts · {formatDuration(question.timeSpentSeconds)} ·{" "}
+                        {question.tutorPrompts.filter((m) => m.role === "student").length} tutor
+                        questions
+                      </span>
+                    </span>
+                    <QuestionRowActions
+                      classId={classId}
+                      assignmentId={assignment.assignmentId}
+                      questionId={question.id}
+                      studentId={studentId}
+                      marks={question.marks}
+                      onDone={() => {
+                        report.refetch();
+                        onChanged();
+                      }}
+                    />
                   </span>
                 </summary>
+
 
                 {question.history.length > 0 ? (
                   <div className="mt-3">

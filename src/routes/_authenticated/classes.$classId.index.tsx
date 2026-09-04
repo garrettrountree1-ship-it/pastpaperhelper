@@ -112,9 +112,9 @@ function ClassHome() {
 
             {role === "teacher" ? (
               <>
+                <ClassBulletinPanel classId={classId} />
                 <ClassRoster classId={classId} />
                 <CoteacherPanel classId={classId} />
-                <ClassBulletinPanel classId={classId} />
               </>
             ) : (
               <>

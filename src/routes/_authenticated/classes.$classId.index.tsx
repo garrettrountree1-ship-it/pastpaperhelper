@@ -8,7 +8,6 @@ import { AppHeader } from "@/components/AppHeader";
 import { CoteacherPanel } from "@/components/classes/CoteacherPanel";
 import { ClassBulletinPanel, ClassBulletinPopup } from "@/components/messaging/ClassBulletin";
 import { RemoveStudentButton } from "@/components/classes/RemoveStudentButton";
-import { TeacherMessagesPanel } from "@/components/messaging/TeacherMessagesPanel";
 import { useMyClasses } from "@/components/SectionShell";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -116,12 +115,10 @@ function ClassHome() {
                 <ClassRoster classId={classId} />
                 <CoteacherPanel classId={classId} />
                 <ClassBulletinPanel classId={classId} />
-                <TeacherMessagesPanel classId={classId} role="teacher" />
               </>
             ) : (
               <>
                 <ClassBulletinPopup classId={classId} />
-                <TeacherMessagesPanel classId={classId} role="student" />
               </>
             )}
 

@@ -40,6 +40,7 @@ import { toast } from "sonner";
 
 import { SectionShell, SectionTabsMobile } from "@/components/SectionShell";
 import { StudentClassHomework } from "@/components/homework/HomeworkSection";
+import { TeacherMessagesPanel } from "@/components/messaging/TeacherMessagesPanel";
 import { AccessControlsDialog } from "@/components/assignments/AccessControlsDialog";
 import { TutorSettingsDialog } from "@/components/assignments/TutorSettingsDialog";
 import { Badge } from "@/components/ui/badge";
@@ -166,7 +167,10 @@ function ClassPage() {
         <>
           <SectionTabsMobile classId={classId} current="homework" />
           {role === "student" ? (
-            <StudentClassHomework classId={classId} />
+            <>
+              <StudentClassHomework classId={classId} />
+              <TeacherMessagesPanel classId={classId} role="student" />
+            </>
           ) : (
             <ClassPageContent classId={classId} />
           )}
@@ -232,6 +236,7 @@ function ClassPageContent({ classId }: { classId: string }) {
         <TabsList>
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
           <TabsTrigger value="gradebook">Gradebook</TabsTrigger>
+          <TabsTrigger value="messages">Student messages</TabsTrigger>
         </TabsList>
 
         <TabsContent value="assignments" className="mt-4 space-y-3">
@@ -240,6 +245,10 @@ function ClassPageContent({ classId }: { classId: string }) {
             assignments={data.assignments}
             studentCount={data.students.length}
           />
+        </TabsContent>
+
+        <TabsContent value="messages" className="mt-4">
+          <TeacherMessagesPanel classId={classId} role="teacher" />
         </TabsContent>
 
         <TabsContent value="gradebook" className="mt-4">

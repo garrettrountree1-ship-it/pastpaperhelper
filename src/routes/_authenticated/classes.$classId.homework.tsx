@@ -1086,7 +1086,7 @@ function QuestionControlsDialog({
       questionId: string;
       action: "credit" | "incorrect" | "reject";
       studentIds: string[];
-      note?: string;
+      note?: string | undefined;
     }) => bulkGrade({ data: { assignmentId, ...vars } }),
     onSuccess: (result, vars) => {
       toast.success(

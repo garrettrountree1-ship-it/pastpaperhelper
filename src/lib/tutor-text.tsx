@@ -81,7 +81,12 @@ function mathToText(input: string): string {
   for (let i = 0; i < 4; i += 1) {
     out = out.replace(
       /\\(?:d|t)?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g,
-      (_all, top: string, bottom: string) => `(${top.trim()})/(${bottom.trim()})`,
+      (_all, top: string, bottom: string) => {
+        // A single symbol or number needs no brackets: (y - b)/m, not (y - b)/(m).
+        const wrap = (part: string) =>
+          /^[\w.°µ]+$/.test(part.trim()) ? part.trim() : `(${part.trim()})`;
+        return `${wrap(top)}/${wrap(bottom)}`;
+      },
     );
   }
   out = out.replace(/\\sqrt\s*\{([^{}]*)\}/g, "√($1)");

@@ -477,6 +477,19 @@ function AssignmentList({
         </div>
       </div>
 
+      <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+        <p className="flex items-center gap-2 text-sm font-medium">
+          <Lock className="size-4" />
+          Exam-integrity protection is always on for homework
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Screenshots, the Windows snipping tool and printing are blocked, questions blur the moment
+          a student leaves the tab, and pasting into answer boxes or the tutor chat is never allowed.
+          Blocking copying of the question wording is optional per assignment — use the
+          &ldquo;Copying blocked / allowed&rdquo; button on any homework below.
+        </p>
+      </div>
+
       {visible.length === 0 ? (
         <div className="paper p-8 text-center text-muted-foreground">
           No {statusLabels[filter as AssignmentStatusKey].toLowerCase()} assignments.
@@ -615,7 +628,7 @@ function CopyProtectionDialog({
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Copy &amp; paste protection</DialogTitle>
+          <DialogTitle>Screenshot, copy &amp; paste protection</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="flex items-start justify-between gap-4 rounded-xl border border-border bg-secondary/30 p-4">
@@ -637,10 +650,23 @@ function CopyProtectionDialog({
             />
           </div>
           <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
-            <p className="text-sm font-medium">Pasting is permanently blocked</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Students can never paste text into an answer box or the tutor chat — on every
-              homework, in every class. This cannot be switched off.
+            <p className="text-sm font-medium">
+              Always on, on every homework: screenshots, snipping tool and pasting
+            </p>
+            <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+              <li>Screenshot keys, Windows snipping tool shortcuts and printing are blocked.</li>
+              <li>
+                Questions are blurred and hidden the moment the student leaves the tab or the window
+                loses focus, so capture and screen-share tools get a blank page.
+              </li>
+              <li>
+                Students can never paste text into an answer box or the tutor chat — pasting is
+                flagged and rejected.
+              </li>
+            </ul>
+            <p className="mt-2 text-xs text-muted-foreground">
+              These cannot be switched off. Only copying of the question wording (above) is
+              optional.
             </p>
           </div>
         </div>
@@ -869,9 +895,11 @@ function AssignmentDialog({
                 wording of this homework.
               </p>
               <p className="text-sm font-medium">
-                Pasting is permanently blocked: students can never paste into an answer box or the
-                tutor chat, on every homework. This cannot be switched off.
+                Always on and not switchable: screenshots, the Windows snipping tool and printing
+                are blocked, questions blur whenever the student leaves the tab, and students can
+                never paste into an answer box or the tutor chat.
               </p>
+
 
             </div>
             <Switch

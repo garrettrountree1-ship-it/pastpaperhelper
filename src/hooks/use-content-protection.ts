@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 
 /**
- * Deters copying and screenshotting of exam questions when the teacher turns
- * question protection on: blocks copy/cut/right-click/print and hides content
- * while the window is not focused (screenshot and screen-share tools take the
- * page after focus is lost).
+ * Deters copying and screenshotting of exam questions.
+ *
+ * Screen-capture deterrence (screenshot keys, snipping-tool shortcuts,
+ * printing, and hiding the questions whenever the window loses focus) is
+ * always on inside a homework assignment. Blocking selection / copying of the
+ * question wording is optional and set per assignment by the teacher.
  */
 /** True when the user is typing in a field, where copy/paste must keep working. */
 function isEditable(target: EventTarget | null) {
@@ -18,11 +20,16 @@ function isEditable(target: EventTarget | null) {
   );
 }
 
-export function useContentProtection(enabled: boolean) {
+export function useContentProtection(
+  options: boolean | { blockCopy?: boolean; blockCapture?: boolean } = {},
+) {
+  const blockCopy = typeof options === "boolean" ? options : Boolean(options.blockCopy);
+  const blockCapture =
+    typeof options === "boolean" ? options : options.blockCapture !== false;
   const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
-    if (!enabled) {
+    if (!blockCopy && !blockCapture) {
       setHidden(false);
       return;
     }
@@ -34,30 +41,36 @@ export function useContentProtection(enabled: boolean) {
 
     const conceal = () => setHidden(true);
     const reveal = () => setHidden(false);
+    const onVisibility = () => (document.hidden ? conceal() : reveal());
     const onKey = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
       const combo = event.metaKey || event.ctrlKey;
-      if (
+      const captureCombo =
         key === "printscreen" ||
-        (combo && ["c", "x", "p", "s"].includes(key) && !isEditable(event.target)) ||
-        (combo && event.shiftKey && ["s", "3", "4", "5"].includes(key))
-      ) {
+        // Windows Snipping Tool (Win/Shift+S) and macOS screenshot shortcuts
+        (event.shiftKey && (combo || event.getModifierState?.("Meta")) && ["s", "3", "4", "5"].includes(key)) ||
+        (combo && ["p", "s"].includes(key) && !isEditable(event.target));
+      const copyCombo = combo && ["c", "x"].includes(key) && !isEditable(event.target);
+
+      if ((blockCapture && captureCombo) || (blockCopy && copyCombo)) {
         event.preventDefault();
         setHidden(true);
         window.setTimeout(() => setHidden(false), 1200);
       }
     };
 
-    document.addEventListener("copy", block);
-    document.addEventListener("cut", block);
-    document.addEventListener("contextmenu", block);
-    document.addEventListener("dragstart", block);
+    if (blockCopy) {
+      document.addEventListener("copy", block);
+      document.addEventListener("cut", block);
+      document.addEventListener("contextmenu", block);
+      document.addEventListener("dragstart", block);
+    }
     document.addEventListener("keydown", onKey);
-    window.addEventListener("blur", conceal);
-    window.addEventListener("focus", reveal);
-    document.addEventListener("visibilitychange", () =>
-      document.hidden ? conceal() : reveal(),
-    );
+    if (blockCapture) {
+      window.addEventListener("blur", conceal);
+      window.addEventListener("focus", reveal);
+      document.addEventListener("visibilitychange", onVisibility);
+    }
 
     return () => {
       document.removeEventListener("copy", block);
@@ -67,13 +80,19 @@ export function useContentProtection(enabled: boolean) {
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("blur", conceal);
       window.removeEventListener("focus", reveal);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [enabled]);
+  }, [blockCopy, blockCapture]);
 
   return {
     /** True while the questions should be masked. */
-    concealed: enabled && hidden,
+    concealed: hidden,
     /** Class names to spread on the protected container. */
-    protectedClassName: enabled ? "select-none [-webkit-touch-callout:none] print:invisible" : "",
+    protectedClassName: [
+      blockCopy ? "select-none [-webkit-touch-callout:none]" : "",
+      blockCapture ? "print:invisible" : "",
+    ]
+      .filter(Boolean)
+      .join(" "),
   };
 }

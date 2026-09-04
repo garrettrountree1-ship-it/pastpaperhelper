@@ -91,7 +91,12 @@ function AssignmentPage() {
 
   const data = workspace.data;
   const settings = data?.tutorSettings;
-  const protection = useContentProtection(Boolean(settings?.protectQuestions));
+  // Screenshots, snipping and printing are always blocked inside homework;
+  // blocking copying of the question wording is the teacher's option.
+  const protection = useContentProtection({
+    blockCopy: Boolean(settings?.protectQuestions),
+    blockCapture: true,
+  });
   const answered = data
     ? data.questions.filter((q) => data.answers.some((a) => a.question_id === q.id)).length
     : 0;
@@ -195,8 +200,8 @@ function AssignmentPage() {
             >
               {protection.concealed ? (
                 <p className="paper p-4 text-sm text-muted-foreground">
-                  Questions are hidden while this tab is not in focus — your teacher has turned on
-                  screenshot and copy protection.
+                  Questions are hidden while this tab is not in focus. Screenshots, the snipping
+                  tool, printing and pasting are blocked on homework.
                 </p>
               ) : null}
               {groupByPage(data.questions).map((group) => (

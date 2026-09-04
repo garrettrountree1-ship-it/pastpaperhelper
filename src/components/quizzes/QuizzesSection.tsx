@@ -185,6 +185,16 @@ function TeacherQuizzes({ classId }: { classId: string }) {
                   )}
                   <Button
                     size="sm"
+                    variant={quiz.revealMarkScheme ? "secondary" : "outline"}
+                    onClick={() =>
+                      revealMutation.mutate({ quizId: quiz.id, reveal: !quiz.revealMarkScheme })
+                    }
+                    disabled={revealMutation.isPending}
+                  >
+                    {quiz.revealMarkScheme ? "Hide mark scheme" : "Release mark scheme"}
+                  </Button>
+                  <Button
+                    size="sm"
                     variant="ghost"
                     onClick={() => {
                       if (confirm("Delete this quiz and all its results?")) {

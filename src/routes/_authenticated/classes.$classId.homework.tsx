@@ -362,34 +362,6 @@ function ClassPageContent({ classId }: { classId: string }) {
           )}
         </TabsContent>
 
-        <TabsContent value="students" className="mt-4">
-          <DemoStudentSeeder classId={classId} onSeeded={() => overview.refetch()} />
-          <div className="paper divide-y divide-border">
-            {data.students.length === 0 ? (
-              <p className="p-6 text-center text-muted-foreground">
-                Share the join code so students can add themselves.
-              </p>
-            ) : (
-              data.students.map((student) => (
-                <div
-                  key={student.id}
-                  className="flex flex-wrap items-center justify-between gap-3 p-4"
-                >
-                  <span>{student.name}</span>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-muted-foreground">{student.email}</span>
-                    <RemoveStudentButton
-                      classId={classId}
-                      studentId={student.id}
-                      studentName={student.name || student.email}
-                      onRemoved={() => overview.refetch()}
-                    />
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </TabsContent>
       </Tabs>
     </div>
   );

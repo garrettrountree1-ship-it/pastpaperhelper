@@ -42,6 +42,32 @@ export function useContentProtection(
     const conceal = () => setHidden(true);
     const reveal = () => setHidden(false);
     const onVisibility = () => (document.hidden ? conceal() : reveal());
+
+    /** Print Screen copies the screen at the OS level, so the best we can do is
+     * blank the questions the moment the key is touched and wipe whatever the
+     * OS just placed on the clipboard. */
+    const scrubClipboard = () => {
+      try {
+        void navigator.clipboard?.writeText?.(
+          "Screen capture of homework questions is not allowed.",
+        );
+      } catch {
+        /* clipboard permission denied — nothing else we can do */
+      }
+    };
+    const onCapture = () => {
+      setHidden(true);
+      scrubClipboard();
+      window.setTimeout(scrubClipboard, 150);
+      window.setTimeout(() => setHidden(false), 1500);
+    };
+
+    const isPrintScreen = (event: KeyboardEvent) =>
+      event.key === "PrintScreen" ||
+      event.code === "PrintScreen" ||
+      event.keyCode === 44 ||
+      event.key === "F13";
+
     const onKey = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
       const combo = event.metaKey || event.ctrlKey;
@@ -59,6 +85,15 @@ export function useContentProtection(
       }
     };
 
+    // Chrome/Edge on Windows only surface Print Screen on keyup.
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (blockCapture && isPrintScreen(event)) onCapture();
+    };
+    // Some setups only fire keydown; blank pre-emptively there too.
+    const onKeyDownCapture = (event: KeyboardEvent) => {
+      if (blockCapture && isPrintScreen(event)) onCapture();
+    };
+
     if (blockCopy) {
       document.addEventListener("copy", block);
       document.addEventListener("cut", block);
@@ -67,10 +102,13 @@ export function useContentProtection(
     }
     document.addEventListener("keydown", onKey);
     if (blockCapture) {
+      document.addEventListener("keydown", onKeyDownCapture, true);
+      document.addEventListener("keyup", onKeyUp, true);
       window.addEventListener("blur", conceal);
       window.addEventListener("focus", reveal);
       document.addEventListener("visibilitychange", onVisibility);
     }
+
 
     return () => {
       document.removeEventListener("copy", block);
@@ -78,6 +116,8 @@ export function useContentProtection(
       document.removeEventListener("contextmenu", block);
       document.removeEventListener("dragstart", block);
       document.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", onKeyDownCapture, true);
+      document.removeEventListener("keyup", onKeyUp, true);
       window.removeEventListener("blur", conceal);
       window.removeEventListener("focus", reveal);
       document.removeEventListener("visibilitychange", onVisibility);

@@ -37,6 +37,7 @@ export function ClassBulletinPanel({ classId }: { classId: string }) {
   const remove = useServerFn(deleteAnnouncement);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [open, setOpen] = useState(false);
 
   const create = useMutation({
     mutationFn: () => post({ data: { classId, title: title.trim(), body: body.trim() } }),
@@ -54,17 +55,31 @@ export function ClassBulletinPanel({ classId }: { classId: string }) {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const postCount = (posts.data ?? []).length;
+
   return (
     <section className="paper mt-6 p-6">
-      <div className="flex items-center gap-2">
-        <Megaphone className="size-5 text-primary" />
-        <h2 className="font-display text-xl">Class bulletin</h2>
-      </div>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex w-full items-center justify-between gap-2"
+        aria-expanded={open}
+      >
+        <div className="flex items-center gap-2">
+          <Megaphone className="size-5 text-primary" />
+          <h2 className="font-display text-xl">Class bulletin</h2>
+          <span className="text-sm text-muted-foreground">· {postCount}</span>
+        </div>
+        <ChevronDown
+          className={`size-5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
       <p className="mt-1 text-sm text-muted-foreground">
         Every student in this class sees these notices as a pop-up on their class home page. They
         cannot reply.
       </p>
-      <div className="mt-4 space-y-3">
+      {open ? (
+        <div className="mt-4 space-y-3">
         <div className="space-y-2">
           <Label htmlFor="bulletin-title">Title (optional)</Label>
           <Input

@@ -1221,6 +1221,19 @@ function QuestionControlsDialog({
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => {
+                            setMarking((current) =>
+                              current === question.id ? null : question.id,
+                            );
+                            setMarkSelected([]);
+                            setMarkNote("");
+                          }}
+                        >
+                          {marking === question.id ? "Hide override" : "Override marking"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() =>
                             setExpanded((current) => (current === question.id ? null : question.id))
                           }

@@ -61,7 +61,9 @@ export async function checkHandDrawnPhotos(imageUrls: string[]): Promise<PhotoCh
         return {
           ok: false,
           confidence: parsed.handDrawn ? 1 - confidence : confidence,
-          reason: `Only photos of your own hand-drawn or hand-written work are accepted. This upload looks like ${kind || "a computer-generated or copied image"}, not something you drew by hand.`,
+          reason: unsure
+            ? "We could not clearly see that this is your own hand-drawn or hand-written work. Re-take the photo of your paper with the page edges visible, in good light."
+            : `Only photos of your own hand-drawn or hand-written work are accepted. This upload looks like ${kind || "a computer-generated or copied image"}, not something you drew by hand.`,
         };
       }
     } catch {

@@ -361,9 +361,14 @@ function SubmissionPage() {
                           current={answer.awarded_marks ?? 0}
                           queryKey={queryKey}
                         />
-                        <SendBack answerId={answer.id} queryKey={queryKey} />
+                        <SendBack
+                          answerId={answer.id}
+                          queryKey={queryKey}
+                          alreadyRejected={Boolean(answer.rejected_at)}
+                        />
                       </>
                     ) : null}
+
                   </section>
                 );
               })}
@@ -419,7 +424,15 @@ function MarkOverride({
   );
 }
 
-function SendBack({ answerId, queryKey }: { answerId: string; queryKey: string[] }) {
+function SendBack({
+  answerId,
+  queryKey,
+  alreadyRejected,
+}: {
+  answerId: string;
+  queryKey: string[];
+  alreadyRejected?: boolean;
+}) {
   const queryClient = useQueryClient();
   const reject = useServerFn(rejectAnswer);
   const [open, setOpen] = useState(false);
@@ -436,9 +449,15 @@ function SendBack({ answerId, queryKey }: { answerId: string; queryKey: string[]
 
   return (
     <>
-      <Button variant="outline" className="mt-3" onClick={() => setOpen(true)}>
-        Reject &amp; send back to redo
+      <Button
+        variant="outline"
+        className="mt-3"
+        onClick={() => setOpen(true)}
+        disabled={alreadyRejected || mutation.isPending}
+      >
+        {alreadyRejected ? "Already sent back to redo" : "Reject & send back to redo"}
       </Button>
+
       <RejectReasonDialog
         open={open}
         onOpenChange={setOpen}

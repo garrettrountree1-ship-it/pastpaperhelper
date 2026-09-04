@@ -1833,6 +1833,7 @@ function QuestionRowActions({
   questionId,
   studentId,
   marks,
+  credited,
   onDone,
 }: {
   classId: string;
@@ -1840,6 +1841,7 @@ function QuestionRowActions({
   questionId: string;
   studentId: string;
   marks: number;
+  credited: boolean;
   onDone: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -1847,7 +1849,9 @@ function QuestionRowActions({
   const exclude = useServerFn(setQuestionExclusion);
   const [unassigned, setUnassigned] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
-
+  const [lastAction, setLastAction] = useState<"credit" | "reject" | null>(
+    credited && marks > 0 ? "credit" : null,
+  );
 
   function done() {
     queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });
@@ -1871,6 +1875,7 @@ function QuestionRowActions({
           ? `Full marks (${marks}) given`
           : "Sent back to the student to redo",
       );
+      setLastAction(vars.action);
       setRejectOpen(false);
       done();
     },
@@ -1892,21 +1897,31 @@ function QuestionRowActions({
 
   return (
     <span
-      className="flex shrink-0 flex-wrap gap-1"
+      className="flex shrink-0 flex-wrap items-center gap-1"
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
       }}
     >
+      {lastAction ? (
+        <span className="text-xs text-muted-foreground">
+          {lastAction === "credit" ? "Credited" : "Sent back to redo"}
+        </span>
+      ) : null}
       <Button
         size="sm"
         variant="outline"
-        disabled={busy}
+        disabled={busy || unassigned || lastAction === "credit"}
         onClick={() => grade.mutate({ action: "credit" })}
       >
         Credit
       </Button>
-      <Button size="sm" variant="outline" disabled={busy} onClick={() => setRejectOpen(true)}>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={busy || unassigned || lastAction === "reject"}
+        onClick={() => setRejectOpen(true)}
+      >
         Reject answer
       </Button>
       <RejectReasonDialog
@@ -1927,6 +1942,7 @@ function QuestionRowActions({
     </span>
   );
 }
+
 
 function StudentReport({
   classId,
@@ -2016,6 +2032,8 @@ function StudentReport({
                       questionId={question.id}
                       studentId={studentId}
                       marks={question.marks}
+                      credited={(question.awardedMarks ?? 0) >= question.marks}
+
                       onDone={() => {
                         report.refetch();
                         onChanged();

@@ -36,6 +36,7 @@ import {
   listQuizzes,
   listStudentQuizzes,
   releaseQuiz,
+  setQuizRevealMarkScheme,
 } from "@/lib/quizzes.functions";
 
 export function QuizzesSection({

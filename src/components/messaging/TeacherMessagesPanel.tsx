@@ -162,7 +162,19 @@ export function TeacherMessagesPanel({
                             {m.topic ? ` · ${m.topic}` : ""} ·{" "}
                             {new Date(m.created_at).toLocaleString()}
                           </p>
-                          <p className="mt-1 whitespace-pre-wrap">{m.body}</p>
+                          {m.questionText ? (
+                            <div className="mt-2 rounded-md border border-border bg-background/70 p-2">
+                              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                {m.questionPosition
+                                  ? `Question ${m.questionPosition}`
+                                  : "Question"}
+                              </p>
+                              <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
+                                {m.questionText}
+                              </p>
+                            </div>
+                          ) : null}
+                          <p className="mt-2 whitespace-pre-wrap">{m.body}</p>
                         </div>
                       ))}
                     </div>

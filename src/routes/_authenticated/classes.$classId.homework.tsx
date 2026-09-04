@@ -1850,6 +1850,8 @@ function QuestionRowActions({
   const exclude = useServerFn(setQuestionExclusion);
   const [unassigned, setUnassigned] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
+  const [notifiedOpen, setNotifiedOpen] = useState(false);
+  const [notifiedReason, setNotifiedReason] = useState<string | null>(null);
   const [lastAction, setLastAction] = useState<"credit" | "reject" | null>(
     credited && marks > 0 ? "credit" : null,
   );
@@ -1878,6 +1880,10 @@ function QuestionRowActions({
       );
       setLastAction(vars.action);
       setRejectOpen(false);
+      if (vars.action === "reject") {
+        setNotifiedReason(vars.note || null);
+        setNotifiedOpen(true);
+      }
       done();
     },
     onError: (error: Error) => toast.error(error.message),
@@ -1930,6 +1936,11 @@ function QuestionRowActions({
         onOpenChange={setRejectOpen}
         busy={grade.isPending}
         onConfirm={(note) => grade.mutate(note ? { action: "reject", note } : { action: "reject" })}
+      />
+      <StudentNotifiedDialog
+        open={notifiedOpen}
+        onOpenChange={setNotifiedOpen}
+        reason={notifiedReason}
       />
 
       <Button

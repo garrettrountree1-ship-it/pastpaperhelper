@@ -282,6 +282,8 @@ type Answer = {
   feedback: string | null;
   attempts: number;
   resolved: boolean;
+  rejected_at?: string | null;
+  rejection_note?: string | null;
 };
 type Message = { id: string; answer_id: string; role: string; content: string };
 

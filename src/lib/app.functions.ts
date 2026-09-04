@@ -915,7 +915,7 @@ export const getSubmissionDetail = createServerFn({ method: "POST" })
       ? await db
           .from("answers")
           .select(
-            "id, question_id, answer_text, image_paths, verdict, awarded_marks, feedback, attempts, time_spent_seconds, mark_breakdown",
+            "id, question_id, answer_text, image_paths, verdict, awarded_marks, feedback, attempts, time_spent_seconds, mark_breakdown, rejected_at, rejection_note",
           )
           .eq("submission_id", submission.id)
       : { data: [] };
@@ -1282,7 +1282,7 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     const { data: answers } = await db
       .from("answers")
       .select(
-        "id, question_id, answer_text, image_paths, verdict, awarded_marks, feedback, attempts, resolved",
+        "id, question_id, answer_text, image_paths, verdict, awarded_marks, feedback, attempts, resolved, rejected_at, rejection_note",
       )
       .eq("submission_id", submission.id);
 
@@ -1502,6 +1502,9 @@ export const gradeAnswer = createServerFn({ method: "POST" })
         (existing?.time_spent_seconds ?? 0) + Math.round(data.timeSpentSeconds ?? 0),
       mark_breakdown: result.markPoints ?? [],
       resolved: result.verdict === "correct",
+      rejected_at: null,
+      rejected_by: null,
+      rejection_note: null,
       updated_at: new Date().toISOString(),
     };
 

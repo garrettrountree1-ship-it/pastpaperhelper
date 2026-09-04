@@ -500,7 +500,9 @@ function parseJson(text: string): Record<string, unknown> {
  * superscripts, mojibake from mis-decoded UTF-8) so the printed notation is kept.
  */
 export function normaliseSymbols(input: string): string {
-  let text = input;
+  // Strip any LaTeX / markdown the model transcribed ("$^{235}_{92}\\text{U}$")
+  // so students read ²³⁵₉₂U instead of raw markup.
+  let text = cleanMathText(input);
 
   // Mojibake: UTF-8 bytes read as Latin-1 (e.g. "Â°C", "Î©", "Âµ").
   if (/[ÂÃÎ][\u0080-\u00bf\u0090-\u00ff]/.test(text)) {

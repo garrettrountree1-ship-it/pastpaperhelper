@@ -1853,12 +1853,23 @@ function QuestionRowActions({
   }
 
   const grade = useMutation({
-    mutationFn: (action: "credit" | "reject") =>
-      bulkGrade({ data: { assignmentId, questionId, action, studentIds: [studentId] } }),
-    onSuccess: (_result, action) => {
+    mutationFn: (vars: { action: "credit" | "reject"; note?: string }) =>
+      bulkGrade({
+        data: {
+          assignmentId,
+          questionId,
+          action: vars.action,
+          studentIds: [studentId],
+          note: vars.note,
+        },
+      }),
+    onSuccess: (_result, vars) => {
       toast.success(
-        action === "credit" ? `Full marks (${marks}) given` : "Sent back to the student to redo",
+        vars.action === "credit"
+          ? `Full marks (${marks}) given`
+          : "Sent back to the student to redo",
       );
+      setRejectOpen(false);
       done();
     },
     onError: (error: Error) => toast.error(error.message),
@@ -1885,17 +1896,24 @@ function QuestionRowActions({
         event.stopPropagation();
       }}
     >
-      <Button size="sm" variant="outline" disabled={busy} onClick={() => grade.mutate("credit")}>
-        Credit
-      </Button>
       <Button
         size="sm"
         variant="outline"
         disabled={busy}
-        onClick={() => grade.mutate("reject")}
+        onClick={() => grade.mutate({ action: "credit" })}
       >
+        Credit
+      </Button>
+      <Button size="sm" variant="outline" disabled={busy} onClick={() => setRejectOpen(true)}>
         Reject answer
       </Button>
+      <RejectReasonDialog
+        open={rejectOpen}
+        onOpenChange={setRejectOpen}
+        busy={grade.isPending}
+        onConfirm={(note) => grade.mutate({ action: "reject", note: note || undefined })}
+      />
+
       <Button
         size="sm"
         variant="ghost"

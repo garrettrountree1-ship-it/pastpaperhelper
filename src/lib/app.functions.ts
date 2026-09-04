@@ -386,6 +386,7 @@ export const createAssignment = createServerFn({ method: "POST" })
         subject: z.string(),
         instructions: z.string(),
         dueAt: z.string().nullable(),
+        protectQuestions: z.boolean().optional(),
         questions: z.array(
           z.object({
             questionText: z.string().min(1),
@@ -420,6 +421,7 @@ export const createAssignment = createServerFn({ method: "POST" })
         subject: data.subject,
         instructions: data.instructions,
         due_at: data.dueAt,
+        protect_questions: data.protectQuestions ?? false,
       })
       .select("id")
       .single();
@@ -453,7 +455,7 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
 
     const { data: assignment, error } = await supabase
       .from("assignments")
-      .select("id, title, subject, instructions, due_at")
+      .select("id, title, subject, instructions, due_at, protect_questions")
       .eq("id", data.assignmentId)
       .single();
     if (error) throw new Error(error.message);
@@ -471,6 +473,7 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
       subject: assignment.subject ?? "",
       instructions: assignment.instructions ?? "",
       dueAt: assignment.due_at,
+      protectQuestions: Boolean(assignment.protect_questions),
       questions: await Promise.all(
         (questions ?? []).map(async (q) => ({
           id: q.id,
@@ -494,6 +497,7 @@ export const updateAssignment = createServerFn({ method: "POST" })
         subject: z.string(),
         instructions: z.string(),
         dueAt: z.string().nullable(),
+        protectQuestions: z.boolean().optional(),
         questions: z.array(
           z.object({
             id: z.string().uuid().nullable(),
@@ -523,6 +527,9 @@ export const updateAssignment = createServerFn({ method: "POST" })
         subject: data.subject,
         instructions: data.instructions,
         due_at: data.dueAt,
+        ...(data.protectQuestions === undefined
+          ? {}
+          : { protect_questions: data.protectQuestions }),
       })
       .eq("id", data.assignmentId);
     if (aError) throw new Error(aError.message);

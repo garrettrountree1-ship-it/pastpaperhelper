@@ -1431,52 +1431,6 @@ function DemoStudentSeeder({ classId, onSeeded }: { classId: string; onSeeded: (
   );
 }
 
-function RemoveStudentButton({
-
-  classId,
-  studentId,
-  studentName,
-  onRemoved,
-}: {
-  classId: string;
-  studentId: string;
-  studentName: string;
-  onRemoved: () => void;
-}) {
-  const queryClient = useQueryClient();
-  const remove = useServerFn(removeStudentFromClass);
-  const mutation = useMutation({
-    mutationFn: () => remove({ data: { classId, studentId } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });
-      queryClient.invalidateQueries({ queryKey: ["teacher-classes"] });
-      onRemoved();
-      toast.success("Student removed");
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="text-destructive"
-      disabled={mutation.isPending}
-      onClick={() => {
-        if (
-          window.confirm(
-            `Remove ${studentName} from this class? Their submissions and work for this class will be deleted.`,
-          )
-        ) {
-          mutation.mutate();
-        }
-      }}
-    >
-      <Trash2 className="size-4" />
-      {mutation.isPending ? "Removing…" : "Remove"}
-    </Button>
-  );
-}
 
 function AiWarningLimitDialog({
   classId,

@@ -134,88 +134,112 @@ export function LessonWorkspace({
   const canvasStyle = { width: canvasSize };
   const docStyle = { width: docSize };
 
-  // Layered mode: one pane fills the area, the other floats above it in a
-  // window that can be dragged, stretched, minimised or maximised.
+  // Layered mode: both panes stay mounted in fixed wrappers (so swapping which
+  // one is in front never resets scroll position or canvas view). One wrapper
+  // is positioned as a floating window that can be moved / resized in pixels.
   const [frontPane, setFrontPane] = useState<"canvas" | "doc">("canvas");
-  const [floatRect, setFloatRect] = useState({ x: 6, y: 6, w: 52, h: 62 });
   const [floatState, setFloatState] = useState<"window" | "min" | "max">("window");
+  const [areaSize, setAreaSize] = useState({ w: 0, h: 0 });
+  const [floatRect, setFloatRect] = useState<{ x: number; y: number; w: number; h: number } | null>(
+    null,
+  );
   // While dragging, an invisible sheet sits over the panes so embedded
   // documents / iframes can't swallow the pointer and stall the drag.
   const [floatDragging, setFloatDragging] = useState(false);
+
+  const MIN_W = 260;
+  const MIN_H = 170;
+  const BAR_H = 40;
+
+  // Track the layered area so the window can be clamped inside it.
+  useEffect(() => {
+    const row = rowRef.current;
+    if (!row || layout !== "layered") return;
+    const measure = () => {
+      const r = row.getBoundingClientRect();
+      setAreaSize({ w: r.width, h: r.height });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(row);
+    return () => observer.disconnect();
+  }, [layout]);
+
+  const clampRect = useCallback(
+    (r: { x: number; y: number; w: number; h: number }) => {
+      const aw = areaSize.w || 900;
+      const ah = areaSize.h || 600;
+      const w = Math.max(Math.min(MIN_W, aw), Math.min(r.w, aw));
+      const h = Math.max(Math.min(MIN_H, ah), Math.min(r.h, ah));
+      return {
+        w,
+        h,
+        x: Math.max(0, Math.min(r.x, aw - w)),
+        y: Math.max(0, Math.min(r.y, ah - h)),
+      };
+    },
+    [areaSize.w, areaSize.h],
+  );
+
+  // Give the window a sensible first size once the area is measured, and keep
+  // it inside the area when the layout resizes.
+  useEffect(() => {
+    if (!areaSize.w || !areaSize.h) return;
+    setFloatRect((prev) =>
+      prev
+        ? clampRect(prev)
+        : clampRect({
+            x: 24,
+            y: 20,
+            w: Math.max(MIN_W, Math.round(areaSize.w * 0.56)),
+            h: Math.max(MIN_H, Math.round(areaSize.h * 0.62)),
+          }),
+    );
+  }, [areaSize.w, areaSize.h, clampRect]);
 
   type FloatDrag = "move" | "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
   function startFloatDrag(event: React.PointerEvent<HTMLElement>, mode: FloatDrag) {
     if (event.button !== undefined && event.button !== 0) return;
+    if (!floatRect) return;
     event.preventDefault();
     event.stopPropagation();
-    const row = rowRef.current;
-    if (!row) return;
     setFloatState("window");
     setFloatDragging(true);
-    const rect = row.getBoundingClientRect();
     const start = { px: event.clientX, py: event.clientY, ...floatRect };
-    const handle = event.currentTarget;
-    try {
-      handle.setPointerCapture(event.pointerId);
-    } catch {
-      /* pointer capture is best-effort */
-    }
     // Stop text selection / iframe hijacking while a drag is in flight.
     const prevSelect = document.body.style.userSelect;
     const prevCursor = document.body.style.cursor;
     document.body.style.userSelect = "none";
     document.body.style.cursor = mode === "move" ? "move" : `${mode}-resize`;
-    const minW = 14;
-    const minH = 8;
-    let frame = 0;
     const apply = (move: PointerEvent) => {
-      const dx = ((move.clientX - start.px) / rect.width) * 100;
-      const dy = ((move.clientY - start.py) / rect.height) * 100;
-      setFloatRect(() => {
-        if (mode === "move") {
-          // Free movement; a slice always stays grabbable inside the area.
-          return {
-            ...start,
-            x: Math.min(95, Math.max(-start.w + 12, start.x + dx)),
-            y: Math.min(95, Math.max(-1, start.y + dy)),
-          };
-        }
-        const next = { ...start };
-        if (mode === "e" || mode === "ne" || mode === "se") {
-          next.w = Math.max(minW, Math.min(160, start.w + dx));
-        }
+      const dx = move.clientX - start.px;
+      const dy = move.clientY - start.py;
+      const next = { x: start.x, y: start.y, w: start.w, h: start.h };
+      if (mode === "move") {
+        next.x = start.x + dx;
+        next.y = start.y + dy;
+      } else {
+        if (mode === "e" || mode === "ne" || mode === "se") next.w = start.w + dx;
         if (mode === "w" || mode === "nw" || mode === "sw") {
-          const w = Math.max(minW, start.w - dx);
+          const w = Math.max(MIN_W, start.w - dx);
           next.x = start.x + start.w - w;
           next.w = w;
         }
-        if (mode === "s" || mode === "se" || mode === "sw") {
-          next.h = Math.max(minH, Math.min(160, start.h + dy));
-        }
+        if (mode === "s" || mode === "se" || mode === "sw") next.h = start.h + dy;
         if (mode === "n" || mode === "ne" || mode === "nw") {
-          const h = Math.max(minH, start.h - dy);
+          const h = Math.max(MIN_H, start.h - dy);
           next.y = start.y + start.h - h;
           next.h = h;
         }
-        return next;
-      });
+      }
+      setFloatRect(clampRect(next));
     };
-    const onMove = (move: PointerEvent) => {
-      // Coalesce to one update per frame so dragging stays smooth.
-      if (frame) cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => apply(move));
-    };
+    const onMove = (move: PointerEvent) => apply(move);
     const onUp = () => {
-      if (frame) cancelAnimationFrame(frame);
       setFloatDragging(false);
       document.body.style.userSelect = prevSelect;
       document.body.style.cursor = prevCursor;
-      try {
-        handle.releasePointerCapture(event.pointerId);
-      } catch {
-        /* already released */
-      }
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
@@ -224,6 +248,7 @@ export function LessonWorkspace({
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);
   }
+
 
 
 

@@ -34,7 +34,6 @@ import {
   Unlock,
   Wand2,
   ShieldAlert,
-  Languages,
   Archive,
   RotateCcw,
 } from "lucide-react";
@@ -43,7 +42,6 @@ import { toast } from "sonner";
 
 import { SectionShell, SectionTabsMobile } from "@/components/SectionShell";
 import { StudentClassHomework } from "@/components/homework/HomeworkSection";
-import { LanguageSettingsDialog } from "@/components/assignments/LanguageSettingsDialog";
 import { AccessControlsDialog } from "@/components/assignments/AccessControlsDialog";
 import { TutorSettingsDialog } from "@/components/assignments/TutorSettingsDialog";
 import { Badge } from "@/components/ui/badge";

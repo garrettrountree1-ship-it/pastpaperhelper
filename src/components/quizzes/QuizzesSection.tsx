@@ -516,8 +516,9 @@ function StudentQuizzes({ classId }: { classId: string }) {
       <div className="paper p-5">
         <h2 className="text-3xl">Your quizzes</h2>
         <p className="mt-1 max-w-prose text-sm text-muted-foreground">
-          Quizzes are timed. Once you open one the clock starts, there is no tutor and nothing is
-          marked until you submit or the time runs out.
+          Quizzes are timed and exam conditions apply: copy, paste, screenshots and snipping tools
+          are blocked, there is no AI tutor, and nothing is marked until you submit or the timer
+          runs out.
         </p>
       </div>
 

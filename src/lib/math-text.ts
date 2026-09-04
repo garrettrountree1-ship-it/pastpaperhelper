@@ -91,6 +91,12 @@ function mathToText(input: string): string {
     );
   }
   out = out.replace(/\\sqrt\s*\{([^{}]*)\}/g, "√($1)");
+  // Wrappers with nested braces ("\ce{^{235}_{92}U}") keep their contents only.
+  out = out.replace(
+    /\\(?:text|textrm|textbf|textit|textsf|mathrm|mathbf|mathit|mathsf|mbox|operatorname|ce|si|unit|boldsymbol)\s*(?=\{)/g,
+    "",
+  );
+
   // "25^\\circ C" / "25^{\\circ}C" is a degree sign, not a superscript.
   out = out.replace(/\^\s*\{?\s*\\(?:circ|degree)\s*\}?/g, "°");
 

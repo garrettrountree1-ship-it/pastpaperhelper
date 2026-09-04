@@ -8,6 +8,7 @@ import { questionBody, questionLabel } from "@/lib/question-label";
 
 import { AppHeader } from "@/components/AppHeader";
 import { RejectReasonDialog } from "@/components/homework/RejectReasonDialog";
+import { StudentNotifiedDialog } from "@/components/homework/StudentNotifiedDialog";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

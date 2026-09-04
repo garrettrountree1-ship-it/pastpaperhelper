@@ -462,34 +462,43 @@ export function FormativeRecordBook({ classId }: { classId: string }) {
   }
 
   function download() {
+    // Oldest check first, one column per check: date + question in the header.
+    const ordered = [...checks].reverse();
     const header = [
       "Student",
-      ...checks.map((c) => `${c.lesson} — ${c.question} (${new Date(c.sentAt).toLocaleDateString()})`),
+      ...ordered.map(
+        (c) => `${new Date(c.sentAt).toLocaleDateString()} — ${c.question}`,
+      ),
+      "% attempted",
+      "% correct",
     ];
     const rows: (string | number | null)[][] = [header];
     for (const student of students) {
+      let attempted = 0;
+      let correct = 0;
+      const cells = ordered.map((check) => {
+        const entry = cellFor(check.id, student.id);
+        if (!entry || !entry.answered) return "No attempt";
+        attempted += 1;
+        if (entry.verdict === "correct") {
+          correct += 1;
+          return "Correct";
+        }
+        return "Incorrect";
+      });
+      const total = ordered.length;
       rows.push([
         student.name,
-        ...checks.map((check) => {
-          const entry = cellFor(check.id, student.id);
-          return entry?.answered ? `${cellLabel(entry)}: ${entry.answer}` : "No answer";
-        }),
+        ...cells,
+        total > 0 ? Math.round((attempted / total) * 100) / 100 : 0,
+        total > 0 ? Math.round((correct / total) * 100) / 100 : 0,
       ]);
     }
-    rows.push([]);
-    rows.push(["Question", "Lesson", "Sent", "Answered", "Correct", "Expected answer"]);
-    for (const check of checks) {
-      rows.push([
-        check.question,
-        check.lesson,
-        new Date(check.sentAt).toLocaleString(),
-        check.answeredCount,
-        check.correctCount,
-        check.expectedAnswer ?? "",
-      ]);
-    }
-    downloadXlsx("formative-record-book.xlsx", "Formative checks", rows);
+    downloadXlsx("formative-record-book.xlsx", "Formative checks", rows, {
+      percentColumns: [ordered.length + 1, ordered.length + 2],
+    });
   }
+
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

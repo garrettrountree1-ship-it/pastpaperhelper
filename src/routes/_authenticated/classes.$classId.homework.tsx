@@ -615,7 +615,7 @@ function CopyProtectionDialog({
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Copy &amp; paste protection</DialogTitle>
+          <DialogTitle>Screenshot, copy &amp; paste protection</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="flex items-start justify-between gap-4 rounded-xl border border-border bg-secondary/30 p-4">

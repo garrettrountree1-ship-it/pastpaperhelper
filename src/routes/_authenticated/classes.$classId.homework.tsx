@@ -69,6 +69,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDueDate, fromLocalInput, toLocalInput } from "@/lib/datetime";
 import {
+  bulkGradeQuestion,
   createAssignment,
   creditQuestionForAll,
   deleteAssignment,
@@ -1069,12 +1070,37 @@ function QuestionControlsDialog({
 }) {
   const [open, setOpen] = useState(Boolean(asPanel));
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [marking, setMarking] = useState<string | null>(null);
+  const [markSelected, setMarkSelected] = useState<string[]>([]);
+  const [markNote, setMarkNote] = useState("");
   const queryClient = useQueryClient();
   const load = useServerFn(getAssignmentQuestionControls);
   const credit = useServerFn(creditQuestionForAll);
   const remove = useServerFn(deleteQuestion);
   const exclude = useServerFn(setQuestionExclusion);
   const savePhotoMode = useServerFn(setQuestionPhotoMode);
+  const bulkGrade = useServerFn(bulkGradeQuestion);
+
+  const overrideMarking = useMutation({
+    mutationFn: (vars: {
+      questionId: string;
+      action: "credit" | "incorrect" | "reject";
+      studentIds: string[];
+      note?: string | undefined;
+    }) => bulkGrade({ data: { assignmentId, ...vars } }),
+    onSuccess: (result, vars) => {
+      toast.success(
+        vars.action === "credit"
+          ? `Full marks given to ${result.changed} student(s)`
+          : vars.action === "incorrect"
+            ? `Marked incorrect for ${result.changed} student(s)`
+            : `Sent back to ${result.changed} student(s) to redo`,
+      );
+      setMarkNote("");
+      refresh();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   const questionPhotoMode = useMutation({
     mutationFn: (vars: { questionId: string; photoMode: PhotoMode }) =>
@@ -1195,6 +1221,19 @@ function QuestionControlsDialog({
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => {
+                            setMarking((current) =>
+                              current === question.id ? null : question.id,
+                            );
+                            setMarkSelected([]);
+                            setMarkNote("");
+                          }}
+                        >
+                          {marking === question.id ? "Hide override" : "Override marking"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() =>
                             setExpanded((current) => (current === question.id ? null : question.id))
                           }
@@ -1238,6 +1277,100 @@ function QuestionControlsDialog({
                         />
                       </div>
                     </div>
+
+                    {marking === question.id ? (
+                      <div className="mt-4 space-y-3 border-t border-border pt-3">
+                        <p className="text-xs text-muted-foreground">
+                          Override the AI marking for this question. Pick students, or leave none
+                          selected to apply to the whole class.
+                        </p>
+                        {controls.data.students.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">
+                            No students have joined this class yet.
+                          </p>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {controls.data.students.map((student) => {
+                              const picked = markSelected.includes(student.id);
+                              return (
+                                <Button
+                                  key={student.id}
+                                  type="button"
+                                  size="sm"
+                                  variant={picked ? "default" : "outline"}
+                                  onClick={() =>
+                                    setMarkSelected((current) =>
+                                      current.includes(student.id)
+                                        ? current.filter((id) => id !== student.id)
+                                        : [...current, student.id],
+                                    )
+                                  }
+                                >
+                                  {student.name}
+                                </Button>
+                              );
+                            })}
+                          </div>
+                        )}
+                        <Input
+                          value={markNote}
+                          maxLength={600}
+                          placeholder="Optional note for the student (shown as feedback)"
+                          onChange={(event) => setMarkNote(event.target.value)}
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            disabled={overrideMarking.isPending}
+                            onClick={() =>
+                              overrideMarking.mutate({
+                                questionId: question.id,
+                                action: "credit",
+                                studentIds: markSelected,
+                                note: markNote.trim() || undefined,
+                              })
+                            }
+                          >
+                            Give full marks ({question.marks})
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={overrideMarking.isPending}
+                            onClick={() =>
+                              overrideMarking.mutate({
+                                questionId: question.id,
+                                action: "incorrect",
+                                studentIds: markSelected,
+                                note: markNote.trim() || undefined,
+                              })
+                            }
+                          >
+                            Mark incorrect (0)
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            disabled={overrideMarking.isPending}
+                            onClick={() =>
+                              overrideMarking.mutate({
+                                questionId: question.id,
+                                action: "reject",
+                                studentIds: markSelected,
+                                note: markNote.trim() || undefined,
+                              })
+                            }
+                          >
+                            Reject &amp; send back to redo
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {markSelected.length === 0
+                            ? "Applies to every student in the class."
+                            : `Applies to ${markSelected.length} selected student(s).`}
+                        </p>
+                      </div>
+                    ) : null}
 
                     {expanded === question.id ? (
                       <div className="mt-4 space-y-2 border-t border-border pt-3">

@@ -909,6 +909,181 @@ export const rejectAnswer = createServerFn({ method: "POST" })
 
 
 
+/**
+ * Teacher override for one question across the class: give full credit, mark it
+ * incorrect (0 marks) or send it back to be redone — for every student or a
+ * chosen few. Overrides whatever the AI decided.
+ */
+export const bulkGradeQuestion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        assignmentId: z.string().uuid(),
+        questionId: z.string().uuid(),
+        action: z.enum(["credit", "incorrect", "reject"]),
+        studentIds: z.array(z.string().uuid()).max(300).optional(),
+        note: z.string().max(600).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: canTeach } = await supabase.rpc("can_teach_assignment", {
+      _assignment_id: data.assignmentId,
+      _user_id: userId,
+    });
+    if (!canTeach) throw new Error("You do not teach this assignment.");
+
+    const db = await admin();
+    const [{ data: assignmentRow }, { data: question }, { data: questions }] = await Promise.all([
+      db.from("assignments").select("id, class_id, title").eq("id", data.assignmentId).single(),
+      db
+        .from("questions")
+        .select("id, assignment_id, position, marks")
+        .eq("id", data.questionId)
+        .single(),
+      db.from("questions").select("marks").eq("assignment_id", data.assignmentId),
+    ]);
+    if (!assignmentRow || !question || question.assignment_id !== data.assignmentId) {
+      throw new Error("Question not found on this homework.");
+    }
+    const assignmentTotal = (questions ?? []).reduce((sum, q) => sum + q.marks, 0);
+
+    const { data: members } = await db
+      .from("class_members")
+      .select("student_id")
+      .eq("class_id", assignmentRow.class_id);
+    const classStudents = new Set((members ?? []).map((m) => m.student_id as string));
+    const targets = (
+      data.studentIds && data.studentIds.length > 0 ? data.studentIds : [...classStudents]
+    ).filter((id) => classStudents.has(id));
+    if (targets.length === 0) throw new Error("No students selected.");
+
+    const note = (data.note ?? "").trim();
+    const now = new Date().toISOString();
+    let changed = 0;
+
+    for (const studentId of targets) {
+      // Make sure a submission and answer row exist so the override always lands.
+      let { data: submission } = await db
+        .from("submissions")
+        .select("id")
+        .eq("assignment_id", data.assignmentId)
+        .eq("student_id", studentId)
+        .maybeSingle();
+      if (!submission) {
+        if (data.action === "reject") continue; // nothing to send back yet
+        const { data: created } = await db
+          .from("submissions")
+          .insert({
+            assignment_id: data.assignmentId,
+            student_id: studentId,
+            status: "in_progress",
+            total_marks: assignmentTotal,
+          })
+          .select("id")
+          .single();
+        submission = created;
+      }
+      if (!submission) continue;
+
+      const { data: answer } = await db
+        .from("answers")
+        .select("id")
+        .eq("submission_id", submission.id)
+        .eq("question_id", data.questionId)
+        .maybeSingle();
+
+      let answerId = answer?.id as string | undefined;
+      if (!answerId) {
+        if (data.action === "reject") continue;
+        const { data: createdAnswer } = await db
+          .from("answers")
+          .insert({
+            submission_id: submission.id,
+            question_id: data.questionId,
+            answer_text: "",
+          })
+          .select("id")
+          .single();
+        answerId = createdAnswer?.id as string | undefined;
+      }
+      if (!answerId) continue;
+
+      if (data.action === "credit") {
+        await db
+          .from("answers")
+          .update({
+            verdict: "correct",
+            awarded_marks: question.marks,
+            feedback: note || "Full marks awarded by your teacher.",
+            resolved: true,
+            rejected_at: null,
+            rejected_by: null,
+            rejection_note: null,
+            updated_at: now,
+          })
+          .eq("id", answerId);
+      } else if (data.action === "incorrect") {
+        await db
+          .from("answers")
+          .update({
+            verdict: "incorrect",
+            awarded_marks: 0,
+            feedback: note || "Marked incorrect by your teacher.",
+            resolved: false,
+            rejected_at: null,
+            rejected_by: null,
+            rejection_note: null,
+            updated_at: now,
+          })
+          .eq("id", answerId);
+      } else {
+        await db
+          .from("answers")
+          .update({
+            verdict: null,
+            awarded_marks: 0,
+            feedback: note
+              ? `Sent back by your teacher: ${note}`
+              : "Sent back by your teacher to redo.",
+            resolved: false,
+            mark_breakdown: [],
+            rejected_at: now,
+            rejected_by: userId,
+            rejection_note: note || null,
+            updated_at: now,
+          })
+          .eq("id", answerId);
+        await db
+          .from("submissions")
+          .update({ status: "in_progress", submitted_at: null })
+          .eq("id", submission.id);
+        await db.from("class_messages").insert({
+          class_id: assignmentRow.class_id,
+          student_id: studentId,
+          sender_id: userId,
+          sender_role: "teacher",
+          assignment_id: data.assignmentId,
+          question_id: data.questionId,
+          topic: `Redo question ${question.position} — ${assignmentRow.title}`.trim(),
+          body: note
+            ? `Your teacher sent this question back for you to redo. ${note}`
+            : "Your teacher sent this question back for you to redo. Open the homework and answer it again in your own work.",
+        });
+      }
+
+      await recalcSubmission(db, submission.id);
+      changed += 1;
+    }
+
+    return { ok: true, changed };
+  });
+
+
+
+
 export const getSubmissionDetail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>

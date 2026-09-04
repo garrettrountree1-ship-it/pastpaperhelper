@@ -1082,10 +1082,6 @@ export const bulkGradeQuestion = createServerFn({ method: "POST" })
   });
 
 
-    await recalcSubmission(db, answer.submission_id);
-    return { ok: true };
-  });
-
 
 
 export const getSubmissionDetail = createServerFn({ method: "POST" })

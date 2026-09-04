@@ -127,6 +127,7 @@ function ClassHome() {
 
 /** Teacher-only list of the students who have joined this class. */
 function ClassRoster({ classId }: { classId: string }) {
+  const [open, setOpen] = useState(false);
   const fetchRoster = useServerFn(listClassRoster);
   const roster = useQuery({
     queryKey: ["class-roster", classId],
@@ -136,44 +137,63 @@ function ClassRoster({ classId }: { classId: string }) {
 
   return (
     <section className="paper mt-6 p-6">
-      <div className="mb-4 flex items-center gap-2">
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 text-left"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+      >
         <Users className="size-5 text-primary" />
         <h2 className="font-display text-xl">Students in this class</h2>
         <span className="text-sm text-muted-foreground">
           {roster.isPending ? "" : `· ${students.length}`}
         </span>
-      </div>
-      <p className="mb-4 text-sm text-muted-foreground">
-        Visible to you only — students cannot see this list.
-      </p>
-      {roster.isPending ? (
-        <Skeleton className="h-24 w-full" />
-      ) : students.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No students yet. Share the class code so they can join.
-        </p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-xs uppercase text-muted-foreground">
-              <tr>
-                <th className="py-2 pr-4 font-medium">Name</th>
-                
-                <th className="py-2 font-medium">Joined</th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.map((s) => (
-                <tr key={s.id} className="border-t border-border">
-                  <td className="py-2 pr-4">{s.name}</td>
-                  
-                  <td className="py-2 text-muted-foreground">
-                    {new Date(s.joinedAt).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <ChevronDown
+          className={`ml-auto size-5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open && (
+        <div className="mt-4">
+          <p className="mb-4 text-sm text-muted-foreground">
+            Visible to you only — students cannot see this list.
+          </p>
+          {roster.isPending ? (
+            <Skeleton className="h-24 w-full" />
+          ) : students.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No students yet. Share the class code so they can join.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="py-2 pr-4 font-medium">Name</th>
+                    <th className="py-2 pr-4 font-medium">Joined</th>
+                    <th className="py-2 font-medium" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map((s) => (
+                    <tr key={s.id} className="border-t border-border">
+                      <td className="py-2 pr-4">{s.name}</td>
+                      <td className="py-2 pr-4 text-muted-foreground">
+                        {new Date(s.joinedAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-2 text-right">
+                        <RemoveStudentButton
+                          classId={classId}
+                          studentId={s.id}
+                          studentName={s.name}
+                          onRemoved={() => roster.refetch()}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </section>

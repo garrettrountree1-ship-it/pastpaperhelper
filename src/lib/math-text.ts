@@ -31,8 +31,9 @@ const SYMBOLS: Array<[RegExp, string]> = [
   [/\\sigma\b/g, "σ"],
   [/\\omega\b/g, "ω"],
   [/\\Omega\b/g, "Ω"],
-  [/\\text\s*\{([^{}]*)\}/g, "$1"],
-  [/\\mathrm\s*\{([^{}]*)\}/g, "$1"],
+  [/\\(?:text|textrm|textbf|textit|textsf|mathrm|mathbf|mathit|mathsf|mbox|operatorname|ce|si|unit)\s*\{([^{}]*)\}/g, "$1"],
+  [/\\(?:overline|underline|vec|hat|bar|boldsymbol)\s*\{([^{}]*)\}/g, "$1"],
+
   [/\\left|\\right/g, ""],
   [/\\,|\\;|\\!|\\quad|\\qquad/g, " "],
 ];

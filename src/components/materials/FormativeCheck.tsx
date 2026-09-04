@@ -186,15 +186,56 @@ export function FormativeCheckButton({
                   key={option.value}
                   type="button"
                   size="sm"
-                  variant={seconds === option.value ? "default" : "outline"}
-                  onClick={() => setSeconds(option.value)}
+                  variant={seconds === option.value && !customTimer ? "default" : "outline"}
+                  onClick={() => {
+                    setCustomTimer(false);
+                    setSeconds(option.value);
+                  }}
                 >
                   <Timer className="size-3" />
                   {option.label}
                 </Button>
               ))}
+              <Button
+                type="button"
+                size="sm"
+                variant={customTimer ? "default" : "outline"}
+                onClick={() => setCustomTimer(true)}
+              >
+                <Timer className="size-3" />
+                Custom
+              </Button>
             </div>
+            {customTimer ? (
+              <div className="flex items-center gap-2 pt-1">
+                <Input
+                  id="formative-custom-minutes"
+                  type="number"
+                  min={0}
+                  max={30}
+                  className="w-20"
+                  value={customMinutes}
+                  onChange={(event) => setCustomMinutes(event.target.value)}
+                  placeholder="min"
+                />
+                <span className="text-xs text-muted-foreground">min</span>
+                <Input
+                  id="formative-custom-seconds"
+                  type="number"
+                  min={0}
+                  max={59}
+                  className="w-20"
+                  value={customSeconds}
+                  onChange={(event) => setCustomSeconds(event.target.value)}
+                  placeholder="sec"
+                />
+                <span className="text-xs text-muted-foreground">
+                  sec · anything from 15 seconds to 30 minutes
+                </span>
+              </div>
+            ) : null}
           </div>
+
         </div>
         <DialogFooter>
           <Button

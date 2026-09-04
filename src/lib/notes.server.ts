@@ -122,6 +122,7 @@ export async function lessonTutorReply(input: {
     "You may end with at most one short check-for-understanding question, but only after a complete answer.",
     "Ground answers in the teacher's notes and lesson topic below; if the notes conflict with established science, say so plainly.",
     "If you are unsure, say what is certain and what is not — never invent facts.",
+    "Write equations and symbols as plain readable text with real Unicode characters (°C, °F, ×, ÷, ≠, ≤, ≥, →, π, Δ, m², H₂O, x = (y - b)/m). Never use LaTeX or maths delimiters ($, $$, \\frac, \\(, \\[) and never use markdown tables or code fences.",
     levelRule,
     `Reply in ${input.language}. Keep scientific and technical terms in English.`,
     input.isTeacher

@@ -20,6 +20,28 @@ function isEditable(target: EventTarget | null) {
   );
 }
 
+/** A DOM-level mask painted synchronously, before React can re-render. */
+const OVERLAY_ID = "pph-capture-mask";
+function showOverlay() {
+  if (typeof document === "undefined") return;
+  let el = document.getElementById(OVERLAY_ID);
+  if (!el) {
+    el = document.createElement("div");
+    el.id = OVERLAY_ID;
+    el.setAttribute("aria-hidden", "true");
+    el.style.cssText =
+      "position:fixed;inset:0;z-index:2147483647;background:#111;color:#fff;display:flex;" +
+      "align-items:center;justify-content:center;font:600 16px/1.4 system-ui,sans-serif;" +
+      "text-align:center;padding:24px;";
+    el.textContent = "Screen capture is not allowed on homework.";
+    document.body.appendChild(el);
+  }
+  el.style.display = "flex";
+}
+function hideOverlay() {
+  document.getElementById(OVERLAY_ID)?.remove();
+}
+
 export function useContentProtection(
   options: boolean | { blockCopy?: boolean; blockCapture?: boolean } = {},
 ) {
@@ -141,6 +163,9 @@ export function useContentProtection(
       window.removeEventListener("blur", conceal);
       window.removeEventListener("focus", reveal);
       document.removeEventListener("visibilitychange", onVisibility);
+      window.clearInterval(focusPoll);
+      window.clearTimeout(revealTimer);
+      hideOverlay();
     };
   }, [blockCopy, blockCapture]);
 

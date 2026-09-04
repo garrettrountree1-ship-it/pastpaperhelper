@@ -529,6 +529,7 @@ function AssignmentList({
                   </Button>
                 }
               />
+              <CopyProtectionDialog classId={classId} assignmentId={assignment.id} />
               <LanguageSettingsDialog
                 classId={classId}
                 assignmentId={assignment.id}
@@ -539,6 +540,7 @@ function AssignmentList({
                   </Button>
                 }
               />
+
               <DeleteAssignmentButton
                 classId={classId}
                 assignmentId={assignment.id}

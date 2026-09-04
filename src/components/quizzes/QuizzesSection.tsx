@@ -98,6 +98,14 @@ function TeacherQuizzes({ classId }: { classId: string }) {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+  const revealMutation = useMutation({
+    mutationFn: (input: { quizId: string; reveal: boolean }) => reveal({ data: input }),
+    onSuccess: (_r, input) => {
+      toast.success(input.reveal ? "Mark scheme released to students" : "Mark scheme hidden from students");
+      refresh();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   return (
     <div className="space-y-6">
@@ -106,7 +114,8 @@ function TeacherQuizzes({ classId }: { classId: string }) {
           <h2 className="text-3xl">Timed quizzes</h2>
           <p className="mt-1 max-w-prose text-sm text-muted-foreground">
             Upload a past paper and mark scheme, set the time limit, then release the quiz when the
-            class is ready. Nothing is marked or explained until the timer ends.
+            class is ready. Copy, paste, screenshots and snipping tools are blocked for students,
+            there is no AI tutor, and nothing is marked or explained until the timer ends.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">

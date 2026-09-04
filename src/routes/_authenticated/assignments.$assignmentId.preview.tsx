@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { VocabSheet } from "@/components/assignments/VocabSheet";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
+import { useContentProtection } from "@/hooks/use-content-protection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -108,6 +109,11 @@ function PreviewPage() {
 
 
   const data = preview.data;
+  // The student view must behave exactly like the student page, deterrents included.
+  const protection = useContentProtection({
+    blockCopy: Boolean(preview.data?.tutorSettings?.protectQuestions),
+    blockCapture: true,
+  });
   const totalMarks = data?.questions.reduce((sum, q) => sum + q.marks, 0) ?? 0;
 
   return (
@@ -172,7 +178,17 @@ function PreviewPage() {
 
 
 
-            <div className="mt-8 space-y-6">
+            <div
+              className={`mt-8 space-y-6 ${protection.protectedClassName} ${
+                protection.concealed ? "pointer-events-none blur-lg" : ""
+              }`}
+            >
+              {protection.concealed ? (
+                <p className="paper p-4 text-sm text-muted-foreground">
+                  Questions are blurred while this tab is not in focus — students see exactly this.
+                  Screenshot and snipping-tool shortcuts, printing and pasting are blocked too.
+                </p>
+              ) : null}
               {groupByPage(data.questions).map((group) => (
                 <div key={group.key} className="space-y-4">
                   {group.imageUrls.length > 0 ? (

@@ -86,18 +86,25 @@ export function RichTextEditable({
         if (!shortcut) return;
         event.preventDefault();
         event.stopPropagation();
-        if (shortcut === "undo") {
-          if (onUndo) onUndo();
-          else formatSelection("undo");
-        } else if (shortcut === "redo") {
-          if (onRedo) onRedo();
-          else formatSelection("redo");
-        } else {
-          // Applies to the highlighted words only.
-          formatSelection(shortcut);
+        if (shortcut === "undo" || shortcut === "redo") {
+          // Undo/redo must not re-read the DOM afterwards, otherwise the
+          // restored value is immediately overwritten by the old text.
+          const handler = shortcut === "undo" ? onUndo : onRedo;
+          if (handler) {
+            // Every keystroke is already emitted on input, so the history is
+            // current — just step it back without re-reading the DOM.
+            handler();
+          } else {
+            formatSelection(shortcut);
+            emit();
+          }
+          return;
         }
+        // Applies to the highlighted words only.
+        formatSelection(shortcut);
         emit();
       }}
+
     />
   );
 }

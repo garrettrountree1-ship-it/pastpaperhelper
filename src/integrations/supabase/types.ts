@@ -147,6 +147,7 @@ export type Database = {
       }
       assignments: {
         Row: {
+          archived_at: string | null
           class_id: string
           created_at: string
           created_by: string
@@ -165,6 +166,7 @@ export type Database = {
           vocab_translation: boolean
         }
         Insert: {
+          archived_at?: string | null
           class_id: string
           created_at?: string
           created_by: string
@@ -183,6 +185,7 @@ export type Database = {
           vocab_translation?: boolean
         }
         Update: {
+          archived_at?: string | null
           class_id?: string
           created_at?: string
           created_by?: string
@@ -457,6 +460,7 @@ export type Database = {
       }
       class_units: {
         Row: {
+          archived_at: string | null
           class_id: string
           created_at: string
           created_by: string
@@ -470,6 +474,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           class_id: string
           created_at?: string
           created_by: string
@@ -483,6 +488,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           class_id?: string
           created_at?: string
           created_by?: string

@@ -779,6 +779,7 @@ export const getClassOverview = createServerFn({ method: "POST" })
         protectQuestions: Boolean(
           (a as { protect_questions?: boolean | null }).protect_questions,
         ),
+        archivedAt: ((a as { archived_at?: string | null }).archived_at ?? null) as string | null,
         /** Live scores: grades update as students work; the deadline only freezes them. */
         resultsReleased: true,
       };

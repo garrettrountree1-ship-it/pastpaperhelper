@@ -455,9 +455,9 @@ function AssignmentList({
           Exam-integrity protections are always on for homework
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Screen capture, snipping tools and pasting into answer or tutor boxes are fully blocked.
-          Copying question text is optional per assignment. A student using a second phone to
-          photograph the screen cannot be prevented by any website.
+          Screen capture, snipping tools, copying question text and pasting into answer or tutor
+          boxes are all fully blocked. A student using a second phone to photograph the screen
+          cannot be prevented by any website.
         </p>
       </div>
 

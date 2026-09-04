@@ -137,7 +137,8 @@ function QuizPage() {
             {!finished ? (
               <p className="mb-4 text-sm text-muted-foreground">
                 Quiz conditions: English only, no AI tutor, no vocab list and no hover
-                translations.
+                translations. Copy, paste, screenshots and snipping tools are blocked. Your answers
+                are only marked after you submit or the timer runs out.
               </p>
             ) : null}
 

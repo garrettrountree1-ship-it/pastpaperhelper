@@ -903,6 +903,12 @@ export const rejectAnswer = createServerFn({ method: "POST" })
       }
     }
 
+    await recalcSubmission(db, answer.submission_id);
+    return { ok: true };
+  });
+
+
+
 /**
  * Teacher override for one question across the class: give full credit, mark it
  * incorrect (0 marks) or send it back to be redone — for every student or a

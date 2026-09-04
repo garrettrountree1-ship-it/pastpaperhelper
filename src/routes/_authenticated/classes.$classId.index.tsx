@@ -9,6 +9,8 @@ import { TeacherMessagesPanel } from "@/components/messaging/TeacherMessagesPane
 import { useMyClasses } from "@/components/SectionShell";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getMe } from "@/lib/app.functions";
+import { useDemoView } from "@/lib/demo-view";
 import { listClassRoster } from "@/lib/materials.functions";
 import { SECTIONS, type SectionKey } from "@/lib/sections";
 

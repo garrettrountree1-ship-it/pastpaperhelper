@@ -1078,26 +1078,6 @@ function QuestionControlsDialog({
   const savePhotoMode = useServerFn(setQuestionPhotoMode);
 
 
-  const overrideMarking = useMutation({
-    mutationFn: (vars: {
-      questionId: string;
-      action: "credit" | "incorrect" | "reject";
-      studentIds: string[];
-      note?: string | undefined;
-    }) => bulkGrade({ data: { assignmentId, ...vars } }),
-    onSuccess: (result, vars) => {
-      toast.success(
-        vars.action === "credit"
-          ? `Full marks given to ${result.changed} student(s)`
-          : vars.action === "incorrect"
-            ? `Marked incorrect for ${result.changed} student(s)`
-            : `Sent back to ${result.changed} student(s) to redo`,
-      );
-      setMarkNote("");
-      refresh();
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
 
   const questionPhotoMode = useMutation({
     mutationFn: (vars: { questionId: string; photoMode: PhotoMode }) =>

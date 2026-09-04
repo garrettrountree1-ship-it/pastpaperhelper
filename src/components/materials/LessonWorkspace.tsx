@@ -128,14 +128,13 @@ export function LessonWorkspace({
   const [split, setSplit] = useState(50);
   // "split" shows both panes; "canvas"/"doc" give one pane the full width.
   const [paneMode, setPaneMode] = useState<"split" | "canvas" | "doc">("split");
-  // Side-by-side columns, stacked rows, or layered (one window floating on top).
-  const [layout, setLayout] = useState<"split" | "stacked" | "layered">("split");
-  const stacked = layout === "stacked";
+  // Side-by-side columns, or layered (one window floating on top).
+  const [layout, setLayout] = useState<"split" | "layered">("split");
   const canvasSize = paneMode === "canvas" ? "100%" : paneMode === "doc" ? "0%" : `${split}%`;
   const docSize =
     paneMode === "doc" ? "100%" : paneMode === "canvas" ? "0%" : `calc(${100 - split}% - 0.5rem)`;
-  const canvasStyle = stacked ? { height: canvasSize } : { width: canvasSize };
-  const docStyle = stacked ? { height: docSize } : { width: docSize };
+  const canvasStyle = { width: canvasSize };
+  const docStyle = { width: docSize };
 
   // Layered mode: one pane fills the area, the other floats above it in a
   // window that can be dragged, stretched, minimised or maximised.
@@ -238,9 +237,7 @@ export function LessonWorkspace({
     setPaneMode("split");
     const rect = row.getBoundingClientRect();
     const onMove = (move: PointerEvent) => {
-      const pct = stacked
-        ? ((move.clientY - rect.top) / rect.height) * 100
-        : ((move.clientX - rect.left) / rect.width) * 100;
+      const pct = ((move.clientX - rect.left) / rect.width) * 100;
       setSplit(Math.min(80, Math.max(20, pct)));
     };
     const onUp = () => {
@@ -642,15 +639,6 @@ export function LessonWorkspace({
               </Button>
               <Button
                 size="sm"
-                variant={layout === "stacked" ? "default" : "ghost"}
-                onClick={() => setLayout("stacked")}
-                title="Stacked windows (one above the other)"
-              >
-                <Rows2 className="size-4" />
-                Stacked
-              </Button>
-              <Button
-                size="sm"
                 variant={layout === "layered" ? "default" : "ghost"}
                 onClick={() => setLayout("layered")}
                 title="Layered windows (one floating on top of the other)"
@@ -830,15 +818,11 @@ export function LessonWorkspace({
           ) : (
           <div
             ref={rowRef}
-            className={`flex min-w-0 flex-col gap-2 lg:h-full lg:min-h-0 lg:flex-1 lg:gap-0 ${
-              stacked ? "lg:flex-col" : "lg:flex-row"
-            }`}
+            className="flex min-w-0 flex-col gap-2 lg:h-full lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-0"
           >
             {/* Lesson canvas — resizable pane */}
             <div
-              className={`lg:min-h-0 ${paneMode === "doc" ? "hidden" : "min-h-[70vh] lg:min-h-0"} ${
-                stacked ? "lg:w-full" : "lg:h-full"
-              }`}
+              className={`lg:h-full lg:min-h-0 ${paneMode === "doc" ? "hidden" : "min-h-[70vh] lg:min-h-0"}`}
               style={canvasStyle}
             >
               {canvasNode}
@@ -847,17 +831,13 @@ export function LessonWorkspace({
             {/* Drag handle + minimise / maximise pane controls */}
             <div
               role="separator"
-              aria-orientation={stacked ? "horizontal" : "vertical"}
+              aria-orientation="vertical"
               onPointerDown={(event) => {
                 if ((event.target as HTMLElement).closest("button")) return;
                 startDrag(event);
               }}
               onDoubleClick={() => setPaneMode("split")}
-              className={`group hidden shrink-0 items-center justify-center gap-1 lg:flex ${
-                stacked
-                  ? "h-5 w-full cursor-row-resize flex-row"
-                  : "w-5 cursor-col-resize flex-col"
-              }`}
+              className="group hidden w-5 shrink-0 cursor-col-resize flex-col items-center justify-center gap-1 lg:flex"
               title="Drag to resize, double-click to reset"
             >
               <button
@@ -867,22 +847,14 @@ export function LessonWorkspace({
                 onClick={() => setPaneMode(paneMode === "canvas" ? "split" : "canvas")}
                 className="rounded border bg-background p-0.5 text-muted-foreground hover:text-primary"
               >
-                {stacked ? (
-                  paneMode === "canvas" ? (
-                    <ChevronDown className="size-3" />
-                  ) : (
-                    <ChevronUp className="size-3" />
-                  )
-                ) : paneMode === "canvas" ? (
+                {paneMode === "canvas" ? (
                   <ChevronRight className="size-3" />
                 ) : (
                   <ChevronLeft className="size-3" />
                 )}
               </button>
               <div
-                className={`rounded-full bg-border transition-colors group-hover:bg-primary ${
-                  stacked ? "h-1 w-10" : "h-10 w-1"
-                }`}
+                className="h-10 w-1 rounded-full bg-border transition-colors group-hover:bg-primary"
               />
               <button
                 type="button"
@@ -891,13 +863,7 @@ export function LessonWorkspace({
                 onClick={() => setPaneMode(paneMode === "doc" ? "split" : "doc")}
                 className="rounded border bg-background p-0.5 text-muted-foreground hover:text-primary"
               >
-                {stacked ? (
-                  paneMode === "doc" ? (
-                    <ChevronUp className="size-3" />
-                  ) : (
-                    <ChevronDown className="size-3" />
-                  )
-                ) : paneMode === "doc" ? (
+                {paneMode === "doc" ? (
                   <ChevronLeft className="size-3" />
                 ) : (
                   <ChevronRight className="size-3" />
@@ -909,7 +875,7 @@ export function LessonWorkspace({
             <div
               className={`flex flex-col lg:min-h-0 ${
                 paneMode === "canvas" ? "hidden" : "min-h-[70vh] lg:min-h-0"
-              } ${stacked ? "lg:w-full" : "lg:h-full"}`}
+              } lg:h-full`}
               style={docStyle}
             >
               {docNode}

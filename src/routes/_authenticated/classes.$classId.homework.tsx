@@ -478,12 +478,6 @@ function AssignmentList({
                 <Badge variant={statusBadgeVariant[assignment.statusKey]}>
                   {statusLabels[assignment.statusKey]}
                 </Badge>
-                {(assignment as { protectQuestions?: boolean }).protectQuestions ? (
-                  <Badge variant="outline" className="gap-1">
-                    <Lock className="size-3" />
-                    Copying blocked
-                  </Badge>
-                ) : null}
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
                 {assignment.questionCount} questions · {assignment.totalMarks} marks

@@ -79,63 +79,66 @@ export function ClassBulletinPanel({ classId }: { classId: string }) {
         cannot reply.
       </p>
       {open ? (
-        <div className="mt-4 space-y-3">
-        <div className="space-y-2">
-          <Label htmlFor="bulletin-title">Title (optional)</Label>
-          <Input
-            id="bulletin-title"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="Reminder"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="bulletin-body">Message</Label>
-          <Textarea
-            id="bulletin-body"
-            rows={3}
-            value={body}
-            onChange={(event) => setBody(event.target.value)}
-            placeholder="Paper 4 homework is due Friday — bring your working."
-          />
-        </div>
-        <Button
-          onClick={() => create.mutate()}
-          disabled={body.trim().length === 0 || create.isPending}
-        >
-          Post to class
-        </Button>
-      </div>
-
-      <div className="mt-6 space-y-3">
-        {posts.isPending ? (
-          <Skeleton className="h-20 w-full" />
-        ) : (posts.data ?? []).length === 0 ? (
-          <p className="text-sm text-muted-foreground">No bulletin posts yet.</p>
-        ) : (
-          (posts.data ?? []).map((item) => (
-            <div key={item.id} className="rounded-lg border border-border p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  {item.title ? <p className="font-medium">{item.title}</p> : null}
-                  <p className="mt-1 whitespace-pre-wrap text-sm">{item.body}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {formatDueDate(item.created_at)}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => del.mutate(item.id)}
-                  disabled={del.isPending}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
+        <>
+          <div className="mt-4 space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="bulletin-title">Title (optional)</Label>
+              <Input
+                id="bulletin-title"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Reminder"
+              />
             </div>
-          ))
-        )}
-      </div>
+            <div className="space-y-2">
+              <Label htmlFor="bulletin-body">Message</Label>
+              <Textarea
+                id="bulletin-body"
+                rows={3}
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+                placeholder="Paper 4 homework is due Friday — bring your working."
+              />
+            </div>
+            <Button
+              onClick={() => create.mutate()}
+              disabled={body.trim().length === 0 || create.isPending}
+            >
+              Post to class
+            </Button>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            {posts.isPending ? (
+              <Skeleton className="h-20 w-full" />
+            ) : (posts.data ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No bulletin posts yet.</p>
+            ) : (
+              (posts.data ?? []).map((item) => (
+                <div key={item.id} className="rounded-lg border border-border p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      {item.title ? <p className="font-medium">{item.title}</p> : null}
+                      <p className="mt-1 whitespace-pre-wrap text-sm">{item.body}</p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {formatDueDate(item.created_at)}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => del.mutate(item.id)}
+                      disabled={del.isPending}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      ) : null}
     </section>
   );
 }

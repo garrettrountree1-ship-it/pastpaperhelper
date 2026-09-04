@@ -186,14 +186,25 @@ function AuthPage() {
       return;
     }
     setBusy(true);
-    const { error } = await supabase.auth.resend({
-      type: "signup",
-      email: target,
-      options: { emailRedirectTo: emailLinkOrigin() },
-    });
+    let error: { message: string } | null = null;
+    try {
+      ({ error } = await withAuthRetry(() =>
+        supabase.auth.resend({
+          type: "signup",
+          email: target,
+          options: { emailRedirectTo: emailLinkOrigin() },
+        }),
+      ));
+    } catch (thrown) {
+      setBusy(false);
+      setNetworkIssue(isNetworkAuthError(thrown));
+      toast.error(describeAuthError(thrown));
+      return;
+    }
     setBusy(false);
     if (error) {
-      toast.error(error.message);
+      setNetworkIssue(isNetworkAuthError(error));
+      toast.error(describeAuthError(error, error.message));
       return;
     }
     toast.success("Verification email sent again — check your inbox and spam folder.");

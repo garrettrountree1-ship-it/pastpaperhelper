@@ -480,15 +480,18 @@ function AssignmentList({
       <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
         <p className="flex items-center gap-2 text-sm font-medium">
           <Lock className="size-4" />
-          Exam-integrity protection is always on for homework
+          Exam-integrity deterrents are always on for homework
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Screenshots, the Windows snipping tool and printing are blocked, questions blur the moment
-          a student leaves the tab, and pasting into answer boxes or the tutor chat is never allowed.
-          Blocking copying of the question wording is optional per assignment — use the
-          &ldquo;Copying blocked / allowed&rdquo; button on any homework below.
+          Pasting into an answer box or the tutor chat is fully blocked. Screenshot, snipping-tool
+          and print shortcuts are intercepted while the page has focus, and the questions blur
+          whenever the tab or window loses focus — so most capture attempts get a blurred page. No
+          website can stop the operating system or a phone camera, so treat this as a strong
+          deterrent, not a guarantee. Blocking copying of the question wording is optional per
+          assignment — use the &ldquo;Copying blocked / allowed&rdquo; button on any homework below.
         </p>
       </div>
+
 
       {visible.length === 0 ? (
         <div className="paper p-8 text-center text-muted-foreground">
@@ -651,24 +654,30 @@ function CopyProtectionDialog({
           </div>
           <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
             <p className="text-sm font-medium">
-              Always on, on every homework: screenshots, snipping tool and pasting
+              Always on, on every homework — what it actually does
             </p>
             <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-              <li>Screenshot keys, Windows snipping tool shortcuts and printing are blocked.</li>
               <li>
-                Questions are blurred and hidden the moment the student leaves the tab or the window
-                loses focus, so capture and screen-share tools get a blank page.
+                Pasting into an answer box or the tutor chat is fully blocked, flagged and rejected.
               </li>
               <li>
-                Students can never paste text into an answer box or the tutor chat — pasting is
-                flagged and rejected.
+                Screenshot, snipping-tool and print keyboard shortcuts are intercepted while the
+                homework page has focus, and the questions blur for a moment afterwards.
+              </li>
+              <li>
+                The questions blur whenever the tab or window loses focus, so a snipping tool or
+                screen-share opened over the page captures a blurred page.
               </li>
             </ul>
             <p className="mt-2 text-xs text-muted-foreground">
-              These cannot be switched off. Only copying of the question wording (above) is
-              optional.
+              Honest limit: screenshots are taken by the operating system, not the web page, so no
+              website can block Print Screen from the Start menu, a phone photo of the screen, or a
+              recording app. This is a strong deterrent, not a guarantee — for a hard block you need
+              a locked-down exam browser or supervised devices. Only copying of the question wording
+              (above) is optional.
             </p>
           </div>
+
         </div>
       </DialogContent>
     </Dialog>
@@ -895,10 +904,13 @@ function AssignmentDialog({
                 wording of this homework.
               </p>
               <p className="text-sm font-medium">
-                Always on and not switchable: screenshots, the Windows snipping tool and printing
-                are blocked, questions blur whenever the student leaves the tab, and students can
-                never paste into an answer box or the tutor chat.
+                Always on and not switchable: pasting into an answer box or the tutor chat is fully
+                blocked; screenshot, snipping-tool and print shortcuts are intercepted and the
+                questions blur whenever the tab loses focus. Screenshots taken by the operating
+                system itself (or a phone camera) can&apos;t be stopped by any website, so this is a
+                strong deterrent rather than a guarantee.
               </p>
+
 
 
             </div>

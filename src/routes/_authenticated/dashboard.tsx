@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
+import { RedoAlerts } from "@/components/homework/RedoAlerts";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

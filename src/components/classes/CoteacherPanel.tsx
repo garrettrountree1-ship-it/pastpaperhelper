@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { UserPlus, X } from "lucide-react";
+import { ChevronDown, UserPlus, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -20,6 +20,7 @@ export function CoteacherPanel({ classId }: { classId: string }) {
   const add = useServerFn(addCoteacher);
   const remove = useServerFn(removeCoteacher);
   const [email, setEmail] = useState("");
+  const [open, setOpen] = useState(false);
 
   const list = useQuery({
     queryKey: ["coteachers", classId],

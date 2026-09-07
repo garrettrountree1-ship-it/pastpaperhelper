@@ -1276,11 +1276,15 @@ export const unlockSubmission = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: submission } = await db
       .from("submissions")
-      .select("id")
+      .select("id, penalty_percent")
       .eq("assignment_id", data.assignmentId)
       .eq("student_id", data.studentId)
       .maybeSingle();
     if (!submission) throw new Error("No submission to unlock.");
+
+    // Deductions stack: every unlock adds to what was already taken off.
+    const previous = Number(submission.penalty_percent ?? 0);
+    const total = Math.min(100, previous + (data.penaltyPercent ?? 0));
 
     const { error } = await db
       .from("submissions")
@@ -1288,10 +1292,11 @@ export const unlockSubmission = createServerFn({ method: "POST" })
         ai_flag_count: 0,
         locked_at: null,
         locked_reason: null,
-        penalty_percent: data.penaltyPercent ?? 0,
+        penalty_percent: total,
       })
       .eq("id", submission.id);
     if (error) throw new Error(error.message);
+
 
     await recalcSubmission(db, submission.id);
     return { ok: true };

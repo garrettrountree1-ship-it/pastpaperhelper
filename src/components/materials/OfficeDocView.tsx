@@ -828,10 +828,11 @@ function TextShape({
     h: number;
   } | null>(null);
 
-  const x = edit?.x ?? shape.x;
-  const y = edit?.y ?? shape.y;
-  const baseW = edit?.w ?? shape.w;
-  const baseH = edit?.h ?? shape.h;
+  // The laid-out box (already pulled clear of any picture) is the starting point.
+  const x = edit?.x ?? rect?.x ?? shape.x;
+  const y = edit?.y ?? rect?.y ?? shape.y;
+  const baseW = edit?.w ?? rect?.w ?? shape.w;
+  const baseH = edit?.h ?? rect?.h ?? shape.h;
   const overrideText = edit?.text;
   // Right-hand boundary: the nearest neighbour's left edge, or the slide edge.
   const rightBound = Math.min(widthLimit ?? slideWidth - 8, slideWidth - 8);

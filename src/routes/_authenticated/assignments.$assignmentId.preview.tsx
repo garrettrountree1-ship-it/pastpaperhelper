@@ -2,7 +2,7 @@ import { formatDueDate } from "@/lib/datetime";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { MessageCircle } from "lucide-react";
+import { TeacherIcon } from "@/components/assignments/QuestionHelpDialog";
 import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
@@ -365,16 +365,18 @@ function PreviewQuestion({
       protectQuestions={protectQuestions}
       headerAction={
         <Button
-          variant="outline"
-          size="sm"
+          size="icon"
+          variant="ghost"
+          className="size-9 rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+          title="Ask the teacher"
+          aria-label="Ask the teacher"
           onClick={() =>
             toast.info(
               "Students use this button to message you about this exact question — their message, with the question reference, lands in your class mailbox under Bulletin & Messages.",
             )
           }
         >
-          <MessageCircle className="size-4" />
-          Message teacher
+          <TeacherIcon className="size-4" />
         </Button>
       }
       thread={thread}

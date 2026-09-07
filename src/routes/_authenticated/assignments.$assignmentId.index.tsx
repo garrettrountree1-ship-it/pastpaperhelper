@@ -495,11 +495,14 @@ function QuestionCard({
             topic: `${assignmentTitle} · Question ${questionLabel(question.question_text, index)}`,
           }}
           trigger={
-            <Button variant="ghost" size="sm" className="gap-1.5 px-2" title="Ask the teacher">
-              <span className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <TeacherIcon className="size-3.5" />
-              </span>
-              <span className="hidden sm:inline">Ask the teacher</span>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-9 rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+              title="Ask the teacher"
+              aria-label="Ask the teacher"
+            >
+              <TeacherIcon className="size-4" />
             </Button>
           }
         />

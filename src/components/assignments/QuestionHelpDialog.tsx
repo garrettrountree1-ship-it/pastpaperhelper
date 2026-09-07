@@ -267,30 +267,26 @@ export function QuestionHelpButtons({
   const [mode, setMode] = useState<Mode | null>(null);
   return (
     <>
-      <div className="flex items-center gap-1">
+      <div className="flex flex-col items-center gap-2">
         <Button
-          size="sm"
+          size="icon"
           variant="ghost"
           onClick={() => setMode("hint")}
-          className="gap-1.5 px-2"
+          className="size-9 rounded-full bg-warning text-warning-foreground shadow-sm hover:bg-warning/90"
           title="Give me a hint"
+          aria-label="Give me a hint"
         >
-          <span className="flex size-6 items-center justify-center rounded-full bg-warning/10 text-warning">
-            <Lightbulb className="size-3.5" />
-          </span>
-          <span className="hidden sm:inline">Give me a hint</span>
+          <Lightbulb className="size-4" />
         </Button>
         <Button
-          size="sm"
+          size="icon"
           variant="ghost"
           onClick={() => setMode("steps")}
-          className="gap-1.5 px-2"
+          className="size-9 rounded-full bg-success text-success-foreground shadow-sm hover:bg-success/90"
           title="Break it down step-by-step"
+          aria-label="Break it down step-by-step"
         >
-          <span className="flex size-6 items-center justify-center rounded-full bg-success/10 text-success">
-            <StairsIcon className="size-3.5" />
-          </span>
-          <span className="hidden sm:inline">Break it down step-by-step</span>
+          <StairsIcon className="size-4" />
         </Button>
       </div>
       {mode ? (

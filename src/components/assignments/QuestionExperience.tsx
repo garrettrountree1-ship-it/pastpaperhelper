@@ -171,14 +171,13 @@ export function QuestionExperience({
         <h2 className="font-display text-xl">
           Question {questionLabel(question.question_text, index)}
         </h2>
-        <div className="flex items-center justify-end gap-1">
-          <Badge variant="secondary">
-            {result ? `${result.awardedMarks}/` : ""}{question.marks} marks
-          </Badge>
-          {headerAction}
-          <QuestionHelpButtons questionId={question.id} answerDraft={draft} />
-        </div>
+        <Badge variant="secondary">
+          {result ? `${result.awardedMarks}/` : ""}{question.marks} marks
+        </Badge>
       </div>
+
+      <div className="mt-3 flex gap-3">
+        <div className="min-w-0 flex-1">
 
       {/* Question wording is never selectable or copyable for students, regardless
           of the teacher's wider copy setting. */}
@@ -437,6 +436,13 @@ export function QuestionExperience({
           </div>
         </div>
       ) : null}
+        </div>
+
+        <div className="flex flex-col items-center gap-2 pt-1">
+          {headerAction}
+          <QuestionHelpButtons questionId={question.id} answerDraft={draft} />
+        </div>
+      </div>
     </section>
   );
 }

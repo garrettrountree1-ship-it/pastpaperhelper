@@ -340,13 +340,16 @@ export function NotesCanvas({
   }
 
 
+  /** Where the pointer last rested on the sheet, in sheet coordinates. */
+  const pointerAt = useRef<{ x: number; y: number } | null>(null);
+
   function handlePaste(event: React.ClipboardEvent) {
     if (!canEdit) return;
     const item = Array.from(event.clipboardData.items).find((i) => i.type.startsWith("image/"));
     const file = item?.getAsFile();
     if (file) {
       event.preventDefault();
-      void uploadImage(file);
+      void uploadImage(file, pointerAt.current);
     }
   }
 
@@ -361,7 +364,7 @@ export function NotesCanvas({
       const file = item?.getAsFile();
       if (!file) return;
       event.preventDefault();
-      void uploadImage(file);
+      void uploadImage(file, pointerAt.current);
     };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
@@ -587,7 +590,7 @@ export function NotesCanvas({
             className="hidden"
             onChange={(event) => {
               const file = event.target.files?.[0];
-              if (file) void uploadImage(file);
+              if (file) void uploadImage(file, pointerAt.current);
               event.target.value = "";
             }}
           />

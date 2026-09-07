@@ -97,6 +97,7 @@ export function QuestionHelpDialog({
   const ask = useServerFn(askQuestionHelp);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
+  const [helpError, setHelpError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const opened = useRef(false);
 
@@ -116,20 +117,28 @@ export function QuestionHelpDialog({
 
   const send = useMutation({
     mutationFn: async (message: string | null) => {
+      setHelpError(null);
       const { reply } = await ask({
         data: { questionId, mode, message, answerDraft: answerDraft.slice(0, 6000) },
       });
       return reply;
     },
     onSuccess: (reply) => setTurns((prev) => [...prev, { role: "tutor", content: reply }]),
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => {
+      const message = error.message || "The tutor could not respond. Please try again.";
+      setHelpError(message);
+      toast.error(message);
+    },
   });
 
   // Opening the window with nothing said yet starts the help immediately.
   useEffect(() => {
-    if (!open || opened.current || !existing.data) return;
+    if (!open || opened.current || existing.isPending) return;
     opened.current = true;
-    if ((existing.data[mode] as Turn[]).length === 0) send.mutate(null);
+    const savedTurns = (existing.data?.[mode] ?? []) as Turn[];
+    setTurns(savedTurns);
+    const lastTurn = savedTurns.at(-1);
+    if (!lastTurn || lastTurn.role !== "tutor") send.mutate(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode, existing.data]);
 
@@ -195,6 +204,20 @@ export function QuestionHelpDialog({
                   ? "Splitting the question into steps…"
                   : "Working out the next step…"}
             </p>
+          ) : null}
+          {helpError ? (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <p>{helpError}</p>
+              <Button
+                className="mt-2"
+                size="sm"
+                variant="outline"
+                onClick={() => send.mutate(null)}
+                disabled={send.isPending}
+              >
+                Try again
+              </Button>
+            </div>
           ) : null}
         </div>
 

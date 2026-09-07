@@ -1,4 +1,4 @@
-import { generateText } from "ai";
+import { streamText } from "ai";
 
 import { gatewayModel } from "./ai-gateway.server";
 
@@ -17,7 +17,7 @@ const LEVEL_STYLE: Record<string, string> = {
 /**
  * On-demand help a student can open before or after answering: either one
  * nudge ("give me a hint") or a stepped walk-through ("break it down"). It
- * never gives the answer.
+ * keeps hints answer-free and reveals the answer only at the end of steps mode.
  */
 export async function questionHelpStep(input: {
   mode: HelpMode;
@@ -84,6 +84,9 @@ export async function questionHelpStep(input: {
         : "The student has just asked you to break the question down. Start with step 1.",
   ].join("\n\n");
 
-  const { text } = await generateText({ model: gatewayModel(), system, prompt });
-  return text.trim();
+  const result = streamText({ model: gatewayModel(), system, prompt });
+  const text = await result.text;
+  const reply = text.trim();
+  if (!reply) throw new Error("The tutor returned an empty reply. Please try again.");
+  return reply;
 }

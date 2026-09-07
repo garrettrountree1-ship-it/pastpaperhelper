@@ -618,6 +618,39 @@ export function LessonWorkspace({
           {canManage ? (
             <FormativeCheckButton classId={classId} sectionId={active?.id ?? null} />
           ) : null}
+          {!isPhone ? (
+            <div className="flex items-center gap-1 rounded-md border p-1">
+              <Button
+                size="sm"
+                variant={layout === "split" ? "default" : "ghost"}
+                onClick={() => setLayout("split")}
+                title="Split screen (side by side)"
+              >
+                <Columns2 className="size-4" />
+                <span className="hidden sm:inline">Split</span>
+              </Button>
+              <Button
+                size="sm"
+                variant={layout === "layered" ? "default" : "ghost"}
+                onClick={() => setLayout("layered")}
+                title="Layered windows (one floating on top of the other)"
+              >
+                <Layers className="size-4" />
+                <span className="hidden sm:inline">Layered</span>
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setFrontPane(frontPane === "canvas" ? "doc" : "canvas")}
+              title="Switch between the lesson canvas and the documents"
+            >
+              <ArrowLeftRight className="size-4" />
+              {frontPane === "canvas" ? "Materials" : "Canvas"}
+            </Button>
+          )}
+
           <Button
             size="sm"
             variant={presenting ? "default" : "outline"}

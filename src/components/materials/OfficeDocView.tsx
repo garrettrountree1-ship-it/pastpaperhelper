@@ -594,15 +594,15 @@ function SlidePage({
           }}
         >
           {slide.shapes.map((shape, i) => {
-            const rect = layout[i];
+            const slot = layout[i];
             return (
               <SlideShape
                 key={i}
                 shape={shape}
-                rect={rect}
+                rect={slot?.box}
                 slideWidth={deck.width}
-                widthLimit={rect ? rect.x + rect.w : undefined}
-                heightLimit={rect ? rect.y + rect.h : undefined}
+                widthLimit={slot?.right}
+                heightLimit={slot?.bottom}
                 editable={tool === "edit"}
                 scale={scale}
                 edit={edits[`${index}:${i}`]}
@@ -610,6 +610,7 @@ function SlidePage({
               />
             );
           })}
+
 
           <SlideAnnotations
             width={deck.width}

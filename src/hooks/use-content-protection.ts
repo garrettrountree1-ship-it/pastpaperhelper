@@ -186,6 +186,12 @@ export function useContentProtection(
       window.removeEventListener("blur", conceal);
       window.removeEventListener("focus", reveal);
       document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("touchstart", onTouchStart);
+      document.removeEventListener("gesturestart", onGesture);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("pageshow", reveal);
+      document.removeEventListener("resume", reveal);
+      document.removeEventListener("freeze", onPageHide);
       window.clearInterval(focusPoll);
       window.clearTimeout(revealTimer);
       hideOverlay();

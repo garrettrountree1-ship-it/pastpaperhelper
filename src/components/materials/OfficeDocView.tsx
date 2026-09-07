@@ -625,7 +625,7 @@ function widthLimitFor(shapes: PptxShape[], index: number, slideWidth: number) {
     if (other.x + 2 <= self.x) return; // starts to our left: not a right-hand neighbour
     limit = Math.min(limit, other.x);
   });
-  return Math.max(self.w, limit - self.x + self.x) === self.w ? Math.max(limit, self.x + 20) : Math.max(limit, self.x + 20);
+  return Math.max(limit, self.x + Math.max(self.w, 20));
 }
 
 function SlideShape({

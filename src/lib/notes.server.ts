@@ -1,5 +1,6 @@
 import { generateText } from "ai";
 
+import { cleanMathText } from "./math-text";
 import { gatewayModel } from "./ai-gateway.server";
 
 /**

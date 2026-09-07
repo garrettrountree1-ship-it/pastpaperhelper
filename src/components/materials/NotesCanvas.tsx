@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Eraser,
+  Highlighter,
   ImagePlus,
   Mic,
   Minus,
@@ -34,6 +35,8 @@ import { blobToBase64, startVoiceRecording } from "@/lib/voice-recorder";
 
 
 const PEN_COLORS = ["#111827", "#dc2626", "#2563eb", "#16a34a", "#ea580c", "#7c3aed"];
+/** Highlighter colours for the canvas. */
+const HIGHLIGHT_COLORS = ["#fde047", "#86efac", "#93c5fd", "#f9a8d4", "#fdba74"];
 
 /** Words in read-only summaries are clickable so the tutor can explain them. */
 function ClickableText({ text, onConcept }: { text: string; onConcept: (value: string) => void }) {
@@ -108,6 +111,7 @@ export function NotesCanvas({
   const [tab, setTab] = useState<"notes" | "summary">(initialTab);
   const [mode, setMode] = useState<CanvasMode>("type");
   const [penColor, setPenColor] = useState(PEN_COLORS[0]!);
+  const [highlightColor, setHighlightColor] = useState(HIGHLIGHT_COLORS[0]!);
   const [zoom, setZoom] = useState(1);
 
   const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
@@ -481,24 +485,37 @@ export function NotesCanvas({
             <PenLine className="size-4" />
             Draw
           </Button>
+          <Button
+            size="sm"
+            variant={mode === "highlight" ? "default" : "outline"}
+            onClick={() => setMode("highlight")}
+          >
+            <Highlighter className="size-4" />
+            Highlight
+          </Button>
           <Button size="sm" variant={mode === "erase" ? "default" : "outline"} onClick={() => setMode("erase")}>
             <Eraser className="size-4" />
             Erase
           </Button>
-          {mode === "draw"
-            ? PEN_COLORS.map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-label={`Pen colour ${value}`}
-                  aria-pressed={penColor === value}
-                  onClick={() => setPenColor(value)}
-                  className={`size-5 rounded-full border-2 transition-transform ${
-                    penColor === value ? "scale-110 border-foreground" : "border-border"
-                  }`}
-                  style={{ backgroundColor: value }}
-                />
-              ))
+          {mode === "draw" || mode === "highlight"
+            ? (mode === "highlight" ? HIGHLIGHT_COLORS : PEN_COLORS).map((value) => {
+                const active = (mode === "highlight" ? highlightColor : penColor) === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-label={`${mode === "highlight" ? "Highlighter" : "Pen"} colour ${value}`}
+                    aria-pressed={active}
+                    onClick={() =>
+                      mode === "highlight" ? setHighlightColor(value) : setPenColor(value)
+                    }
+                    className={`size-5 rounded-full border-2 transition-transform ${
+                      active ? "scale-110 border-foreground" : "border-border"
+                    }`}
+                    style={{ backgroundColor: value }}
+                  />
+                );
+              })
             : null}
           <Button
             size="sm"
@@ -576,7 +593,9 @@ export function NotesCanvas({
             Undo
           </Button>
           <span className="text-xs text-muted-foreground">
-            {mode === "draw"
+            {mode === "highlight"
+              ? "Drag across typed text or anywhere to highlight."
+              : mode === "draw"
               ? "Draw anywhere on the sheet."
               : mode === "erase"
                 ? "Click or drag across a stroke to erase it."
@@ -596,6 +615,7 @@ export function NotesCanvas({
             canEdit={canEdit}
             mode={mode}
             penColor={penColor}
+            highlightColor={highlightColor}
             penWidth={2.4}
             imageUrls={urls.data}
             zoom={zoom}

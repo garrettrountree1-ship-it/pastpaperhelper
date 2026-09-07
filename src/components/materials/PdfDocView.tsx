@@ -224,6 +224,8 @@ export function PdfDocView({
           setTool={markup.setTool}
           penColor={markup.penColor}
           setPenColor={markup.setPenColor}
+          highlightColor={markup.highlightColor}
+          setHighlightColor={markup.setHighlightColor}
         />
         <Button
           size="sm"
@@ -256,6 +258,7 @@ export function PdfDocView({
               ratio={ratios[index] ?? 1.414}
               tool={markup.tool}
               penColor={markup.penColor}
+              highlightColor={markup.highlightColor}
               value={markup.annotationOf(index)}
               onChange={(next) => markup.update(index, next)}
             >

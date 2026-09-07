@@ -5,7 +5,13 @@ import { escapeHtml, formatSelection } from "@/lib/rich-text";
 import { RichTextEditable } from "@/components/materials/RichTextEditable";
 
 
-export type SlideStroke = { points: Array<{ x: number; y: number }>; color: string; width: number };
+export type SlideStroke = {
+  points: Array<{ x: number; y: number }>;
+  color: string;
+  width: number;
+  /** Highlighter marks are wide, translucent and sit under the text. */
+  highlight?: boolean;
+};
 export type SlideTextBox = {
   x: number;
   y: number;
@@ -22,7 +28,10 @@ export type SlideAnnotation = { strokes: SlideStroke[]; texts: SlideTextBox[] };
 
 export const emptyAnnotation: SlideAnnotation = { strokes: [], texts: [] };
 
-export type SlideTool = "none" | "edit" | "draw" | "erase" | "text";
+export type SlideTool = "none" | "edit" | "draw" | "highlight" | "erase" | "text";
+
+/** Highlighter stroke thickness in document coordinates. */
+export const HIGHLIGHT_WIDTH = 22;
 
 /**
  * Transparent drawing / text-box layer that sits on top of a rendered slide.
@@ -34,6 +43,7 @@ export function SlideAnnotations({
   height,
   tool,
   color,
+  highlightColor,
   value,
   onChange,
 }: {
@@ -41,6 +51,7 @@ export function SlideAnnotations({
   height: number;
   tool: SlideTool;
   color: string;
+  highlightColor?: string | undefined;
   value: SlideAnnotation;
   onChange: (next: SlideAnnotation) => void;
 }) {
@@ -81,7 +92,16 @@ export function SlideAnnotations({
 
     event.currentTarget.setPointerCapture(event.pointerId);
     drawing.current = true;
-    setLive({ points: [point], color, width: 4 });
+    setLive(
+      tool === "highlight"
+        ? {
+            points: [point],
+            color: highlightColor ?? "#fde047",
+            width: HIGHLIGHT_WIDTH,
+            highlight: true,
+          }
+        : { points: [point], color, width: 4 },
+    );
   }
 
   function move(event: React.PointerEvent) {
@@ -109,7 +129,12 @@ export function SlideAnnotations({
         width,
         height,
         pointerEvents: tool === "none" || tool === "edit" ? "none" : "auto",
-        cursor: tool === "draw" ? "crosshair" : tool === "text" ? "text" : "default",
+        cursor:
+          tool === "draw" || tool === "highlight"
+            ? "crosshair"
+            : tool === "text"
+              ? "text"
+              : "default",
         touchAction: tool === "none" || tool === "edit" ? undefined : "none",
       }}
       onPointerDown={down}
@@ -123,17 +148,36 @@ export function SlideAnnotations({
         className="absolute left-0 top-0"
         style={{ pointerEvents: "none" }}
       >
-        {[...value.strokes, ...(live ? [live] : [])].map((stroke, i) => (
-          <path
-            key={i}
-            d={path(stroke)}
-            fill="none"
-            stroke={stroke.color}
-            strokeWidth={stroke.width}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        ))}
+        {/* Highlighter first, blended so the text underneath stays readable. */}
+        <g style={{ mixBlendMode: "multiply" }}>
+          {[...value.strokes, ...(live ? [live] : [])]
+            .filter((stroke) => stroke.highlight)
+            .map((stroke, i) => (
+              <path
+                key={`h${i}`}
+                d={path(stroke)}
+                fill="none"
+                stroke={stroke.color}
+                strokeWidth={stroke.width}
+                strokeOpacity={0.4}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ))}
+        </g>
+        {[...value.strokes, ...(live ? [live] : [])]
+          .filter((stroke) => !stroke.highlight)
+          .map((stroke, i) => (
+            <path
+              key={i}
+              d={path(stroke)}
+              fill="none"
+              stroke={stroke.color}
+              strokeWidth={stroke.width}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ))}
       </svg>
 
       {value.texts.map((box, index) => (

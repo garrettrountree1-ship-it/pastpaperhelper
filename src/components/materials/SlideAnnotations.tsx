@@ -184,8 +184,16 @@ export function SlideAnnotations({
         <div
           key={index}
           className="absolute"
-          style={{ left: box.x, top: box.y, pointerEvents: "auto" }}
+          style={{
+            left: box.x,
+            top: box.y,
+            // While drawing, highlighting or erasing, the text boxes stay out of
+            // the way: no caret, no accidental text selection.
+            pointerEvents: textActive ? "auto" : "none",
+            userSelect: textActive ? undefined : "none",
+          }}
         >
+
           <div className="relative">
             <div
               className="absolute -top-8 left-0 flex items-center gap-1 rounded border bg-white/95 px-1 py-0.5 shadow"

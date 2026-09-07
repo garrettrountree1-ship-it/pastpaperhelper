@@ -772,69 +772,97 @@ export function LessonWorkspace({
                   <div className="pointer-events-none absolute z-50" style={frontStyle}>
                     <div
                       onPointerDown={(event) => {
+                        if (isPhone) return;
                         if ((event.target as HTMLElement).closest("button")) return;
                         startFloatDrag(event, "move");
                       }}
-                      onDoubleClick={() =>
-                        setFloatState(floatState === "max" ? "window" : "max")
-                      }
+                      onDoubleClick={() => {
+                        if (isPhone) return;
+                        setFloatState(floatState === "max" ? "window" : "max");
+                      }}
                       style={{ height: BAR_H }}
-                      className="pointer-events-auto flex touch-none select-none items-center gap-1 rounded-t-lg border-b bg-muted/80 px-2 cursor-grab active:cursor-grabbing"
-                      title="Drag anywhere on this bar to move the window; double-click to maximise"
+                      className={`pointer-events-auto flex touch-none select-none items-center gap-1 rounded-t-lg border-b bg-muted/80 px-2 ${
+                        isPhone ? "" : "cursor-grab active:cursor-grabbing"
+                      }`}
+                      title={
+                        isPhone
+                          ? undefined
+                          : "Drag anywhere on this bar to move the window; double-click to maximise"
+                      }
                     >
-                      <Move className="size-3.5 text-muted-foreground" />
+                      {isPhone ? null : <Move className="size-3.5 text-muted-foreground" />}
                       <span className="truncate text-xs font-medium">
                         {frontPane === "canvas" ? "Lesson canvas" : "Lesson Materials"}
                       </span>
                       <div className="ml-auto flex items-center gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="size-6"
-                          title="Swap which window is on top"
-                          aria-label="Swap which window is on top"
-                          onClick={() =>
-                            setFrontPane(frontPane === "canvas" ? "doc" : "canvas")
-                          }
-                        >
-                          <ArrowLeftRight className="size-3.5" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="size-6"
-                          title={floatState === "min" ? "Restore window" : "Minimise window"}
-                          aria-label={floatState === "min" ? "Restore window" : "Minimise window"}
-                          onClick={() =>
-                            setFloatState(floatState === "min" ? "window" : "min")
-                          }
-                        >
-                          {floatState === "min" ? (
-                            <ChevronDown className="size-3.5" />
-                          ) : (
-                            <Minus className="size-3.5" />
-                          )}
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="size-6"
-                          title={floatState === "max" ? "Restore window" : "Maximise window"}
-                          aria-label={floatState === "max" ? "Restore window" : "Maximise window"}
-                          onClick={() =>
-                            setFloatState(floatState === "max" ? "window" : "max")
-                          }
-                        >
-                          {floatState === "max" ? (
-                            <Minimize className="size-3.5" />
-                          ) : (
-                            <Maximize className="size-3.5" />
-                          )}
-                        </Button>
+                        {isPhone ? (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 px-2 text-xs"
+                            onClick={() =>
+                              setFrontPane(frontPane === "canvas" ? "doc" : "canvas")
+                            }
+                          >
+                            <ArrowLeftRight className="size-3.5" />
+                            {frontPane === "canvas" ? "Materials" : "Canvas"}
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="size-6"
+                              title="Swap which window is on top"
+                              aria-label="Swap which window is on top"
+                              onClick={() =>
+                                setFrontPane(frontPane === "canvas" ? "doc" : "canvas")
+                              }
+                            >
+                              <ArrowLeftRight className="size-3.5" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="size-6"
+                              title={floatState === "min" ? "Restore window" : "Minimise window"}
+                              aria-label={
+                                floatState === "min" ? "Restore window" : "Minimise window"
+                              }
+                              onClick={() =>
+                                setFloatState(floatState === "min" ? "window" : "min")
+                              }
+                            >
+                              {floatState === "min" ? (
+                                <ChevronDown className="size-3.5" />
+                              ) : (
+                                <Minus className="size-3.5" />
+                              )}
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="size-6"
+                              title={floatState === "max" ? "Restore window" : "Maximise window"}
+                              aria-label={
+                                floatState === "max" ? "Restore window" : "Maximise window"
+                              }
+                              onClick={() =>
+                                setFloatState(floatState === "max" ? "window" : "max")
+                              }
+                            >
+                              {floatState === "max" ? (
+                                <Minimize className="size-3.5" />
+                              ) : (
+                                <Maximize className="size-3.5" />
+                              )}
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
 
-                    {floatState === "window" ? (
+                    {!isPhone && floatState === "window" ? (
                       <>
                         {/* Every edge and corner resizes, with generous hit areas */}
                         <div

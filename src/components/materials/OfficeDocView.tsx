@@ -1,6 +1,7 @@
 import {
   Download,
   Eraser,
+  Highlighter,
   Minus,
   MousePointer2,
   PenLine,
@@ -20,6 +21,7 @@ import {
 import {
   DocMarkupSurface,
   DocMarkupToolbar,
+  HIGHLIGHT_SWATCHES,
 } from "@/components/materials/DocMarkupLayer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -523,6 +525,7 @@ function SlidePage({
   index,
   tool,
   penColor,
+  highlightColor,
   annotation,
   onAnnotationChange,
   edits,
@@ -532,6 +535,7 @@ function SlidePage({
   index: number;
   tool: SlideTool;
   penColor: string;
+  highlightColor?: string;
   annotation: SlideAnnotation;
   onAnnotationChange: (next: SlideAnnotation) => void;
   edits: Record<string, ShapeEdit>;
@@ -589,6 +593,7 @@ function SlidePage({
             height={deck.height}
             tool={tool}
             color={penColor}
+            highlightColor={highlightColor}
             value={annotation}
             onChange={onAnnotationChange}
           />

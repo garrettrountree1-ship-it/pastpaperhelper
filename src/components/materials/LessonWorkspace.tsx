@@ -739,13 +739,15 @@ export function LessonWorkspace({
                 frontPane === pane
                   ? {
                       paddingTop: BAR_H,
-                      display: floatState === "min" ? "none" : undefined,
+                      display: !isPhone && floatState === "min" ? "none" : undefined,
                     }
                   : {};
               return (
                 <div
                   ref={rowRef}
-                  className="relative min-h-[80vh] min-w-0 lg:h-full lg:min-h-0 lg:flex-1"
+                  className={`relative min-w-0 lg:h-full lg:min-h-0 lg:flex-1 ${
+                    isPhone ? "min-h-0 flex-1" : "min-h-[80vh]"
+                  }`}
                 >
                   {/* Both panes stay mounted; only their position changes when
                       swapping, so scroll / canvas position never resets. */}

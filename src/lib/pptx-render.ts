@@ -1,3 +1,5 @@
+import { readableSymbols } from "@/lib/math-text";
+
 /**
  * Dependable .pptx reader: turns a deck into positioned text, shape and image
  * boxes per slide so slides can be rendered as plain scrollable HTML pages.
@@ -14,8 +16,6 @@
  */
 const EMU_PER_PX = 9525;
 const PT_TO_PX = 4 / 3;
-
-import { readableSymbols } from "@/lib/math-text";
 
 export type PptxRun = {
   text: string;

@@ -11,12 +11,17 @@ export type FormativeVerdict = "correct" | "close" | "incorrect";
 export async function markFormativeAnswer(input: {
   question: string;
   expectedAnswer?: string | null;
+  /** Picture of the question the teacher pasted in, if any. */
+  questionImage?: string | null;
   answer: string;
   attempt: number;
 }): Promise<{ verdict: FormativeVerdict; feedback: string }> {
   const system = [
     "You mark a quick formative check during a live lesson.",
     "Be generous: accept correct science expressed in the student's own words, with spelling slips or missing units, as correct.",
+    input.questionImage
+      ? "An image of the question is attached — read it and mark against what it shows."
+      : "",
     input.expectedAnswer?.trim()
       ? "The teacher supplied the expected answer — mark against it."
       : "No expected answer was supplied — work out the correct answer yourself from the question, then mark against it.",
@@ -29,13 +34,34 @@ export async function markFormativeAnswer(input: {
 
   const prompt = [
     `Question: ${input.question}`,
+    input.questionImage
+      ? "An image of the question is attached — read it and mark against what it shows."
+      : "",
     input.expectedAnswer?.trim() ? `Expected answer: ${input.expectedAnswer.trim()}` : "",
     `Student answer (attempt ${input.attempt}): ${input.answer}`,
   ]
     .filter(Boolean)
     .join("\n");
 
-  const { text } = await generateText({ model: gatewayModel(), system, prompt });
+  const content = [
+    { type: "text" as const, text: prompt },
+    ...(input.questionImage
+      ? [
+          {
+            type: "image" as const,
+            image: input.questionImage.startsWith("data:")
+              ? input.questionImage
+              : new URL(input.questionImage),
+          },
+        ]
+      : []),
+  ];
+
+  const { text } = await generateText({
+    model: gatewayModel(),
+    system,
+    messages: [{ role: "user", content }],
+  });
   const raw = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
   try {
     const parsed = JSON.parse(raw) as { verdict?: string; feedback?: string };

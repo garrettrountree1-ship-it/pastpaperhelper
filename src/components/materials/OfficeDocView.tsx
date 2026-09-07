@@ -663,10 +663,7 @@ function backgroundBehind(
 
 function SlideShape({
   shape,
-  rect,
   slideWidth,
-  widthLimit,
-  heightLimit,
   background,
   editable,
   scale,
@@ -674,10 +671,7 @@ function SlideShape({
   onEdit,
 }: {
   shape: PptxShape;
-  rect?: Rect | undefined;
   slideWidth: number;
-  widthLimit?: number | undefined;
-  heightLimit?: number | undefined;
   background: string;
   editable: boolean;
   scale: number;
@@ -734,10 +728,7 @@ function SlideShape({
   return (
     <TextShape
       shape={shape}
-      rect={rect}
       slideWidth={slideWidth}
-      widthLimit={widthLimit}
-      heightLimit={heightLimit}
       background={background}
       editable={editable}
       scale={scale}
@@ -750,17 +741,14 @@ function SlideShape({
 }
 
 /**
- * A slide text box. Copy that doesn't fit is widened only into free space (never
- * across a neighbouring box or a picture, which would overlap the words), then
- * shrunk to fit. With the Edit tool on, the teacher can retype the text and drag
+ * A slide text box, drawn exactly where PowerPoint placed it. Copy that doesn't
+ * fit its box is shrunk to fit (the same as PowerPoint's own auto-fit) — boxes
+ * are never moved, widened or trimmed, so the slide matches the original. With the Edit tool on, the teacher can retype the text and drag
  * the box to move or resize it.
  */
 function TextShape({
   shape,
-  rect,
   slideWidth,
-  widthLimit,
-  heightLimit,
   background,
   editable,
   scale,
@@ -769,10 +757,7 @@ function TextShape({
   rotate,
 }: {
   shape: Extract<PptxShape, { type: "text" }>;
-  rect?: Rect | undefined;
   slideWidth: number;
-  widthLimit?: number | undefined;
-  heightLimit?: number | undefined;
   background: string;
   editable: boolean;
 

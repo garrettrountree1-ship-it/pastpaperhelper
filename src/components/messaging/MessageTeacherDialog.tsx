@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { MessageSquare } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
+
+import { TeacherIcon } from "@/components/assignments/QuestionHelpDialog";
 
 import { Button } from "@/components/ui/button";
 import {

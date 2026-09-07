@@ -199,13 +199,13 @@ function Landing() {
             IGCSE · A-Level · IB
           </p>
           <h1 className="mt-4 max-w-4xl text-4xl leading-[1.05] sm:text-5xl lg:text-6xl">
-            Teach the lesson. Set the past paper. One place for both.
+            Teach the lesson. Set the questions. One place for both.
           </h1>
           <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
             PastPaperHelper.AI gives every class two things that work together: a live
-            split-screen lesson workspace for your slides and notes, and past-paper homework that
-            marks itself against the mark scheme and coaches each student until they can earn the
-            marks.
+            split-screen lesson workspace for your slides and notes, and homework questions that
+            mark themselves against your mark scheme and coach each student until they can earn
+            the marks — from past papers or from any question-and-answer material you upload.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">

@@ -1,6 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Download, NotebookPen, PartyPopper, Send, Sparkles, Timer, X } from "lucide-react";
+import {
+  Download,
+  ImagePlus,
+  NotebookPen,
+  PartyPopper,
+  Send,
+  Sparkles,
+  Timer,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -30,6 +39,40 @@ import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { listClassRoster } from "@/lib/materials.functions";
 
 import { downloadXlsx } from "@/lib/xlsx-export";
+
+/**
+ * Shrinks a pasted or chosen picture to a sensible width and returns it as a
+ * data URL, so the question image travels with the check itself.
+ */
+async function fileToDataUrl(file: File): Promise<string> {
+  const raw = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("That picture could not be read."));
+    reader.readAsDataURL(file);
+  });
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("That picture could not be read."));
+      el.src = raw;
+    });
+    const maxWidth = 1400;
+    const scale = Math.min(1, maxWidth / (img.naturalWidth || maxWidth));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round((img.naturalWidth || maxWidth) * scale));
+    canvas.height = Math.max(1, Math.round((img.naturalHeight || maxWidth) * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return raw;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.85);
+  } catch {
+    return raw;
+  }
+}
 
 const TIMER_OPTIONS = [
   { label: "30 sec", value: 30 },
@@ -67,6 +110,7 @@ export function FormativeCheckButton({
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [expected, setExpected] = useState("");
+  const [questionImage, setQuestionImage] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(60);
   const [customTimer, setCustomTimer] = useState(false);
   const [customMinutes, setCustomMinutes] = useState("1");
@@ -93,6 +137,7 @@ export function FormativeCheckButton({
           sectionId,
           question: question.trim(),
           expectedAnswer: expected.trim() || null,
+          questionImage,
           seconds: effectiveSeconds,
           targetStudentIds: selected,
         },
@@ -106,6 +151,7 @@ export function FormativeCheckButton({
       setOpen(false);
       setQuestion("");
       setExpected("");
+      setQuestionImage(null);
       setSelected([]);
       setCustomTimer(false);
       await queryClient.invalidateQueries({ queryKey: ["formative-active", classId] });
@@ -138,8 +184,66 @@ export function FormativeCheckButton({
               rows={3}
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              placeholder="Add text here"
+              onPaste={async (event) => {
+                const file = Array.from(event.clipboardData.files).find((f) =>
+                  f.type.startsWith("image/"),
+                );
+                if (!file) return;
+                event.preventDefault();
+                try {
+                  setQuestionImage(await fileToDataUrl(file));
+                  toast.success("Picture added to the question");
+                } catch (error) {
+                  toast.error((error as Error).message);
+                }
+              }}
+              placeholder="Add text here, or paste a picture of the question"
             />
+            <p className="text-xs text-muted-foreground">
+              Copy a picture of the question and paste it here (Ctrl/⌘+V) — students see the
+              picture and the AI reads it too.
+            </p>
+            <div className="flex items-center gap-2">
+              <Button asChild type="button" size="sm" variant="outline">
+                <label className="cursor-pointer">
+                  <ImagePlus className="size-4" />
+                  Add picture
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (!file) return;
+                      try {
+                        setQuestionImage(await fileToDataUrl(file));
+                      } catch (error) {
+                        toast.error((error as Error).message);
+                      }
+                    }}
+                  />
+                </label>
+              </Button>
+              {questionImage ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setQuestionImage(null)}
+                >
+                  <X className="size-4" />
+                  Remove picture
+                </Button>
+              ) : null}
+            </div>
+            {questionImage ? (
+              <img
+                src={questionImage}
+                alt="Question picture that students will see"
+                className="max-h-48 w-full rounded-md border border-border object-contain"
+              />
+            ) : null}
           </div>
           <div className="space-y-1">
             <Label htmlFor="formative-answer">Answer (optional)</Label>
@@ -250,7 +354,9 @@ export function FormativeCheckButton({
         <DialogFooter>
           <Button
             onClick={() => send.mutate()}
-            disabled={question.trim().length < 3 || !timerValid || send.isPending}
+            disabled={
+              (question.trim().length < 3 && !questionImage) || !timerValid || send.isPending
+            }
           >
             <Send className="size-4" />
             {send.isPending ? "Sending..." : "Send to students"}
@@ -342,6 +448,14 @@ export function FormativeCheckPanel({
           <X className="size-4" />
         </Button>
       </div>
+
+      {check.questionImage ? (
+        <img
+          src={check.questionImage}
+          alt="Question picture"
+          className="mt-3 max-h-64 w-full rounded-md border border-border object-contain"
+        />
+      ) : null}
 
       {check.isTeacher ? (
         <div className="mt-3 space-y-2">

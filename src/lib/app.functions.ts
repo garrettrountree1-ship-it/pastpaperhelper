@@ -1358,6 +1358,17 @@ export const getStudentClassReport = createServerFn({ method: "POST" })
           .order("created_at")
       : { data: [] };
 
+    const questionIds = (questions ?? []).map((q) => q.id);
+    const { data: helpMessages } = questionIds.length
+      ? await (db as any)
+          .from("question_help_messages")
+          .select("id, question_id, mode, role, content, created_at")
+          .in("question_id", questionIds)
+          .eq("student_id", data.studentId)
+          .order("created_at")
+      : { data: [] };
+
+
     const report = await Promise.all(
       (assignments ?? []).map(async (assignment) => {
         const submission = (submissions ?? []).find((s) => s.assignment_id === assignment.id);

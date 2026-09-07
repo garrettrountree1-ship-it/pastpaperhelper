@@ -1420,7 +1420,24 @@ export const getStudentClassReport = createServerFn({ method: "POST" })
                   content: m.content,
                   createdAt: m.created_at,
                 })),
+              helpMessages: ((helpMessages ?? []) as Array<{
+                id: string;
+                question_id: string;
+                mode: string;
+                role: string;
+                content: string;
+                created_at: string;
+              }>)
+                .filter((m) => m.question_id === question.id)
+                .map((m) => ({
+                  id: m.id,
+                  mode: m.mode as "hint" | "steps",
+                  role: m.role,
+                  content: m.content,
+                  createdAt: m.created_at,
+                })),
             };
+
           }),
         );
 

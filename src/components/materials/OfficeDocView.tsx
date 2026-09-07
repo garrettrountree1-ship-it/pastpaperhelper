@@ -81,7 +81,7 @@ export function OfficeDocView({
   const token = useRef(0);
   // Increment when the renderer changes so old, incorrectly parsed decks are
   // never served forever from IndexedDB after a fidelity fix.
-  const key = `office-render-v6:${format}:${cacheKey ?? title}`;
+  const key = `office-render-v7:${format}:${cacheKey ?? title}`;
   // Marks and slide edits are personal to the account viewing them.
   const { ready: scopeReady, scope } = useMarkupScope();
   const notesKey = scopedKey(`office-annotations:${format}:${cacheKey ?? title}`, scope);
@@ -870,7 +870,8 @@ function TextShape({
         borderRadius: shape.radius || undefined,
         boxSizing: "border-box",
         color: ink(null) ?? "#111",
-        overflow: "hidden",
+        // Never clip words: PowerPoint lets text spill out of its box too.
+        overflow: "visible",
       }}
     >
 

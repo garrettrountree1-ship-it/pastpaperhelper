@@ -203,6 +203,11 @@ export function QuestionExperience({
         ) : null}
       </div>
 
+      <div className="mt-3">
+        <QuestionHelpButtons questionId={question.id} answerDraft={draft} />
+      </div>
+
+
       {sentBack ? (
         <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4">
           <p className="text-sm font-medium">Your teacher sent this question back to redo</p>

@@ -582,7 +582,8 @@ function SlidePage({
               key={i}
               shape={shape}
               slideWidth={deck.width}
-              widthLimit={widthLimitFor(slide.shapes, i, deck.width)}
+              widthLimit={boundsFor(slide.shapes, i, deck.width, deck.height).right}
+              heightLimit={boundsFor(slide.shapes, i, deck.width, deck.height).bottom}
               editable={tool === "edit"}
               scale={scale}
               edit={edits[`${index}:${i}`]}
@@ -606,14 +607,16 @@ function SlidePage({
 }
 
 /**
- * How far a text box may grow to the right before it would run into a
- * neighbouring box. PowerPoint never lets one box's words cross another's, so
- * neither do we: side-by-side columns stay in their own lanes.
+ * How far a text box may grow before it would run into a neighbouring box or a
+ * picture. PowerPoint never lets one box's words cross another shape, so
+ * neither do we: side-by-side columns stay in their own lanes and words never
+ * sit on top of an image.
  */
-function widthLimitFor(shapes: PptxShape[], index: number, slideWidth: number) {
+function boundsFor(shapes: PptxShape[], index: number, slideWidth: number, slideHeight: number) {
   const self = shapes[index];
-  if (!self || self.type !== "text") return slideWidth;
-  let limit = slideWidth - 8;
+  if (!self || self.type !== "text") return { right: slideWidth, bottom: slideHeight };
+  let right = slideWidth - 8;
+  let bottom = slideHeight - 4;
   shapes.forEach((other, i) => {
     if (i === index || other.type === "shape") return;
     if (!other.w || !other.h) return;
@@ -621,17 +624,21 @@ function widthLimitFor(shapes: PptxShape[], index: number, slideWidth: number) {
       return;
     }
     const verticalOverlap = other.y < self.y + self.h - 2 && other.y + other.h > self.y + 2;
-    if (!verticalOverlap) return;
-    if (other.x + 2 <= self.x) return; // starts to our left: not a right-hand neighbour
-    limit = Math.min(limit, other.x);
+    if (verticalOverlap && other.x + 2 > self.x) right = Math.min(right, other.x);
+    const horizontalOverlap = other.x < self.x + self.w - 2 && other.x + other.w > self.x + 2;
+    if (horizontalOverlap && other.y + 2 > self.y) bottom = Math.min(bottom, other.y);
   });
-  return Math.max(limit, self.x + Math.max(self.w, 20));
+  return {
+    right: Math.max(right, self.x + Math.max(self.w, 20)),
+    bottom: Math.max(bottom, self.y + Math.max(self.h, 16)),
+  };
 }
 
 function SlideShape({
   shape,
   slideWidth,
   widthLimit,
+  heightLimit,
   editable,
   scale,
   edit,
@@ -640,6 +647,7 @@ function SlideShape({
   shape: PptxShape;
   slideWidth: number;
   widthLimit?: number;
+  heightLimit?: number;
   editable: boolean;
   scale: number;
   edit?: ShapeEdit | undefined;
@@ -696,6 +704,7 @@ function SlideShape({
       shape={shape}
       slideWidth={slideWidth}
       widthLimit={widthLimit}
+      heightLimit={heightLimit}
       editable={editable}
       scale={scale}
       edit={edit}
@@ -715,6 +724,7 @@ function TextShape({
   shape,
   slideWidth,
   widthLimit,
+  heightLimit,
   editable,
   scale,
   edit,
@@ -724,6 +734,7 @@ function TextShape({
   shape: Extract<PptxShape, { type: "text" }>;
   slideWidth: number;
   widthLimit?: number | undefined;
+  heightLimit?: number | undefined;
   editable: boolean;
   scale: number;
   edit?: ShapeEdit | undefined;
@@ -749,6 +760,9 @@ function TextShape({
   const overrideText = edit?.text;
   // Right-hand boundary: the nearest neighbour's left edge, or the slide edge.
   const rightBound = Math.min(widthLimit ?? slideWidth - 8, slideWidth - 8);
+  // Bottom boundary: the nearest picture or box below, so words never sit on it.
+  const bottomBound = edit?.h ? null : (heightLimit ?? null);
+  const roomBelow = bottomBound == null ? null : Math.max(24, bottomBound - y - 2);
 
   // Fit the copy inside the box: widen into free space first, then shrink.
   useLayoutEffect(() => {
@@ -769,12 +783,15 @@ function TextShape({
       box.style.width = `${width}px`;
       height = inner.scrollHeight;
     }
-    if (height > baseH + 2) {
-      const shrink = Math.max(0.4, baseH / height);
+    // Never let the copy spill onto whatever sits below (a picture or another
+    // box): shrink to the free space instead of overflowing into it.
+    const allowed = roomBelow == null ? baseH : Math.min(baseH, roomBelow);
+    if (height > allowed + 2) {
+      const shrink = Math.max(0.3, allowed / height);
       inner.style.width = `${width / shrink}px`;
       inner.style.transform = `scale(${shrink})`;
     }
-  }, [baseW, baseH, x, slideWidth, rightBound, edit?.w, overrideText, shape]);
+  }, [baseW, baseH, x, slideWidth, rightBound, roomBelow, edit?.w, overrideText, shape]);
 
 
   function startDrag(mode: "move" | "resize", event: React.PointerEvent) {
@@ -836,7 +853,7 @@ function TextShape({
         borderRadius: shape.radius || undefined,
         boxSizing: "border-box",
         color: "#111",
-        overflow: "visible",
+        overflow: roomBelow != null && roomBelow < baseH ? "hidden" : "visible",
       }}
     >
       <div ref={innerRef} style={{ transformOrigin: "top left" }}>

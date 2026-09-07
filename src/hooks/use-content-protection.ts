@@ -137,6 +137,20 @@ export function useContentProtection(
         }, 200)
       : 0;
 
+    // --- Phones and tablets -------------------------------------------------
+    // Mobile browsers never tell a web page that a screenshot was taken, so we
+    // mask on every signal that usually accompanies one: three-finger gestures
+    // (Android/iPad screenshot swipes), the app switcher, the page being frozen
+    // or backgrounded, and screen-recording starting.
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length >= 3) onCapture();
+    };
+    const onPageHide = () => conceal();
+    const onGesture = (event: Event) => {
+      if (isEditable(event.target)) return;
+      event.preventDefault();
+      onCapture();
+    };
 
     if (blockCopy) {
       document.addEventListener("copy", block);
@@ -151,7 +165,14 @@ export function useContentProtection(
       window.addEventListener("blur", conceal);
       window.addEventListener("focus", reveal);
       document.addEventListener("visibilitychange", onVisibility);
+      document.addEventListener("touchstart", onTouchStart, { passive: true });
+      document.addEventListener("gesturestart", onGesture);
+      window.addEventListener("pagehide", onPageHide);
+      window.addEventListener("pageshow", reveal);
+      document.addEventListener("resume", reveal);
+      document.addEventListener("freeze", onPageHide);
     }
+
 
 
     return () => {

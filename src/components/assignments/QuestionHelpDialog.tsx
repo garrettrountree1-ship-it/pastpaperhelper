@@ -143,8 +143,10 @@ export function QuestionHelpDialog({
     setTurns(savedTurns);
     const lastTurn = savedTurns.at(-1);
     if (!lastTurn || lastTurn.role !== "tutor") send.mutate(null);
+    // `existing.isPending` is required here: a failed/empty history request must
+    // still trigger fresh help instead of leaving a blank dialog.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, mode, existing.data]);
+  }, [open, mode, existing.data, existing.isPending]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });

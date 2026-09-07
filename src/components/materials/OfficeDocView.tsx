@@ -783,6 +783,7 @@ function TextShape({
     const collisionSafeWidth = Math.max(20, rightBound - x - 2);
     let width = Math.min(baseW, collisionSafeWidth);
     box.style.width = width ? `${width}px` : "auto";
+    box.style.height = baseH ? `${baseH}px` : "auto";
     inner.style.width = "100%";
     inner.style.transform = "";
     if (!baseW || !baseH) return;
@@ -801,6 +802,7 @@ function TextShape({
     // readable size instead of compressing it just because the source box was
     // shorter than its contents.
     const allowed = roomBelow == null ? Math.max(baseH, height) : roomBelow;
+    if (!edit?.h) box.style.height = `${allowed}px`;
     if (height > allowed + 2) {
       const shrink = Math.max(0.35, allowed / height);
       inner.style.width = `${width / shrink}px`;
@@ -868,7 +870,7 @@ function TextShape({
         borderRadius: shape.radius || undefined,
         boxSizing: "border-box",
         color: "#111",
-        overflow: roomBelow != null && roomBelow < baseH ? "hidden" : "visible",
+        overflow: "hidden",
       }}
     >
       <div ref={innerRef} style={{ transformOrigin: "top left" }}>
@@ -889,25 +891,28 @@ function TextShape({
           style={{ outline: "none", cursor: editable ? "text" : undefined }}
         >
           {overrideText != null
-            ? overrideText.split("\n").map((line, li) => (
+            ? overrideText.split("\n").map((line, li) => {
+                const sourceParagraph = shape.paragraphs[li] ?? firstParagraph;
+                const sourceRun = sourceParagraph?.runs[0] ?? firstRun;
+                return (
                 <p
                   key={li}
                   style={{
-                    margin: 0,
+                    margin: `${sourceParagraph?.spaceBefore ?? 0}px 0 ${sourceParagraph?.spaceAfter ?? 0}px`,
                     textAlign:
-                      firstParagraph?.align === "ctr"
+                      sourceParagraph?.align === "ctr"
                         ? "center"
-                        : firstParagraph?.align === "r"
+                        : sourceParagraph?.align === "r"
                           ? "right"
                           : "left",
-                    lineHeight: firstParagraph?.lineHeight ?? 1.2,
-                    fontSize: firstRun?.size,
-                    fontFamily: firstRun?.font
-                      ? `"${firstRun.font}", system-ui, sans-serif`
+                    lineHeight: sourceParagraph?.lineHeight ?? 1.2,
+                    fontSize: sourceRun?.size,
+                    fontFamily: sourceRun?.font
+                      ? `"${sourceRun.font}", system-ui, sans-serif`
                       : undefined,
-                    fontWeight: firstRun?.bold ? 700 : 400,
-                    fontStyle: firstRun?.italic ? "italic" : undefined,
-                    color: firstRun?.color ?? undefined,
+                    fontWeight: sourceRun?.bold ? 700 : 400,
+                    fontStyle: sourceRun?.italic ? "italic" : undefined,
+                    color: sourceRun?.color ?? undefined,
                     whiteSpace: "pre-wrap",
                     wordBreak: "break-word",
                     minHeight: line === "" ? "0.75em" : undefined,
@@ -915,7 +920,8 @@ function TextShape({
                 >
                   {line}
                 </p>
-              ))
+                );
+              })
             : shape.paragraphs.map((paragraph, pi) => (
                 <p
                   key={pi}
@@ -932,7 +938,7 @@ function TextShape({
                     paddingLeft: paragraph.bullet ? 18 + paragraph.level * 18 : paragraph.level * 18,
                     textIndent: paragraph.bullet ? -14 : 0,
                     lineHeight: paragraph.lineHeight,
-                    whiteSpace: shape.wrap ? "pre-wrap" : "pre",
+                    whiteSpace: "pre-wrap",
                     minHeight: paragraph.runs.length === 0 ? "0.75em" : undefined,
                     wordBreak: "break-word",
                   }}

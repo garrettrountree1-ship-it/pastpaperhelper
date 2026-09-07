@@ -318,7 +318,7 @@ function textShape(
               : null,
       level,
       lineHeight: Math.max(
-        0.9,
+        1,
         (lnSpcPct ? Number(lnSpcPct.getAttribute("val") ?? 100000) / 100000 : 1.2) - lnSpcReduce,
       ),
       spaceBefore: spcBef ? Number(spcBef.getAttribute("val") ?? 0) / 100 * PT_TO_PX : 0,

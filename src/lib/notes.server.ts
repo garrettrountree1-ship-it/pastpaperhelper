@@ -86,7 +86,7 @@ export async function summariseTeacherNotes(input: {
     system,
     messages: [{ role: "user", content }],
   });
-  return text.trim();
+  return cleanMathText(text).trim();
 }
 
 

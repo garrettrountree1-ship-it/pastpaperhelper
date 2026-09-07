@@ -171,11 +171,12 @@ export function QuestionExperience({
         <h2 className="font-display text-xl">
           Question {questionLabel(question.question_text, index)}
         </h2>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <Badge variant="secondary">
             {result ? `${result.awardedMarks}/` : ""}{question.marks} marks
           </Badge>
           {headerAction}
+          <QuestionHelpButtons questionId={question.id} answerDraft={draft} />
         </div>
       </div>
 

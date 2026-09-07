@@ -565,6 +565,20 @@ export function FreeCanvas({
 
               {canEdit ? (
                 <>
+                  {/* Wide grab bar across the top: easy to click and drag. */}
+                  <div
+                    onPointerDown={(event) => {
+                      setSelectedId(block.id);
+                      startMove(block.id, event);
+                    }}
+                    title="Drag to move this text"
+                    aria-label="Move text"
+                    className={`absolute -top-3 left-0 z-30 flex h-4 w-full cursor-grab items-center justify-center rounded-t-md bg-muted/80 transition-opacity active:cursor-grabbing ${
+                      isSelectedText ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                    }`}
+                  >
+                    <GripVertical className="size-3 rotate-90 text-muted-foreground" />
+                  </div>
                   {isSelectedText ? (
                     <div
                       className="absolute -top-9 left-0 z-40 flex items-center gap-1 rounded-md border bg-background px-1 py-0.5 shadow-sm"

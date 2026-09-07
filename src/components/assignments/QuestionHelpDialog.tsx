@@ -19,7 +19,7 @@ import { TutorText } from "@/lib/tutor-text";
 type Mode = "hint" | "steps";
 type Turn = { role: string; content: string };
 
-/** Friendly smiling lightbulb for the "Give me a hint" button. */
+/** Simple lightbulb for the "Give me a hint" button. */
 export function HintBulbIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -33,16 +33,13 @@ export function HintBulbIcon({ className }: { className?: string }) {
       aria-hidden="true"
     >
       <path d="M12 2.5a6 6 0 0 0-3.7 10.7c.8.7 1.2 1.5 1.2 2.3v.5h5v-.5c0-.8.4-1.6 1.2-2.3A6 6 0 0 0 12 2.5z" />
-      <circle cx="10.2" cy="8.6" r="0.9" fill="currentColor" stroke="none" />
-      <circle cx="13.8" cy="8.6" r="0.9" fill="currentColor" stroke="none" />
-      <path d="M10 11.2c.6.8 1.2 1.2 2 1.2s1.4-.4 2-1.2" />
       <path d="M9.8 18.5h4.4" />
       <path d="M10.4 21h3.2" />
     </svg>
   );
 }
 
-/** Cheerful staircase with a smiley at the top (lucide has no stairs icon). */
+/** Staircase glyph (lucide has no stairs icon). */
 export function StairsIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -57,14 +54,11 @@ export function StairsIcon({ className }: { className?: string }) {
     >
       <path d="M3 20h4.5v-4.5H12V11h4.5V6.5" />
       <circle cx="18.5" cy="4.8" r="2.8" />
-      <circle cx="17.6" cy="4.4" r="0.5" fill="currentColor" stroke="none" />
-      <circle cx="19.4" cy="4.4" r="0.5" fill="currentColor" stroke="none" />
-      <path d="M17.4 5.6c.3.5.7.7 1.1.7s.8-.2 1.1-.7" />
     </svg>
   );
 }
 
-/** Smiling teacher glyph for the "Ask the teacher" button. */
+/** Teacher glyph for the "Ask the teacher" button. */
 export function TeacherIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -78,9 +72,6 @@ export function TeacherIcon({ className }: { className?: string }) {
       aria-hidden="true"
     >
       <circle cx="12" cy="8" r="4.5" />
-      <circle cx="10.4" cy="7.4" r="0.8" fill="currentColor" stroke="none" />
-      <circle cx="13.6" cy="7.4" r="0.8" fill="currentColor" stroke="none" />
-      <path d="M10 9.6c.6.7 1.2 1 2 1s1.4-.3 2-1" />
       <path d="M5 21v-1.5a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4V21" />
     </svg>
   );
@@ -284,6 +275,12 @@ export function QuestionHelpDialog({
   );
 }
 
+/** Shared look for the three question help pills, so they line up neatly. */
+export const HELP_PILL =
+  "flex w-full items-center gap-1.5 rounded-full border px-1.5 py-1 text-left shadow-xs transition";
+export const HELP_PILL_LABEL = "text-[10px] font-semibold leading-tight";
+export const HELP_PILL_DOT = "grid size-6 shrink-0 place-items-center rounded-full";
+
 /** The two help buttons shown beside a question. */
 export function QuestionHelpButtons({
   questionId,
@@ -295,17 +292,17 @@ export function QuestionHelpButtons({
   const [mode, setMode] = useState<Mode | null>(null);
   return (
     <>
-      <div className="flex w-28 shrink-0 flex-col items-stretch gap-2 sm:w-32">
+      <div className="flex w-24 shrink-0 flex-col items-stretch gap-1.5 sm:w-28">
         <button
           type="button"
           onClick={() => setMode("hint")}
           title="Give me a hint"
-          className="flex items-center gap-2 rounded-full border border-warning/50 bg-warning/15 px-2 py-1.5 text-left shadow-sm transition hover:scale-[1.03] hover:bg-warning/25"
+          className={`${HELP_PILL} border-warning/50 bg-warning/15 hover:bg-warning/25`}
         >
-          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-warning text-warning-foreground">
-            <HintBulbIcon className="size-4.5" />
+          <span className={`${HELP_PILL_DOT} bg-warning text-warning-foreground`}>
+            <HintBulbIcon className="size-3.5" />
           </span>
-          <span className="text-[11px] font-semibold leading-tight text-foreground">
+          <span className={`${HELP_PILL_LABEL} text-foreground`}>
             Give me a hint
           </span>
         </button>
@@ -313,12 +310,12 @@ export function QuestionHelpButtons({
           type="button"
           onClick={() => setMode("steps")}
           title="Break it down step-by-step"
-          className="flex items-center gap-2 rounded-full border border-success/50 bg-success/15 px-2 py-1.5 text-left shadow-sm transition hover:scale-[1.03] hover:bg-success/25"
+          className={`${HELP_PILL} border-success/50 bg-success/15 hover:bg-success/25`}
         >
-          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-success text-success-foreground">
-            <StairsIcon className="size-4.5" />
+          <span className={`${HELP_PILL_DOT} bg-success text-success-foreground`}>
+            <StairsIcon className="size-3.5" />
           </span>
-          <span className="text-[11px] font-semibold leading-tight text-foreground">
+          <span className={`${HELP_PILL_LABEL} text-foreground`}>
             Break it down step-by-step
           </span>
         </button>

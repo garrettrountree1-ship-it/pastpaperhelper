@@ -17,7 +17,12 @@ import { StudentTutorControls } from "@/components/assignments/StudentTutorContr
 import { useActiveTime } from "@/hooks/use-active-time";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
-import { TeacherIcon } from "@/components/assignments/QuestionHelpDialog";
+import {
+  HELP_PILL,
+  HELP_PILL_DOT,
+  HELP_PILL_LABEL,
+  TeacherIcon,
+} from "@/components/assignments/QuestionHelpDialog";
 import { MessageTeacherDialog } from "@/components/messaging/MessageTeacherDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -499,12 +504,12 @@ function QuestionCard({
               type="button"
               title="Ask the teacher"
               aria-label="Ask the teacher"
-              className="flex items-center gap-2 rounded-full border border-primary/50 bg-primary/10 px-2 py-1.5 text-left shadow-sm transition hover:scale-[1.03] hover:bg-primary/20"
+              className={`${HELP_PILL} border-primary/50 bg-primary/10 hover:bg-primary/20`}
             >
-              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
-                <TeacherIcon className="size-4.5" />
+              <span className={`${HELP_PILL_DOT} bg-primary text-primary-foreground`}>
+                <TeacherIcon className="size-3.5" />
               </span>
-              <span className="text-[11px] font-semibold leading-tight text-foreground">
+              <span className={`${HELP_PILL_LABEL} text-foreground`}>
                 Ask the teacher
               </span>
             </button>

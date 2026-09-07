@@ -957,6 +957,10 @@ function TextShape({
   const [lIns, tIns, rIns, bIns] = shape.insets;
   const firstRun = shape.paragraphs[0]?.runs[0];
   const firstParagraph = shape.paragraphs[0];
+  // Whatever ends up behind these words: this box's own fill, else the shape or
+  // slide colour underneath. Text is never allowed to match it.
+  const surface = shape.fill ?? background;
+  const ink = (color: string | null | undefined) => readableTextColor(color, surface);
 
   return (
     <div
@@ -978,10 +982,11 @@ function TextShape({
         outline: editable ? "1px dashed hsl(var(--primary))" : undefined,
         borderRadius: shape.radius || undefined,
         boxSizing: "border-box",
-        color: "#111",
+        color: ink(null) ?? "#111",
         overflow: "hidden",
       }}
     >
+
       <div ref={innerRef} style={{ transformOrigin: "top left" }}>
         <div
           contentEditable={editable}

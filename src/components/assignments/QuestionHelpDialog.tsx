@@ -38,6 +38,26 @@ export function StairsIcon({ className }: { className?: string }) {
   );
 }
 
+/** Small teacher glyph for the "Ask the teacher" button. */
+export function TeacherIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="8" r="4" />
+      <path d="M5 21v-2a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v2" />
+      <path d="M12 14l-1.5 3h3L12 14z" />
+    </svg>
+  );
+}
+
 const COPY: Record<Mode, { title: string; description: string; placeholder: string }> = {
   hint: {
     title: "Give me a hint",
@@ -199,14 +219,30 @@ export function QuestionHelpButtons({
   const [mode, setMode] = useState<Mode | null>(null);
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="outline" onClick={() => setMode("hint")}>
-          <Lightbulb className="size-4" />
-          Give me a hint
+      <div className="flex flex-wrap items-center gap-1">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setMode("hint")}
+          className="gap-1.5 px-2"
+          title="Give me a hint"
+        >
+          <span className="flex size-6 items-center justify-center rounded-full bg-warning/10 text-warning">
+            <Lightbulb className="size-3.5" />
+          </span>
+          <span className="hidden sm:inline">Give me a hint</span>
         </Button>
-        <Button size="sm" variant="outline" onClick={() => setMode("steps")}>
-          <StairsIcon className="size-4" />
-          Break it down step-by-step
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setMode("steps")}
+          className="gap-1.5 px-2"
+          title="Break it down step-by-step"
+        >
+          <span className="flex size-6 items-center justify-center rounded-full bg-success/10 text-success">
+            <StairsIcon className="size-3.5" />
+          </span>
+          <span className="hidden sm:inline">Break it down step-by-step</span>
         </Button>
       </div>
       {mode ? (

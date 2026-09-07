@@ -4,7 +4,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { MessageSquare } from "lucide-react";
+
 import { questionLabel } from "@/lib/question-label";
 import type { PhotoMode } from "@/lib/photo-mode";
 import { photoAvailability } from "@/lib/photo-mode";
@@ -17,6 +17,7 @@ import { StudentTutorControls } from "@/components/assignments/StudentTutorContr
 import { useActiveTime } from "@/hooks/use-active-time";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
+import { TeacherIcon } from "@/components/assignments/QuestionHelpDialog";
 import { MessageTeacherDialog } from "@/components/messaging/MessageTeacherDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -494,9 +495,11 @@ function QuestionCard({
             topic: `${assignmentTitle} · Question ${questionLabel(question.question_text, index)}`,
           }}
           trigger={
-            <Button variant="ghost" size="sm">
-              <MessageSquare className="mr-1 size-4" />
-              Ask teacher
+            <Button variant="ghost" size="sm" className="gap-1.5 px-2" title="Ask the teacher">
+              <span className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <TeacherIcon className="size-3.5" />
+              </span>
+              <span className="hidden sm:inline">Ask the teacher</span>
             </Button>
           }
         />

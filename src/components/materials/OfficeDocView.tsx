@@ -212,6 +212,10 @@ export function OfficeDocView({
             best = index;
           }
         });
+        // Nothing is on screen (the browser tab is in the background, or the
+        // pane is hidden): keep the slide we were on instead of jumping to the
+        // first one.
+        if (bestRatio <= 0) return;
         setCurrentSlide(best);
       },
       { root: el, threshold: [0, 0.25, 0.5, 0.75, 1] }
@@ -231,7 +235,8 @@ export function OfficeDocView({
     let lastWidth = el.clientWidth;
     const observer = new ResizeObserver(() => {
       const width = el.clientWidth;
-      if (width === lastWidth) return;
+      // A hidden pane or background tab reports 0: never re-pin on that.
+      if (!width || width === lastWidth) return;
       lastWidth = width;
       requestAnimationFrame(() => {
         const node = slideRefs.current[currentSlide];
@@ -244,6 +249,12 @@ export function OfficeDocView({
     return () => observer.disconnect();
   }, [deck, currentSlide]);
 
+
+  // The download address can be refreshed while the resource stays the same;
+  // reading it from a ref keeps a new address from reloading (and rescrolling)
+  // what the teacher is looking at.
+  const urlRef = useRef(url);
+  urlRef.current = url;
 
   useEffect(() => {
     const run = ++token.current;
@@ -285,7 +296,7 @@ export function OfficeDocView({
 
       // 3. Build it here, showing slides as they become ready.
       try {
-        const response = await fetch(url);
+        const response = await fetch(urlRef.current);
         if (!response.ok) throw new Error(`Download failed (${response.status})`);
         const buffer = await response.arrayBuffer();
         if (!live()) return;
@@ -322,7 +333,7 @@ export function OfficeDocView({
     return () => {
       cancelled = true;
     };
-  }, [url, format, key, rebuilding, materialId, canPrepareShared]);
+  }, [format, key, rebuilding, materialId, canPrepareShared]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">

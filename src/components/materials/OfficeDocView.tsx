@@ -605,9 +605,33 @@ function SlidePage({
   );
 }
 
+/**
+ * How far a text box may grow to the right before it would run into a
+ * neighbouring box. PowerPoint never lets one box's words cross another's, so
+ * neither do we: side-by-side columns stay in their own lanes.
+ */
+function widthLimitFor(shapes: PptxShape[], index: number, slideWidth: number) {
+  const self = shapes[index];
+  if (!self || self.type !== "text") return slideWidth;
+  let limit = slideWidth - 8;
+  shapes.forEach((other, i) => {
+    if (i === index || other.type === "shape") return;
+    if (!other.w || !other.h) return;
+    if (other.type === "text" && !other.paragraphs.some((p) => p.runs.some((r) => r.text.trim()))) {
+      return;
+    }
+    const verticalOverlap = other.y < self.y + self.h - 2 && other.y + other.h > self.y + 2;
+    if (!verticalOverlap) return;
+    if (other.x + 2 <= self.x) return; // starts to our left: not a right-hand neighbour
+    limit = Math.min(limit, other.x);
+  });
+  return Math.max(self.w, limit - self.x + self.x) === self.w ? Math.max(limit, self.x + 20) : Math.max(limit, self.x + 20);
+}
+
 function SlideShape({
   shape,
   slideWidth,
+  widthLimit,
   editable,
   scale,
   edit,
@@ -615,12 +639,14 @@ function SlideShape({
 }: {
   shape: PptxShape;
   slideWidth: number;
+  widthLimit?: number;
   editable: boolean;
   scale: number;
   edit?: ShapeEdit | undefined;
   onEdit: (patch: ShapeEdit) => void;
 }) {
   const rotate = shape.rot ? `rotate(${shape.rot}deg)` : undefined;
+
 
   if (shape.type === "image") {
     return (

@@ -100,6 +100,8 @@ export function FreeCanvas({
   imageUrls,
   zoom = 1,
   onChange,
+  onPointerAt,
+
   onConcept,
 }: {
   blocks: NoteBlock[];
@@ -111,6 +113,8 @@ export function FreeCanvas({
   imageUrls: Record<string, string> | undefined;
   zoom?: number;
   onChange: (next: NoteBlock[]) => void;
+  /** Reports the pointer's place on the sheet, so pasted pictures land there. */
+  onPointerAt?: (at: { x: number; y: number }) => void;
   onConcept: (value: string) => void;
 }) {
   const surfaceRef = useRef<HTMLDivElement | null>(null);
@@ -433,6 +437,7 @@ export function FreeCanvas({
     <div
       ref={surfaceRef}
       onClick={surfaceClick}
+      onPointerMove={(event) => onPointerAt?.(point(event))}
       className="relative bg-white"
       style={{
         height,
@@ -699,9 +704,11 @@ export function FreeCanvas({
               transform: block.rot ? `rotate(${block.rot}deg)` : undefined,
             }}
             onPointerDown={(event) => {
-              if (!canEdit || mode !== "type") return;
+              if (!canEdit) return;
+              // Clicking a picture always selects it (so Delete removes it),
+              // and only drags it while the pointer is in typing mode.
               setSelectedId(block.id);
-              startMove(block.id, event);
+              if (mode === "type") startMove(block.id, event);
             }}
           >
             {url ? (

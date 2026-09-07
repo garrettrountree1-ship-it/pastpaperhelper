@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Lightbulb, Loader2, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -95,6 +95,7 @@ export function QuestionHelpDialog({
   answerDraft: string;
 }) {
   const ask = useServerFn(askQuestionHelp);
+  const queryClient = useQueryClient();
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
   const [helpError, setHelpError] = useState<string | null>(null);
@@ -123,7 +124,10 @@ export function QuestionHelpDialog({
       });
       return reply;
     },
-    onSuccess: (reply) => setTurns((prev) => [...prev, { role: "tutor", content: reply }]),
+    onSuccess: (reply) => {
+      setTurns((prev) => [...prev, { role: "tutor", content: reply }]);
+      void queryClient.invalidateQueries({ queryKey: ["question-help", questionId] });
+    },
     onError: (error: Error) => {
       const message = error.message || "The tutor could not respond. Please try again.";
       setHelpError(message);

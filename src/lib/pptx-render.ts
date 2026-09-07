@@ -287,14 +287,30 @@ function textShape(
     const spcAft = pPr ? descendant(pPr, ["spcAft", "spcPts"]) : null;
     const isBulletList = ph?.type !== "title" && ph?.type !== "ctrTitle" && ph?.type !== "subTitle";
 
+    // PowerPoint's own numbering: honour the deck's start value and count only
+    // the numbered items at this same indent level, so a list that starts at 3
+    // (or restarts) shows exactly the numbers the teacher sees in PowerPoint.
+    let autoNumber: string | null = null;
+    if (buAuto && !buNone) {
+      const startAt = Number(buAuto.getAttribute("startAt") ?? 1);
+      let index = 0;
+      for (let i = paragraphs.length - 1; i >= 0; i -= 1) {
+        const previous = paragraphs[i]!;
+        if (previous.level !== level) continue;
+        if (!previous.bullet || !/^\d/.test(previous.bullet)) break;
+        index += 1;
+      }
+      autoNumber = `${startAt + index}.`;
+    }
+
     paragraphs.push({
       align: pPr?.getAttribute("algn") ?? "l",
       bullet: buNone
         ? null
         : buChar
           ? (buChar.getAttribute("char") ?? "•")
-          : buAuto
-            ? `${paragraphs.filter((q) => q.bullet && /\d/.test(q.bullet)).length + 1}.`
+          : autoNumber
+            ? autoNumber
             : isBulletList && body.getElementsByTagName("a:buChar").length > 0
               ? AUTO_BULLETS[Math.min(level, AUTO_BULLETS.length - 1)]!
               : null,

@@ -768,12 +768,23 @@ export function LessonWorkspace({
               };
               const canvasWrap = paneWrapper("canvas");
               const docWrap = paneWrapper("doc");
+              // Minimising must never scroll the resource back to the top, so the
+              // pane keeps its full size and stays laid out — it is simply hidden
+              // and clipped by the collapsed bar.
               const contentStyle = (pane: "canvas" | "doc"): React.CSSProperties =>
                 frontPane === pane
-                  ? {
-                      paddingTop: BAR_H,
-                      display: !isPhone && floatState === "min" ? "none" : undefined,
-                    }
+                  ? !isPhone && floatState === "min"
+                    ? {
+                        paddingTop: BAR_H,
+                        position: "absolute",
+                        left: 0,
+                        top: 0,
+                        width: Math.max(minW, r.w),
+                        height: Math.max(240, r.h),
+                        visibility: "hidden",
+                        pointerEvents: "none",
+                      }
+                    : { paddingTop: BAR_H }
                   : {};
               return (
                 <div

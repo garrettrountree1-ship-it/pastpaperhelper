@@ -113,6 +113,8 @@ export function FreeCanvas({
   imageUrls: Record<string, string> | undefined;
   zoom?: number;
   onChange: (next: NoteBlock[]) => void;
+  /** Reports the pointer's place on the sheet, so pasted pictures land there. */
+  onPointerAt?: (at: { x: number; y: number }) => void;
   onConcept: (value: string) => void;
 }) {
   const surfaceRef = useRef<HTMLDivElement | null>(null);

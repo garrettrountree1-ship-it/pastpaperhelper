@@ -15,6 +15,8 @@
 const EMU_PER_PX = 9525;
 const PT_TO_PX = 4 / 3;
 
+import { readableSymbols } from "@/lib/math-text";
+
 export type PptxRun = {
   text: string;
   size: number;
@@ -253,7 +255,7 @@ function textShape(
       const latin = rPr ? firstChild(rPr, "latin") : null;
       const size = Number(rPr?.getAttribute("sz") ?? base.size * 100) / 100;
       runs.push({
-        text: firstChild(child, "t")?.textContent ?? "",
+        text: readableSymbols(firstChild(child, "t")?.textContent ?? ""),
         size: Number((size * fontScale * PT_TO_PX).toFixed(2)),
         bold: rPr?.getAttribute("b") === "1",
         italic: rPr?.getAttribute("i") === "1",
@@ -544,17 +546,29 @@ export async function parsePptx(
     const findPlaceholderFrame = (ph: { type: string | null; idx: string | null }) => {
       for (const source of [layoutDoc, masterDoc]) {
         if (!source) continue;
-        for (const sp of Array.from(source.getElementsByTagName("p:sp"))) {
-          const candidate = placeholderOf(sp);
-          if (!candidate) continue;
-          const sameIdx = ph.idx && candidate.idx === ph.idx;
-          const sameType = ph.type && candidate.type === ph.type;
-          const bothBody = !ph.type && !candidate.type;
-          if (sameIdx || sameType || bothBody) {
-            const frame = xfrmOf(descendant(sp, ["spPr", "xfrm"]));
-            if (frame) return frame;
-          }
+        const candidates = Array.from(source.getElementsByTagName("p:sp"))
+          .map((sp) => ({ placeholder: placeholderOf(sp), frame: xfrmOf(descendant(sp, ["spPr", "xfrm"])) }))
+          .filter((candidate): candidate is { placeholder: { type: string | null; idx: string | null }; frame: Frame } =>
+            Boolean(candidate.placeholder && candidate.frame),
+          );
+
+        // Placeholder IDs are the only safe way to distinguish several body
+        // areas on the same layout. Matching merely by type made every body
+        // placeholder borrow the first body's coordinates, stacking sentences
+        // on top of one another.
+        if (ph.idx) {
+          const exact = candidates.find((candidate) => candidate.placeholder.idx === ph.idx);
+          if (exact) return exact.frame;
+          continue;
         }
+
+        const compatible = candidates.filter((candidate) =>
+          ph.type
+            ? candidate.placeholder.type === ph.type
+            : !candidate.placeholder.type && !candidate.placeholder.idx,
+        );
+        // A type-only fallback is safe only when it identifies one unique box.
+        if (compatible.length === 1) return compatible[0]?.frame ?? null;
       }
       return null;
     };
@@ -650,7 +664,7 @@ export async function parsePptx(
               Array.from(row.getElementsByTagName("a:tc"))
                 .map((cell) =>
                   Array.from(cell.getElementsByTagName("a:t"))
-                    .map((t) => t.textContent ?? "")
+                    .map((t) => readableSymbols(t.textContent ?? ""))
                     .join(""),
                 )
                 .join("   |   "),

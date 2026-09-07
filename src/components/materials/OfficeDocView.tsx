@@ -78,7 +78,7 @@ export function OfficeDocView({
   const token = useRef(0);
   // Increment when the renderer changes so old, incorrectly parsed decks are
   // never served forever from IndexedDB after a fidelity fix.
-  const key = `office-render-v5:${format}:${cacheKey ?? title}`;
+  const key = `office-render-v6:${format}:${cacheKey ?? title}`;
   // Marks and slide edits are personal to the account viewing them.
   const { ready: scopeReady, scope } = useMarkupScope();
   const notesKey = scopedKey(`office-annotations:${format}:${cacheKey ?? title}`, scope);
@@ -780,13 +780,14 @@ function TextShape({
     const box = boxRef.current;
     const inner = innerRef.current;
     if (!box || !inner) return;
-    box.style.width = baseW ? `${baseW}px` : "auto";
+    const collisionSafeWidth = Math.max(20, rightBound - x - 2);
+    let width = Math.min(baseW, collisionSafeWidth);
+    box.style.width = width ? `${width}px` : "auto";
     inner.style.width = "100%";
     inner.style.transform = "";
     if (!baseW || !baseH) return;
 
-    let width = baseW;
-    const maxWidth = Math.max(baseW, (edit?.w ? slideWidth - x - 8 : rightBound) - x);
+    const maxWidth = Math.max(width, (edit?.w ? slideWidth - x - 8 : rightBound - 2) - x);
     const step = Math.max(40, baseW * 0.12);
     let height = inner.scrollHeight;
     while (height > baseH + 2 && width < maxWidth) {
@@ -796,9 +797,12 @@ function TextShape({
     }
     // Never let the copy spill onto whatever sits below (a picture or another
     // box): shrink to the free space instead of overflowing into it.
-    const allowed = roomBelow == null ? baseH : Math.min(baseH, roomBelow);
+    // A box may use genuinely empty room beneath it. This keeps body copy at a
+    // readable size instead of compressing it just because the source box was
+    // shorter than its contents.
+    const allowed = roomBelow == null ? Math.max(baseH, height) : roomBelow;
     if (height > allowed + 2) {
-      const shrink = Math.max(0.3, allowed / height);
+      const shrink = Math.max(0.35, allowed / height);
       inner.style.width = `${width / shrink}px`;
       inner.style.transform = `scale(${shrink})`;
     }

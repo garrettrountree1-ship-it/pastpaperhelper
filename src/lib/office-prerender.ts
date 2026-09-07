@@ -18,7 +18,7 @@ export type OfficeRender = { format: "pptx"; deck: PptxDeck } | { format: "docx"
  * Bumped whenever the reader changes how a file is turned into a render, so
  * stored renders built by an older reader are rebuilt instead of reused.
  */
-const RENDER_VERSION = 2;
+const RENDER_VERSION = 3;
 
 /** Builds the render from the raw file bytes, in the browser. */
 export async function buildOfficeRender(

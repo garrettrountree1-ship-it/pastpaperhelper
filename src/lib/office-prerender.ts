@@ -14,6 +14,12 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type OfficeRender = { format: "pptx"; deck: PptxDeck } | { format: "docx"; html: string };
 
+/**
+ * Bumped whenever the reader changes how a file is turned into a render, so
+ * stored renders built by an older reader are rebuilt instead of reused.
+ */
+const RENDER_VERSION = 2;
+
 /** Builds the render from the raw file bytes, in the browser. */
 export async function buildOfficeRender(
   buffer: ArrayBuffer,
@@ -35,7 +41,8 @@ export async function fetchSharedRender(materialId: string): Promise<OfficeRende
     if (!url) return null;
     const response = await fetch(url);
     if (!response.ok) return null;
-    const payload = (await response.json()) as OfficeRender;
+    const payload = (await response.json()) as OfficeRender & { renderVersion?: number };
+    if ((payload?.renderVersion ?? 1) !== RENDER_VERSION) return null;
     if (payload?.format === "pptx" && payload.deck?.slides?.length) return payload;
     if (payload?.format === "docx" && typeof payload.html === "string") return payload;
     return null;
@@ -48,7 +55,7 @@ export async function fetchSharedRender(materialId: string): Promise<OfficeRende
 export async function saveSharedRender(materialId: string, render: OfficeRender): Promise<boolean> {
   try {
     const { path, token } = await createMaterialRenderUpload({ data: { materialId } });
-    const blob = new Blob([JSON.stringify(render)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify({ ...render, renderVersion: RENDER_VERSION })], { type: "application/json" });
     const { error } = await supabase.storage
       .from("class-materials")
       .uploadToSignedUrl(path, token, blob, { contentType: "application/json", upsert: true });

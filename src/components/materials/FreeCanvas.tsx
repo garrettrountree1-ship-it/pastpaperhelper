@@ -704,10 +704,11 @@ export function FreeCanvas({
                   />
                   <span
                     onPointerDown={(event) => startResize(block.id, event)}
-                    className={`absolute -right-1 bottom-0 size-3 cursor-ew-resize rounded-sm bg-border transition-opacity ${
+                    className={`absolute -right-2 bottom-0 size-5 touch-none cursor-ew-resize rounded-sm border border-border bg-muted transition-opacity ${
                       isSelectedText ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                     }`}
                   />
+
                 </>
               ) : block.html ? (
                 <div style={textStyle} dangerouslySetInnerHTML={{ __html: block.html }} />

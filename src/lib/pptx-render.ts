@@ -25,6 +25,8 @@ export type PptxRun = {
   underline: boolean;
   color: string | null;
   font: string | null;
+  /** PowerPoint raised/lowered text, e.g. the 0 in 100°C or the 2 in H2O. */
+  baseline: "sup" | "sub" | null;
 };
 
 export type PptxParagraph = {
@@ -246,6 +248,7 @@ function textShape(
           underline: false,
           color: null,
           font: null,
+          baseline: null,
         });
         continue;
       }
@@ -262,6 +265,10 @@ function textShape(
         underline: Boolean(rPr?.getAttribute("u") && rPr.getAttribute("u") !== "none"),
         color: colorOf(solid, theme),
         font: latin?.getAttribute("typeface") ?? null,
+        baseline: (() => {
+          const raw = Number(rPr?.getAttribute("baseline") ?? 0);
+          return raw > 0 ? "sup" : raw < 0 ? "sub" : null;
+        })(),
       });
     }
     if (runs.length === 0) {

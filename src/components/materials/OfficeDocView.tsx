@@ -817,6 +817,7 @@ function SlideShape({
       slideWidth={slideWidth}
       widthLimit={widthLimit}
       heightLimit={heightLimit}
+      background={background}
       editable={editable}
       scale={scale}
       edit={edit}
@@ -824,6 +825,7 @@ function SlideShape({
       rotate={rotate}
     />
   );
+
 }
 
 /**

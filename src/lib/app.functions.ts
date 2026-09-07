@@ -2312,7 +2312,8 @@ export const previewTutorMessage = createServerFn({ method: "POST" })
 type AnyClient = Awaited<ReturnType<typeof admin>>;
 
 const SUBMISSION_FIELDS =
-  "id, status, awarded_marks, total_marks, submitted_at, ai_flag_count, locked_at, locked_reason";
+  "id, status, awarded_marks, total_marks, submitted_at, ai_flag_count, locked_at, locked_reason, penalty_percent";
+
 
 async function ensureSubmission(db: AnyClient, assignmentId: string, studentId: string) {
   const { data: existing } = await db

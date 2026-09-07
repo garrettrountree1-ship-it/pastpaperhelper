@@ -1597,10 +1597,14 @@ function GradebookRow({
                   {grade.status === "in_progress" ? "*" : ""}
                 </Link>
                 {grade.penaltyPercent > 0 ? (
-                  <Badge variant="secondary" title="Deduction applied for cheating">
-                    −{grade.penaltyPercent}%
+                  <Badge
+                    variant="destructive"
+                    title={`Total cheating deduction so far: ${grade.penaltyPercent}% (adds up each time you unlock)`}
+                  >
+                    −{grade.penaltyPercent}% total
                   </Badge>
                 ) : null}
+
               </span>
             )}
           </TableCell>

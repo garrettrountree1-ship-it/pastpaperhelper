@@ -19,7 +19,30 @@ import { TutorText } from "@/lib/tutor-text";
 type Mode = "hint" | "steps";
 type Turn = { role: string; content: string };
 
-/** Small staircase glyph (lucide has no stairs icon). */
+/** Friendly smiling lightbulb for the "Give me a hint" button. */
+export function HintBulbIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 2.5a6 6 0 0 0-3.7 10.7c.8.7 1.2 1.5 1.2 2.3v.5h5v-.5c0-.8.4-1.6 1.2-2.3A6 6 0 0 0 12 2.5z" />
+      <circle cx="10.2" cy="8.6" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="13.8" cy="8.6" r="0.9" fill="currentColor" stroke="none" />
+      <path d="M10 11.2c.6.8 1.2 1.2 2 1.2s1.4-.4 2-1.2" />
+      <path d="M9.8 18.5h4.4" />
+      <path d="M10.4 21h3.2" />
+    </svg>
+  );
+}
+
+/** Cheerful staircase with a smiley at the top (lucide has no stairs icon). */
 export function StairsIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -27,18 +50,21 @@ export function StairsIcon({ className }: { className?: string }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.8"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d="M3 20h4v-4h4v-4h4V8h4V4" />
-      <path d="M3 20h18" />
+      <path d="M3 20h4.5v-4.5H12V11h4.5V6.5" />
+      <circle cx="18.5" cy="4.8" r="2.8" />
+      <circle cx="17.6" cy="4.4" r="0.5" fill="currentColor" stroke="none" />
+      <circle cx="19.4" cy="4.4" r="0.5" fill="currentColor" stroke="none" />
+      <path d="M17.4 5.6c.3.5.7.7 1.1.7s.8-.2 1.1-.7" />
     </svg>
   );
 }
 
-/** Small teacher glyph for the "Ask the teacher" button. */
+/** Smiling teacher glyph for the "Ask the teacher" button. */
 export function TeacherIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -46,14 +72,16 @@ export function TeacherIcon({ className }: { className?: string }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.8"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <circle cx="12" cy="8" r="4" />
-      <path d="M5 21v-2a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v2" />
-      <path d="M12 14l-1.5 3h3L12 14z" />
+      <circle cx="12" cy="8" r="4.5" />
+      <circle cx="10.4" cy="7.4" r="0.8" fill="currentColor" stroke="none" />
+      <circle cx="13.6" cy="7.4" r="0.8" fill="currentColor" stroke="none" />
+      <path d="M10 9.6c.6.7 1.2 1 2 1s1.4-.3 2-1" />
+      <path d="M5 21v-1.5a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4V21" />
     </svg>
   );
 }

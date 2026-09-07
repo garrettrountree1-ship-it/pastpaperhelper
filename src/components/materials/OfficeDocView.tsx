@@ -78,7 +78,7 @@ export function OfficeDocView({
   const token = useRef(0);
   // Increment when the renderer changes so old, incorrectly parsed decks are
   // never served forever from IndexedDB after a fidelity fix.
-  const key = `office-render-v5:${format}:${cacheKey ?? title}`;
+  const key = `office-render-v6:${format}:${cacheKey ?? title}`;
   // Marks and slide edits are personal to the account viewing them.
   const { ready: scopeReady, scope } = useMarkupScope();
   const notesKey = scopedKey(`office-annotations:${format}:${cacheKey ?? title}`, scope);
@@ -780,13 +780,15 @@ function TextShape({
     const box = boxRef.current;
     const inner = innerRef.current;
     if (!box || !inner) return;
-    box.style.width = baseW ? `${baseW}px` : "auto";
+    const collisionSafeWidth = Math.max(20, rightBound - x - 2);
+    let width = Math.min(baseW, collisionSafeWidth);
+    box.style.width = width ? `${width}px` : "auto";
+    box.style.height = baseH ? `${baseH}px` : "auto";
     inner.style.width = "100%";
     inner.style.transform = "";
     if (!baseW || !baseH) return;
 
-    let width = baseW;
-    const maxWidth = Math.max(baseW, (edit?.w ? slideWidth - x - 8 : rightBound) - x);
+    const maxWidth = Math.max(width, (edit?.w ? slideWidth - x - 8 : rightBound - 2) - x);
     const step = Math.max(40, baseW * 0.12);
     let height = inner.scrollHeight;
     while (height > baseH + 2 && width < maxWidth) {
@@ -796,9 +798,13 @@ function TextShape({
     }
     // Never let the copy spill onto whatever sits below (a picture or another
     // box): shrink to the free space instead of overflowing into it.
-    const allowed = roomBelow == null ? baseH : Math.min(baseH, roomBelow);
+    // A box may use genuinely empty room beneath it. This keeps body copy at a
+    // readable size instead of compressing it just because the source box was
+    // shorter than its contents.
+    const allowed = roomBelow == null ? Math.max(baseH, height) : roomBelow;
+    if (!edit?.h) box.style.height = `${allowed}px`;
     if (height > allowed + 2) {
-      const shrink = Math.max(0.3, allowed / height);
+      const shrink = Math.max(0.35, allowed / height);
       inner.style.width = `${width / shrink}px`;
       inner.style.transform = `scale(${shrink})`;
     }
@@ -864,7 +870,7 @@ function TextShape({
         borderRadius: shape.radius || undefined,
         boxSizing: "border-box",
         color: "#111",
-        overflow: roomBelow != null && roomBelow < baseH ? "hidden" : "visible",
+        overflow: "hidden",
       }}
     >
       <div ref={innerRef} style={{ transformOrigin: "top left" }}>
@@ -885,25 +891,28 @@ function TextShape({
           style={{ outline: "none", cursor: editable ? "text" : undefined }}
         >
           {overrideText != null
-            ? overrideText.split("\n").map((line, li) => (
+            ? overrideText.split("\n").map((line, li) => {
+                const sourceParagraph = shape.paragraphs[li] ?? firstParagraph;
+                const sourceRun = sourceParagraph?.runs[0] ?? firstRun;
+                return (
                 <p
                   key={li}
                   style={{
-                    margin: 0,
+                    margin: `${sourceParagraph?.spaceBefore ?? 0}px 0 ${sourceParagraph?.spaceAfter ?? 0}px`,
                     textAlign:
-                      firstParagraph?.align === "ctr"
+                      sourceParagraph?.align === "ctr"
                         ? "center"
-                        : firstParagraph?.align === "r"
+                        : sourceParagraph?.align === "r"
                           ? "right"
                           : "left",
-                    lineHeight: firstParagraph?.lineHeight ?? 1.2,
-                    fontSize: firstRun?.size,
-                    fontFamily: firstRun?.font
-                      ? `"${firstRun.font}", system-ui, sans-serif`
+                    lineHeight: sourceParagraph?.lineHeight ?? 1.2,
+                    fontSize: sourceRun?.size,
+                    fontFamily: sourceRun?.font
+                      ? `"${sourceRun.font}", system-ui, sans-serif`
                       : undefined,
-                    fontWeight: firstRun?.bold ? 700 : 400,
-                    fontStyle: firstRun?.italic ? "italic" : undefined,
-                    color: firstRun?.color ?? undefined,
+                    fontWeight: sourceRun?.bold ? 700 : 400,
+                    fontStyle: sourceRun?.italic ? "italic" : undefined,
+                    color: sourceRun?.color ?? undefined,
                     whiteSpace: "pre-wrap",
                     wordBreak: "break-word",
                     minHeight: line === "" ? "0.75em" : undefined,
@@ -911,7 +920,8 @@ function TextShape({
                 >
                   {line}
                 </p>
-              ))
+                );
+              })
             : shape.paragraphs.map((paragraph, pi) => (
                 <p
                   key={pi}
@@ -928,7 +938,7 @@ function TextShape({
                     paddingLeft: paragraph.bullet ? 18 + paragraph.level * 18 : paragraph.level * 18,
                     textIndent: paragraph.bullet ? -14 : 0,
                     lineHeight: paragraph.lineHeight,
-                    whiteSpace: shape.wrap ? "pre-wrap" : "pre",
+                    whiteSpace: "pre-wrap",
                     minHeight: paragraph.runs.length === 0 ? "0.75em" : undefined,
                     wordBreak: "break-word",
                   }}

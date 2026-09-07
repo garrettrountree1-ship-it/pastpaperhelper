@@ -58,20 +58,24 @@ export function TeacherIcon({ className }: { className?: string }) {
   );
 }
 
-const COPY: Record<Mode, { title: string; description: string; placeholder: string }> = {
-  hint: {
-    title: "Give me a hint",
-    description:
-      "One nudge at a time — never the answer. Ask the tutor anything else you're unsure about.",
-    placeholder: "Ask the tutor about this question…",
-  },
-  steps: {
-    title: "Break it down step-by-step",
-    description:
-      "Work through the question one step at a time. Type your working for each step, then close this window and write your full answer.",
-    placeholder: "Type your working for this step…",
-  },
-};
+const COPY: Record<Mode, { title: string; description: string; placeholder: string; close: string }> =
+  {
+    hint: {
+      title: "Give me a hint",
+      description:
+        "A hint to get you started — never the answer. Ask follow-up questions below if you're still stuck.",
+      placeholder: "Ask a follow-up question…",
+      close: "Back to my answer",
+    },
+    steps: {
+      title: "Break it down step-by-step",
+      description:
+        "The question is split into a few small steps. Answer each step here, then close this window and write your answer to get the marks.",
+      placeholder: "Answer this step…",
+      close: "Close and answer the question",
+    },
+  };
+
 
 /**
  * On-demand AI help a student can open before or after answering. Everything

@@ -699,9 +699,11 @@ export function FreeCanvas({
               transform: block.rot ? `rotate(${block.rot}deg)` : undefined,
             }}
             onPointerDown={(event) => {
-              if (!canEdit || mode !== "type") return;
+              if (!canEdit) return;
+              // Clicking a picture always selects it (so Delete removes it),
+              // and only drags it while the pointer is in typing mode.
               setSelectedId(block.id);
-              startMove(block.id, event);
+              if (mode === "type") startMove(block.id, event);
             }}
           >
             {url ? (

@@ -320,7 +320,9 @@ export function FreeCanvas({
         return;
       }
       const selected = blocks.find((block) => block.id === selectedId);
-      if (!selected || selected.type === "text" || selected.type === "ink") return;
+      // Text passages may go too, but only when the caret isn't inside them
+      // (the target check above already protects an active editor).
+      if (!selected || selected.type === "ink") return;
       event.preventDefault();
       remove(selectedId);
       setSelectedId(null);

@@ -160,6 +160,13 @@ export function QuestionHelpDialog({
           <DialogDescription>{COPY[mode].description}</DialogDescription>
         </DialogHeader>
 
+        {mode === "steps" ? (
+          <p className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-foreground">
+            Answering the steps here does not give you marks. When you finish, close this window and
+            type your full answer in the answer box to get credit.
+          </p>
+        ) : null}
+
         <div ref={scrollRef} className="max-h-[50vh] space-y-3 overflow-y-auto pr-1">
           {turns.map((turn, index) => (
             <div
@@ -177,9 +184,16 @@ export function QuestionHelpDialog({
               )}
             </div>
           ))}
-          {send.isPending ? (
-            <p className="text-xs text-muted-foreground">
-              {mode === "hint" ? "Thinking of a hint…" : "Working out the next step…"}
+          {send.isPending || (turns.length === 0 && existing.isLoading) ? (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              {mode === "hint"
+                ? turns.length === 0
+                  ? "Writing your hint…"
+                  : "Thinking…"
+                : turns.length === 0
+                  ? "Splitting the question into steps…"
+                  : "Working out the next step…"}
             </p>
           ) : null}
         </div>
@@ -199,7 +213,7 @@ export function QuestionHelpDialog({
           />
           <div className="flex flex-wrap justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Back to my answer
+              {COPY[mode].close}
             </Button>
             <Button onClick={submit} disabled={!draft.trim() || send.isPending}>
               <Send className="size-4" />
@@ -207,6 +221,7 @@ export function QuestionHelpDialog({
             </Button>
           </div>
         </div>
+
       </DialogContent>
     </Dialog>
   );

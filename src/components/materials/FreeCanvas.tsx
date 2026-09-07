@@ -433,6 +433,7 @@ export function FreeCanvas({
     <div
       ref={surfaceRef}
       onClick={surfaceClick}
+      onPointerMove={(event) => onPointerAt?.(point(event))}
       className="relative bg-white"
       style={{
         height,

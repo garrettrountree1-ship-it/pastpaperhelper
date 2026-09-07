@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Eraser,
+  Highlighter,
   ImagePlus,
   Mic,
   Minus,

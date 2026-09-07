@@ -267,26 +267,26 @@ export function QuestionHelpButtons({
   const [mode, setMode] = useState<Mode | null>(null);
   return (
     <>
-      <div className="flex flex-col items-center gap-2">
+      <div className="flex shrink-0 flex-col items-center gap-2">
         <Button
           size="icon"
           variant="ghost"
           onClick={() => setMode("hint")}
-          className="size-9 rounded-full bg-warning text-warning-foreground shadow-sm hover:bg-warning/90"
+          className="size-8 rounded-full bg-warning text-warning-foreground shadow-sm hover:bg-warning/90 sm:size-9"
           title="Give me a hint"
           aria-label="Give me a hint"
         >
-          <Lightbulb className="size-4" />
+          <Lightbulb className="size-3.5 sm:size-4" />
         </Button>
         <Button
           size="icon"
           variant="ghost"
           onClick={() => setMode("steps")}
-          className="size-9 rounded-full bg-success text-success-foreground shadow-sm hover:bg-success/90"
+          className="size-8 rounded-full bg-success text-success-foreground shadow-sm hover:bg-success/90 sm:size-9"
           title="Break it down step-by-step"
           aria-label="Break it down step-by-step"
         >
-          <StairsIcon className="size-4" />
+          <StairsIcon className="size-3.5 sm:size-4" />
         </Button>
       </div>
       {mode ? (

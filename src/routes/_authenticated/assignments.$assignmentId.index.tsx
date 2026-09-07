@@ -498,11 +498,11 @@ function QuestionCard({
             <Button
               size="icon"
               variant="ghost"
-              className="size-9 rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+              className="size-8 rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 sm:size-9"
               title="Ask the teacher"
               aria-label="Ask the teacher"
             >
-              <TeacherIcon className="size-4" />
+              <TeacherIcon className="size-3.5 sm:size-4" />
             </Button>
           }
         />

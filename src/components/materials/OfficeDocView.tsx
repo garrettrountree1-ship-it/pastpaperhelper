@@ -78,7 +78,7 @@ export function OfficeDocView({
   const token = useRef(0);
   // Increment when the renderer changes so old, incorrectly parsed decks are
   // never served forever from IndexedDB after a fidelity fix.
-  const key = `office-render-v4:${format}:${cacheKey ?? title}`;
+  const key = `office-render-v5:${format}:${cacheKey ?? title}`;
   // Marks and slide edits are personal to the account viewing them.
   const { ready: scopeReady, scope } = useMarkupScope();
   const notesKey = scopedKey(`office-annotations:${format}:${cacheKey ?? title}`, scope);

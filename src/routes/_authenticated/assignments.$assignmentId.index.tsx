@@ -146,6 +146,19 @@ function AssignmentPage() {
                 {data.submission.status === "submitted" ? <Badge>Submitted</Badge> : null}
                 {data.submission.locked_at ? <Badge variant="destructive">Locked · fail</Badge> : null}
               </div>
+              {Number(data.submission.penalty_percent ?? 0) > 0 ? (
+                <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm">
+                  <p className="font-medium">
+                    Your teacher has deducted {Number(data.submission.penalty_percent)}% from this
+                    homework for copying AI into your answers.
+                  </p>
+                  <p className="mt-1 text-muted-foreground">
+                    The deduction stays on your final score for this homework. Write every answer in
+                    your own words — each new time this happens adds another deduction.
+                  </p>
+                </div>
+              ) : null}
+
               {data.assignment.pastDue ? (
                 <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm">
                   <p className="font-medium">The due date has passed — this homework is closed.</p>

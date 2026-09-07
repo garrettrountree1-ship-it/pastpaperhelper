@@ -713,12 +713,40 @@ function overlaps(a: Rect, b: { x: number; y: number; w: number; h: number }) {
 }
 
 
+/**
+ * Works out the colour actually sitting behind a text box: the topmost filled
+ * shape drawn under it that covers most of it, otherwise the slide background.
+ * Used to guarantee the words never end up the same colour as their backdrop.
+ */
+function backgroundBehind(
+  shapes: PptxShape[],
+  index: number,
+  box: Rect | undefined,
+  slideBackground: string,
+): string {
+  const shape = shapes[index];
+  if (!shape) return slideBackground;
+  const rect: Rect = box ?? { x: shape.x, y: shape.y, w: shape.w, h: shape.h };
+  let background = slideBackground;
+  for (let i = 0; i < index; i += 1) {
+    const under = shapes[i];
+    if (!under || under.type === "image") continue;
+    if (!under.fill || !under.w || !under.h) continue;
+    const coversWidth = under.x <= rect.x + 4 && under.x + under.w >= rect.x + rect.w - 4;
+    const coversHeight = under.y <= rect.y + 4 && under.y + under.h >= rect.y + rect.h - 4;
+    if (coversWidth && coversHeight) background = under.fill;
+  }
+  return background;
+}
+
+
 function SlideShape({
   shape,
   rect,
   slideWidth,
   widthLimit,
   heightLimit,
+  background,
   editable,
   scale,
   edit,
@@ -729,11 +757,13 @@ function SlideShape({
   slideWidth: number;
   widthLimit?: number | undefined;
   heightLimit?: number | undefined;
+  background: string;
   editable: boolean;
   scale: number;
   edit?: ShapeEdit | undefined;
   onEdit: (patch: ShapeEdit) => void;
 }) {
+
   const rotate = shape.rot ? `rotate(${shape.rot}deg)` : undefined;
 
 

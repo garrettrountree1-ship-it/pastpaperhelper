@@ -582,12 +582,14 @@ function SlidePage({
               key={i}
               shape={shape}
               slideWidth={deck.width}
+              widthLimit={widthLimitFor(slide.shapes, i, deck.width)}
               editable={tool === "edit"}
               scale={scale}
               edit={edits[`${index}:${i}`]}
               onEdit={(patch) => onEdit(i, patch)}
             />
           ))}
+
           <SlideAnnotations
             width={deck.width}
             height={deck.height}

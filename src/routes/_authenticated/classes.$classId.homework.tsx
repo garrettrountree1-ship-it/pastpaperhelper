@@ -1931,6 +1931,42 @@ function StudentReport({
                     </div>
                   </div>
                 ) : null}
+
+                {(question.helpMessages ?? []).length > 0
+                  ? (["hint", "steps"] as const).map((mode) => {
+                      const items = (question.helpMessages ?? []).filter((m) => m.mode === mode);
+                      if (items.length === 0) return null;
+                      const asked = items.filter((m) => m.role === "student").length;
+                      return (
+                        <div key={mode} className="mt-3">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {mode === "hint"
+                              ? "Used “Give me a hint”"
+                              : "Used “Break it down step-by-step”"}{" "}
+                            · {asked} {asked === 1 ? "message" : "messages"} typed
+                          </p>
+                          <div className="mt-2 space-y-2">
+                            {items.map((message) => (
+                              <div
+                                key={message.id}
+                                className={
+                                  message.role === "student"
+                                    ? "rounded-md bg-primary/10 p-2 text-sm"
+                                    : "rounded-md bg-secondary/40 p-2 text-sm"
+                                }
+                              >
+                                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                                  {message.role === "student" ? "Student typed" : "AI help"}
+                                </p>
+                                <p className="whitespace-pre-wrap">{message.content}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })
+                  : null}
+
               </details>
             ))}
           </div>

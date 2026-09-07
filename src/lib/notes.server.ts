@@ -1,5 +1,6 @@
 import { generateText } from "ai";
 
+import { cleanMathText } from "./math-text";
 import { gatewayModel } from "./ai-gateway.server";
 
 /**
@@ -36,6 +37,7 @@ export async function summariseTeacherNotes(input: {
     "If something in an image is genuinely illegible, ignore it silently rather than guessing.",
     "If a section has nothing to fill it, omit that section entirely.",
     "Write in clear British English, plain text with simple markdown headings and bullets.",
+    "Write equations and symbols as plain readable text with real Unicode characters (°C, °F, ×, ÷, ≠, ≤, ≥, →, π, Δ, m², H₂O, x = (y - b)/m). Never use LaTeX or maths delimiters ($, $$, \\frac, \\(, \\[) and never use markdown tables or code fences.",
     "Structure (only the parts that apply):",
     "## Key concepts",
     "## Vocabulary",
@@ -84,7 +86,7 @@ export async function summariseTeacherNotes(input: {
     system,
     messages: [{ role: "user", content }],
   });
-  return text.trim();
+  return cleanMathText(text).trim();
 }
 
 

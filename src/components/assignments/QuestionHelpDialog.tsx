@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Lightbulb, Loader2, Send } from "lucide-react";
+import { Loader2, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -194,7 +194,7 @@ export function QuestionHelpDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {mode === "hint" ? (
-              <Lightbulb className="size-4 text-accent" />
+              <HintBulbIcon className="size-4 text-accent" />
             ) : (
               <StairsIcon className="size-4 text-accent" />
             )}

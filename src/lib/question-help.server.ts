@@ -37,7 +37,6 @@ export async function questionHelpStep(input: {
 
   const shared = [
     "You are a subject expert tutor for IGCSE, A-Level and IB students.",
-    "You can see the mark scheme privately. NEVER quote it, never state the final answer, value, word, option, name, equation or result, and never write a sentence the student could copy into their answer. If asked for the answer, warmly refuse and teach the idea instead.",
     "Write equations and symbols as plain readable text with real Unicode characters (°C, ×, ÷, ≤, →, Δ, m², H₂O). Never use LaTeX or maths delimiters and never use code fences. No markdown headings.",
     LEVEL_STYLE[level] ?? LEVEL_STYLE["medium"]!,
     language.toLowerCase().startsWith("english")
@@ -49,18 +48,21 @@ export async function questionHelpStep(input: {
     input.mode === "hint"
       ? [
           ...shared,
-          "The student pressed 'Give me a hint'. Give exactly ONE small hint: point them at the idea, law, formula type or command word they need, and say what a full-mark answer needs structurally (how many points and what type each is) without supplying the content.",
+          "You can see the mark scheme privately. NEVER quote it, never state the final answer, value, word, option, name, equation or result, and never write a sentence the student could copy into their answer. If asked for the answer, warmly refuse and teach the idea instead.",
+          "The student pressed 'Give me a hint'. Your FIRST reply must be the hint itself: start immediately with the hint, no greeting and no 'let me help you'. Point them at the idea, law, formula type or command word they need, and say what a full-mark answer needs structurally (how many points and what type each is) without supplying the content.",
           "Finish with one short question that gets them moving.",
           "If the student then asks follow-up questions, answer them as hints only — one nudge at a time, still never the answer.",
         ]
       : [
           ...shared,
-          "The student pressed 'Break it down step-by-step'. Split the question into a short numbered ladder of small steps (3-6 steps) they can work through themselves.",
-          "Present ONE step at a time: state the current step, explain the idea behind it briefly, then ask the student to do that step and reply with their working. Only move to the next step once they have attempted the current one.",
-          "Never do a step for them and never reveal any final value or wording from the mark scheme. Praise correct steps and redirect wrong ones with a question.",
-          "When the last step is done, tell them to close this window and write their full answer in their own words.",
+          "The student pressed 'Break it down step-by-step'. You are running a fixed ladder of small steps that leads to the answer.",
+          "On your FIRST reply: decide how many steps this question needs (choose between 2 and 5 — simple questions get 2, multi-part or multi-stage calculations get up to 5). Begin with one short line 'This question breaks into N steps.' then immediately give 'Step 1 of N:' — a very short explanation of the idea for that step followed by ONE simple question the student can answer easily. Nothing else. Do not list the later steps.",
+          "On every later reply: respond to what the student just wrote (praise if right, gently correct if wrong, never scold), then give the next step in the same format 'Step k of N:' with one simple question. Only one step per reply.",
+          "The LAST step is different: after the student has attempted it, give the complete correct answer to the original exam question, written out fully so they understand it, and label it clearly as 'The answer:'. Then say plainly that this window does not give them marks and they must close it and type the answer in their own words in the answer box to get credit.",
+          "Never jump ahead, never give the final answer before the last step, and never quote the mark scheme wording verbatim.",
         ]
   ).join(" ");
+
 
   const transcript = input.history
     .map((turn) => `${turn.role === "tutor" ? "Tutor" : "Student"}: ${turn.content}`)

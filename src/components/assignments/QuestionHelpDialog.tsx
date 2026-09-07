@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Lightbulb, Send } from "lucide-react";
+import { Lightbulb, Loader2, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -58,20 +58,24 @@ export function TeacherIcon({ className }: { className?: string }) {
   );
 }
 
-const COPY: Record<Mode, { title: string; description: string; placeholder: string }> = {
-  hint: {
-    title: "Give me a hint",
-    description:
-      "One nudge at a time — never the answer. Ask the tutor anything else you're unsure about.",
-    placeholder: "Ask the tutor about this question…",
-  },
-  steps: {
-    title: "Break it down step-by-step",
-    description:
-      "Work through the question one step at a time. Type your working for each step, then close this window and write your full answer.",
-    placeholder: "Type your working for this step…",
-  },
-};
+const COPY: Record<Mode, { title: string; description: string; placeholder: string; close: string }> =
+  {
+    hint: {
+      title: "Give me a hint",
+      description:
+        "A hint to get you started — never the answer. Ask follow-up questions below if you're still stuck.",
+      placeholder: "Ask a follow-up question…",
+      close: "Back to my answer",
+    },
+    steps: {
+      title: "Break it down step-by-step",
+      description:
+        "The question is split into a few small steps. Answer each step here, then close this window and write your answer to get the marks.",
+      placeholder: "Answer this step…",
+      close: "Close and answer the question",
+    },
+  };
+
 
 /**
  * On-demand AI help a student can open before or after answering. Everything
@@ -156,6 +160,13 @@ export function QuestionHelpDialog({
           <DialogDescription>{COPY[mode].description}</DialogDescription>
         </DialogHeader>
 
+        {mode === "steps" ? (
+          <p className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-foreground">
+            Answering the steps here does not give you marks. When you finish, close this window and
+            type your full answer in the answer box to get credit.
+          </p>
+        ) : null}
+
         <div ref={scrollRef} className="max-h-[50vh] space-y-3 overflow-y-auto pr-1">
           {turns.map((turn, index) => (
             <div
@@ -173,9 +184,16 @@ export function QuestionHelpDialog({
               )}
             </div>
           ))}
-          {send.isPending ? (
-            <p className="text-xs text-muted-foreground">
-              {mode === "hint" ? "Thinking of a hint…" : "Working out the next step…"}
+          {send.isPending || (turns.length === 0 && existing.isLoading) ? (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              {mode === "hint"
+                ? turns.length === 0
+                  ? "Writing your hint…"
+                  : "Thinking…"
+                : turns.length === 0
+                  ? "Splitting the question into steps…"
+                  : "Working out the next step…"}
             </p>
           ) : null}
         </div>
@@ -195,7 +213,7 @@ export function QuestionHelpDialog({
           />
           <div className="flex flex-wrap justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Back to my answer
+              {COPY[mode].close}
             </Button>
             <Button onClick={submit} disabled={!draft.trim() || send.isPending}>
               <Send className="size-4" />
@@ -203,6 +221,7 @@ export function QuestionHelpDialog({
             </Button>
           </div>
         </div>
+
       </DialogContent>
     </Dialog>
   );

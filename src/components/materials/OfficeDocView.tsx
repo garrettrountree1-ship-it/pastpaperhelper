@@ -950,7 +950,12 @@ function TextShape({
                     <span
                       key={ri}
                       style={{
-                        fontSize: run.size,
+                        fontSize: run.baseline ? run.size * 0.65 : run.size,
+                        verticalAlign: run.baseline
+                          ? run.baseline === "sup"
+                            ? "super"
+                            : "sub"
+                          : undefined,
                         fontFamily: run.font ? `"${run.font}", system-ui, sans-serif` : undefined,
                         fontWeight: run.bold ? 700 : 400,
                         fontStyle: run.italic ? "italic" : undefined,
@@ -958,6 +963,7 @@ function TextShape({
                         color: ink(run.color),
                       }}
                     >
+
                       {run.text}
                     </span>
                   ))}

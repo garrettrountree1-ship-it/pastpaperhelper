@@ -122,8 +122,8 @@ function mathToText(input: string): string {
  * from symbol fonts) become plain words or are dropped.
  */
 const UNREADABLE: Array<[RegExp, string]> = [
-  [/§+/g, "section"],
-  [/¶+/g, "paragraph"],
+  [/§+\s*/g, "section "],
+  [/¶+\s*/g, "paragraph "],
   [/[†‡]/g, ""],
   [/[‹›]/g, "'"],
   [/[«»]/g, '"'],

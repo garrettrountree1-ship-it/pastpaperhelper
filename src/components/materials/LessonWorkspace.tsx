@@ -403,6 +403,13 @@ export function LessonWorkspace({
     queryKey: ["material-url", material?.id],
     queryFn: () => getUrl({ data: { materialId: material!.id } }),
     enabled: Boolean(material),
+    // The link stays valid for a while. Refetching it (for example when the
+    // teacher comes back from another browser tab) would hand the viewer a new
+    // address and reload the resource, losing their place in the scroll.
+    staleTime: 25 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 
   // The two panes are built once so they can be arranged side by side

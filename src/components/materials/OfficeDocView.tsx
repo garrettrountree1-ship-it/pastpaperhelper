@@ -250,6 +250,12 @@ export function OfficeDocView({
   }, [deck, currentSlide]);
 
 
+  // The download address can be refreshed while the resource stays the same;
+  // reading it from a ref keeps a new address from reloading (and rescrolling)
+  // what the teacher is looking at.
+  const urlRef = useRef(url);
+  urlRef.current = url;
+
   useEffect(() => {
     const run = ++token.current;
     let cancelled = false;
@@ -290,7 +296,7 @@ export function OfficeDocView({
 
       // 3. Build it here, showing slides as they become ready.
       try {
-        const response = await fetch(url);
+        const response = await fetch(urlRef.current);
         if (!response.ok) throw new Error(`Download failed (${response.status})`);
         const buffer = await response.arrayBuffer();
         if (!live()) return;
@@ -327,7 +333,7 @@ export function OfficeDocView({
     return () => {
       cancelled = true;
     };
-  }, [url, format, key, rebuilding, materialId, canPrepareShared]);
+  }, [format, key, rebuilding, materialId, canPrepareShared]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">

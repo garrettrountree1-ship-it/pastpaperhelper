@@ -48,7 +48,7 @@ export const Route = createFileRoute("/_authenticated/assignments/$assignmentId/
   pendingComponent: () => (
     <div className="min-h-screen">
       <AppHeader role="teacher" />
-      <main className="mx-auto max-w-3xl px-4 py-8">
+      <main className="mx-auto max-w-7xl px-4 py-8">
         <Skeleton className="h-64 w-full" />
       </main>
     </div>
@@ -56,7 +56,7 @@ export const Route = createFileRoute("/_authenticated/assignments/$assignmentId/
   errorComponent: ({ error, reset }) => (
     <div className="min-h-screen">
       <AppHeader role="teacher" />
-      <main className="mx-auto max-w-3xl px-4 py-8 text-center">
+      <main className="mx-auto max-w-7xl px-4 py-8 text-center">
         <p className="mb-4 text-muted-foreground">
           We couldn&apos;t load this preview. {error.message}
         </p>
@@ -124,7 +124,7 @@ function PreviewPage() {
   return (
     <div className="min-h-screen">
       <AppHeader role="teacher" />
-      <main className="mx-auto max-w-3xl px-4 py-8">
+      <main className="mx-auto max-w-7xl px-4 py-8">
         {data ? (
           <Link
             to="/classes/$classId/homework"

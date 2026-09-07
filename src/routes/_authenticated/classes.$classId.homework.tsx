@@ -1995,21 +1995,19 @@ function UnlockFlag({
 }) {
   const unlock = useServerFn(unlockSubmission);
   const [open, setOpen] = useState(false);
-  const [penalty, setPenalty] = useState(String(penaltyPercent || ""));
+  const [penalty, setPenalty] = useState("25");
+  const added = Math.min(100, Math.max(0, Number(penalty) || 0));
+  const newTotal = Math.min(100, penaltyPercent + added);
 
   const mutation = useMutation({
     mutationFn: () =>
       unlock({
-        data: {
-          assignmentId,
-          studentId,
-          penaltyPercent: Math.min(100, Math.max(0, Number(penalty) || 0)),
-        },
+        data: { assignmentId, studentId, penaltyPercent: added },
       }),
     onSuccess: () => {
       toast.success(
-        Number(penalty) > 0
-          ? `Unlocked with a ${Number(penalty)}% deduction.`
+        added > 0
+          ? `Unlocked. Total deduction is now ${newTotal}%.`
           : "Homework unlocked — the student can try again.",
       );
       setOpen(false);
@@ -2023,10 +2021,14 @@ function UnlockFlag({
       <DialogTrigger asChild>
         <button
           type="button"
-          title={`${title} — locked for AI or copied answers. Click to unlock.`}
-          className="inline-flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-xs font-medium text-destructive-foreground"
+          title={`${title} — locked for AI or copied answers. Click here to set a deduction and unlock.`}
+          className="inline-flex items-center gap-1 rounded-full bg-destructive px-2.5 py-1 text-xs font-semibold text-destructive-foreground shadow-sm ring-2 ring-destructive/30 transition-transform hover:scale-105"
         >
-          <Lock className="size-3" /> Locked
+          <Lock className="size-3" />
+          {title} locked
+          <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-background/20 px-1.5 py-0.5">
+            <Unlock className="size-3" /> Click to unlock
+          </span>
         </button>
       </DialogTrigger>
       <DialogContent>
@@ -2034,13 +2036,21 @@ function UnlockFlag({
           <DialogTitle>Unlock {title}</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          This homework was locked after repeated AI-generated or copied answers. Choose the
-          percentage to deduct for cheating, then unlock so the student can continue. The deduction
-          is shown beside their score.
+          This homework was locked after repeated AI-generated or copied answers. Add the percentage
+          to deduct this time, then unlock so the student can continue. Deductions add up across
+          every lock, and the running total is shown beside the score and to the student.
         </p>
+        <div className="rounded-md border bg-muted/40 p-3 text-sm">
+          <p>
+            Already deducted: <span className="font-medium">{penaltyPercent}%</span>
+          </p>
+          <p className="mt-1">
+            After this unlock: <span className="font-medium">{newTotal}%</span> total deduction
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           <Label htmlFor={`penalty-${assignmentId}-${studentId}`} className="text-sm">
-            Deduct
+            Deduct this time
           </Label>
           <Input
             id={`penalty-${assignmentId}-${studentId}`}
@@ -2062,6 +2072,7 @@ function UnlockFlag({
             <Unlock className="size-4" /> Unlock homework
           </Button>
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );

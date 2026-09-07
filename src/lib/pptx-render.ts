@@ -705,7 +705,9 @@ export async function parsePptx(
                     underline: false,
                     color: null,
                     font: null,
+                    baseline: null,
                   },
+
                 ],
               })),
             });

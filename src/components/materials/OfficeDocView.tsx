@@ -12,6 +12,9 @@ import {
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
+import { readableTextColor } from "@/lib/color-contrast";
+
+
 import {
   emptyAnnotation,
   SlideAnnotations,

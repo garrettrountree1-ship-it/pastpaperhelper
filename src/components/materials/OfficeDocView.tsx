@@ -588,19 +588,23 @@ function SlidePage({
             transformOrigin: "top left",
           }}
         >
-          {slide.shapes.map((shape, i) => (
-            <SlideShape
-              key={i}
-              shape={shape}
-              slideWidth={deck.width}
-              widthLimit={boundsFor(slide.shapes, i, deck.width, deck.height).right}
-              heightLimit={boundsFor(slide.shapes, i, deck.width, deck.height).bottom}
-              editable={tool === "edit"}
-              scale={scale}
-              edit={edits[`${index}:${i}`]}
-              onEdit={(patch) => onEdit(i, patch)}
-            />
-          ))}
+          {slide.shapes.map((shape, i) => {
+            const rect = layout[i];
+            return (
+              <SlideShape
+                key={i}
+                shape={shape}
+                rect={rect}
+                slideWidth={deck.width}
+                widthLimit={rect ? rect.x + rect.w : undefined}
+                heightLimit={rect ? rect.y + rect.h : undefined}
+                editable={tool === "edit"}
+                scale={scale}
+                edit={edits[`${index}:${i}`]}
+                onEdit={(patch) => onEdit(i, patch)}
+              />
+            );
+          })}
 
           <SlideAnnotations
             width={deck.width}
@@ -617,33 +621,76 @@ function SlidePage({
   );
 }
 
+type Rect = { x: number; y: number; w: number; h: number };
+
 /**
- * How far a text box may grow before it would run into a neighbouring box or a
- * picture. PowerPoint never lets one box's words cross another shape, so
- * neither do we: side-by-side columns stay in their own lanes and words never
- * sit on top of an image.
+ * Lays out the text boxes of one slide so no words can ever sit on top of a
+ * picture or another box. Each text box is first pulled clear of every picture
+ * it collides with (moved beside or below it, or trimmed — whichever keeps the
+ * most room), then limited so it can only grow into genuinely free space.
  */
-function boundsFor(shapes: PptxShape[], index: number, slideWidth: number, slideHeight: number) {
-  const self = shapes[index];
-  if (!self || self.type !== "text") return { right: slideWidth, bottom: slideHeight };
-  let right = slideWidth - 8;
-  let bottom = slideHeight - 4;
-  shapes.forEach((other, i) => {
-    if (i === index || other.type === "shape") return;
-    if (!other.w || !other.h) return;
-    if (other.type === "text" && !other.paragraphs.some((p) => p.runs.some((r) => r.text.trim()))) {
-      return;
+function layoutSlide(shapes: PptxShape[], slideWidth: number, slideHeight: number): (Rect | null)[] {
+  const hasWords = (s: PptxShape) =>
+    s.type === "text" && s.paragraphs.some((p) => p.runs.some((r) => r.text.trim()));
+  const pictures = shapes.filter(
+    (s): s is Extract<PptxShape, { type: "image" }> => s.type === "image" && !!s.w && !!s.h,
+  );
+
+  const rects: (Rect | null)[] = shapes.map((shape) => {
+    if (shape.type !== "text" || !shape.w || !shape.h) return null;
+    let rect: Rect = { x: shape.x, y: shape.y, w: shape.w, h: shape.h };
+    if (!hasWords(shape)) return rect;
+
+    for (const pic of pictures) {
+      if (!overlaps(rect, pic)) continue;
+      const options: Rect[] = [
+        // keep the words to the left of the picture
+        { ...rect, w: pic.x - rect.x - 4 },
+        // push the words to the right of the picture
+        { ...rect, x: pic.x + pic.w + 4, w: rect.x + rect.w - (pic.x + pic.w + 4) },
+        // keep the words above the picture
+        { ...rect, h: pic.y - rect.y - 4 },
+        // push the words below the picture
+        { ...rect, y: pic.y + pic.h + 4, h: rect.y + rect.h - (pic.y + pic.h + 4) },
+      ].filter((r) => r.w >= 40 && r.h >= 16 && r.x >= 0 && r.y >= 0);
+      if (!options.length) continue;
+      rect = options.reduce((best, r) => (r.w * r.h > best.w * best.h ? r : best));
     }
-    const verticalOverlap = other.y < self.y + self.h - 2 && other.y + other.h > self.y + 2;
-    if (verticalOverlap && other.x + 2 > self.x) right = Math.min(right, other.x);
-    const horizontalOverlap = other.x < self.x + self.w - 2 && other.x + other.w > self.x + 2;
-    if (horizontalOverlap && other.y + 2 > self.y) bottom = Math.min(bottom, other.y);
+    return rect;
   });
-  return {
-    right: Math.max(right, self.x + Math.max(self.w, 20)),
-    bottom: Math.max(bottom, self.y + Math.max(self.h, 16)),
-  };
+
+  // Now stop each box from growing across a neighbouring box or off the slide.
+  return rects.map((rect, index) => {
+    if (!rect) return null;
+    let right = slideWidth - 8;
+    let bottom = slideHeight - 4;
+    shapes.forEach((other, i) => {
+      if (i === index || other.type === "shape") return;
+      if (!other.w || !other.h) return;
+      if (other.type === "text" && !hasWords(other)) return;
+      const otherRect = rects[i] ?? { x: other.x, y: other.y, w: other.w, h: other.h };
+      const verticalOverlap =
+        otherRect.y < rect.y + rect.h - 2 && otherRect.y + otherRect.h > rect.y + 2;
+      if (verticalOverlap && otherRect.x + 2 > rect.x) right = Math.min(right, otherRect.x - 2);
+      const horizontalOverlap =
+        otherRect.x < rect.x + rect.w - 2 && otherRect.x + otherRect.w > rect.x + 2;
+      if (horizontalOverlap && otherRect.y + 2 > rect.y) bottom = Math.min(bottom, otherRect.y - 2);
+    });
+    return {
+      x: rect.x,
+      y: rect.y,
+      w: Math.max(Math.max(right, rect.x + 20) - rect.x, Math.min(rect.w, slideWidth - rect.x - 8)),
+      h: Math.max(Math.max(bottom, rect.y + 16) - rect.y, 16),
+    };
+  });
 }
+
+function overlaps(a: Rect, b: { x: number; y: number; w: number; h: number }) {
+  return (
+    a.x < b.x + b.w - 2 && a.x + a.w > b.x + 2 && a.y < b.y + b.h - 2 && a.y + a.h > b.y + 2
+  );
+}
+
 
 function SlideShape({
   shape,

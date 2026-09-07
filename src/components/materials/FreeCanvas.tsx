@@ -100,6 +100,8 @@ export function FreeCanvas({
   imageUrls,
   zoom = 1,
   onChange,
+  onPointerAt,
+
   onConcept,
 }: {
   blocks: NoteBlock[];

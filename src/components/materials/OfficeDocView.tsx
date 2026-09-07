@@ -840,7 +840,7 @@ function TextShape({
   slideWidth,
   widthLimit,
   heightLimit,
-
+  background,
   editable,
   scale,
   edit,
@@ -852,7 +852,9 @@ function TextShape({
   slideWidth: number;
   widthLimit?: number | undefined;
   heightLimit?: number | undefined;
+  background: string;
   editable: boolean;
+
   scale: number;
   edit?: ShapeEdit | undefined;
   onEdit: (patch: ShapeEdit) => void;

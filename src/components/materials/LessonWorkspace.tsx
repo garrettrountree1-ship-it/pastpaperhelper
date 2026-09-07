@@ -661,24 +661,38 @@ export function LessonWorkspace({
         >
           {presenting ? (
             <div className="absolute bottom-3 left-3 z-50 flex items-center gap-1 rounded-md border bg-background/95 p-1 shadow">
-              <Button
-                size="sm"
-                variant={layout === "split" ? "default" : "ghost"}
-                onClick={() => setLayout("split")}
-                title="Split screen (side by side)"
-              >
-                <Columns2 className="size-4" />
-                Split
-              </Button>
-              <Button
-                size="sm"
-                variant={layout === "layered" ? "default" : "ghost"}
-                onClick={() => setLayout("layered")}
-                title="Layered windows (one floating on top of the other)"
-              >
-                <Layers className="size-4" />
-                Layered
-              </Button>
+              {isPhone ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setFrontPane(frontPane === "canvas" ? "doc" : "canvas")}
+                  title="Switch between the lesson canvas and the documents"
+                >
+                  <ArrowLeftRight className="size-4" />
+                  {frontPane === "canvas" ? "Materials" : "Canvas"}
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    size="sm"
+                    variant={layout === "split" ? "default" : "ghost"}
+                    onClick={() => setLayout("split")}
+                    title="Split screen (side by side)"
+                  >
+                    <Columns2 className="size-4" />
+                    Split
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={layout === "layered" ? "default" : "ghost"}
+                    onClick={() => setLayout("layered")}
+                    title="Layered windows (one floating on top of the other)"
+                  >
+                    <Layers className="size-4" />
+                    Layered
+                  </Button>
+                </>
+              )}
               {canManage ? (
                 <FormativeCheckButton classId={classId} sectionId={active?.id ?? null} />
               ) : null}
@@ -690,12 +704,12 @@ export function LessonWorkspace({
               </Button>
             </div>
           ) : null}
-          {layout === "layered" ? (
+          {effectiveLayout === "layered" ? (
             (() => {
               const r = floatRect ?? { x: 24, y: 20, w: 520, h: 380 };
               const minW = Math.max(320, Math.min(r.w, 480));
               const frontStyle: React.CSSProperties =
-                floatState === "max"
+                isPhone || floatState === "max"
                   ? { left: 0, top: 0, width: "100%", height: "100%" }
                   : floatState === "min"
                     ? {

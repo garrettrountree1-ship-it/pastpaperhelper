@@ -51,6 +51,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useTutorThread } from "@/hooks/use-tutor-thread";
 import { docFormat } from "@/lib/doc-kind";
 import { getMaterialUrl, updateUnit } from "@/lib/materials.functions";
@@ -114,7 +115,14 @@ export function LessonWorkspace({
   const [concept, setConcept] = useState<string | null>(null);
   const [docOverride, setDocOverride] = useState<string | null>(initialMaterialId ?? null);
   const [term, setTerm] = useState("");
+  // On phones the screen is far too narrow for side-by-side panes, so the
+  // workspace always uses one full-screen window with a toggle between the
+  // lesson canvas and the documents, and the tutor starts collapsed.
+  const isPhone = useIsMobile();
   const [tutorOpen, setTutorOpen] = useState(true);
+  useEffect(() => {
+    if (isPhone) setTutorOpen(false);
+  }, [isPhone]);
   const [presenting, setPresenting] = useState(false);
   // The tutor thread belongs to the signed-in account only.
   const { turns: tutorTurns, setTurns: setTutorTurns } = useTutorThread(`class:${classId}`);
@@ -128,6 +136,8 @@ export function LessonWorkspace({
   const [paneMode, setPaneMode] = useState<"split" | "canvas" | "doc">("split");
   // Side-by-side columns, or layered (one window floating on top).
   const [layout, setLayout] = useState<"split" | "layered">("split");
+  // Phones only ever get the layered, full-screen window.
+  const effectiveLayout = isPhone ? "layered" : layout;
   const canvasSize = paneMode === "canvas" ? "100%" : paneMode === "doc" ? "0%" : `${split}%`;
   const docSize =
     paneMode === "doc" ? "100%" : paneMode === "canvas" ? "0%" : `calc(${100 - split}% - 0.5rem)`;
@@ -651,24 +661,38 @@ export function LessonWorkspace({
         >
           {presenting ? (
             <div className="absolute bottom-3 left-3 z-50 flex items-center gap-1 rounded-md border bg-background/95 p-1 shadow">
-              <Button
-                size="sm"
-                variant={layout === "split" ? "default" : "ghost"}
-                onClick={() => setLayout("split")}
-                title="Split screen (side by side)"
-              >
-                <Columns2 className="size-4" />
-                Split
-              </Button>
-              <Button
-                size="sm"
-                variant={layout === "layered" ? "default" : "ghost"}
-                onClick={() => setLayout("layered")}
-                title="Layered windows (one floating on top of the other)"
-              >
-                <Layers className="size-4" />
-                Layered
-              </Button>
+              {isPhone ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setFrontPane(frontPane === "canvas" ? "doc" : "canvas")}
+                  title="Switch between the lesson canvas and the documents"
+                >
+                  <ArrowLeftRight className="size-4" />
+                  {frontPane === "canvas" ? "Materials" : "Canvas"}
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    size="sm"
+                    variant={layout === "split" ? "default" : "ghost"}
+                    onClick={() => setLayout("split")}
+                    title="Split screen (side by side)"
+                  >
+                    <Columns2 className="size-4" />
+                    Split
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={layout === "layered" ? "default" : "ghost"}
+                    onClick={() => setLayout("layered")}
+                    title="Layered windows (one floating on top of the other)"
+                  >
+                    <Layers className="size-4" />
+                    Layered
+                  </Button>
+                </>
+              )}
               {canManage ? (
                 <FormativeCheckButton classId={classId} sectionId={active?.id ?? null} />
               ) : null}
@@ -680,12 +704,12 @@ export function LessonWorkspace({
               </Button>
             </div>
           ) : null}
-          {layout === "layered" ? (
+          {effectiveLayout === "layered" ? (
             (() => {
               const r = floatRect ?? { x: 24, y: 20, w: 520, h: 380 };
               const minW = Math.max(320, Math.min(r.w, 480));
               const frontStyle: React.CSSProperties =
-                floatState === "max"
+                isPhone || floatState === "max"
                   ? { left: 0, top: 0, width: "100%", height: "100%" }
                   : floatState === "min"
                     ? {
@@ -715,13 +739,15 @@ export function LessonWorkspace({
                 frontPane === pane
                   ? {
                       paddingTop: BAR_H,
-                      display: floatState === "min" ? "none" : undefined,
+                      display: !isPhone && floatState === "min" ? "none" : undefined,
                     }
                   : {};
               return (
                 <div
                   ref={rowRef}
-                  className="relative min-h-[80vh] min-w-0 lg:h-full lg:min-h-0 lg:flex-1"
+                  className={`relative min-w-0 lg:h-full lg:min-h-0 lg:flex-1 ${
+                    isPhone ? "min-h-0 flex-1" : "min-h-[80vh]"
+                  }`}
                 >
                   {/* Both panes stay mounted; only their position changes when
                       swapping, so scroll / canvas position never resets. */}
@@ -746,69 +772,97 @@ export function LessonWorkspace({
                   <div className="pointer-events-none absolute z-50" style={frontStyle}>
                     <div
                       onPointerDown={(event) => {
+                        if (isPhone) return;
                         if ((event.target as HTMLElement).closest("button")) return;
                         startFloatDrag(event, "move");
                       }}
-                      onDoubleClick={() =>
-                        setFloatState(floatState === "max" ? "window" : "max")
-                      }
+                      onDoubleClick={() => {
+                        if (isPhone) return;
+                        setFloatState(floatState === "max" ? "window" : "max");
+                      }}
                       style={{ height: BAR_H }}
-                      className="pointer-events-auto flex touch-none select-none items-center gap-1 rounded-t-lg border-b bg-muted/80 px-2 cursor-grab active:cursor-grabbing"
-                      title="Drag anywhere on this bar to move the window; double-click to maximise"
+                      className={`pointer-events-auto flex touch-none select-none items-center gap-1 rounded-t-lg border-b bg-muted/80 px-2 ${
+                        isPhone ? "" : "cursor-grab active:cursor-grabbing"
+                      }`}
+                      title={
+                        isPhone
+                          ? undefined
+                          : "Drag anywhere on this bar to move the window; double-click to maximise"
+                      }
                     >
-                      <Move className="size-3.5 text-muted-foreground" />
+                      {isPhone ? null : <Move className="size-3.5 text-muted-foreground" />}
                       <span className="truncate text-xs font-medium">
                         {frontPane === "canvas" ? "Lesson canvas" : "Lesson Materials"}
                       </span>
                       <div className="ml-auto flex items-center gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="size-6"
-                          title="Swap which window is on top"
-                          aria-label="Swap which window is on top"
-                          onClick={() =>
-                            setFrontPane(frontPane === "canvas" ? "doc" : "canvas")
-                          }
-                        >
-                          <ArrowLeftRight className="size-3.5" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="size-6"
-                          title={floatState === "min" ? "Restore window" : "Minimise window"}
-                          aria-label={floatState === "min" ? "Restore window" : "Minimise window"}
-                          onClick={() =>
-                            setFloatState(floatState === "min" ? "window" : "min")
-                          }
-                        >
-                          {floatState === "min" ? (
-                            <ChevronDown className="size-3.5" />
-                          ) : (
-                            <Minus className="size-3.5" />
-                          )}
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="size-6"
-                          title={floatState === "max" ? "Restore window" : "Maximise window"}
-                          aria-label={floatState === "max" ? "Restore window" : "Maximise window"}
-                          onClick={() =>
-                            setFloatState(floatState === "max" ? "window" : "max")
-                          }
-                        >
-                          {floatState === "max" ? (
-                            <Minimize className="size-3.5" />
-                          ) : (
-                            <Maximize className="size-3.5" />
-                          )}
-                        </Button>
+                        {isPhone ? (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 px-2 text-xs"
+                            onClick={() =>
+                              setFrontPane(frontPane === "canvas" ? "doc" : "canvas")
+                            }
+                          >
+                            <ArrowLeftRight className="size-3.5" />
+                            {frontPane === "canvas" ? "Materials" : "Canvas"}
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="size-6"
+                              title="Swap which window is on top"
+                              aria-label="Swap which window is on top"
+                              onClick={() =>
+                                setFrontPane(frontPane === "canvas" ? "doc" : "canvas")
+                              }
+                            >
+                              <ArrowLeftRight className="size-3.5" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="size-6"
+                              title={floatState === "min" ? "Restore window" : "Minimise window"}
+                              aria-label={
+                                floatState === "min" ? "Restore window" : "Minimise window"
+                              }
+                              onClick={() =>
+                                setFloatState(floatState === "min" ? "window" : "min")
+                              }
+                            >
+                              {floatState === "min" ? (
+                                <ChevronDown className="size-3.5" />
+                              ) : (
+                                <Minus className="size-3.5" />
+                              )}
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="size-6"
+                              title={floatState === "max" ? "Restore window" : "Maximise window"}
+                              aria-label={
+                                floatState === "max" ? "Restore window" : "Maximise window"
+                              }
+                              onClick={() =>
+                                setFloatState(floatState === "max" ? "window" : "max")
+                              }
+                            >
+                              {floatState === "max" ? (
+                                <Minimize className="size-3.5" />
+                              ) : (
+                                <Maximize className="size-3.5" />
+                              )}
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
 
-                    {floatState === "window" ? (
+                    {!isPhone && floatState === "window" ? (
                       <>
                         {/* Every edge and corner resizes, with generous hit areas */}
                         <div

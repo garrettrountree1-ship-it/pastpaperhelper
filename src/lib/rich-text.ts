@@ -47,9 +47,9 @@ export function richTextToPlain(html: string): string {
 }
 
 /**
- * Applies bold / italic / underline to the current selection inside a focused
- * contenteditable element. Formatting is deliberately ignored when nothing is
- * highlighted, so a shortcut can never restyle the whole text box by accident.
+ * Applies bold / italic / underline inside a focused contenteditable element.
+ * With words highlighted it restyles just those words; with nothing highlighted
+ * it toggles the style for whatever the user types next, exactly like Word.
  */
 export function formatSelection(command: "bold" | "italic" | "underline" | "undo" | "redo") {
   try {
@@ -60,7 +60,6 @@ export function formatSelection(command: "bold" | "italic" | "underline" | "undo
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     const range = selection.getRangeAt(0);
-    if (range.collapsed || selection.toString().length === 0) return;
 
     // Keep formatting inside the box the user is actually editing.
     const node =
@@ -69,12 +68,21 @@ export function formatSelection(command: "bold" | "italic" | "underline" | "undo
         : range.commonAncestorContainer.parentElement;
     if (!node?.closest("[contenteditable='true']")) return;
 
-
-    // Wrap the highlighted words in tags rather than styling the whole block.
+    // Wrap words in tags rather than styling the whole block. When the caret is
+    // collapsed the browser keeps the toggle armed for the next characters.
     document.execCommand("styleWithCSS", false, "false");
     document.execCommand(command, false);
   } catch {
     /* older browsers simply skip the command */
+  }
+}
+
+/** True when the caret / selection currently has this style switched on. */
+export function isFormatActive(command: "bold" | "italic" | "underline"): boolean {
+  try {
+    return document.queryCommandState(command);
+  } catch {
+    return false;
   }
 }
 

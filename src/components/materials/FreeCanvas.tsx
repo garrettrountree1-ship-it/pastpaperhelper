@@ -573,12 +573,25 @@ export function FreeCanvas({
                     }}
                     title="Drag to move this text"
                     aria-label="Move text"
-                    className={`absolute -top-3 left-0 z-30 flex h-4 w-full cursor-grab items-center justify-center rounded-t-md bg-muted/80 transition-opacity active:cursor-grabbing ${
-                      isSelectedText ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                    className={`absolute -top-7 -left-2 z-30 flex h-7 w-[calc(100%+1rem)] touch-none cursor-grab items-center justify-center rounded-t-md border border-border bg-muted transition-opacity active:cursor-grabbing ${
+                      isSelectedText ? "opacity-100" : "opacity-60 group-hover:opacity-100"
                     }`}
                   >
-                    <GripVertical className="size-3 rotate-90 text-muted-foreground" />
+                    <GripVertical className="size-4 rotate-90 text-muted-foreground" />
                   </div>
+                  {/* Left edge strip: another easy place to grab and drag. */}
+                  <div
+                    onPointerDown={(event) => {
+                      setSelectedId(block.id);
+                      startMove(block.id, event);
+                    }}
+                    title="Drag to move this text"
+                    aria-label="Move text"
+                    className={`absolute -left-3 top-0 z-30 h-full w-3 touch-none cursor-grab rounded-l-md bg-muted transition-opacity active:cursor-grabbing ${
+                      isSelectedText ? "opacity-100" : "opacity-0 group-hover:opacity-70"
+                    }`}
+                  />
+
                   {isSelectedText ? (
                     <div
                       className="absolute -top-9 left-0 z-40 flex items-center gap-1 rounded-md border bg-background px-1 py-0.5 shadow-sm"

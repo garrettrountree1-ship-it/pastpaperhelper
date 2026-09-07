@@ -58,6 +58,9 @@ export function SlideAnnotations({
   const hostRef = useRef<HTMLDivElement | null>(null);
   const drawing = useRef(false);
   const [live, setLive] = useState<SlideStroke | null>(null);
+  const [activeText, setActiveText] = useState<number | null>(null);
+  // Text boxes only accept clicks when the pointer isn't being used to mark up.
+  const textActive = tool === "none" || tool === "edit" || tool === "text";
   const { undo, redo } = useUndoHistory(value, onChange);
 
 
@@ -184,9 +187,18 @@ export function SlideAnnotations({
         <div
           key={index}
           className="absolute"
-          style={{ left: box.x, top: box.y, pointerEvents: "auto" }}
+          style={{
+            left: box.x,
+            top: box.y,
+            // While drawing, highlighting or erasing, the text boxes stay out of
+            // the way: no caret, no accidental text selection.
+            pointerEvents: textActive ? "auto" : "none",
+            userSelect: textActive ? undefined : "none",
+          }}
         >
+
           <div className="relative">
+            {activeText === index ? (
             <div
               className="absolute -top-8 left-0 flex items-center gap-1 rounded border bg-white/95 px-1 py-0.5 shadow"
               onPointerDown={(event) => event.stopPropagation()}
@@ -212,12 +224,15 @@ export function SlideAnnotations({
                 </button>
               ))}
             </div>
+            ) : null}
             <RichTextEditable
               autoFocus={box.text === ""}
               html={box.html ?? escapeHtml(box.text)}
               placeholder="Type here…"
               onUndo={undo}
               onRedo={redo}
+              onFocus={() => setActiveText(index)}
+              onBlur={() => setActiveText((current) => (current === index ? null : current))}
               onChange={({ html, text }) => {
                 const texts = value.texts.map((t, i) =>
                   i === index ? { ...t, html, text } : t,

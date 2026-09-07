@@ -219,7 +219,7 @@ export function QuestionHelpButtons({
   const [mode, setMode] = useState<Mode | null>(null);
   return (
     <>
-      <div className="flex flex-wrap items-center gap-1">
+      <div className="flex items-center gap-1">
         <Button
           size="sm"
           variant="ghost"

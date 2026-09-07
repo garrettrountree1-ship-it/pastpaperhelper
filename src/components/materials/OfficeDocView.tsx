@@ -87,6 +87,7 @@ export function OfficeDocView({
   // saved locally so they are still there next lesson.
   const [tool, setTool] = useState<SlideTool>("none");
   const [penColor, setPenColor] = useState("#dc2626");
+  const [highlightColor, setHighlightColor] = useState(HIGHLIGHT_SWATCHES[0]!);
   const [notes, setNotes] = useState<Record<number, SlideAnnotation>>({});
   const [edits, setEdits] = useState<Record<string, ShapeEdit>>({});
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -363,6 +364,7 @@ export function OfficeDocView({
                 ["none", "Select", MousePointer2],
                 ["edit", "Edit slide text and boxes", SquarePen],
                 ["draw", "Draw on slides", PenLine],
+                ["highlight", "Highlight text", Highlighter],
                 ["text", "Add a text box", Type],
                 ["erase", "Erase marks", Eraser],
               ] as const
@@ -380,14 +382,21 @@ export function OfficeDocView({
                 <Icon className="size-3.5" />
               </Button>
             ))}
-            {["#dc2626", "#2563eb", "#16a34a", "#111827"].map((swatch) => (
+            {(tool === "highlight"
+              ? HIGHLIGHT_SWATCHES
+              : ["#dc2626", "#2563eb", "#16a34a", "#111827"]
+            ).map((swatch) => (
               <button
                 key={swatch}
                 type="button"
-                aria-label={`Pen colour ${swatch}`}
-                onClick={() => setPenColor(swatch)}
+                aria-label={`${tool === "highlight" ? "Highlighter" : "Pen"} colour ${swatch}`}
+                onClick={() =>
+                  tool === "highlight" ? setHighlightColor(swatch) : setPenColor(swatch)
+                }
                 className={`size-5 rounded-full border-2 ${
-                  penColor === swatch ? "scale-110 border-foreground" : "border-border"
+                  (tool === "highlight" ? highlightColor : penColor) === swatch
+                    ? "scale-110 border-foreground"
+                    : "border-border"
                 }`}
                 style={{ backgroundColor: swatch }}
               />
@@ -400,6 +409,8 @@ export function OfficeDocView({
             setTool={setTool}
             penColor={penColor}
             setPenColor={setPenColor}
+            highlightColor={highlightColor}
+            setHighlightColor={setHighlightColor}
           />
         ) : null}
 
@@ -474,6 +485,7 @@ export function OfficeDocView({
                     index={index}
                     tool={tool}
                     penColor={penColor}
+                    highlightColor={highlightColor}
                     annotation={notes[index] ?? emptyAnnotation}
                     onAnnotationChange={(next) => updateNotes(index, next)}
                     edits={edits}
@@ -488,6 +500,7 @@ export function OfficeDocView({
                 ratio={docRatio}
                 tool={tool}
                 penColor={penColor}
+                highlightColor={highlightColor}
                 value={notes[0] ?? emptyAnnotation}
                 onChange={(next) => updateNotes(0, next)}
               >

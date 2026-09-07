@@ -67,6 +67,8 @@ export function PowerPointView({
             setTool={markup.setTool}
             penColor={markup.penColor}
             setPenColor={markup.setPenColor}
+            highlightColor={markup.highlightColor}
+            setHighlightColor={markup.setHighlightColor}
           />
           <Button
             size="icon"
@@ -130,6 +132,7 @@ export function PowerPointView({
             height={markupHeight}
             tool={markup.tool}
             color={markup.penColor}
+            highlightColor={markup.highlightColor}
             value={markup.annotationOf(0)}
             onChange={(next) => markup.update(0, next)}
           />

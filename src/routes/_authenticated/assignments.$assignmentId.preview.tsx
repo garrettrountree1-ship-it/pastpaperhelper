@@ -2,7 +2,12 @@ import { formatDueDate } from "@/lib/datetime";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { TeacherIcon } from "@/components/assignments/QuestionHelpDialog";
+import {
+  HELP_PILL,
+  HELP_PILL_DOT,
+  HELP_PILL_LABEL,
+  TeacherIcon,
+} from "@/components/assignments/QuestionHelpDialog";
 import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
@@ -373,12 +378,12 @@ function PreviewQuestion({
               "Students use this button to message you about this exact question — their message, with the question reference, lands in your class mailbox under Bulletin & Messages.",
             )
           }
-          className="flex items-center gap-2 rounded-full border border-primary/50 bg-primary/10 px-2 py-1.5 text-left shadow-sm transition hover:scale-[1.03] hover:bg-primary/20"
+          className={`${HELP_PILL} border-primary/50 bg-primary/10 hover:bg-primary/20`}
         >
-          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
-            <TeacherIcon className="size-4.5" />
+          <span className={`${HELP_PILL_DOT} bg-primary text-primary-foreground`}>
+            <TeacherIcon className="size-3.5" />
           </span>
-          <span className="text-[11px] font-semibold leading-tight text-foreground">
+          <span className={`${HELP_PILL_LABEL} text-foreground`}>
             Ask the teacher
           </span>
         </button>

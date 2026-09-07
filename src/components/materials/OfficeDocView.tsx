@@ -606,6 +606,12 @@ function SlidePage({
                 slideWidth={deck.width}
                 widthLimit={slot?.right}
                 heightLimit={slot?.bottom}
+                background={backgroundBehind(
+                  slide.shapes,
+                  i,
+                  slot?.box,
+                  slide.background ?? "#ffffff",
+                )}
                 editable={tool === "edit"}
                 scale={scale}
                 edit={edits[`${index}:${i}`]}
@@ -613,6 +619,7 @@ function SlidePage({
               />
             );
           })}
+
 
 
           <SlideAnnotations

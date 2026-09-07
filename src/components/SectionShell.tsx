@@ -81,15 +81,18 @@ export function SectionShell({
   return (
     <div className="min-h-screen">
       <AppHeader name={me.data?.fullName || me.data?.email} role={role} />
-      <div className="mx-auto flex max-w-6xl gap-4 px-4 py-6">
+      <div className="mx-auto flex max-w-6xl gap-4 px-3 py-4 sm:px-4 sm:py-6">
         <SectionRibbon classId={classId} current={current} role={role} />
         <main className="min-w-0 flex-1">
           {isDemo ? (
-            <div className="paper mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
-              <p className="text-sm text-muted-foreground">
+            <div className="paper mb-3 flex flex-wrap items-center justify-between gap-2 p-3 sm:mb-4 sm:gap-3 sm:p-4">
+              <p className="text-xs text-muted-foreground sm:text-sm">
                 Demo account — currently in the{" "}
-                <span className="font-medium text-foreground">{accountRole} view</span>. Real
-                accounts are either a teacher or a student, never both.
+                <span className="font-medium text-foreground">{accountRole} view</span>.
+                <span className="hidden sm:inline">
+                  {" "}
+                  Real accounts are either a teacher or a student, never both.
+                </span>
               </p>
               <div className="flex gap-2">
                 {(["teacher", "student"] as const).map((next) => (
@@ -109,16 +112,17 @@ export function SectionShell({
               </div>
             </div>
           ) : null}
-          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-            <div>
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 sm:mb-4">
+            <div className="min-w-0">
               <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">
                 ← All classes
               </Link>
-              <h1 className="font-display text-2xl">
+              <h1 className="font-display text-lg leading-tight sm:text-2xl">
                 {klass ? klass.name : "Class"}{" "}
                 <span className="text-muted-foreground">· {title}</span>
               </h1>
             </div>
+
             {klass ? (
               <p className="text-sm text-muted-foreground">
                 {[klass.subject, klass.curriculum].filter(Boolean).join(" · ")}

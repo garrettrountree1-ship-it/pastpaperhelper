@@ -567,7 +567,12 @@ function SlidePage({
   }, [deck.width]);
 
   const slide = deck.slides[index];
+  const layout = useMemo(
+    () => (slide ? layoutSlide(slide.shapes, deck.width, deck.height) : []),
+    [slide, deck.width, deck.height],
+  );
   if (!slide) return null;
+
   return (
     <div className="relative overflow-hidden rounded-md border shadow-sm">
       <div

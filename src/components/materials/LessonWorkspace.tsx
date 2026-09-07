@@ -136,6 +136,8 @@ export function LessonWorkspace({
   const [paneMode, setPaneMode] = useState<"split" | "canvas" | "doc">("split");
   // Side-by-side columns, or layered (one window floating on top).
   const [layout, setLayout] = useState<"split" | "layered">("split");
+  // Phones only ever get the layered, full-screen window.
+  const effectiveLayout = isPhone ? "layered" : layout;
   const canvasSize = paneMode === "canvas" ? "100%" : paneMode === "doc" ? "0%" : `${split}%`;
   const docSize =
     paneMode === "doc" ? "100%" : paneMode === "canvas" ? "0%" : `calc(${100 - split}% - 0.5rem)`;

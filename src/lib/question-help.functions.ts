@@ -34,12 +34,19 @@ async function loadQuestion(db: any, questionId: string, userId: string) {
     .eq("student_id", userId)
     .maybeSingle();
   if (!membership) {
-    // Teachers (and co-teachers) previewing the student homework view get full access too.
-    const { data: isTeacher } = await db.rpc("is_class_teacher", {
-      _class_id: assignment.class_id,
-      _user_id: userId,
-    });
-    if (!isTeacher) throw new Error("You are not in this class.");
+    // Teachers (and co-teachers) previewing the student homework view get full
+    // access too. The is_class_teacher RPC checks auth.uid(), which is null on
+    // the admin client, so check ownership directly instead.
+    const [{ data: owned }, { data: co }] = await Promise.all([
+      db.from("classes").select("id").eq("id", assignment.class_id).eq("teacher_id", userId).maybeSingle(),
+      db
+        .from("class_coteachers")
+        .select("class_id")
+        .eq("class_id", assignment.class_id)
+        .eq("teacher_id", userId)
+        .maybeSingle(),
+    ]);
+    if (!owned && !co) throw new Error("You are not in this class.");
   }
 
   return { question, assignment };

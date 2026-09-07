@@ -11,7 +11,7 @@ export function createLovableAiGatewayProvider(apiKey: string) {
   });
 }
 
-export const TUTOR_MODEL = "google/gemini-3.5-flash";
+export const TUTOR_MODEL = "google/gemini-3.7-flash";
 
 export function gatewayModel() {
   const key = process.env["LOVABLE_API_KEY"];

@@ -81,7 +81,7 @@ export function OfficeDocView({
   const token = useRef(0);
   // Increment when the renderer changes so old, incorrectly parsed decks are
   // never served forever from IndexedDB after a fidelity fix.
-  const key = `office-render-v6:${format}:${cacheKey ?? title}`;
+  const key = `office-render-v7:${format}:${cacheKey ?? title}`;
   // Marks and slide edits are personal to the account viewing them.
   const { ready: scopeReady, scope } = useMarkupScope();
   const notesKey = scopedKey(`office-annotations:${format}:${cacheKey ?? title}`, scope);
@@ -570,10 +570,6 @@ function SlidePage({
   }, [deck.width]);
 
   const slide = deck.slides[index];
-  const layout = useMemo(
-    () => (slide ? layoutSlide(slide.shapes, deck.width, deck.height) : []),
-    [slide, deck.width, deck.height],
-  );
   if (!slide) return null;
 
   return (
@@ -597,19 +593,15 @@ function SlidePage({
           }}
         >
           {slide.shapes.map((shape, i) => {
-            const slot = layout[i];
             return (
               <SlideShape
                 key={i}
                 shape={shape}
-                rect={slot?.box}
                 slideWidth={deck.width}
-                widthLimit={slot?.right}
-                heightLimit={slot?.bottom}
                 background={backgroundBehind(
                   slide.shapes,
                   i,
-                  slot?.box,
+                  undefined,
                   slide.background ?? "#ffffff",
                 )}
                 editable={tool === "edit"}
@@ -619,6 +611,7 @@ function SlidePage({
               />
             );
           })}
+
 
 
 
@@ -638,79 +631,7 @@ function SlidePage({
 }
 
 type Rect = { x: number; y: number; w: number; h: number };
-type Slot = { box: Rect; right: number; bottom: number };
 
-/**
- * Lays out the text boxes of one slide so no words can ever sit on top of a
- * picture or another box. Each text box is first pulled clear of every picture
- * it collides with (moved beside or below it, or trimmed — whichever keeps the
- * most room), then limited so it can only grow into genuinely free space.
- */
-function layoutSlide(
-  shapes: PptxShape[],
-  slideWidth: number,
-  slideHeight: number,
-): (Slot | null)[] {
-  const hasWords = (s: PptxShape) =>
-    s.type === "text" && s.paragraphs.some((p) => p.runs.some((r) => r.text.trim()));
-  const pictures = shapes.filter(
-    (s): s is Extract<PptxShape, { type: "image" }> => s.type === "image" && !!s.w && !!s.h,
-  );
-
-  const rects: (Rect | null)[] = shapes.map((shape) => {
-    if (shape.type !== "text" || !shape.w || !shape.h) return null;
-    let rect: Rect = { x: shape.x, y: shape.y, w: shape.w, h: shape.h };
-    if (!hasWords(shape)) return rect;
-
-    for (const pic of pictures) {
-      if (!overlaps(rect, pic)) continue;
-      const options: Rect[] = [
-        // keep the words to the left of the picture
-        { ...rect, w: pic.x - rect.x - 4 },
-        // push the words to the right of the picture
-        { ...rect, x: pic.x + pic.w + 4, w: rect.x + rect.w - (pic.x + pic.w + 4) },
-        // keep the words above the picture
-        { ...rect, h: pic.y - rect.y - 4 },
-        // push the words below the picture
-        { ...rect, y: pic.y + pic.h + 4, h: rect.y + rect.h - (pic.y + pic.h + 4) },
-      ].filter((r) => r.w >= 40 && r.h >= 16 && r.x >= 0 && r.y >= 0);
-      if (!options.length) continue;
-      rect = options.reduce((best, r) => (r.w * r.h > best.w * best.h ? r : best));
-    }
-    return rect;
-  });
-
-  // Now stop each box from growing across a neighbouring box or off the slide.
-  return rects.map((rect, index) => {
-    if (!rect) return null;
-    let right = slideWidth - 8;
-    let bottom = slideHeight - 4;
-    shapes.forEach((other, i) => {
-      if (i === index || other.type === "shape") return;
-      if (!other.w || !other.h) return;
-      if (other.type === "text" && !hasWords(other)) return;
-      const otherRect = rects[i] ?? { x: other.x, y: other.y, w: other.w, h: other.h };
-      const verticalOverlap =
-        otherRect.y < rect.y + rect.h - 2 && otherRect.y + otherRect.h > rect.y + 2;
-      if (verticalOverlap && otherRect.x + 2 > rect.x) right = Math.min(right, otherRect.x - 2);
-      const horizontalOverlap =
-        otherRect.x < rect.x + rect.w - 2 && otherRect.x + otherRect.w > rect.x + 2;
-      if (horizontalOverlap && otherRect.y + 2 > rect.y) bottom = Math.min(bottom, otherRect.y - 2);
-    });
-    return {
-      box: rect,
-      right: Math.max(right, rect.x + Math.min(rect.w, 20)),
-      bottom: Math.max(bottom, rect.y + Math.min(rect.h, 16)),
-    };
-  });
-}
-
-
-function overlaps(a: Rect, b: { x: number; y: number; w: number; h: number }) {
-  return (
-    a.x < b.x + b.w - 2 && a.x + a.w > b.x + 2 && a.y < b.y + b.h - 2 && a.y + a.h > b.y + 2
-  );
-}
 
 
 /**
@@ -742,10 +663,7 @@ function backgroundBehind(
 
 function SlideShape({
   shape,
-  rect,
   slideWidth,
-  widthLimit,
-  heightLimit,
   background,
   editable,
   scale,
@@ -753,10 +671,7 @@ function SlideShape({
   onEdit,
 }: {
   shape: PptxShape;
-  rect?: Rect | undefined;
   slideWidth: number;
-  widthLimit?: number | undefined;
-  heightLimit?: number | undefined;
   background: string;
   editable: boolean;
   scale: number;
@@ -813,10 +728,7 @@ function SlideShape({
   return (
     <TextShape
       shape={shape}
-      rect={rect}
       slideWidth={slideWidth}
-      widthLimit={widthLimit}
-      heightLimit={heightLimit}
       background={background}
       editable={editable}
       scale={scale}
@@ -829,17 +741,14 @@ function SlideShape({
 }
 
 /**
- * A slide text box. Copy that doesn't fit is widened only into free space (never
- * across a neighbouring box or a picture, which would overlap the words), then
- * shrunk to fit. With the Edit tool on, the teacher can retype the text and drag
+ * A slide text box, drawn exactly where PowerPoint placed it. Copy that doesn't
+ * fit its box is shrunk to fit (the same as PowerPoint's own auto-fit) — boxes
+ * are never moved, widened or trimmed, so the slide matches the original. With the Edit tool on, the teacher can retype the text and drag
  * the box to move or resize it.
  */
 function TextShape({
   shape,
-  rect,
   slideWidth,
-  widthLimit,
-  heightLimit,
   background,
   editable,
   scale,
@@ -848,10 +757,7 @@ function TextShape({
   rotate,
 }: {
   shape: Extract<PptxShape, { type: "text" }>;
-  rect?: Rect | undefined;
   slideWidth: number;
-  widthLimit?: number | undefined;
-  heightLimit?: number | undefined;
   background: string;
   editable: boolean;
 
@@ -872,52 +778,33 @@ function TextShape({
     h: number;
   } | null>(null);
 
-  // The laid-out box (already pulled clear of any picture) is the starting point.
-  const x = edit?.x ?? rect?.x ?? shape.x;
-  const y = edit?.y ?? rect?.y ?? shape.y;
-  const baseW = edit?.w ?? rect?.w ?? shape.w;
-  const baseH = edit?.h ?? rect?.h ?? shape.h;
+  // The box exactly as PowerPoint placed it (unless the teacher moved it).
+  const x = edit?.x ?? shape.x;
+  const y = edit?.y ?? shape.y;
+  const baseW = edit?.w ?? shape.w;
+  const baseH = edit?.h ?? shape.h;
   const overrideText = edit?.text;
-  // Right-hand boundary: the nearest neighbour's left edge, or the slide edge.
-  const rightBound = Math.min(widthLimit ?? slideWidth - 8, slideWidth - 8);
-  // Bottom boundary: the nearest picture or box below, so words never sit on it.
-  const bottomBound = edit?.h ? null : (heightLimit ?? null);
-  const roomBelow = bottomBound == null ? null : Math.max(24, bottomBound - y - 2);
 
-  // Fit the copy inside the box: widen into free space first, then shrink.
+  // Auto-fit, exactly like PowerPoint: keep the original box and scale the words
+  // down only if they are taller than it. Nothing is moved or widened.
   useLayoutEffect(() => {
     const box = boxRef.current;
     const inner = innerRef.current;
     if (!box || !inner) return;
-    const collisionSafeWidth = Math.max(20, rightBound - x - 2);
-    let width = Math.min(baseW, collisionSafeWidth);
-    box.style.width = width ? `${width}px` : "auto";
+    box.style.width = baseW ? `${baseW}px` : "auto";
     box.style.height = baseH ? `${baseH}px` : "auto";
     inner.style.width = "100%";
     inner.style.transform = "";
     if (!baseW || !baseH) return;
 
-    const maxWidth = Math.max(width, (edit?.w ? slideWidth - x - 8 : rightBound - 2) - x);
-    const step = Math.max(40, baseW * 0.12);
-    let height = inner.scrollHeight;
-    while (height > baseH + 2 && width < maxWidth) {
-      width = Math.min(maxWidth, width + step);
-      box.style.width = `${width}px`;
-      height = inner.scrollHeight;
-    }
-    // Never let the copy spill onto whatever sits below (a picture or another
-    // box): shrink to the free space instead of overflowing into it.
-    // A box may use genuinely empty room beneath it. This keeps body copy at a
-    // readable size instead of compressing it just because the source box was
-    // shorter than its contents.
-    const allowed = roomBelow == null ? Math.max(baseH, height) : roomBelow;
-    if (!edit?.h) box.style.height = `${allowed}px`;
-    if (height > allowed + 2) {
-      const shrink = Math.max(0.35, allowed / height);
-      inner.style.width = `${width / shrink}px`;
+    const height = inner.scrollHeight;
+    if (height > baseH + 2) {
+      const shrink = Math.max(0.5, baseH / height);
+      inner.style.width = `${baseW / shrink}px`;
       inner.style.transform = `scale(${shrink})`;
     }
-  }, [baseW, baseH, x, slideWidth, rightBound, roomBelow, edit?.w, overrideText, shape]);
+  }, [baseW, baseH, overrideText, shape]);
+
 
 
   function startDrag(mode: "move" | "resize", event: React.PointerEvent) {
@@ -983,7 +870,8 @@ function TextShape({
         borderRadius: shape.radius || undefined,
         boxSizing: "border-box",
         color: ink(null) ?? "#111",
-        overflow: "hidden",
+        // Never clip words: PowerPoint lets text spill out of its box too.
+        overflow: "visible",
       }}
     >
 
@@ -1062,7 +950,12 @@ function TextShape({
                     <span
                       key={ri}
                       style={{
-                        fontSize: run.size,
+                        fontSize: run.baseline ? run.size * 0.65 : run.size,
+                        verticalAlign: run.baseline
+                          ? run.baseline === "sup"
+                            ? "super"
+                            : "sub"
+                          : undefined,
                         fontFamily: run.font ? `"${run.font}", system-ui, sans-serif` : undefined,
                         fontWeight: run.bold ? 700 : 400,
                         fontStyle: run.italic ? "italic" : undefined,
@@ -1070,6 +963,7 @@ function TextShape({
                         color: ink(run.color),
                       }}
                     >
+
                       {run.text}
                     </span>
                   ))}

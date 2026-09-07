@@ -90,7 +90,7 @@ function SubmissionPage() {
   return (
     <div className="min-h-screen">
       <AppHeader role="teacher" />
-      <main className="mx-auto max-w-3xl px-4 py-8">
+      <main className="mx-auto max-w-7xl px-4 py-8">
         <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">
           ← Back
         </Link>

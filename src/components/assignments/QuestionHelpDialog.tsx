@@ -295,27 +295,33 @@ export function QuestionHelpButtons({
   const [mode, setMode] = useState<Mode | null>(null);
   return (
     <>
-      <div className="flex shrink-0 flex-col items-center gap-2">
-        <Button
-          size="icon"
-          variant="ghost"
+      <div className="flex w-28 shrink-0 flex-col items-stretch gap-2 sm:w-32">
+        <button
+          type="button"
           onClick={() => setMode("hint")}
-          className="size-8 rounded-full bg-warning text-warning-foreground shadow-sm hover:bg-warning/90 sm:size-9"
           title="Give me a hint"
-          aria-label="Give me a hint"
+          className="flex items-center gap-2 rounded-full border border-warning/50 bg-warning/15 px-2 py-1.5 text-left shadow-sm transition hover:scale-[1.03] hover:bg-warning/25"
         >
-          <Lightbulb className="size-3.5 sm:size-4" />
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
+          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-warning text-warning-foreground">
+            <HintBulbIcon className="size-4.5" />
+          </span>
+          <span className="text-[11px] font-semibold leading-tight text-foreground">
+            Give me a hint
+          </span>
+        </button>
+        <button
+          type="button"
           onClick={() => setMode("steps")}
-          className="size-8 rounded-full bg-success text-success-foreground shadow-sm hover:bg-success/90 sm:size-9"
           title="Break it down step-by-step"
-          aria-label="Break it down step-by-step"
+          className="flex items-center gap-2 rounded-full border border-success/50 bg-success/15 px-2 py-1.5 text-left shadow-sm transition hover:scale-[1.03] hover:bg-success/25"
         >
-          <StairsIcon className="size-3.5 sm:size-4" />
-        </Button>
+          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-success text-success-foreground">
+            <StairsIcon className="size-4.5" />
+          </span>
+          <span className="text-[11px] font-semibold leading-tight text-foreground">
+            Break it down step-by-step
+          </span>
+        </button>
       </div>
       {mode ? (
         <QuestionHelpDialog

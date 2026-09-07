@@ -806,6 +806,7 @@ function TextShape({
   rotate,
 }: {
   shape: Extract<PptxShape, { type: "text" }>;
+  rect?: Rect | undefined;
   slideWidth: number;
   widthLimit?: number | undefined;
   heightLimit?: number | undefined;

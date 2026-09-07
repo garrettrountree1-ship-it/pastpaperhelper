@@ -1026,7 +1026,7 @@ function TextShape({
                       : undefined,
                     fontWeight: sourceRun?.bold ? 700 : 400,
                     fontStyle: sourceRun?.italic ? "italic" : undefined,
-                    color: sourceRun?.color ?? undefined,
+                    color: ink(sourceRun?.color),
                     whiteSpace: "pre-wrap",
                     wordBreak: "break-word",
                     minHeight: line === "" ? "0.75em" : undefined,
@@ -1067,7 +1067,7 @@ function TextShape({
                         fontWeight: run.bold ? 700 : 400,
                         fontStyle: run.italic ? "italic" : undefined,
                         textDecoration: run.underline ? "underline" : undefined,
-                        color: run.color ?? undefined,
+                        color: ink(run.color),
                       }}
                     >
                       {run.text}

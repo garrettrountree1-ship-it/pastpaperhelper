@@ -535,7 +535,7 @@ function SlidePage({
   index: number;
   tool: SlideTool;
   penColor: string;
-  highlightColor?: string;
+  highlightColor?: string | undefined;
   annotation: SlideAnnotation;
   onAnnotationChange: (next: SlideAnnotation) => void;
   edits: Record<string, ShapeEdit>;

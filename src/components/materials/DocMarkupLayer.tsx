@@ -84,8 +84,8 @@ export function DocMarkupToolbar({
   setTool: (next: SlideTool) => void;
   penColor: string;
   setPenColor: (next: string) => void;
-  highlightColor?: string;
-  setHighlightColor?: (next: string) => void;
+  highlightColor?: string | undefined;
+  setHighlightColor?: ((next: string) => void) | undefined;
 }) {
   const highlighting = tool === "highlight";
   return (
@@ -145,7 +145,7 @@ export function DocMarkupSurface({
   ratio: number;
   tool: SlideTool;
   penColor: string;
-  highlightColor?: string;
+  highlightColor?: string | undefined;
   value: SlideAnnotation;
   onChange: (next: SlideAnnotation) => void;
   children: React.ReactNode;

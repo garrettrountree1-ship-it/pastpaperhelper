@@ -51,7 +51,7 @@ export function SlideAnnotations({
   height: number;
   tool: SlideTool;
   color: string;
-  highlightColor?: string;
+  highlightColor?: string | undefined;
   value: SlideAnnotation;
   onChange: (next: SlideAnnotation) => void;
 }) {

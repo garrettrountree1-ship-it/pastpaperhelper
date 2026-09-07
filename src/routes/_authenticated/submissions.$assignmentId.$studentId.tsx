@@ -49,7 +49,7 @@ export const Route = createFileRoute("/_authenticated/submissions/$assignmentId/
   pendingComponent: () => (
     <div className="min-h-screen">
       <AppHeader role="teacher" />
-      <main className="mx-auto max-w-3xl px-4 py-8">
+      <main className="mx-auto max-w-7xl px-4 py-8">
         <Skeleton className="h-64 w-full" />
       </main>
     </div>
@@ -57,7 +57,7 @@ export const Route = createFileRoute("/_authenticated/submissions/$assignmentId/
   errorComponent: ({ error, reset }) => (
     <div className="min-h-screen">
       <AppHeader role="teacher" />
-      <main className="mx-auto max-w-3xl px-4 py-8 text-center">
+      <main className="mx-auto max-w-7xl px-4 py-8 text-center">
         <p className="mb-4 text-muted-foreground">
           We couldn&apos;t load this submission. {error.message}
         </p>
@@ -90,7 +90,7 @@ function SubmissionPage() {
   return (
     <div className="min-h-screen">
       <AppHeader role="teacher" />
-      <main className="mx-auto max-w-3xl px-4 py-8">
+      <main className="mx-auto max-w-7xl px-4 py-8">
         <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">
           ← Back
         </Link>

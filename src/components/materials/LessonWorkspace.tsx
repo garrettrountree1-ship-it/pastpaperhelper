@@ -115,7 +115,14 @@ export function LessonWorkspace({
   const [concept, setConcept] = useState<string | null>(null);
   const [docOverride, setDocOverride] = useState<string | null>(initialMaterialId ?? null);
   const [term, setTerm] = useState("");
+  // On phones the screen is far too narrow for side-by-side panes, so the
+  // workspace always uses one full-screen window with a toggle between the
+  // lesson canvas and the documents, and the tutor starts collapsed.
+  const isPhone = useIsMobile();
   const [tutorOpen, setTutorOpen] = useState(true);
+  useEffect(() => {
+    if (isPhone) setTutorOpen(false);
+  }, [isPhone]);
   const [presenting, setPresenting] = useState(false);
   // The tutor thread belongs to the signed-in account only.
   const { turns: tutorTurns, setTurns: setTutorTurns } = useTutorThread(`class:${classId}`);

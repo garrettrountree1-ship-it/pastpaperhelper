@@ -45,6 +45,8 @@ const blockSchema = z.union([
     color: z.string().max(30),
     width: z.number(),
     bottom: z.number().optional(),
+    /** Highlighter marks are wide and translucent. */
+    highlight: z.boolean().optional(),
   }),
   // Teacher voice note: a small speaker pin students can replay.
   z.object({

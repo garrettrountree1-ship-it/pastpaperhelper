@@ -8,7 +8,10 @@ import { RichTextEditable } from "@/components/materials/RichTextEditable";
 import type { NoteBlock } from "@/lib/notes.functions";
 
 
-export type CanvasMode = "type" | "draw" | "erase";
+export type CanvasMode = "type" | "draw" | "highlight" | "erase";
+
+/** Highlighter stroke thickness on the canvas. */
+export const CANVAS_HIGHLIGHT_WIDTH = 20;
 
 export const TEXT_COLORS: string[] = [
   "#111827",
@@ -92,6 +95,7 @@ export function FreeCanvas({
   canEdit,
   mode,
   penColor,
+  highlightColor = "#fde047",
   penWidth,
   imageUrls,
   zoom = 1,
@@ -102,6 +106,7 @@ export function FreeCanvas({
   canEdit: boolean;
   mode: CanvasMode;
   penColor: string;
+  highlightColor?: string;
   penWidth: number;
   imageUrls: Record<string, string> | undefined;
   zoom?: number;
@@ -354,7 +359,7 @@ export function FreeCanvas({
   }
 
   function startInk(event: React.PointerEvent) {
-    if (!canEdit || (mode !== "draw" && mode !== "erase")) return;
+    if (!canEdit || (mode !== "draw" && mode !== "highlight" && mode !== "erase")) return;
     event.preventDefault();
     (event.target as Element).setPointerCapture?.(event.pointerId);
     if (mode === "erase") {
@@ -392,8 +397,9 @@ export function FreeCanvas({
         id: crypto.randomUUID(),
         type: "ink",
         d: pathFrom(points),
-        color: penColor,
-        width: penWidth,
+        color: mode === "highlight" ? highlightColor : penColor,
+        width: mode === "highlight" ? CANVAS_HIGHLIGHT_WIDTH : penWidth,
+        ...(mode === "highlight" ? { highlight: true } : {}),
         bottom: Math.round(Math.max(...points.map((p) => p.y))),
       },
     ]);
@@ -440,7 +446,10 @@ export function FreeCanvas({
       <svg
         className="absolute inset-0 h-full w-full"
         style={{
-          pointerEvents: canEdit && (mode === "draw" || mode === "erase") ? "auto" : "none",
+          pointerEvents:
+            canEdit && (mode === "draw" || mode === "highlight" || mode === "erase")
+              ? "auto"
+              : "none",
           touchAction: "none",
           zIndex: 20,
           cursor: canEdit && mode === "erase" ? "crosshair" : undefined,
@@ -451,18 +460,48 @@ export function FreeCanvas({
         onPointerLeave={endInk}
         onPointerCancel={endInk}
       >
-        {inks.map((ink) => (
-          <path
-            key={ink.id}
-            d={ink.d}
-            fill="none"
-            stroke={ink.color}
-            strokeWidth={ink.width}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        ))}
-        {live ? (
+        {/* Highlighter blends with the text underneath so it stays readable. */}
+        <g style={{ mixBlendMode: "multiply" }}>
+          {inks
+            .filter((ink) => ink.highlight)
+            .map((ink) => (
+              <path
+                key={ink.id}
+                d={ink.d}
+                fill="none"
+                stroke={ink.color}
+                strokeWidth={ink.width}
+                strokeOpacity={0.4}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ))}
+          {live && mode === "highlight" ? (
+            <path
+              d={pathFrom(live)}
+              fill="none"
+              stroke={highlightColor}
+              strokeWidth={CANVAS_HIGHLIGHT_WIDTH}
+              strokeOpacity={0.4}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ) : null}
+        </g>
+        {inks
+          .filter((ink) => !ink.highlight)
+          .map((ink) => (
+            <path
+              key={ink.id}
+              d={ink.d}
+              fill="none"
+              stroke={ink.color}
+              strokeWidth={ink.width}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ))}
+        {live && mode !== "highlight" ? (
           <path
             d={pathFrom(live)}
             fill="none"

@@ -590,7 +590,7 @@ export function NotesCanvas({
             className="hidden"
             onChange={(event) => {
               const file = event.target.files?.[0];
-              if (file) void uploadImage(file, pointerAt.current);
+              if (file) void uploadImage(file);
               event.target.value = "";
             }}
           />
@@ -628,6 +628,9 @@ export function NotesCanvas({
             highlightColor={highlightColor}
             penWidth={2.4}
             imageUrls={urls.data}
+            onPointerAt={(at) => {
+              pointerAt.current = at;
+            }}
             zoom={zoom}
             onChange={update}
             onConcept={onConcept}

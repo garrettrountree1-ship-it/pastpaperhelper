@@ -705,6 +705,7 @@ function overlaps(a: Rect, b: { x: number; y: number; w: number; h: number }) {
 
 function SlideShape({
   shape,
+  rect,
   slideWidth,
   widthLimit,
   heightLimit,
@@ -714,9 +715,10 @@ function SlideShape({
   onEdit,
 }: {
   shape: PptxShape;
+  rect?: Rect | undefined;
   slideWidth: number;
-  widthLimit?: number;
-  heightLimit?: number;
+  widthLimit?: number | undefined;
+  heightLimit?: number | undefined;
   editable: boolean;
   scale: number;
   edit?: ShapeEdit | undefined;

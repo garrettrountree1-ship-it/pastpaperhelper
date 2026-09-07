@@ -582,12 +582,14 @@ function SlidePage({
               key={i}
               shape={shape}
               slideWidth={deck.width}
+              widthLimit={widthLimitFor(slide.shapes, i, deck.width)}
               editable={tool === "edit"}
               scale={scale}
               edit={edits[`${index}:${i}`]}
               onEdit={(patch) => onEdit(i, patch)}
             />
           ))}
+
           <SlideAnnotations
             width={deck.width}
             height={deck.height}
@@ -603,9 +605,33 @@ function SlidePage({
   );
 }
 
+/**
+ * How far a text box may grow to the right before it would run into a
+ * neighbouring box. PowerPoint never lets one box's words cross another's, so
+ * neither do we: side-by-side columns stay in their own lanes.
+ */
+function widthLimitFor(shapes: PptxShape[], index: number, slideWidth: number) {
+  const self = shapes[index];
+  if (!self || self.type !== "text") return slideWidth;
+  let limit = slideWidth - 8;
+  shapes.forEach((other, i) => {
+    if (i === index || other.type === "shape") return;
+    if (!other.w || !other.h) return;
+    if (other.type === "text" && !other.paragraphs.some((p) => p.runs.some((r) => r.text.trim()))) {
+      return;
+    }
+    const verticalOverlap = other.y < self.y + self.h - 2 && other.y + other.h > self.y + 2;
+    if (!verticalOverlap) return;
+    if (other.x + 2 <= self.x) return; // starts to our left: not a right-hand neighbour
+    limit = Math.min(limit, other.x);
+  });
+  return Math.max(limit, self.x + Math.max(self.w, 20));
+}
+
 function SlideShape({
   shape,
   slideWidth,
+  widthLimit,
   editable,
   scale,
   edit,
@@ -613,12 +639,14 @@ function SlideShape({
 }: {
   shape: PptxShape;
   slideWidth: number;
+  widthLimit?: number;
   editable: boolean;
   scale: number;
   edit?: ShapeEdit | undefined;
   onEdit: (patch: ShapeEdit) => void;
 }) {
   const rotate = shape.rot ? `rotate(${shape.rot}deg)` : undefined;
+
 
   if (shape.type === "image") {
     return (
@@ -667,6 +695,7 @@ function SlideShape({
     <TextShape
       shape={shape}
       slideWidth={slideWidth}
+      widthLimit={widthLimit}
       editable={editable}
       scale={scale}
       edit={edit}
@@ -677,14 +706,15 @@ function SlideShape({
 }
 
 /**
- * A slide text box. Long titles are given more width before any shrinking, so a
- * heading spreads sideways instead of wrapping down over the text beneath it.
+ * A slide text box. Copy that doesn't fit is widened only into free space (never
+ * across a neighbouring box, which would overlap the words), then shrunk to fit.
  * With the Edit tool on, the teacher can retype the text and drag the box to
  * move or resize it.
  */
 function TextShape({
   shape,
   slideWidth,
+  widthLimit,
   editable,
   scale,
   edit,
@@ -693,6 +723,7 @@ function TextShape({
 }: {
   shape: Extract<PptxShape, { type: "text" }>;
   slideWidth: number;
+  widthLimit?: number | undefined;
   editable: boolean;
   scale: number;
   edit?: ShapeEdit | undefined;
@@ -716,8 +747,10 @@ function TextShape({
   const baseW = edit?.w ?? shape.w;
   const baseH = edit?.h ?? shape.h;
   const overrideText = edit?.text;
+  // Right-hand boundary: the nearest neighbour's left edge, or the slide edge.
+  const rightBound = Math.min(widthLimit ?? slideWidth - 8, slideWidth - 8);
 
-  // Fit the copy inside the box: widen first, then shrink as a last resort.
+  // Fit the copy inside the box: widen into free space first, then shrink.
   useLayoutEffect(() => {
     const box = boxRef.current;
     const inner = innerRef.current;
@@ -728,7 +761,7 @@ function TextShape({
     if (!baseW || !baseH) return;
 
     let width = baseW;
-    const maxWidth = Math.max(baseW, slideWidth - x - 8);
+    const maxWidth = Math.max(baseW, (edit?.w ? slideWidth - x - 8 : rightBound) - x);
     const step = Math.max(40, baseW * 0.12);
     let height = inner.scrollHeight;
     while (height > baseH + 2 && width < maxWidth) {
@@ -737,11 +770,12 @@ function TextShape({
       height = inner.scrollHeight;
     }
     if (height > baseH + 2) {
-      const shrink = Math.max(0.55, baseH / height);
+      const shrink = Math.max(0.4, baseH / height);
       inner.style.width = `${width / shrink}px`;
       inner.style.transform = `scale(${shrink})`;
     }
-  }, [baseW, baseH, x, slideWidth, overrideText, shape]);
+  }, [baseW, baseH, x, slideWidth, rightBound, edit?.w, overrideText, shape]);
+
 
   function startDrag(mode: "move" | "resize", event: React.PointerEvent) {
     event.preventDefault();

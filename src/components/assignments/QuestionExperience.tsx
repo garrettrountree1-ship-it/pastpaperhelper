@@ -436,6 +436,13 @@ export function QuestionExperience({
           </div>
         </div>
       ) : null}
+        </div>
+
+        <div className="flex flex-col items-center gap-2 pt-1">
+          {headerAction}
+          <QuestionHelpButtons questionId={question.id} answerDraft={draft} />
+        </div>
+      </div>
     </section>
   );
 }

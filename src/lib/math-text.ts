@@ -118,6 +118,29 @@ function mathToText(input: string): string {
 }
 
 /**
+ * Symbols a student can't read aloud (typesetting marks, private-use glyphs
+ * from symbol fonts) become plain words or are dropped.
+ */
+const UNREADABLE: Array<[RegExp, string]> = [
+  [/§+/g, "section"],
+  [/¶+/g, "paragraph"],
+  [/[†‡]/g, ""],
+  [/[‹›]/g, "'"],
+  [/[«»]/g, '"'],
+  [/[¦]/g, "|"],
+  [/[¤¬ˆ˜¨¯´¸ª º]/g, " "],
+  // Control and private-use characters (symbol-font leftovers) never render.
+  [/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\ue000-\uf8ff\ufffd]/g, " "],
+];
+
+/** Replaces symbols a reader can't say with plain words. */
+export function readableSymbols(input: string): string {
+  let out = input;
+  for (const [pattern, replacement] of UNREADABLE) out = out.replace(pattern, replacement);
+  return out.replace(/[ \t]{2,}/g, " ");
+}
+
+/**
  * Cleans a tutor reply: maths is unwrapped from $ / $$ / \( \) / \[ \] and
  * markdown headings, bullets and code fences are simplified.
  */
@@ -144,7 +167,7 @@ export function cleanTutorText(raw: string): string {
     .replace(/^\s*[*+-]\s+/gm, "• ")
     .replace(/\n{3,}/g, "\n\n");
 
-  return text.trim();
+  return readableSymbols(text).trim();
 }
 
 

@@ -2,7 +2,7 @@ import { formatDueDate } from "@/lib/datetime";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { MessageCircle } from "lucide-react";
+import { TeacherIcon } from "@/components/assignments/QuestionHelpDialog";
 import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";

@@ -13,7 +13,7 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
       .object({
         classId: z.string().uuid(),
         sectionId: z.string().uuid().nullable().optional(),
-        question: z.string().min(3).max(1000),
+        question: z.string().max(1000),
         expectedAnswer: z.string().max(2000).nullable().optional(),
         // A pasted picture of the question, held as a data URL.
         questionImage: z.string().max(6_000_000).nullable().optional(),
@@ -26,6 +26,9 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertClassTeacher(supabase, data.classId, userId);
+    if (data.question.trim().length < 3 && !data.questionImage) {
+      throw new Error("Add a question, or paste a picture of it.");
+    }
 
     const targets = [
       ...new Set([...(data.targetStudentIds ?? []), ...(data.targetStudentId ? [data.targetStudentId] : [])]),

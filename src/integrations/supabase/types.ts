@@ -1028,6 +1028,44 @@ export type Database = {
           },
         ]
       }
+      question_help_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          mode: string
+          question_id: string
+          role: string
+          student_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          mode: string
+          question_id: string
+          role: string
+          student_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          mode?: string
+          question_id?: string
+          role?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_help_messages_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       questions: {
         Row: {
           assignment_id: string

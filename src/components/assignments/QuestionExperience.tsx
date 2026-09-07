@@ -9,6 +9,8 @@ import { cleanTutorText, TutorText } from "@/lib/tutor-text";
 import { getQuestionGlossary, getTutorGlossary } from "@/lib/tutor-settings.functions";
 
 import { CameraCapture } from "@/components/assignments/CameraCapture";
+import { QuestionHelpButtons } from "@/components/assignments/QuestionHelpDialog";
+
 import { DrawingPad } from "@/components/assignments/DrawingPad";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -202,6 +204,11 @@ export function QuestionExperience({
           </p>
         ) : null}
       </div>
+
+      <div className="mt-3">
+        <QuestionHelpButtons questionId={question.id} answerDraft={draft} />
+      </div>
+
 
       {sentBack ? (
         <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4">

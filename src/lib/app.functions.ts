@@ -1358,6 +1358,17 @@ export const getStudentClassReport = createServerFn({ method: "POST" })
           .order("created_at")
       : { data: [] };
 
+    const questionIds = (questions ?? []).map((q) => q.id);
+    const { data: helpMessages } = questionIds.length
+      ? await (db as any)
+          .from("question_help_messages")
+          .select("id, question_id, mode, role, content, created_at")
+          .in("question_id", questionIds)
+          .eq("student_id", data.studentId)
+          .order("created_at")
+      : { data: [] };
+
+
     const report = await Promise.all(
       (assignments ?? []).map(async (assignment) => {
         const submission = (submissions ?? []).find((s) => s.assignment_id === assignment.id);
@@ -1409,7 +1420,24 @@ export const getStudentClassReport = createServerFn({ method: "POST" })
                   content: m.content,
                   createdAt: m.created_at,
                 })),
+              helpMessages: ((helpMessages ?? []) as Array<{
+                id: string;
+                question_id: string;
+                mode: string;
+                role: string;
+                content: string;
+                created_at: string;
+              }>)
+                .filter((m) => m.question_id === question.id)
+                .map((m) => ({
+                  id: m.id,
+                  mode: m.mode as "hint" | "steps",
+                  role: m.role,
+                  content: m.content,
+                  createdAt: m.created_at,
+                })),
             };
+
           }),
         );
 

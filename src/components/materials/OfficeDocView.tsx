@@ -778,52 +778,33 @@ function TextShape({
     h: number;
   } | null>(null);
 
-  // The laid-out box (already pulled clear of any picture) is the starting point.
-  const x = edit?.x ?? rect?.x ?? shape.x;
-  const y = edit?.y ?? rect?.y ?? shape.y;
-  const baseW = edit?.w ?? rect?.w ?? shape.w;
-  const baseH = edit?.h ?? rect?.h ?? shape.h;
+  // The box exactly as PowerPoint placed it (unless the teacher moved it).
+  const x = edit?.x ?? shape.x;
+  const y = edit?.y ?? shape.y;
+  const baseW = edit?.w ?? shape.w;
+  const baseH = edit?.h ?? shape.h;
   const overrideText = edit?.text;
-  // Right-hand boundary: the nearest neighbour's left edge, or the slide edge.
-  const rightBound = Math.min(widthLimit ?? slideWidth - 8, slideWidth - 8);
-  // Bottom boundary: the nearest picture or box below, so words never sit on it.
-  const bottomBound = edit?.h ? null : (heightLimit ?? null);
-  const roomBelow = bottomBound == null ? null : Math.max(24, bottomBound - y - 2);
 
-  // Fit the copy inside the box: widen into free space first, then shrink.
+  // Auto-fit, exactly like PowerPoint: keep the original box and scale the words
+  // down only if they are taller than it. Nothing is moved or widened.
   useLayoutEffect(() => {
     const box = boxRef.current;
     const inner = innerRef.current;
     if (!box || !inner) return;
-    const collisionSafeWidth = Math.max(20, rightBound - x - 2);
-    let width = Math.min(baseW, collisionSafeWidth);
-    box.style.width = width ? `${width}px` : "auto";
+    box.style.width = baseW ? `${baseW}px` : "auto";
     box.style.height = baseH ? `${baseH}px` : "auto";
     inner.style.width = "100%";
     inner.style.transform = "";
     if (!baseW || !baseH) return;
 
-    const maxWidth = Math.max(width, (edit?.w ? slideWidth - x - 8 : rightBound - 2) - x);
-    const step = Math.max(40, baseW * 0.12);
-    let height = inner.scrollHeight;
-    while (height > baseH + 2 && width < maxWidth) {
-      width = Math.min(maxWidth, width + step);
-      box.style.width = `${width}px`;
-      height = inner.scrollHeight;
-    }
-    // Never let the copy spill onto whatever sits below (a picture or another
-    // box): shrink to the free space instead of overflowing into it.
-    // A box may use genuinely empty room beneath it. This keeps body copy at a
-    // readable size instead of compressing it just because the source box was
-    // shorter than its contents.
-    const allowed = roomBelow == null ? Math.max(baseH, height) : roomBelow;
-    if (!edit?.h) box.style.height = `${allowed}px`;
-    if (height > allowed + 2) {
-      const shrink = Math.max(0.35, allowed / height);
-      inner.style.width = `${width / shrink}px`;
+    const height = inner.scrollHeight;
+    if (height > baseH + 2) {
+      const shrink = Math.max(0.5, baseH / height);
+      inner.style.width = `${baseW / shrink}px`;
       inner.style.transform = `scale(${shrink})`;
     }
-  }, [baseW, baseH, x, slideWidth, rightBound, roomBelow, edit?.w, overrideText, shape]);
+  }, [baseW, baseH, overrideText, shape]);
+
 
 
   function startDrag(mode: "move" | "resize", event: React.PointerEvent) {

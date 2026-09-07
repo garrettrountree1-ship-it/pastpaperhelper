@@ -637,6 +637,7 @@ export type Database = {
           expected_answer: string | null
           id: string
           question: string
+          question_image: string | null
           seconds: number
           section_id: string | null
           target_student_id: string | null
@@ -651,6 +652,7 @@ export type Database = {
           expected_answer?: string | null
           id?: string
           question: string
+          question_image?: string | null
           seconds?: number
           section_id?: string | null
           target_student_id?: string | null
@@ -665,6 +667,7 @@ export type Database = {
           expected_answer?: string | null
           id?: string
           question?: string
+          question_image?: string | null
           seconds?: number
           section_id?: string | null
           target_student_id?: string | null

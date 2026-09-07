@@ -13,8 +13,10 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
       .object({
         classId: z.string().uuid(),
         sectionId: z.string().uuid().nullable().optional(),
-        question: z.string().min(3).max(1000),
+        question: z.string().max(1000),
         expectedAnswer: z.string().max(2000).nullable().optional(),
+        // A pasted picture of the question, held as a data URL.
+        questionImage: z.string().max(6_000_000).nullable().optional(),
         seconds: z.number().int().min(15).max(1800),
         targetStudentId: z.string().uuid().nullable().optional(),
         targetStudentIds: z.array(z.string().uuid()).max(200).optional(),
@@ -24,6 +26,9 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertClassTeacher(supabase, data.classId, userId);
+    if (data.question.trim().length < 3 && !data.questionImage) {
+      throw new Error("Add a question, or paste a picture of it.");
+    }
 
     const targets = [
       ...new Set([...(data.targetStudentIds ?? []), ...(data.targetStudentId ? [data.targetStudentId] : [])]),
@@ -56,6 +61,7 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
         teacher_id: userId,
         question: data.question.trim(),
         expected_answer: data.expectedAnswer?.trim() || null,
+        question_image: data.questionImage || null,
         seconds: data.seconds,
         ends_at: endsAt,
         target_student_id: targets.length === 1 ? (targets[0] ?? null) : null,
@@ -77,7 +83,7 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
     const { data: check } = await supabase
       .from("formative_checks")
       .select(
-        "id, question, seconds, ends_at, teacher_id, expected_answer, target_student_id, target_student_ids",
+        "id, question, question_image, seconds, ends_at, teacher_id, expected_answer, target_student_id, target_student_ids",
       )
       .eq("class_id", data.classId)
       .is("closed_at", null)
@@ -101,6 +107,7 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
     return {
       id: check.id as string,
       question: check.question as string,
+      questionImage: (check.question_image ?? null) as string | null,
       seconds: check.seconds as number,
       endsAt: check.ends_at as string,
       isTeacher: check.teacher_id === userId,
@@ -130,7 +137,7 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
     const { data: check } = await supabase
       .from("formative_checks")
       .select(
-        "id, question, expected_answer, ends_at, closed_at, teacher_id, target_student_id, target_student_ids",
+        "id, question, question_image, expected_answer, ends_at, closed_at, teacher_id, target_student_id, target_student_ids",
       )
       .eq("id", data.checkId)
       .maybeSingle();
@@ -157,6 +164,7 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
     const marked = await markFormativeAnswer({
       question: check.question as string,
       expectedAnswer: check.expected_answer as string | null,
+      questionImage: (check.question_image ?? null) as string | null,
       answer: data.answer,
       attempt,
     });

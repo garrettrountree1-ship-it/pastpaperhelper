@@ -588,7 +588,7 @@ export function FreeCanvas({
                           // Keep the text selection alive, then format just it.
                           onMouseDown={(event) => event.preventDefault()}
                           onClick={() => formatSelection(key)}
-                          title={`${label} (applies to highlighted text)`}
+                          title={`${label} — highlighted text, or the text you type next`}
                           className={`size-6 rounded text-xs ${cls} hover:bg-muted`}
                         >
                           {label}

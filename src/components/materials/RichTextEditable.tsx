@@ -5,7 +5,8 @@ import { textShortcutOf } from "@/lib/text-shortcuts";
 
 /**
  * A small rich-text box used by the lesson canvas and the slide / document
- * markup layers. Formatting shortcuts apply to the highlighted words only, and
+ * markup layers.  * markup layers. Ctrl/⌘+B/I/U format highlighted words or arm the style for
+ * the text typed next, and
  * copy / paste behave like a normal editor (paste arrives as plain text so
  * nothing unexpected is injected).
  */
@@ -100,7 +101,7 @@ export function RichTextEditable({
           }
           return;
         }
-        // Applies to the highlighted words only.
+        // Highlighted words, or the text typed next when nothing is selected.
         formatSelection(shortcut);
         emit();
       }}

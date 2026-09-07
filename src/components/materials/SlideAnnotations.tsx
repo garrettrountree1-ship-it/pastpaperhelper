@@ -214,7 +214,7 @@ export function SlideAnnotations({
                   key={key}
                   type="button"
                   aria-label={`Toggle ${key}`}
-                  title={`${label} (applies to highlighted text)`}
+                  title={`${label} — highlighted text, or the text you type next`}
                   // Keep the highlighted words selected while clicking.
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => formatSelection(key)}

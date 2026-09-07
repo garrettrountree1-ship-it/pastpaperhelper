@@ -84,6 +84,11 @@ export function PdfDocView({
   }, [zoom]);
 
   // Ctrl/⌘ + wheel zooms only the document pane.
+  // A refreshed download address must not reload the document and throw the
+  // reader back to page one.
+  const urlRef = useRef(url);
+  urlRef.current = url;
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -124,7 +129,7 @@ export function PdfDocView({
         const workerUrl = (await import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url")).default;
         pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
-        const buffer = await (await fetch(url)).arrayBuffer();
+        const buffer = await (await fetch(urlRef.current)).arrayBuffer();
         const doc = await pdfjs.getDocument({ data: new Uint8Array(buffer) }).promise;
         const out: string[] = [];
         const textOut: PageText[] = [];
@@ -182,7 +187,7 @@ export function PdfDocView({
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, url, rebuilding]);
+  }, [key, rebuilding]);
 
   if (failed) {
     return <iframe src={url} title={title} className="h-full w-full rounded-md bg-white" />;

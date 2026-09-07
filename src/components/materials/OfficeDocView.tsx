@@ -570,10 +570,6 @@ function SlidePage({
   }, [deck.width]);
 
   const slide = deck.slides[index];
-  const layout = useMemo(
-    () => (slide ? layoutSlide(slide.shapes, deck.width, deck.height) : []),
-    [slide, deck.width, deck.height],
-  );
   if (!slide) return null;
 
   return (
@@ -597,19 +593,15 @@ function SlidePage({
           }}
         >
           {slide.shapes.map((shape, i) => {
-            const slot = layout[i];
             return (
               <SlideShape
                 key={i}
                 shape={shape}
-                rect={slot?.box}
                 slideWidth={deck.width}
-                widthLimit={slot?.right}
-                heightLimit={slot?.bottom}
                 background={backgroundBehind(
                   slide.shapes,
                   i,
-                  slot?.box,
+                  undefined,
                   slide.background ?? "#ffffff",
                 )}
                 editable={tool === "edit"}
@@ -619,6 +611,7 @@ function SlidePage({
               />
             );
           })}
+
 
 
 

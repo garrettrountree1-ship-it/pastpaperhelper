@@ -628,6 +628,7 @@ function SlidePage({
 }
 
 type Rect = { x: number; y: number; w: number; h: number };
+type Slot = { box: Rect; right: number; bottom: number };
 
 /**
  * Lays out the text boxes of one slide so no words can ever sit on top of a
@@ -635,7 +636,11 @@ type Rect = { x: number; y: number; w: number; h: number };
  * it collides with (moved beside or below it, or trimmed — whichever keeps the
  * most room), then limited so it can only grow into genuinely free space.
  */
-function layoutSlide(shapes: PptxShape[], slideWidth: number, slideHeight: number): (Rect | null)[] {
+function layoutSlide(
+  shapes: PptxShape[],
+  slideWidth: number,
+  slideHeight: number,
+): (Slot | null)[] {
   const hasWords = (s: PptxShape) =>
     s.type === "text" && s.paragraphs.some((p) => p.runs.some((r) => r.text.trim()));
   const pictures = shapes.filter(
@@ -683,13 +688,13 @@ function layoutSlide(shapes: PptxShape[], slideWidth: number, slideHeight: numbe
       if (horizontalOverlap && otherRect.y + 2 > rect.y) bottom = Math.min(bottom, otherRect.y - 2);
     });
     return {
-      x: rect.x,
-      y: rect.y,
-      w: Math.max(Math.max(right, rect.x + 20) - rect.x, Math.min(rect.w, slideWidth - rect.x - 8)),
-      h: Math.max(Math.max(bottom, rect.y + 16) - rect.y, 16),
+      box: rect,
+      right: Math.max(right, rect.x + Math.min(rect.w, 20)),
+      bottom: Math.max(bottom, rect.y + Math.min(rect.h, 16)),
     };
   });
 }
+
 
 function overlaps(a: Rect, b: { x: number; y: number; w: number; h: number }) {
   return (

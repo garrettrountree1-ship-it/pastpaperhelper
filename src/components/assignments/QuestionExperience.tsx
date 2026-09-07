@@ -9,6 +9,8 @@ import { cleanTutorText, TutorText } from "@/lib/tutor-text";
 import { getQuestionGlossary, getTutorGlossary } from "@/lib/tutor-settings.functions";
 
 import { CameraCapture } from "@/components/assignments/CameraCapture";
+import { QuestionHelpButtons } from "@/components/assignments/QuestionHelpDialog";
+
 import { DrawingPad } from "@/components/assignments/DrawingPad";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

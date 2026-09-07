@@ -33,7 +33,14 @@ async function loadQuestion(db: any, questionId: string, userId: string) {
     .eq("class_id", assignment.class_id)
     .eq("student_id", userId)
     .maybeSingle();
-  if (!membership) throw new Error("You are not in this class.");
+  if (!membership) {
+    // Teachers (and co-teachers) previewing the student homework view get full access too.
+    const { data: isTeacher } = await db.rpc("is_class_teacher", {
+      _class_id: assignment.class_id,
+      _user_id: userId,
+    });
+    if (!isTeacher) throw new Error("You are not in this class.");
+  }
 
   return { question, assignment };
 }

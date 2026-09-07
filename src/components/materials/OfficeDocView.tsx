@@ -773,6 +773,7 @@ function SlideShape({
   return (
     <TextShape
       shape={shape}
+      rect={rect}
       slideWidth={slideWidth}
       widthLimit={widthLimit}
       heightLimit={heightLimit}
@@ -787,15 +788,17 @@ function SlideShape({
 
 /**
  * A slide text box. Copy that doesn't fit is widened only into free space (never
- * across a neighbouring box, which would overlap the words), then shrunk to fit.
- * With the Edit tool on, the teacher can retype the text and drag the box to
- * move or resize it.
+ * across a neighbouring box or a picture, which would overlap the words), then
+ * shrunk to fit. With the Edit tool on, the teacher can retype the text and drag
+ * the box to move or resize it.
  */
 function TextShape({
   shape,
+  rect,
   slideWidth,
   widthLimit,
   heightLimit,
+
   editable,
   scale,
   edit,

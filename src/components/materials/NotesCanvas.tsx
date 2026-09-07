@@ -240,7 +240,11 @@ export function NotesCanvas({
   }
 
 
-  async function uploadImage(file: File) {
+  /**
+   * Adds a picture to the sheet. Pasted pictures land exactly where the pointer
+   * last sat; the toolbar button falls back to the top of the visible sheet.
+   */
+  async function uploadImage(file: File, at?: { x: number; y: number } | null) {
     const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_") || "pasted.png";
     const path = `${classId}/notes/${sectionId}/${crypto.randomUUID()}-${safe}`;
     const { error } = await supabase.storage
@@ -250,12 +254,15 @@ export function NotesCanvas({
       toast.error(error.message);
       return;
     }
-    const top = (scrollRef.current?.scrollTop ?? 0) + 40;
+    const fallbackTop = (scrollRef.current?.scrollTop ?? 0) / zoom + 40;
+    const x = Math.max(0, at ? at.x : 40);
+    const y = Math.max(0, at ? at.y : fallbackTop);
     update([
       ...blocks,
-      { id: crypto.randomUUID(), type: "image", path, caption: file.name, x: 40, y: top, w: 360 },
+      { id: crypto.randomUUID(), type: "image", path, caption: file.name, x, y, w: 360 },
     ]);
   }
+
 
   /**
    * Voice notes. "dictate" turns speech into a text box on the canvas;

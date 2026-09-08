@@ -548,7 +548,9 @@ export function OfficeDocView({
                     onAnnotationChange={(next) => updateNotes(index, next)}
                     edits={edits}
                     onEdit={(shapeIndex, patch) => updateEdit(index, shapeIndex, patch)}
+                    pageSrc={slidePages?.[index]}
                   />
+
                 </div>
               ))}
             </div>

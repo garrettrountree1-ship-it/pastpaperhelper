@@ -1766,12 +1766,20 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
     const scaffolding = await tutorSettingsForAssignment(db, data.assignmentId, userId);
     if (scaffolding.maxAttempts > 0) {
-      const { data: prior } = await db
-        .from("answers")
-        .select("attempts, submissions!inner(student_id)")
-        .eq("question_id", data.questionId)
-        .eq("submissions.student_id", userId)
+      const { data: priorSubmission } = await db
+        .from("submissions")
+        .select("id")
+        .eq("assignment_id", data.assignmentId)
+        .eq("student_id", userId)
         .maybeSingle();
+      const { data: prior } = priorSubmission
+        ? await db
+            .from("answers")
+            .select("attempts")
+            .eq("submission_id", priorSubmission.id)
+            .eq("question_id", data.questionId)
+            .maybeSingle()
+        : { data: null };
       const used = Number((prior as { attempts?: number } | null)?.attempts ?? 0);
       if (used >= scaffolding.maxAttempts) {
         throw new Error(

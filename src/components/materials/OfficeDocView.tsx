@@ -343,6 +343,43 @@ export function OfficeDocView({
     };
   }, [format, key, rebuilding, materialId, canPrepareShared]);
 
+  // The exact slides: converted once from the original PowerPoint, then kept as
+  // pictures in this browser so they open instantly afterwards.
+  const pagesKey = `slide-pages-v1:${cacheKey ?? title}`;
+  useEffect(() => {
+    if (format !== "pptx" || !materialId) return;
+    let cancelled = false;
+    void (async () => {
+      const cached = await readCachedJson<string[]>(pagesKey);
+      if (cancelled) return;
+      if (cached?.length) {
+        setSlidePages(cached);
+        return;
+      }
+      try {
+        let { url: pdfUrl } = await getSlidePdfUrl({ data: { materialId } });
+        if (!pdfUrl && canPrepareShared) {
+          if (!cancelled) setPreparingPages(true);
+          pdfUrl = (await prepareSlidePdf({ data: { materialId } })).url;
+        }
+        if (cancelled || !pdfUrl) return;
+        const pages = await pdfToSlideImages(pdfUrl);
+        if (cancelled || !pages.length) return;
+        setSlidePages(pages);
+        void writeCachedJson(pagesKey, pages);
+      } catch {
+        // Fall back to the rebuilt slides, which are already on screen.
+      } finally {
+        if (!cancelled) setPreparingPages(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [format, materialId, pagesKey, canPrepareShared, rebuilding]);
+
+
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-1 pb-1">

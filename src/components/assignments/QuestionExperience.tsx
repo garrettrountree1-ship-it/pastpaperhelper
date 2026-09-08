@@ -408,11 +408,7 @@ export function QuestionExperience({
                     {message.role === "tutor" ? "Tutor" : "You"}
                   </p>
                   {message.role === "tutor" ? (
-                    <GlossaryText
-                      className="whitespace-pre-wrap"
-                      text={cleanTutorText(message.content)}
-                      terms={tutorTerms}
-                    />
+                    <p className="whitespace-pre-wrap">{cleanTutorText(message.content)}</p>
                   ) : (
                     <p className="whitespace-pre-wrap">{message.content}</p>
                   )}

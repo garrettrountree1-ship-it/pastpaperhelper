@@ -324,6 +324,11 @@ function pageKey(url: string) {
   return url.split("?")[0] ?? url;
 }
 
+/** The snipped picture of this question, when the upload produced one. */
+export function snipFor(question: Question) {
+  return (question.imageUrls ?? []).find((url) => parseSnipBand(url)) ?? null;
+}
+
 function groupByPage(questions: Question[]) {
   const groups: Array<{
     key: string;
@@ -332,7 +337,9 @@ function groupByPage(questions: Question[]) {
   }> = [];
   const shown = new Set<string>();
   questions.forEach((question, index) => {
-    const fresh = (question.imageUrls ?? []).filter((url) => !shown.has(pageKey(url)));
+    // Snipped questions carry their own picture inside the question card.
+    const pageUrls = (question.imageUrls ?? []).filter((url) => !parseSnipBand(url));
+    const fresh = pageUrls.filter((url) => !shown.has(pageKey(url)));
     const last = groups[groups.length - 1];
     if (fresh.length === 0 && last) {
       last.questions.push({ question, index });
@@ -347,6 +354,7 @@ function groupByPage(questions: Question[]) {
   });
   return groups;
 }
+
 
 
 function QuestionCard({

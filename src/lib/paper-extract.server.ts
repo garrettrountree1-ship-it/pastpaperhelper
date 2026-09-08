@@ -482,11 +482,14 @@ function parseCropValue(raw: unknown, pages: number[]): QuestionCrop | null {
   if (pages.length > 0 && !pages.includes(page)) return null;
   if (!Number.isFinite(top) || !Number.isFinite(bottom)) return null;
   if (bottom <= top) return null;
-  // A little breathing room so nothing printed is clipped.
-  top = Math.max(0, top - 0.015);
-  bottom = Math.min(1, bottom + 0.015);
+  // A little breathing room at the top so nothing printed is clipped. The
+  // bottom is barely padded: whatever is printed below may be the answer or
+  // mark scheme for this very question.
+  top = Math.max(0, top - 0.012);
+  bottom = Math.min(1, bottom + 0.003);
   if (bottom - top < 0.04) return null;
   return { page, top, bottom };
+
 }
 
 /**

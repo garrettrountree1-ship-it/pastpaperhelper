@@ -416,7 +416,16 @@ export function FormativeCheckPanel({
   const check = raw ? { ...raw, isTeacher: raw.isTeacher && !asStudent } : null;
   const countdown = useCountdown(check?.endsAt);
   const [answer, setAnswer] = useState("");
+  const [partAnswers, setPartAnswers] = useState<Record<string, string>>({});
   const [dismissed, setDismissed] = useState<string | null>(null);
+  const parts = useMemo(() => (check ? questionParts(check.question) : []), [check?.question]);
+  const combined = parts.length
+    ? parts
+        .map((label) => `(${label}) ${(partAnswers[label] ?? "").trim()}`)
+        .filter((line) => line.replace(/^\([a-z0-9ivx]+\)\s*/i, "").length > 0)
+        .join("\n")
+    : answer;
+
 
   const results = useQuery({
     queryKey: ["formative-results", check?.id],

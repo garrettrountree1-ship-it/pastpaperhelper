@@ -17,10 +17,16 @@ export type EffectiveTutorSettings = {
   vocabTranslation: boolean;
   /** Language used for the vocab list (may differ from the tutor language). */
   vocabLanguage: string;
+  /** "Give me a hint" button available to the student. */
+  allowHint: boolean;
+  /** "Break it down step-by-step" button available to the student. */
+  allowSteps: boolean;
+  /** Maximum answer attempts per question; 0 means unlimited. */
+  maxAttempts: number;
 };
 
 export const CLASS_SETTINGS_FIELDS =
-  "tutor_language, tutor_level, protect_questions, keyword_translation, student_can_change_level, vocab_translation, vocab_language";
+  "tutor_language, tutor_level, protect_questions, keyword_translation, student_can_change_level, vocab_translation, vocab_language, allow_hint, allow_steps, max_answer_attempts";
 
 /** Class defaults with the per-student override applied. */
 export async function effectiveTutorSettings(

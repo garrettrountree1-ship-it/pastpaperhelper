@@ -847,10 +847,34 @@ function AssignmentDialog({
           <div className="space-y-4">
             {questions.map((question, index) => (
               <div key={question.id ?? `new-${index}`} className="rounded-xl border border-border p-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-display text-lg">
-                    Question {questionLabel(question.questionText, index)}
-                  </h3>
+                <div className="flex items-center justify-between gap-2">
+                  {(() => {
+                    const label = questionLabel(question.questionText, index);
+                    const main = questionMainNumber(question.questionText) ?? index + 1;
+                    const parts = label.startsWith(String(main))
+                      ? label.slice(String(main).length)
+                      : "";
+                    return (
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor={`qnum-${index}`} className="font-display text-lg">
+                          Question
+                        </Label>
+                        <Input
+                          id={`qnum-${index}`}
+                          type="number"
+                          min={1}
+                          value={main}
+                          onChange={(event) => {
+                            const next = Number(event.target.value);
+                            if (Number.isFinite(next) && next >= 1) renumberFrom(index, next);
+                          }}
+                          className="w-16"
+                        />
+                        {parts ? <span className="font-display text-lg">{parts}</span> : null}
+                      </div>
+                    );
+                  })()}
+
                   {questions.length > 1 ? (
                     <Button
                       variant="ghost"

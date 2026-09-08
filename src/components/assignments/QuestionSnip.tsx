@@ -104,9 +104,50 @@ export function QuestionSnip({
 }
 
 /**
+ * Joins overlapping pieces of the same page into one.
+ *
+ * The reading step sometimes reports two bands for the same page that cover
+ * much of the same print (e.g. 0.10-0.40 and 0.12-0.45). Shown one under the
+ * other, the student saw the same question twice. Pieces of one page are now
+ * merged into a single band, and a piece already contained in another is
+ * dropped.
+ */
+export function mergeSnipPieces(urls: string[]): string[] {
+  const out: string[] = [];
+  const bands: Array<{ page: string; top: number; bottom: number }> = [];
+
+  for (const url of urls) {
+    const band = parseSnipBand(url);
+    const page = url.slice(0, url.indexOf("#crop=") === -1 ? undefined : url.indexOf("#crop="));
+    if (!band) {
+      // A whole page: only once, and never alongside bands of that same page.
+      if (!out.includes(url)) out.push(url);
+      continue;
+    }
+    const existing = bands.find(
+      (piece) =>
+        piece.page === page &&
+        band.top < piece.bottom + 0.02 &&
+        band.bottom > piece.top - 0.02,
+    );
+    if (existing) {
+      existing.top = Math.min(existing.top, band.top);
+      existing.bottom = Math.max(existing.bottom, band.bottom);
+      continue;
+    }
+    bands.push({ page, top: band.top, bottom: band.bottom });
+  }
+
+  for (const piece of bands) {
+    out.push(`${piece.page}#crop=${piece.top.toFixed(4)},${piece.bottom.toFixed(4)}`);
+  }
+  return out;
+}
+
+/**
  * Every piece of one question joined into a single picture — so a question that
  * carries on over a page break reads as one thing, with the answer-key pages
- * left out.
+ * left out and no piece repeated.
  */
 export function QuestionSnipStack({
   urls,
@@ -117,7 +158,7 @@ export function QuestionSnipStack({
   alt?: string;
   className?: string;
 }) {
-  const pieces = questionPagesOnly(urls);
+  const pieces = mergeSnipPieces(questionPagesOnly(urls));
   if (pieces.length === 0) return null;
   return (
     <div className={`overflow-hidden rounded-lg border border-border bg-card ${className}`}>
@@ -127,3 +168,4 @@ export function QuestionSnipStack({
     </div>
   );
 }
+

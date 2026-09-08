@@ -242,6 +242,9 @@ function AssignmentPage() {
                       queryKey={queryKey}
                       keywordTranslation={Boolean(settings?.keywordTranslation)}
                       protectQuestions={Boolean(settings?.protectQuestions)}
+                      allowHint={settings?.allowHint !== false}
+                      allowSteps={settings?.allowSteps !== false}
+                      maxAttempts={settings?.maxAttempts ?? 0}
                     />
                   ))}
                 </div>
@@ -339,6 +342,9 @@ function QuestionCard({
   locked,
   keywordTranslation,
   protectQuestions,
+  allowHint,
+  allowSteps,
+  maxAttempts,
 }: {
   assignmentId: string;
   classId: string;
@@ -352,6 +358,9 @@ function QuestionCard({
   locked: boolean;
   keywordTranslation: boolean;
   protectQuestions: boolean;
+  allowHint: boolean;
+  allowSteps: boolean;
+  maxAttempts: number;
 }) {
   const queryClient = useQueryClient();
   const grade = useServerFn(gradeAnswer);
@@ -465,6 +474,9 @@ function QuestionCard({
       onSend={() => tutorMutation.mutate()}
       locked={locked}
       keywordTranslation={keywordTranslation}
+      allowHint={allowHint}
+      allowSteps={allowSteps}
+      maxAttempts={maxAttempts}
       assignmentId={assignmentId}
       protectQuestions={protectQuestions}
       markScheme={question.markScheme ?? null}

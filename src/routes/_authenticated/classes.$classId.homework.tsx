@@ -43,6 +43,7 @@ import { StudentClassHomework } from "@/components/homework/HomeworkSection";
 import { TeacherMessagesPanel } from "@/components/messaging/TeacherMessagesPanel";
 import { AccessControlsDialog } from "@/components/assignments/AccessControlsDialog";
 import { TutorSettingsDialog } from "@/components/assignments/TutorSettingsDialog";
+import { ScaffoldingOptionsDialog } from "@/components/homework/ScaffoldingOptionsDialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -237,6 +238,7 @@ function ClassPageContent({ classId }: { classId: string }) {
         <TabsList className="h-auto flex-wrap gap-1.5 p-1.5">
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
           <TabsTrigger value="gradebook">Gradebook</TabsTrigger>
+          <ScaffoldingOptionsDialog classId={classId} />
           <TabsTrigger value="messages">Student Messages</TabsTrigger>
 
         </TabsList>

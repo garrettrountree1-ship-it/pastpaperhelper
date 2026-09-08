@@ -215,10 +215,14 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
     <div className="space-y-4">
       <FormativeCheckPanel classId={classId} asStudent={!canManage} />
       {canManage ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <FormativeRecordBook classId={classId} />
-        </div>
+        <>
+          <MyDrivePanel />
+          <div className="flex flex-wrap items-center gap-2">
+            <FormativeRecordBook classId={classId} />
+          </div>
+        </>
       ) : null}
+
       {canManage ? (
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>

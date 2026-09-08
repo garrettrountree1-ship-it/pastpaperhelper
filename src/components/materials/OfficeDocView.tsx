@@ -431,9 +431,13 @@ export function OfficeDocView({
           <span className="ml-2 text-xs text-muted-foreground">
             Slide {currentSlide + 1} of {progress?.total ?? deck.slides.length}
             {progress && progress.done < progress.total ? " · still preparing…" : ""}
-            {preparingPages ? " · getting the exact slides…" : ""}
+            {preparingPages ? " · getting the exact slides (this can take a minute)…" : ""}
           </span>
         ) : null}
+        {deck && pagesError ? (
+          <span className="ml-2 text-xs text-destructive">{pagesError}</span>
+        ) : null}
+
         {deck ? (
           <div className="ml-2 flex items-center gap-1">
             {(

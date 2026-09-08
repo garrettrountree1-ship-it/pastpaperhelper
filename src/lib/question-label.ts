@@ -46,6 +46,26 @@ export function questionLabel(questionText: string, fallbackIndex: number): stri
   return parsed ? parsed.label : String(fallbackIndex + 1);
 }
 
+/** The printed main question number (the "1" in 1(b)(ii)), or null when absent. */
+export function questionMainNumber(questionText: string): number | null {
+  const head = HEAD.exec(questionText ?? "");
+  const digits = head?.[1];
+  return digits ? Number(digits) : null;
+}
+
+/** Rewrites the printed main number, keeping any part labels and wording intact. */
+export function setQuestionMainNumber(questionText: string, next: number): string {
+  const text = questionText ?? "";
+  const safe = Math.max(1, Math.round(next));
+  const head = HEAD.exec(text);
+  if (head?.[1]) {
+    const digits = head[1];
+    return text.slice(0, head[0].length).replace(digits, String(safe)) + text.slice(head[0].length);
+  }
+  return `${safe} ${text.trimStart()}`;
+}
+
+
 /** Strips the leading label (even when the paper repeats it) so it isn't shown twice. */
 export function questionBody(questionText: string): string {
   let text = cleanMathText((questionText ?? "").trim());

@@ -1761,6 +1761,25 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       .eq("id", data.assignmentId)
       .single();
     const assignment = assignmentRow!;
+
+    // Scaffolding: teachers can cap how many tries a question allows.
+    const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
+    const scaffolding = await tutorSettingsForAssignment(db, data.assignmentId, userId);
+    if (scaffolding.maxAttempts > 0) {
+      const { data: prior } = await db
+        .from("answers")
+        .select("attempts, submissions!inner(student_id)")
+        .eq("question_id", data.questionId)
+        .eq("submissions.student_id", userId)
+        .maybeSingle();
+      const used = Number((prior as { attempts?: number } | null)?.attempts ?? 0);
+      if (used >= scaffolding.maxAttempts) {
+        throw new Error(
+          `You have used all ${scaffolding.maxAttempts} tries your teacher allowed for this question.`,
+        );
+      }
+    }
+
     const { data: classRow } = await db
       .from("classes")
       .select("ai_warning_limit")

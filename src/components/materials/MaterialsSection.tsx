@@ -27,6 +27,8 @@ import {
   FormativeRecordBook,
 } from "@/components/materials/FormativeCheck";
 import { LessonWorkspace } from "@/components/materials/LessonWorkspace";
+import { MyDrivePanel } from "@/components/materials/MyDrivePanel";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {

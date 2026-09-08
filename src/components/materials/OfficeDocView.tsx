@@ -37,6 +37,8 @@ import {
   saveSharedRender,
 } from "@/lib/office-prerender";
 import { type PptxDeck, type PptxShape } from "@/lib/pptx-render";
+import { pdfToSlideImages } from "@/lib/slide-images";
+import { getSlidePdfUrl, prepareSlidePdf } from "@/lib/slide-pdf.functions";
 
 /** A teacher's change to one slide element: retyped text, or a moved/resized box. */
 export type ShapeEdit = { text?: string; x?: number; y?: number; w?: number; h?: number };

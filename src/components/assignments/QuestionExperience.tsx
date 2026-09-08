@@ -90,10 +90,12 @@ export function QuestionExperience({
   
   assignmentId,
   sentBack = null,
+  snipUrl = null,
 
 
 }: {
   question: { id: string; question_text: string; marks: number };
+
   index: number;
   draft: string;
   onDraftChange: (value: string) => void;

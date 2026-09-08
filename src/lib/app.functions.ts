@@ -1936,9 +1936,15 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
 
     const withPages = await Promise.all(
       questions.map(async (q) => {
-        const paths = q.pages
-          .map((page) => pagePaths[page])
-          .filter((path): path is string => Boolean(path));
+        // When the AI could locate the question on its page, keep only that
+        // page and remember the band to snip, so the student sees the printed
+        // question itself (tables, options, diagrams) and nothing else.
+        const crop = q.crop && pagePaths[q.crop.page] ? q.crop : null;
+        const paths = crop
+          ? [`${pagePaths[crop.page]}#crop=${crop.top.toFixed(4)},${crop.bottom.toFixed(4)}`]
+          : q.pages
+              .map((page) => pagePaths[page])
+              .filter((path): path is string => Boolean(path));
         return {
           questionText: q.questionText,
           markScheme: q.markScheme,
@@ -1948,6 +1954,7 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
         };
       }),
     );
+
 
     return { questions: withPages };
   });

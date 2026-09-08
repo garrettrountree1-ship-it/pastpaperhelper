@@ -14,6 +14,44 @@ function isSystemMessage(m: { sender_role: string; topic: string | null }) {
   return m.sender_role === "teacher" && /^redo question/i.test((m.topic ?? "").trim());
 }
 
+/** Fired when a panel marks messages as read, so any badge elsewhere clears. */
+const SEEN_EVENT = "class-messages-seen";
+
+function seenStorageKey(classId: string, role: "teacher" | "student") {
+  return `class-messages-seen:${classId}:${role}`;
+}
+
+/** Count of unread human messages for one class — used for the tab flag. */
+export function useUnreadClassMessages(classId: string, role: "teacher" | "student" = "teacher") {
+  const fetchMessages = useServerFn(listClassMessages);
+  const messages = useQuery({
+    queryKey: ["class-messages", classId],
+    queryFn: () => fetchMessages({ data: { classId } }),
+    refetchInterval: 60_000,
+  });
+  const [seenAt, setSeenAt] = useState(0);
+  const seenKey = seenStorageKey(classId, role);
+
+  useEffect(() => {
+    const read = () => setSeenAt(Number(window.localStorage.getItem(seenKey) ?? 0) || 0);
+    read();
+    window.addEventListener(SEEN_EVENT, read);
+    window.addEventListener("storage", read);
+    return () => {
+      window.removeEventListener(SEEN_EVENT, read);
+      window.removeEventListener("storage", read);
+    };
+  }, [seenKey]);
+
+  return (messages.data ?? []).filter(
+    (m) =>
+      (role === "teacher"
+        ? m.sender_role === "student"
+        : !isSystemMessage(m) && m.sender_role === "teacher") &&
+      new Date(m.created_at).getTime() > seenAt,
+  ).length;
+}
+
 /** Private teacher ↔ student threads for one class, grouped by student. */
 export function TeacherMessagesPanel({
   classId,
@@ -34,7 +72,7 @@ export function TeacherMessagesPanel({
   const [open, setOpen] = useState(false);
   const [openThreads, setOpenThreads] = useState<Record<string, boolean>>({});
   const [seenAt, setSeenAt] = useState(0);
-  const seenKey = `class-messages-seen:${classId}:${role}`;
+  const seenKey = seenStorageKey(classId, role);
 
   useEffect(() => {
     const stored = Number(window.localStorage.getItem(seenKey) ?? 0);
@@ -66,6 +104,7 @@ export function TeacherMessagesPanel({
     );
     if (latest > 0) window.localStorage.setItem(seenKey, String(latest));
     setSeenAt(latest);
+    window.dispatchEvent(new Event(SEEN_EVENT));
   }
 
   function toggle() {

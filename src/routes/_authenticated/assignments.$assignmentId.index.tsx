@@ -17,8 +17,7 @@ import { StudentTutorControls } from "@/components/assignments/StudentTutorContr
 import { useActiveTime } from "@/hooks/use-active-time";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
-import { QuestionSnip, parseSnipBand } from "@/components/assignments/QuestionSnip";
-import { looksLikeAnswerKey } from "@/lib/answer-key";
+import { parseSnipBand } from "@/components/assignments/QuestionSnip";
 import {
   HELP_PILL,
   HELP_PILL_DOT,
@@ -228,22 +227,6 @@ function AssignmentPage() {
               ) : null}
               {groupByPage(data.questions).map((group) => (
                 <div key={group.key} className="space-y-4">
-                  {group.imageUrls.length > 0 ? (
-                    <div className="paper space-y-2 p-4">
-                      {group.imageUrls.map((url) => (
-                        <QuestionSnip
-                          key={url}
-                          url={url}
-                          alt="Past-paper page for the questions below"
-                        />
-                      ))}
-
-                      <p className="text-xs text-muted-foreground">
-                        Original past-paper page. The questions below are from this page.
-                      </p>
-
-                    </div>
-                  ) : null}
                   {group.questions.map(({ question, index }) => (
                     <QuestionCard
                       key={question.id}
@@ -336,8 +319,9 @@ function groupByPage(questions: Question[]) {
   const shown = new Set<string>();
   questions.forEach((question, index) => {
     // Snipped questions carry their own picture inside the question card.
-    const pageUrls = (question.imageUrls ?? []).filter((url) => !parseSnipBand(url) && !looksLikeAnswerKey(url));
-    const fresh = pageUrls.filter((url) => !shown.has(pageKey(url)));
+    // Whole pages are never displayed: they may contain another sub-part or
+    // an answer block. Only audited #crop images render inside each question.
+    const fresh: string[] = [];
     const last = groups[groups.length - 1];
     if (fresh.length === 0 && last) {
       last.questions.push({ question, index });

@@ -13,8 +13,7 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { VocabSheet } from "@/components/assignments/VocabSheet";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
-import { QuestionSnip, parseSnipBand } from "@/components/assignments/QuestionSnip";
-import { looksLikeAnswerKey } from "@/lib/answer-key";
+import { parseSnipBand } from "@/components/assignments/QuestionSnip";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -89,8 +88,9 @@ function groupByPage(questions: Question[]) {
   const groups: Array<{ key: string; imageUrls: string[]; questions: Question[] }> = [];
   const shown = new Set<string>();
   questions.forEach((question, index) => {
-    const pageUrls = (question.imageUrls ?? []).filter((url) => !parseSnipBand(url) && !looksLikeAnswerKey(url));
-    const fresh = pageUrls.filter((url) => !shown.has(pageKey(url)));
+    // Never preview a whole page. Only the audited crop belonging to the exact
+    // question part may appear inside its question card.
+    const fresh: string[] = [];
     const last = groups[groups.length - 1];
     if (fresh.length === 0 && last) {
       last.questions.push(question);
@@ -199,22 +199,6 @@ function PreviewPage() {
               ) : null}
               {groupByPage(data.questions).map((group) => (
                 <div key={group.key} className="space-y-4">
-                  {group.imageUrls.length > 0 ? (
-                    <div className="paper space-y-2 p-4">
-                      {group.imageUrls.map((url) => (
-                        <QuestionSnip
-                          key={url}
-                          url={url}
-                          alt="Past-paper page for the questions below"
-                        />
-                      ))}
-                      <p className="text-xs text-muted-foreground">
-                        Original past-paper page. The questions below are from this page.
-                      </p>
-
-                    </div>
-                  ) : null}
-
                   {group.questions.map((question) => (
                     <PreviewQuestion
                       key={question.id}

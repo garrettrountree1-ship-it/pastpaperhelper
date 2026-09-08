@@ -11,14 +11,14 @@ import { useState } from "react";
 export function parseSnipBand(url: string): { top: number; bottom: number } | null {
   const at = url.indexOf("#crop=");
   if (at === -1) return null;
-  const [top, bottom] = url
-    .slice(at + 6)
-    .split(",")
-    .map((n) => Number(n));
-  if (!Number.isFinite(top) || !Number.isFinite(bottom) || bottom == null) return null;
+  const parts = url.slice(at + 6).split(",");
+  const top = Number(parts[0]);
+  const bottom = Number(parts[1]);
+  if (!Number.isFinite(top) || !Number.isFinite(bottom)) return null;
   if (bottom <= top) return null;
   return { top: Math.max(0, top), bottom: Math.min(1, bottom) };
 }
+
 
 export function QuestionSnip({
   url,

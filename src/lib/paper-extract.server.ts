@@ -490,6 +490,25 @@ function parseCropValue(raw: unknown, pages: number[]): QuestionCrop | null {
 }
 
 /**
+ * Reads one or more snip bands. A question that runs over a page break gives
+ * two bands (foot of one page, head of the next); they are kept in reading
+ * order so the student sees the whole question joined together.
+ */
+function parseCropList(raw: unknown, pages: number[]): QuestionCrop[] | null {
+  const list = Array.isArray(raw) ? raw : [raw];
+  const out: QuestionCrop[] = [];
+  for (const entry of list) {
+    const band = parseCropValue(entry, pages);
+    if (!band) continue;
+    if (out.some((b) => b.page === band.page && b.top === band.top)) continue;
+    out.push(band);
+    if (out.length === 3) break;
+  }
+  out.sort((a, b) => (a.page === b.page ? a.top - b.top : a.page - b.page));
+  return out.length > 0 ? out : null;
+}
+
+/**
  * Removes anything a student could search on (year, exam board, session and
  * paper codes, copyright and website lines) from extracted question text.
  */

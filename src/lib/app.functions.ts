@@ -1540,6 +1540,7 @@ export const listStudentWork = createServerFn({ method: "GET" })
         .select("id, class_id, title, subject, due_at, created_at")
         .in("class_id", classIds)
         .eq("published", true)
+        .is("archived_at", null)
         .order("created_at", { ascending: false }),
     ]);
 

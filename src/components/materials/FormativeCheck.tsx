@@ -489,14 +489,23 @@ export function FormativeCheckPanel({
   const student = !check.isTeacher;
 
   return (
-    <div className="pointer-events-auto fixed inset-0 z-[70] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm">
+    // Students get a blocking screen; the teacher's card floats in the middle so
+    // they can keep teaching — drawing, highlighting and scrolling — behind it.
+    <div
+      className={
+        student
+          ? "pointer-events-auto fixed inset-0 z-[70] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
+          : "pointer-events-none fixed inset-0 z-[70] flex items-center justify-center p-4"
+      }
+    >
       <div
         className={
           student
             ? "max-h-[92vh] w-[min(96vw,52rem)] overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-2xl"
-            : "max-h-[92vh] w-[min(96vw,40rem)] overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-2xl"
+            : "pointer-events-auto max-h-[80vh] w-[min(96vw,34rem)] overflow-y-auto rounded-2xl border border-border bg-background p-5 shadow-2xl"
         }
       >
+
         <div className="flex items-start gap-3">
           <Badge
             variant={timeUp ? "outline" : "secondary"}

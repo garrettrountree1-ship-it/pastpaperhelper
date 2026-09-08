@@ -17,10 +17,12 @@ import { readableTextColor } from "@/lib/color-contrast";
 
 import {
   emptyAnnotation,
+  HighlightLayer,
   SlideAnnotations,
   type SlideAnnotation,
   type SlideTool,
 } from "@/components/materials/SlideAnnotations";
+
 import {
   DocMarkupSurface,
   DocMarkupToolbar,
@@ -714,8 +716,13 @@ function SlidePage({
             highlightColor={highlightColor}
             value={annotation}
             onChange={onAnnotationChange}
+            hideHighlights
           />
         </div>
+        {/* Highlighter marks belong beside the slide picture so the colour
+            blends with the words instead of washing out. */}
+        <HighlightLayer width={deck.width} height={deck.height} strokes={annotation.strokes} />
+
       </div>
     </div>
   );

@@ -33,6 +33,49 @@ export type SlideTool = "none" | "edit" | "draw" | "highlight" | "erase" | "text
 /** Highlighter stroke thickness in document coordinates. */
 export const HIGHLIGHT_WIDTH = 22;
 
+const strokePath = (stroke: SlideStroke) =>
+  stroke.points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+
+/**
+ * Highlighter marks, painted so they behave like a real highlighter: the colour
+ * multiplies with whatever is underneath, so the words stay readable and the
+ * colour stays strong. This layer must sit in the same stacking context as the
+ * page/slide it marks (a sibling of the picture), otherwise the blend has
+ * nothing to mix with and the colour comes out almost invisible.
+ */
+export function HighlightLayer({
+  width,
+  height,
+  strokes,
+}: {
+  width: number;
+  height: number;
+  strokes: SlideStroke[];
+}) {
+  const marks = strokes.filter((stroke) => stroke.highlight);
+  if (marks.length === 0) return null;
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
+      className="pointer-events-none absolute left-0 top-0 h-full w-full"
+      style={{ mixBlendMode: "multiply" }}
+    >
+      {marks.map((stroke, i) => (
+        <path
+          key={i}
+          d={strokePath(stroke)}
+          fill="none"
+          stroke={stroke.color}
+          strokeWidth={stroke.width}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ))}
+    </svg>
+  );
+}
+
 /**
  * Transparent drawing / text-box layer that sits on top of a rendered slide.
  * Coordinates are stored in slide space (the deck's own pixel size), so the
@@ -46,6 +89,7 @@ export function SlideAnnotations({
   highlightColor,
   value,
   onChange,
+  hideHighlights = false,
 }: {
   width: number;
   height: number;
@@ -54,7 +98,10 @@ export function SlideAnnotations({
   highlightColor?: string | undefined;
   value: SlideAnnotation;
   onChange: (next: SlideAnnotation) => void;
+  /** Set when the caller paints highlighter marks with its own blended layer. */
+  hideHighlights?: boolean;
 }) {
+
   const hostRef = useRef<HTMLDivElement | null>(null);
   const drawing = useRef(false);
   const [live, setLive] = useState<SlideStroke | null>(null);
@@ -121,8 +168,13 @@ export function SlideAnnotations({
     setLive(null);
   }
 
-  const path = (stroke: SlideStroke) =>
-    stroke.points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  const path = strokePath;
+  // Saved highlighter marks are painted by the caller's blended layer when it
+  // has one; the mark being drawn right now is always shown here so the teacher
+  // sees the stroke follow the pointer.
+  const highlightStrokes = [...(hideHighlights ? [] : value.strokes), ...(live ? [live] : [])].filter(
+    (stroke) => stroke.highlight,
+  );
 
   return (
     <div
@@ -153,21 +205,20 @@ export function SlideAnnotations({
       >
         {/* Highlighter first, blended so the text underneath stays readable. */}
         <g style={{ mixBlendMode: "multiply" }}>
-          {[...value.strokes, ...(live ? [live] : [])]
-            .filter((stroke) => stroke.highlight)
-            .map((stroke, i) => (
-              <path
-                key={`h${i}`}
-                d={path(stroke)}
-                fill="none"
-                stroke={stroke.color}
-                strokeWidth={stroke.width}
-                strokeOpacity={0.4}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            ))}
+          {highlightStrokes.map((stroke, i) => (
+            <path
+              key={`h${i}`}
+              d={path(stroke)}
+              fill="none"
+              stroke={stroke.color}
+              strokeWidth={stroke.width}
+              strokeOpacity={0.75}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ))}
         </g>
+
         {[...value.strokes, ...(live ? [live] : [])]
           .filter((stroke) => !stroke.highlight)
           .map((stroke, i) => (

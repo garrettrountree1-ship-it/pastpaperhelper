@@ -361,15 +361,20 @@ export function OfficeDocView({
 
       try {
         let { url: pdfUrl } = await getSlidePdfUrl({ data: { materialId } });
+        console.log("[slides] existing pdf?", pdfUrl ? "yes" : "no", "canPrepare", canPrepareShared);
         if (!pdfUrl && canPrepareShared) {
           if (!cancelled) setPreparingPages(true);
+          console.log("[slides] converting…");
           pdfUrl = (await prepareSlidePdf({ data: { materialId } })).url;
+          console.log("[slides] converted", pdfUrl ? "ok" : "empty");
         }
         if (cancelled || !pdfUrl) {
           console.error("Exact slide pages unavailable: no converted file yet.");
           return;
         }
         const pages = await pdfToSlideImages(pdfUrl);
+        console.log("[slides] rendered pages", pages.length);
+
         if (cancelled || !pages.length) {
           console.error("Exact slide pages unavailable: conversion produced no pages.");
           return;

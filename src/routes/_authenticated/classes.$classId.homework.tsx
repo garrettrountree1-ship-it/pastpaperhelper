@@ -98,6 +98,7 @@ import { filesToPages } from "@/lib/pdf-pages";
 import { PhotoModeControl } from "@/components/assignments/PhotoModeControl";
 import type { PhotoMode } from "@/lib/photo-mode";
 import { questionBody, questionLabel } from "@/lib/question-label";
+import { QuestionSnip } from "@/components/assignments/QuestionSnip";
 
 export const Route = createFileRoute("/_authenticated/classes/$classId/homework")({
   head: () => ({
@@ -688,7 +689,12 @@ function AssignmentDialog({
   const valid =
     title.trim().length > 0 &&
     questions.length > 0 &&
-    questions.every((q) => q.questionText.trim() && q.markScheme.trim() && q.marks > 0);
+    questions.every(
+      (q) =>
+        (q.questionText.trim() || q.imagePaths.length > 0) &&
+        q.markScheme.trim() &&
+        q.marks > 0,
+    );
 
   function update_(index: number, patch: Partial<QuestionDraft>) {
     setQuestions((prev) => prev.map((q, i) => (i === index ? { ...q, ...patch } : q)));
@@ -765,11 +771,10 @@ function AssignmentDialog({
             <h3 className="font-display text-lg">Upload past paper &amp; mark scheme</h3>
             <p className="mt-1 text-sm text-muted-foreground">
               PDF, Word (.docx) or photos. Combined in one file, or paper and mark scheme
-              separately. The questions below are taken straight from the file you upload — every
-              part (1a, 1b(i), 1b(ii)…) is transcribed and matched to its marking points, and you
-              can edit anything before saving. Nothing is invented — every figure, diagram, graph
-              and equation stays as the original page image attached to the question, so students
-              see exactly what was printed rather than a description.
+              separately. Each question part (1a, 1b(i), 1b(ii)…) is cut out of the page as a
+              picture, so students answer the question exactly as printed — every table, option,
+              graph, diagram and symbol included. Nothing is retyped or invented; the mark scheme
+              is matched to each part and stays hidden from students.
             </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
@@ -835,19 +840,15 @@ function AssignmentDialog({
                   {question.imageUrls.length > 0 ? (
                     <div className="space-y-2">
                       <p className="text-xs text-muted-foreground">
-                        Original paper page shown to students (figures, diagrams and equations
-                        exactly as printed)
+                        This is what your students will see — the question exactly as printed.
                       </p>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="space-y-2">
                         {question.imageUrls.map((url, imageIndex) => (
-                          <div key={url} className="relative">
-                            <a href={url} target="_blank" rel="noreferrer">
-                              <img
-                                src={url}
-                                alt={`Original paper page for question ${index + 1}`}
-                                className="h-40 rounded-lg border border-border bg-card object-contain"
-                              />
-                            </a>
+                          <div key={url} className="relative max-w-lg">
+                            <QuestionSnip
+                              url={url}
+                              alt={`Question ${index + 1} as printed on the paper`}
+                            />
                             <Button
                               variant="ghost"
                               size="sm"
@@ -866,20 +867,35 @@ function AssignmentDialog({
                           </div>
                         ))}
                       </div>
+                      <details>
+                        <summary className="cursor-pointer text-xs text-muted-foreground">
+                          Wording kept only for word help and marking (students see the picture)
+                        </summary>
+                        <Textarea
+                          className="mt-2"
+                          value={question.questionText}
+                          onChange={(event) =>
+                            update_(index, { questionText: event.target.value })
+                          }
+                          rows={3}
+                        />
+                      </details>
                     </div>
-                  ) : null}
-                  <Textarea
-                    value={question.questionText}
-                    onChange={(event) => update_(index, { questionText: event.target.value })}
-                    placeholder="Paste the past-paper question here"
-                    rows={3}
-                  />
+                  ) : (
+                    <Textarea
+                      value={question.questionText}
+                      onChange={(event) => update_(index, { questionText: event.target.value })}
+                      placeholder="Paste the past-paper question here"
+                      rows={3}
+                    />
+                  )}
                   <Textarea
                     value={question.markScheme}
                     onChange={(event) => update_(index, { markScheme: event.target.value })}
                     placeholder="Paste the mark scheme answer here (students never see this)"
                     rows={3}
                   />
+
                   <div className="flex items-center gap-2">
                     <Label htmlFor={`marks-${index}`}>Marks</Label>
                     <Input

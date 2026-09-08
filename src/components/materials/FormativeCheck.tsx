@@ -600,8 +600,15 @@ export function FormativeCheckPanel({
               </div>
             ) : null}
 
-            {!correct ? (
+            {timeUp && !correct ? (
+              <p className="rounded-lg border border-border bg-secondary/40 p-3 text-base">
+                Time is up — wait for your teacher.
+              </p>
+            ) : null}
+
+            {!correct && !timeUp ? (
               <>
+
                 {parts.length ? (
                   <div className="space-y-3">
                     {parts.map((label) => (

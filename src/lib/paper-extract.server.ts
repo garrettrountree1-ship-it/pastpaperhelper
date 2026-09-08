@@ -500,13 +500,23 @@ function parseCropList(raw: unknown, pages: number[]): QuestionCrop[] | null {
   for (const entry of list) {
     const band = parseCropValue(entry, pages);
     if (!band) continue;
-    if (out.some((b) => b.page === band.page && b.top === band.top)) continue;
+    // Bands of the same page that cover the same print are one band, otherwise
+    // the student is shown the same question twice.
+    const same = out.find(
+      (b) => b.page === band.page && band.top < b.bottom + 0.02 && band.bottom > b.top - 0.02,
+    );
+    if (same) {
+      same.top = Math.min(same.top, band.top);
+      same.bottom = Math.max(same.bottom, band.bottom);
+      continue;
+    }
     out.push(band);
     if (out.length === 3) break;
   }
   out.sort((a, b) => (a.page === b.page ? a.top - b.top : a.page - b.page));
   return out.length > 0 ? out : null;
 }
+
 
 /**
  * Removes anything a student could search on (year, exam board, session and

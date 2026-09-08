@@ -98,6 +98,7 @@ import { filesToPages } from "@/lib/pdf-pages";
 import { PhotoModeControl } from "@/components/assignments/PhotoModeControl";
 import type { PhotoMode } from "@/lib/photo-mode";
 import { questionBody, questionLabel } from "@/lib/question-label";
+import { QuestionSnip } from "@/components/assignments/QuestionSnip";
 
 export const Route = createFileRoute("/_authenticated/classes/$classId/homework")({
   head: () => ({

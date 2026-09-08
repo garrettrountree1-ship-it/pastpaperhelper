@@ -31,6 +31,7 @@ export function QuestionSnip({
 }) {
   const band = parseSnipBand(url);
   const [ratio, setRatio] = useState<number | null>(null);
+  const [wholePage, setWholePage] = useState(false);
 
   const guard = {
     draggable: false,
@@ -38,15 +39,26 @@ export function QuestionSnip({
     onDragStart: (event: React.DragEvent) => event.preventDefault(),
   } as const;
 
-  if (!band) {
+  if (!band || wholePage) {
     return (
-      <img
-        src={url}
-        alt={alt}
-        loading="lazy"
-        {...guard}
-        className={`pointer-events-none w-full select-none rounded-lg border border-border bg-card object-contain ${className}`}
-      />
+      <div className={className}>
+        <img
+          src={url}
+          alt={alt}
+          loading="lazy"
+          {...guard}
+          className="pointer-events-none w-full select-none rounded-lg border border-border bg-card object-contain"
+        />
+        {band ? (
+          <button
+            type="button"
+            className="mt-1 text-xs text-primary hover:underline"
+            onClick={() => setWholePage(false)}
+          >
+            Show just this question
+          </button>
+        ) : null}
+      </div>
     );
   }
 
@@ -55,24 +67,34 @@ export function QuestionSnip({
   const pageRatio = ratio ?? 1 / 1.414;
 
   return (
-    <div
-      className={`relative w-full overflow-hidden rounded-lg border border-border bg-card ${className}`}
-      style={{ aspectRatio: `${pageRatio / height}` }}
-    >
-      <img
-        src={url}
-        alt={alt}
-        loading="lazy"
-        {...guard}
-        onLoad={(event) => {
-          const image = event.currentTarget;
-          if (image.naturalWidth && image.naturalHeight) {
-            setRatio(image.naturalWidth / image.naturalHeight);
-          }
-        }}
-        className="pointer-events-none absolute left-0 top-0 w-full max-w-none select-none"
-        style={{ transform: `translateY(${-band.top * 100}%)` }}
-      />
+    <div className={className}>
+      <div
+        className="relative w-full overflow-hidden rounded-lg border border-border bg-card"
+        style={{ aspectRatio: `${pageRatio / height}` }}
+      >
+        <img
+          src={url}
+          alt={alt}
+          loading="lazy"
+          {...guard}
+          onLoad={(event) => {
+            const image = event.currentTarget;
+            if (image.naturalWidth && image.naturalHeight) {
+              setRatio(image.naturalWidth / image.naturalHeight);
+            }
+          }}
+          className="pointer-events-none absolute left-0 top-0 w-full max-w-none select-none"
+          style={{ transform: `translateY(${-band.top * 100}%)` }}
+        />
+      </div>
+      <button
+        type="button"
+        className="mt-1 text-xs text-primary hover:underline"
+        onClick={() => setWholePage(true)}
+      >
+        Show the whole page
+      </button>
     </div>
   );
 }
+

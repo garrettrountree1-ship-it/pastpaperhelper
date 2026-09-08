@@ -44,6 +44,7 @@ import { TeacherMessagesPanel } from "@/components/messaging/TeacherMessagesPane
 import { AccessControlsDialog } from "@/components/assignments/AccessControlsDialog";
 import { TutorSettingsDialog } from "@/components/assignments/TutorSettingsDialog";
 import { ScaffoldingOptionsDialog } from "@/components/homework/ScaffoldingOptionsDialog";
+import { useUnreadClassMessages } from "@/components/messaging/TeacherMessagesPanel";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -239,7 +240,7 @@ function ClassPageContent({ classId }: { classId: string }) {
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
           <TabsTrigger value="gradebook">Gradebook</TabsTrigger>
           <ScaffoldingOptionsDialog classId={classId} />
-          <TabsTrigger value="messages">Student Messages</TabsTrigger>
+          <StudentMessagesTab classId={classId} />
 
         </TabsList>
 
@@ -2119,4 +2120,19 @@ function downloadGradebook(
     student.average === null ? "" : `${Math.round(student.average)}%`,
   ]);
   downloadXlsx(`${className} gradebook`, "Gradebook", [header, ...rows]);
+}
+
+/** Student Messages tab with a flag when a student has written something new. */
+function StudentMessagesTab({ classId }: { classId: string }) {
+  const unread = useUnreadClassMessages(classId, "teacher");
+  return (
+    <TabsTrigger value="messages" className="gap-2">
+      Student Messages
+      {unread > 0 ? (
+        <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
+          {unread} new
+        </span>
+      ) : null}
+    </TabsTrigger>
+  );
 }

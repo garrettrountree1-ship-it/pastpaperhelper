@@ -298,12 +298,20 @@ export const getQuestionGlossary = createServerFn({ method: "POST" })
     const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
     const settings = await tutorSettingsForAssignment(db, question!.assignment_id, userId);
 
-    const cached = question!.keyword_glossary;
-    if (Array.isArray(cached) && cached.length > 0) {
-      return {
-        terms: cached as Array<{ term: string; translation: string }>,
-        language: settings.vocabLanguage,
-      };
+    // Cached translations are stored with the language they were made in, so a
+    // language change regenerates them instead of serving the old wording.
+    const cached = question!.keyword_glossary as
+      | Array<{ term: string; translation: string }>
+      | { language?: string; terms?: Array<{ term: string; translation: string }> }
+      | null;
+    if (
+      cached &&
+      !Array.isArray(cached) &&
+      Array.isArray(cached.terms) &&
+      cached.terms.length > 0 &&
+      cached.language === settings.vocabLanguage
+    ) {
+      return { terms: cached.terms, language: settings.vocabLanguage };
     }
 
     const { data: assignment } = await db
@@ -319,9 +327,13 @@ export const getQuestionGlossary = createServerFn({ method: "POST" })
       settings.vocabLanguage,
     );
     if (terms.length > 0) {
-      await db.from("questions").update({ keyword_glossary: terms }).eq("id", question!.id);
+      await db
+        .from("questions")
+        .update({ keyword_glossary: { language: settings.vocabLanguage, terms } })
+        .eq("id", question!.id);
     }
     return { terms, language: settings.vocabLanguage };
+
   });
 
 /** Gloss for the key words the AI tutor used in one of its replies. */

@@ -964,6 +964,7 @@ function TextShape({
   return (
     <div
       ref={boxRef}
+      className={hidden ? "slide-ghost-text" : undefined}
       style={{
         position: "absolute",
         left: x,

@@ -65,14 +65,14 @@ export const prepareSlidePdf = createServerFn({ method: "POST" })
 
     const { pptxToPdf } = await import("@/lib/slide-pdf.server");
     const pdf = await pptxToPdf(
-      new Uint8Array(await file.arrayBuffer()),
+      await file.arrayBuffer(),
       material.file_name ?? "presentation.pptx",
     );
 
     const path = slidesPdfPath(material.storage_path);
     const { error: uploadError } = await supabase.storage
       .from("class-materials")
-      .upload(path, pdf, { contentType: "application/pdf", upsert: true });
+      .upload(path, new Blob([pdf], { type: "application/pdf" }), { contentType: "application/pdf", upsert: true });
     if (uploadError) throw new Error(uploadError.message);
 
     const { data: signed } = await supabase.storage

@@ -31,7 +31,7 @@ async function failed(response: Response, what: string): Promise<never> {
 }
 
 /** Uploads the deck as a Google Slides file and returns its Drive file id. */
-async function uploadAsSlides(bytes: Uint8Array, name: string): Promise<string> {
+async function uploadAsSlides(bytes: ArrayBuffer, name: string): Promise<string> {
   const boundary = `lovable-${crypto.randomUUID()}`;
   const metadata = JSON.stringify({
     name,
@@ -58,13 +58,13 @@ async function uploadAsSlides(bytes: Uint8Array, name: string): Promise<string> 
   return json.id;
 }
 
-async function exportPdf(fileId: string): Promise<Uint8Array> {
+async function exportPdf(fileId: string): Promise<ArrayBuffer> {
   const response = await fetch(
     `${GATEWAY}/drive/v3/files/${fileId}/export?mimeType=application/pdf`,
     { headers: gatewayHeaders() },
   );
   if (!response.ok) await failed(response, "export");
-  return new Uint8Array(await response.arrayBuffer());
+  return await response.arrayBuffer();
 }
 
 async function removeFile(fileId: string): Promise<void> {
@@ -79,7 +79,7 @@ async function removeFile(fileId: string): Promise<void> {
 }
 
 /** The whole round trip: original deck in, faithful PDF out. */
-export async function pptxToPdf(bytes: Uint8Array, name: string): Promise<Uint8Array> {
+export async function pptxToPdf(bytes: ArrayBuffer, name: string): Promise<ArrayBuffer> {
   const fileId = await uploadAsSlides(bytes, name);
   try {
     return await exportPdf(fileId);

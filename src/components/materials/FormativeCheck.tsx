@@ -635,6 +635,14 @@ export function FormativeCheckPanel({
                   Yes! That&apos;s exactly right — brilliant work!
                 </p>
                 {latest?.feedback ? <p className="mt-1 text-base">{latest.feedback}</p> : null}
+                <div className="mt-3 flex items-center gap-2">
+                  <Button size="sm" onClick={() => setDismissed(check.id)}>
+                    Close
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    This closes on its own in a moment.
+                  </span>
+                </div>
               </div>
             ) : latest ? (
               <div className="rounded-lg border border-accent bg-accent/30 p-4 text-base">
@@ -645,11 +653,12 @@ export function FormativeCheckPanel({
 
             {timeUp && !correct ? (
               <p className="rounded-lg border border-border bg-secondary/40 p-3 text-base">
-                Time is up — wait for your teacher.
+                Time is up — you can still keep trying until you get it right.
               </p>
             ) : null}
 
-            {!correct && !timeUp ? (
+            {!correct ? (
+
               <>
 
                 {parts.length ? (

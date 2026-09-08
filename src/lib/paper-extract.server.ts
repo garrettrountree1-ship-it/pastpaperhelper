@@ -465,9 +465,31 @@ async function runDetail(
 }
 
 /**
+ * Reads the model's snip band for a question and keeps it only when it is a
+ * sane region of a real page — a slightly padded band, never a sliver.
+ */
+function parseCropValue(raw: unknown, pages: number[]): QuestionCrop | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  const page = Math.round(Number(value["page"]));
+  let top = Number(value["top"]);
+  let bottom = Number(value["bottom"]);
+  if (!Number.isFinite(page) || page <= 0) return null;
+  if (pages.length > 0 && !pages.includes(page)) return null;
+  if (!Number.isFinite(top) || !Number.isFinite(bottom)) return null;
+  if (bottom <= top) return null;
+  // A little breathing room so nothing printed is clipped.
+  top = Math.max(0, top - 0.015);
+  bottom = Math.min(1, bottom + 0.015);
+  if (bottom - top < 0.04) return null;
+  return { page, top, bottom };
+}
+
+/**
  * Removes anything a student could search on (year, exam board, session and
  * paper codes, copyright and website lines) from extracted question text.
  */
+
 export function scrubIdentifiers(input: string): string {
   return input
     .replace(/©[^\n]*/g, "")

@@ -118,13 +118,26 @@ async function renderPdf(file: File): Promise<PageImage[]> {
 }
 
 
-/** PDFs become one image per page; photos pass through; docs stay as raw files. */
+/** PDFs and Word files become one image per page; photos pass through. */
 export async function filesToPages(files: File[]): Promise<PageImage[]> {
   const out: PageImage[] = [];
   for (const file of files) {
     const name = file.name.toLowerCase();
     if (file.type === "application/pdf" || name.endsWith(".pdf")) {
       out.push(...(await renderPdf(file)));
+    } else if (name.endsWith(".docx")) {
+      try {
+        const { docxToPages } = await import("./docx-pages");
+        out.push(...(await docxToPages(file)));
+      } catch {
+        // Couldn't lay the Word file out — send the file itself so the
+        // questions can still be read from it.
+        out.push({
+          filename: file.name,
+          mimeType: file.type || "application/octet-stream",
+          base64: await fileToBase64(file),
+        });
+      }
     } else {
       out.push({
         filename: file.name,

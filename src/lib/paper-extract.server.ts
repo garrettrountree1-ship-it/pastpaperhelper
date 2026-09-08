@@ -448,13 +448,16 @@ async function runDetail(
             .map((n) => Math.round(Number(n)))
             .filter((n) => Number.isFinite(n) && n > 0)
         : [];
+      const pages = match?.pages?.length ? match.pages : [...new Set(pagesFromModel)].slice(0, 3);
       return {
         label,
         questionText: scrubIdentifiers(normaliseSymbols(questionText)),
         markScheme: normaliseSymbols(String(item["markScheme"] ?? "").trim()),
         marks: Math.max(1, Math.round(Number(item["marks"]) || match?.marks || 1)),
-        pages: match?.pages?.length ? match.pages : [...new Set(pagesFromModel)].slice(0, 3),
+        pages,
+        crop: parseCropValue(item["crop"], pages),
       };
+
 
 
     })

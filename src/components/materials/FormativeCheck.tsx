@@ -460,119 +460,170 @@ export function FormativeCheckPanel({
   if (!check || countdown?.left === 0 || dismissed === check.id) return null;
   const correct = latest?.verdict === "correct";
 
+  const student = !check.isTeacher;
+
   return (
-    <div className="pointer-events-auto fixed bottom-4 right-4 z-[70] w-[min(92vw,26rem)] rounded-xl border border-border bg-background p-4 shadow-xl">
-      <div className="flex items-start gap-2">
-        <Badge variant="secondary" className="shrink-0">
-          <Timer className="mr-1 size-3" />
-          {countdown?.label ?? "--"}
-        </Badge>
-        <p className="min-w-0 flex-1 text-sm font-medium">{check.question}</p>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="size-7 shrink-0"
-          aria-label="Hide class question"
-          onClick={async () => {
-            if (check.isTeacher) {
-              await close({ data: { checkId: check.id } });
-              await queryClient.invalidateQueries({ queryKey: ["formative-active", classId] });
+    <div
+      className={
+        student
+          ? "pointer-events-auto fixed inset-0 z-[70] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
+          : "pointer-events-auto fixed bottom-4 right-4 z-[70] w-[min(92vw,26rem)] rounded-xl border border-border bg-background p-4 shadow-xl"
+      }
+    >
+      <div
+        className={
+          student
+            ? "max-h-[92vh] w-[min(96vw,52rem)] overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-2xl"
+            : "contents"
+        }
+      >
+        <div className="flex items-start gap-3">
+          <Badge variant="secondary" className={student ? "shrink-0 text-sm" : "shrink-0"}>
+            <Timer className={student ? "mr-1 size-4" : "mr-1 size-3"} />
+            {countdown?.label ?? "--"}
+          </Badge>
+          <p
+            className={
+              student
+                ? "min-w-0 flex-1 whitespace-pre-wrap text-lg font-medium leading-relaxed"
+                : "min-w-0 flex-1 text-sm font-medium"
             }
-            setDismissed(check.id);
-          }}
-        >
-          <X className="size-4" />
-        </Button>
-      </div>
-
-      {check.questionImage ? (
-        <img
-          src={check.questionImage}
-          alt="Question picture"
-          className="mt-3 max-h-64 w-full rounded-md border border-border object-contain"
-        />
-      ) : null}
-
-      {check.isTeacher ? (
-        <div className="mt-3 space-y-2">
-          <p className="text-xs text-muted-foreground">
-            {(results.data ?? []).length} answered
-            {" · "}
-            {(results.data ?? []).filter((r) => r.verdict === "correct").length} correct
+          >
+            {check.question}
           </p>
-          <div className="max-h-48 space-y-1 overflow-y-auto">
-            {(results.data ?? []).map((row) => (
-              <div
-                key={row.studentId}
-                className="flex items-center justify-between gap-2 rounded-md bg-secondary/50 px-2 py-1 text-xs"
-              >
-                <span className="truncate">{row.name}</span>
-                <span
-                  className={
-                    row.verdict === "correct" ? "text-primary" : "text-muted-foreground"
-                  }
+          <Button
+            size="icon"
+            variant="ghost"
+            className="size-7 shrink-0"
+            aria-label="Hide class question"
+            onClick={async () => {
+              if (check.isTeacher) {
+                await close({ data: { checkId: check.id } });
+                await queryClient.invalidateQueries({ queryKey: ["formative-active", classId] });
+              }
+              setDismissed(check.id);
+            }}
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+
+        {check.questionImage ? (
+          <img
+            src={check.questionImage}
+            alt="Question picture"
+            className={
+              student
+                ? "mt-4 max-h-[45vh] w-full rounded-lg border border-border object-contain"
+                : "mt-3 max-h-64 w-full rounded-md border border-border object-contain"
+            }
+          />
+        ) : null}
+
+        {check.isTeacher ? (
+          <div className="mt-3 space-y-2">
+            <p className="text-xs text-muted-foreground">
+              {(results.data ?? []).length} answered
+              {" · "}
+              {(results.data ?? []).filter((r) => r.verdict === "correct").length} correct
+            </p>
+            <div className="max-h-48 space-y-1 overflow-y-auto">
+              {(results.data ?? []).map((row) => (
+                <div
+                  key={row.studentId}
+                  className="flex items-center justify-between gap-2 rounded-md bg-secondary/50 px-2 py-1 text-xs"
                 >
-                  {row.verdict === "correct" ? "Correct" : "Still working"} · {row.attempts}{" "}
-                  {row.attempts === 1 ? "try" : "tries"}
-                </span>
+                  <span className="truncate">{row.name}</span>
+                  <span
+                    className={
+                      row.verdict === "correct" ? "text-primary" : "text-muted-foreground"
+                    }
+                  >
+                    {row.verdict === "correct" ? "Correct" : "Still working"} · {row.attempts}{" "}
+                    {row.attempts === 1 ? "try" : "tries"}
+                  </span>
+                </div>
+              ))}
+              {(results.data ?? []).length === 0 ? (
+                <p className="text-xs text-muted-foreground">Waiting for answers…</p>
+              ) : null}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Closing this panel ends the question for the class.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {correct ? (
+              <div className="rounded-lg border border-primary/40 bg-primary/10 p-4">
+                <p className="flex items-center gap-2 font-display text-lg text-primary">
+                  <PartyPopper className="size-5" />
+                  Yes! That&apos;s exactly right — brilliant work!
+                </p>
+                {latest?.feedback ? <p className="mt-1 text-base">{latest.feedback}</p> : null}
               </div>
-            ))}
-            {(results.data ?? []).length === 0 ? (
-              <p className="text-xs text-muted-foreground">Waiting for answers…</p>
+            ) : latest ? (
+              <div className="rounded-lg border border-accent bg-accent/30 p-4 text-base">
+                <p className="font-medium">You&apos;re on your way — keep going!</p>
+                <p className="mt-1">{latest.feedback}</p>
+              </div>
+            ) : null}
+
+            {!correct ? (
+              <>
+                {parts.length ? (
+                  <div className="space-y-3">
+                    {parts.map((label) => (
+                      <div key={label} className="space-y-1">
+                        <Label htmlFor={`part-${label}`} className="text-base">
+                          Part ({label})
+                        </Label>
+                        <Textarea
+                          id={`part-${label}`}
+                          rows={2}
+                          className="text-base"
+                          value={partAnswers[label] ?? ""}
+                          onChange={(event) =>
+                            setPartAnswers((prev) => ({ ...prev, [label]: event.target.value }))
+                          }
+                          placeholder={`Your answer to (${label}), in English`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <Textarea
+                    rows={4}
+                    className="text-base"
+                    value={answer}
+                    onChange={(event) => setAnswer(event.target.value)}
+                    placeholder="Type your answer in English"
+                  />
+                )}
+                {combined && !isEnglishOnly(combined) ? (
+                  <p className="text-sm text-destructive">{ENGLISH_ONLY_MESSAGE}</p>
+                ) : null}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {check.myAttempts.length > 0
+                      ? `Attempt ${check.myAttempts.length} sent — try again!`
+                      : "As many tries as you like before the timer ends"}
+                  </span>
+                  <Button
+                    onClick={() => send.mutate()}
+                    disabled={!combined.trim() || send.isPending || !isEnglishOnly(combined)}
+                  >
+                    {send.isPending ? "Checking..." : "Send answer"}
+                  </Button>
+                </div>
+              </>
             ) : null}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Closing this panel ends the question for the class.
-          </p>
-        </div>
-      ) : (
-        <div className="mt-3 space-y-2">
-          {correct ? (
-            <div className="rounded-lg border border-primary/40 bg-primary/10 p-3">
-              <p className="flex items-center gap-2 font-display text-base text-primary">
-                <PartyPopper className="size-5" />
-                Yes! That&apos;s exactly right — brilliant work!
-              </p>
-              {latest?.feedback ? <p className="mt-1 text-sm">{latest.feedback}</p> : null}
-            </div>
-          ) : latest ? (
-            <div className="rounded-lg border border-accent bg-accent/30 p-3 text-sm">
-              <p className="font-medium">You&apos;re on your way — keep going!</p>
-              <p className="mt-1">{latest.feedback}</p>
-            </div>
-          ) : null}
-
-          {!correct ? (
-            <>
-              <Textarea
-                rows={3}
-                value={answer}
-                onChange={(event) => setAnswer(event.target.value)}
-                placeholder="Type your answer in English"
-              />
-              {answer && !isEnglishOnly(answer) ? (
-                <p className="text-xs text-destructive">{ENGLISH_ONLY_MESSAGE}</p>
-              ) : null}
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-muted-foreground">
-                  {check.myAttempts.length > 0
-                    ? `Attempt ${check.myAttempts.length} sent — try again!`
-                    : "As many tries as you like before the timer ends"}
-                </span>
-                <Button
-                  size="sm"
-                  onClick={() => send.mutate()}
-                  disabled={!answer.trim() || send.isPending || !isEnglishOnly(answer)}
-                >
-                  {send.isPending ? "Checking..." : "Send answer"}
-                </Button>
-              </div>
-            </>
-          ) : null}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
+
 }
 
 /**

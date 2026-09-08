@@ -125,19 +125,15 @@ export function mergeSnipPieces(urls: string[]): string[] {
       if (!wholePages.has(page)) wholePages.set(page, url);
       continue;
     }
-    const existing = bands.find(
-      (piece) =>
-        piece.page === page &&
-        band.top < piece.bottom + 0.02 &&
-        band.bottom > piece.top - 0.02,
-    );
+    const existing = bands.find((piece) => piece.page === page);
     if (existing) {
       // Two reports for the same print must never enlarge the picture. Keep
       // only their shared region; taking their union pulled adjacent answers
       // and repeated diagrams into the student's question.
       const sharedTop = Math.max(existing.top, band.top);
       const sharedBottom = Math.min(existing.bottom, band.bottom);
-      if (sharedBottom > sharedTop + 0.035) {
+      const overlaps = band.top < existing.bottom + 0.02 && band.bottom > existing.top - 0.02;
+      if (overlaps && sharedBottom > sharedTop + 0.035) {
         existing.top = sharedTop;
         existing.bottom = sharedBottom;
       } else if (band.bottom - band.top < existing.bottom - existing.top) {

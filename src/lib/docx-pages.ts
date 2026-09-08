@@ -111,7 +111,7 @@ export async function docxToPages(file: File): Promise<PageImage[]> {
 
   // Work out where each page ends by looking at the blocks themselves, so a
   // paragraph, table or diagram is never sliced in half by a page break.
-  const bodyTop = body.getBoundingClientRect().top + 56;
+  const bodyTop = body.getBoundingClientRect().top;
   const blocks = Array.from(body.children).map((child) => {
     const box = (child as HTMLElement).getBoundingClientRect();
     return { top: box.top - bodyTop, bottom: box.bottom - bodyTop };

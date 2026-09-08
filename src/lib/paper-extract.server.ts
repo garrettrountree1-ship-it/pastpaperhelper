@@ -488,7 +488,11 @@ async function runDetail(
     const audited = await runCropAudit(key, header, documents, details);
     return details.map((detail) => ({
       ...detail,
-      crops: audited.get(detail.label.toLowerCase()) ?? detail.crops,
+      // Once the independent visual audit has run, it is authoritative. A
+      // missing/unsafe crop means no picture, not a return to the first pass.
+      crops: audited.has(detail.label.toLowerCase())
+        ? (audited.get(detail.label.toLowerCase()) ?? null)
+        : null,
     }));
   } catch {
     return details;
@@ -559,13 +563,12 @@ function parseCropList(raw: unknown, pages: number[]): QuestionCrop[] | null {
     if (!band) continue;
     // There can only be one crop for a question part on one page. If the model
     // reports it twice, keep the shared/narrower region rather than expanding.
-    const same = out.find(
-      (b) => b.page === band.page && band.top < b.bottom + 0.02 && band.bottom > b.top - 0.02,
-    );
+    const same = out.find((b) => b.page === band.page);
     if (same) {
+      const overlaps = band.top < same.bottom + 0.02 && band.bottom > same.top - 0.02;
       const sharedTop = Math.max(same.top, band.top);
       const sharedBottom = Math.min(same.bottom, band.bottom);
-      if (sharedBottom > sharedTop + 0.035) {
+      if (overlaps && sharedBottom > sharedTop + 0.035) {
         same.top = sharedTop;
         same.bottom = sharedBottom;
       } else if (band.bottom - band.top < same.bottom - same.top) {

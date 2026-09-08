@@ -90,12 +90,15 @@ const DETAIL_SYSTEM = [
   "If no mark scheme is supplied anywhere for that part, write a concise expected answer with marking points instead.",
   "marks: the integer marks for that part (default 1).",
   "Return one item per requested label, in the same order, and never skip a label.",
-  "crop: the exact band of the page picture that must be shown to the student for this part, so nothing printed is lost. Give {\"page\":N,\"top\":T,\"bottom\":B} where T and B are fractions of that page's full height measured from the top of the page (0 = very top, 1 = very bottom).",
-  "The crop band MUST contain the whole of this part as printed — its label, its wording, every multiple-choice option, every answer line, and any table, figure, diagram or graph that belongs to it — plus a small margin. Prefer a slightly larger band over cutting anything off. It must NOT contain the next or previous question part, and must not contain a mark scheme or answer block.",
-  "If a part spans a page break or you cannot judge the band, set crop to null.",
+  "crops: the band(s) of the page picture(s) that must be shown to the student for this part, so nothing printed is lost. Give a list: [{\"page\":N,\"top\":T,\"bottom\":B}] where T and B are fractions of that page's full height measured from the top of the page (0 = very top, 1 = very bottom).",
+  "When the part runs over a page break — for example the wording is at the foot of one page and its options, table or diagram continue at the top of the next — give TWO bands in reading order: the tail of the first page, then the head of the next page. Never drop the continuation and never set crops to null just because it spans pages.",
+  "Boundaries: a band starts at this part's own printed label and stops immediately BEFORE the next printed question or part label (the next number, the next (a)/(b), the next (i)/(ii)). Include only what is printed between this part's label and that next label. Never let another question's label, stem or options appear inside a band.",
+  "Never include an answer inside a band. Exclude any 'Answer', 'Answer:', 'Markscheme', 'Mark scheme', 'Answers', worked solution, answer key, teacher note or highlighted/boxed answer text, and any answer written into the paper. If such an answer block sits between this part and the next label, end the band just above it. Blank ruled answer lines with no writing on them are fine to include.",
+  "Only set crops to null if you truly cannot locate the part on any page.",
   "Symbols and units MUST be reproduced as real Unicode characters exactly as printed: \u00b0C, \u00b0F, \u00b5, \u03a9, \u00b1, \u00d7, \u00f7, \u2264, \u2265, \u2248, \u2192, \u21cc, \u221a, \u03b1\u03b2\u03b3\u03bb\u03c0\u0394\u03b8, subscripts/superscripts (H\u2082O, cm\u00b3, m s\u207b\u00b2, 10\u2076).",
   "Never write symbols as words, ASCII stand-ins or escapes: no \"degrees C\", \"deg C\", \"oC\", \"^oC\", \"ohms\", \"micro\", \"+/-\", \"\\\\u00b0\", \"&deg;\", \"?C\". Write 25 \u00b0C, 4.7 k\u03a9, 3 \u00b5A.",
-  'Reply with JSON only: {"questions":[{"label":"1(a)","questionText":"...","markScheme":"...","marks":2,"pages":[3],"crop":{"page":3,"top":0.12,"bottom":0.41}}]}',
+  'Reply with JSON only: {"questions":[{"label":"1(a)","questionText":"...","markScheme":"...","marks":2,"pages":[3,4],"crops":[{"page":3,"top":0.62,"bottom":0.97},{"page":4,"top":0.05,"bottom":0.3}]}]}',
+
 
 ].join(" ");
 

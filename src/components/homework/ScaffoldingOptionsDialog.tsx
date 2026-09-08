@@ -29,6 +29,11 @@ import {
 } from "@/lib/scaffolding.functions";
 
 const INHERIT = "__inherit__";
+
+type Row = { allowHint: boolean | null; allowSteps: boolean | null; maxAttempts: number | null };
+type AssignmentRow = Row & { id: string; title: string };
+type StudentRow = { id: string; name: string };
+type OverrideRow = Row & { assignmentId: string; studentId: string };
 const ATTEMPT_CHOICES = [1, 2, 3, 4, 5, 6, 8, 10];
 
 function attemptLabel(value: number) {
@@ -204,7 +209,7 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                 <p className="mt-4 text-sm text-muted-foreground">No homework yet.</p>
               ) : (
                 <div className="mt-4 space-y-3">
-                  {data.assignments.map((assignment) => {
+                  {data.assignments.map((assignment: AssignmentRow) => {
                     const expanded = openAssignment === assignment.id;
                     const effective = {
                       allowSteps: assignment.allowSteps ?? data.klass.allowSteps,
@@ -272,9 +277,9 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                             </p>
                           ) : (
                             <div className="space-y-3 border-t pt-3">
-                              {data.students.map((student) => {
+                              {data.students.map((student: StudentRow) => {
                                 const override = data.studentOverrides.find(
-                                  (o) =>
+                                  (o: OverrideRow) =>
                                     o.assignmentId === assignment.id && o.studentId === student.id,
                                 );
                                 return (

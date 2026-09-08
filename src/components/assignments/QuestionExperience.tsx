@@ -92,7 +92,7 @@ export function QuestionExperience({
   
   assignmentId,
   sentBack = null,
-  snipUrl = null,
+  snipUrls = [],
 
 
 }: {
@@ -136,8 +136,8 @@ export function QuestionExperience({
   assignmentId?: string;
   /** Set when the teacher sent this question back to be redone. */
   sentBack?: { at: string; note: string | null } | null;
-  /** Snipped picture of the question as printed — shown instead of typed wording. */
-  snipUrl?: string | null;
+  /** Snipped picture(s) of the question as printed — shown instead of typed wording. */
+  snipUrls?: string[];
 }) {
 
   const verdict = result?.verdict ?? null;
@@ -200,9 +200,17 @@ export function QuestionExperience({
         }}
       >
 
-        {snipUrl ? (
+        {snipUrls.length > 0 ? (
           <>
-            <QuestionSnip url={snipUrl} alt="The question exactly as printed on the paper" />
+            <div className="space-y-2">
+              {snipUrls.map((url) => (
+                <QuestionSnip
+                  key={url}
+                  url={url}
+                  alt="The question exactly as printed on the paper"
+                />
+              ))}
+            </div>
             <p className="mt-1 text-xs text-muted-foreground">
               The question exactly as printed. Answer it in the box below.
             </p>

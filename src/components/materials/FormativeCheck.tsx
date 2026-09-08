@@ -457,55 +457,54 @@ export function FormativeCheckPanel({
   }, [check?.id]);
 
 
-  if (!check || countdown?.left === 0 || dismissed === check.id) return null;
+  if (!check || dismissed === check.id) return null;
   const correct = latest?.verdict === "correct";
+  const timeUp = countdown?.left === 0;
 
   const student = !check.isTeacher;
 
   return (
-    <div
-      className={
-        student
-          ? "pointer-events-auto fixed inset-0 z-[70] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
-          : "pointer-events-auto fixed bottom-4 right-4 z-[70] w-[min(92vw,26rem)] rounded-xl border border-border bg-background p-4 shadow-xl"
-      }
-    >
+    <div className="pointer-events-auto fixed inset-0 z-[70] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm">
       <div
         className={
           student
             ? "max-h-[92vh] w-[min(96vw,52rem)] overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-2xl"
-            : "contents"
+            : "max-h-[92vh] w-[min(96vw,40rem)] overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-2xl"
         }
       >
         <div className="flex items-start gap-3">
-          <Badge variant="secondary" className={student ? "shrink-0 text-sm" : "shrink-0"}>
+          <Badge
+            variant={timeUp ? "outline" : "secondary"}
+            className={student ? "shrink-0 text-sm" : "shrink-0"}
+          >
             <Timer className={student ? "mr-1 size-4" : "mr-1 size-3"} />
-            {countdown?.label ?? "--"}
+            {timeUp ? "Time up" : (countdown?.label ?? "--")}
           </Badge>
           <p
             className={
               student
                 ? "min-w-0 flex-1 whitespace-pre-wrap text-lg font-medium leading-relaxed"
-                : "min-w-0 flex-1 text-sm font-medium"
+                : "min-w-0 flex-1 whitespace-pre-wrap text-base font-medium leading-relaxed"
             }
           >
             {check.question}
           </p>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="size-7 shrink-0"
-            aria-label="Hide class question"
-            onClick={async () => {
-              if (check.isTeacher) {
+          {check.isTeacher ? (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-7 shrink-0"
+              aria-label="End this question and close it on every screen"
+              title="End this question and close it on every screen"
+              onClick={async () => {
                 await close({ data: { checkId: check.id } });
                 await queryClient.invalidateQueries({ queryKey: ["formative-active", classId] });
-              }
-              setDismissed(check.id);
-            }}
-          >
-            <X className="size-4" />
-          </Button>
+                setDismissed(check.id);
+              }}
+            >
+              <X className="size-4" />
+            </Button>
+          ) : null}
         </div>
 
         {check.questionImage ? (
@@ -515,13 +514,44 @@ export function FormativeCheckPanel({
             className={
               student
                 ? "mt-4 max-h-[45vh] w-full rounded-lg border border-border object-contain"
-                : "mt-3 max-h-64 w-full rounded-md border border-border object-contain"
+                : "mt-3 max-h-[38vh] w-full rounded-md border border-border object-contain"
             }
           />
         ) : null}
 
+        {check.releasedAnswer ? (
+          <div className="mt-4 rounded-lg border border-primary/40 bg-primary/10 p-4">
+            <p className="font-display text-base text-primary">The answer</p>
+            <p className="mt-1 whitespace-pre-wrap text-base">{check.releasedAnswer}</p>
+          </div>
+        ) : null}
+
         {check.isTeacher ? (
           <div className="mt-3 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={extend.isPending}
+                onClick={() => extend.mutate(30)}
+              >
+                <Timer className="size-4" />
+                Add 30 sec
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={reveal.isPending || Boolean(check.releasedAnswer)}
+                onClick={() => reveal.mutate()}
+              >
+                <Eye className="size-4" />
+                {check.releasedAnswer
+                  ? "Answer released"
+                  : reveal.isPending
+                    ? "Working it out…"
+                    : "Release the answer"}
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground">
               {(results.data ?? []).length} answered
               {" · "}
@@ -549,10 +579,11 @@ export function FormativeCheckPanel({
               ) : null}
             </div>
             <p className="text-xs text-muted-foreground">
-              Closing this panel ends the question for the class.
+              This stays on every screen — including after the timer — until you press the X.
             </p>
           </div>
         ) : (
+
           <div className="mt-4 space-y-3">
             {correct ? (
               <div className="rounded-lg border border-primary/40 bg-primary/10 p-4">

@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { markFormativeAnswer } from "@/lib/formative.server";
+import { markFormativeAnswer, solveFormativeQuestion } from "@/lib/formative.server";
 import { assertClassTeacher } from "@/lib/materials.server";
 
 /** Teacher launches a timed quick question to everyone in the class. */

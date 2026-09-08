@@ -285,14 +285,22 @@ export const HELP_PILL_DOT = "grid size-6 shrink-0 place-items-center rounded-fu
 export function QuestionHelpButtons({
   questionId,
   answerDraft,
+  allowHint = true,
+  allowSteps = true,
 }: {
   questionId: string;
   answerDraft: string;
+  /** Teacher scaffolding switch for "Give me a hint". */
+  allowHint?: boolean;
+  /** Teacher scaffolding switch for "Break it down step-by-step". */
+  allowSteps?: boolean;
 }) {
   const [mode, setMode] = useState<Mode | null>(null);
+  if (!allowHint && !allowSteps) return null;
   return (
     <>
       <div className="flex w-24 shrink-0 flex-col items-stretch gap-1.5 sm:w-28">
+        {allowHint ? (
         <button
           type="button"
           onClick={() => setMode("hint")}
@@ -306,6 +314,8 @@ export function QuestionHelpButtons({
             Give me a hint
           </span>
         </button>
+        ) : null}
+        {allowSteps ? (
         <button
           type="button"
           onClick={() => setMode("steps")}
@@ -319,6 +329,7 @@ export function QuestionHelpButtons({
             Break it down step-by-step
           </span>
         </button>
+        ) : null}
       </div>
       {mode ? (
         <QuestionHelpDialog

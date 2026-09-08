@@ -183,12 +183,20 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
   });
 
 
-/** Student answers the live check; AI marks it and returns encouraging feedback. */
+/**
+ * Student answers a class question; AI marks it and returns encouraging
+ * feedback. A `practice` try (from the student's own question log) is marked
+ * the same way but never recorded, so the teacher's record book is unchanged.
+ */
 export const answerFormativeCheck = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z
-      .object({ checkId: z.string().uuid(), answer: z.string().min(1).max(2000) })
+      .object({
+        checkId: z.string().uuid(),
+        answer: z.string().min(1).max(2000),
+        practice: z.boolean().optional(),
+      })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -209,8 +217,10 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
       throw new Error("That question was sent to another student.");
     }
 
-    if (check.closed_at || new Date(check.ends_at as string).getTime() < Date.now()) {
-      throw new Error("Time is up for this question.");
+    // The live question stays open until the teacher closes it, so the student
+    // can keep trying until they get it right.
+    if (!data.practice && check.closed_at) {
+      throw new Error("Your teacher has closed this question.");
     }
 
     const { count } = await supabase
@@ -228,6 +238,8 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
       attempt,
     });
 
+    if (data.practice) return { ...marked, attempt };
+
     const { error } = await supabase.from("formative_responses").insert({
       check_id: data.checkId,
       student_id: userId,
@@ -239,6 +251,54 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ...marked, attempt };
   });
+
+/**
+ * A student asks to see the answer to a past class question. Only for
+ * questions that are over; worked out once and cached, and never shown to the
+ * rest of the class (that stays the teacher's "Release the answer" button).
+ */
+export const revealFormativeAnswerForMe = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ checkId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: check } = await supabase
+      .from("formative_checks")
+      .select(
+        "id, question, question_image, expected_answer, released_answer, closed_at, ends_at, teacher_id, target_student_id, target_student_ids",
+      )
+      .eq("id", data.checkId)
+      .maybeSingle();
+    if (!check) throw new Error("That class question is no longer available.");
+    const allowed = new Set<string>([
+      ...((check.target_student_ids ?? []) as string[]),
+      ...(check.target_student_id ? [check.target_student_id as string] : []),
+    ]);
+    if (allowed.size > 0 && !allowed.has(userId) && check.teacher_id !== userId) {
+      throw new Error("That question was sent to another student.");
+    }
+
+    const finished =
+      Boolean(check.closed_at) || new Date(check.ends_at as string).getTime() < Date.now();
+    if (!finished && check.teacher_id !== userId) {
+      throw new Error("This question is still open — have a try first.");
+    }
+
+    const existing =
+      (check.released_answer as string | null) || (check.expected_answer as string | null);
+    if (existing?.trim()) return { answer: existing };
+
+    const answer = await solveFormativeQuestion({
+      question: check.question as string,
+      questionImage: (check.question_image ?? null) as string | null,
+    });
+    await supabase
+      .from("formative_checks")
+      .update({ released_answer: answer })
+      .eq("id", data.checkId);
+    return { answer };
+  });
+
 
 /** Live results for the teacher: one row per student, latest attempt. */
 export const listFormativeResults = createServerFn({ method: "POST" })

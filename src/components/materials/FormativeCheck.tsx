@@ -38,6 +38,8 @@ import {
   listFormativeResults,
   listMyFormativeChecks,
   releaseFormativeAnswer,
+  revealFormativeAnswerForMe,
+
 } from "@/lib/formative.functions";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { listClassRoster } from "@/lib/materials.functions";
@@ -481,10 +483,19 @@ export function FormativeCheckPanel({
     }
   }, [check?.id]);
 
+  // A student's question box only leaves the screen when they get it right (a
+// short celebration first) or when the teacher closes it for everyone.
+  const gotItRight = latest?.verdict === "correct";
+  useEffect(() => {
+    if (!check?.id || check.isTeacher || !gotItRight) return;
+    const id = window.setTimeout(() => setDismissed(check.id), 6000);
+    return () => window.clearTimeout(id);
+  }, [check?.id, check?.isTeacher, gotItRight]);
 
   if (!check || dismissed === check.id) return null;
-  const correct = latest?.verdict === "correct";
+  const correct = gotItRight;
   const timeUp = countdown?.left === 0;
+
 
   const student = !check.isTeacher;
 
@@ -626,6 +637,14 @@ export function FormativeCheckPanel({
                   Yes! That&apos;s exactly right — brilliant work!
                 </p>
                 {latest?.feedback ? <p className="mt-1 text-base">{latest.feedback}</p> : null}
+                <div className="mt-3 flex items-center gap-2">
+                  <Button size="sm" onClick={() => setDismissed(check.id)}>
+                    Close
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    This closes on its own in a moment.
+                  </span>
+                </div>
               </div>
             ) : latest ? (
               <div className="rounded-lg border border-accent bg-accent/30 p-4 text-base">
@@ -636,11 +655,12 @@ export function FormativeCheckPanel({
 
             {timeUp && !correct ? (
               <p className="rounded-lg border border-border bg-secondary/40 p-3 text-base">
-                Time is up — wait for your teacher.
+                Time is up — you can still keep trying until you get it right.
               </p>
             ) : null}
 
-            {!correct && !timeUp ? (
+            {!correct ? (
+
               <>
 
                 {parts.length ? (
@@ -679,7 +699,8 @@ export function FormativeCheckPanel({
                   <span className="text-sm text-muted-foreground">
                     {check.myAttempts.length > 0
                       ? `Attempt ${check.myAttempts.length} sent — try again!`
-                      : "As many tries as you like before the timer ends"}
+                      : "As many tries as you like"}
+
                   </span>
                   <Button
                     onClick={() => send.mutate()}
@@ -911,55 +932,162 @@ export function FormativeReviewButton({ classId }: { classId: string }) {
               No class questions yet — they will appear here after your teacher sends one.
             </p>
           ) : (
-            rows.map((row) => (
-              <div key={row.id} className="rounded-lg border border-border p-4">
-                <p className="text-xs text-muted-foreground">
-                  {new Date(row.sentAt).toLocaleString()}
-                  {row.lesson ? ` · ${row.lesson}` : ""}
-                </p>
-                <p className="mt-1 whitespace-pre-wrap font-medium">{row.question}</p>
-                {row.questionImage ? (
-                  <img
-                    src={row.questionImage}
-                    alt="Question picture"
-                    className="mt-2 max-h-64 w-full rounded-md border border-border object-contain"
-                  />
-                ) : null}
-                {row.myAttempts.length > 0 ? (
-                  <div className="mt-3 space-y-1">
-                    {row.myAttempts.map((attempt, index) => (
-                      <p key={index} className="text-sm">
-                        <span className="text-muted-foreground">Your try {index + 1}: </span>
-                        <span
-                          className={
-                            attempt.verdict === "correct" ? "text-primary" : "text-destructive"
-                          }
-                        >
-                          {attempt.answer}
-                        </span>
-                      </p>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-3 text-sm text-muted-foreground">You did not answer this one.</p>
-                )}
-                {row.answer ? (
-                  <div className="mt-3 rounded-md border border-primary/40 bg-primary/10 p-3">
-                    <p className="text-sm font-medium text-primary">The answer</p>
-                    <p className="mt-1 whitespace-pre-wrap text-sm">{row.answer}</p>
-                  </div>
-                ) : (
-                  <p className="mt-3 text-sm text-muted-foreground">
-                    {row.stillLive
-                      ? "Still open — the answer appears when your teacher shares it."
-                      : "Your teacher has not shared the answer for this one."}
-                  </p>
-                )}
-              </div>
-            ))
+            rows.map((row) => <ReviewRow key={row.id} row={row} />)
+
           )}
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
+type ReviewCheck = {
+  id: string;
+  question: string;
+  questionImage: string | null;
+  sentAt: string;
+  lesson: string;
+  answer: string | null;
+  stillLive: boolean;
+  myAttempts: { answer: string; verdict: string; feedback: string }[];
+};
+
+/**
+ * One past class question in the student's log: their tries, a fresh practice
+ * go (marked but never recorded), and the answer on request.
+ */
+function ReviewRow({ row }: { row: ReviewCheck }) {
+  const practise = useServerFn(answerFormativeCheck);
+  const showAnswer = useServerFn(revealFormativeAnswerForMe);
+  const [retrying, setRetrying] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [revealed, setRevealed] = useState<string | null>(null);
+
+  const tryAgain = useMutation({
+    mutationFn: () =>
+      practise({ data: { checkId: row.id, answer: draft.trim(), practice: true } }),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const reveal = useMutation({
+    mutationFn: () => showAnswer({ data: { checkId: row.id } }),
+    onSuccess: (result) => setRevealed(result.answer),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const answer = revealed ?? row.answer;
+
+  return (
+    <div className="rounded-lg border border-border p-4">
+      <p className="text-xs text-muted-foreground">
+        {new Date(row.sentAt).toLocaleString()}
+        {row.lesson ? ` · ${row.lesson}` : ""}
+      </p>
+      <p className="mt-1 whitespace-pre-wrap font-medium">{row.question}</p>
+      {row.questionImage ? (
+        <img
+          src={row.questionImage}
+          alt="Question picture"
+          className="mt-2 max-h-64 w-full rounded-md border border-border object-contain"
+        />
+      ) : null}
+
+      {row.myAttempts.length > 0 ? (
+        <div className="mt-3 space-y-1">
+          {row.myAttempts.map((attempt, index) => (
+            <p key={index} className="text-sm">
+              <span className="text-muted-foreground">Your try {index + 1}: </span>
+              <span
+                className={attempt.verdict === "correct" ? "text-primary" : "text-destructive"}
+              >
+                {attempt.answer}
+              </span>
+            </p>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm text-muted-foreground">You did not answer this one.</p>
+      )}
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            setRetrying((value) => !value);
+            tryAgain.reset();
+          }}
+        >
+          <Sparkles className="size-4" />
+          {retrying ? "Hide practice" : "Try it again"}
+        </Button>
+        {answer ? null : (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={reveal.isPending || row.stillLive}
+            onClick={() => reveal.mutate()}
+          >
+            <Eye className="size-4" />
+            {reveal.isPending ? "Working it out…" : "View answer"}
+          </Button>
+        )}
+      </div>
+
+      {retrying ? (
+        <div className="mt-3 space-y-2 rounded-md border border-border bg-secondary/30 p-3">
+          <p className="text-xs text-muted-foreground">
+            A practice go — marked for you, and not added to your teacher&apos;s record.
+          </p>
+          <Textarea
+            rows={3}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder="Type your answer in English"
+          />
+          {draft && !isEnglishOnly(draft) ? (
+            <p className="text-sm text-destructive">{ENGLISH_ONLY_MESSAGE}</p>
+          ) : null}
+          <Button
+            size="sm"
+            onClick={() => tryAgain.mutate()}
+            disabled={!draft.trim() || tryAgain.isPending || !isEnglishOnly(draft)}
+          >
+            <Send className="size-4" />
+            {tryAgain.isPending ? "Checking…" : "Check my answer"}
+          </Button>
+          {tryAgain.data ? (
+            <div
+              className={
+                tryAgain.data.verdict === "correct"
+                  ? "rounded-md border border-primary/40 bg-primary/10 p-3 text-sm"
+                  : "rounded-md border border-accent bg-accent/30 p-3 text-sm"
+              }
+            >
+              <p className="font-medium">
+                {tryAgain.data.verdict === "correct"
+                  ? "Spot on — brilliant work!"
+                  : "Good thinking — keep going!"}
+              </p>
+              <p className="mt-1">{tryAgain.data.feedback}</p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {answer ? (
+        <div className="mt-3 rounded-md border border-primary/40 bg-primary/10 p-3">
+          <p className="text-sm font-medium text-primary">The answer</p>
+          <p className="mt-1 whitespace-pre-wrap text-sm">{answer}</p>
+        </div>
+      ) : (
+        <p className="mt-3 text-sm text-muted-foreground">
+          {row.stillLive
+            ? "Still open — the answer appears when your teacher shares it."
+            : "Press “View answer” to see it."}
+        </p>
+      )}
+    </div>
+  );
+}
+

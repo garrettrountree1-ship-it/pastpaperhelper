@@ -597,7 +597,15 @@ export function FreeCanvas({
           return (
             <div
               key={block.id}
-              className={`group absolute ${block.box ? "rounded-md border border-border bg-background/70 p-2 shadow-sm" : ""}`}
+              onPointerDown={
+                canEdit
+                  ? (event) => {
+                      setSelectedId(block.id);
+                      startMoveAnywhere(block.id, event);
+                    }
+                  : undefined
+              }
+              className={`group absolute ${canEdit ? "cursor-grab active:cursor-grabbing" : ""} ${block.box ? "rounded-md border border-border bg-background/70 p-2 shadow-sm" : ""}`}
               style={style}
             >
 

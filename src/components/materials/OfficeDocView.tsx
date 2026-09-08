@@ -17,10 +17,12 @@ import { readableTextColor } from "@/lib/color-contrast";
 
 import {
   emptyAnnotation,
+  HighlightLayer,
   SlideAnnotations,
   type SlideAnnotation,
   type SlideTool,
 } from "@/components/materials/SlideAnnotations";
+
 import {
   DocMarkupSurface,
   DocMarkupToolbar,

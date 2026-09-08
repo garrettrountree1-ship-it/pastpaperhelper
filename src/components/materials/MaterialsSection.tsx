@@ -578,6 +578,15 @@ function UploadDialog({
           },
         });
 
+        // Keep a copy in the teacher's own Google Drive when they have linked it.
+        if (created?.id) {
+          void saveMaterialToMyDrive({ data: { materialId: created.id } })
+            .then((result) => {
+              if (result?.saved) toast.success("Saved a copy to your Google Drive.");
+            })
+            .catch(() => undefined);
+        }
+
         // Prepare the slides/document once, now, so the first person who opens
         // it (teacher or student) sees it instantly instead of waiting.
         const format = docFormat(file.name);
@@ -586,6 +595,7 @@ function UploadDialog({
             .then(() => toast.success("Document prepared — it will open instantly now."))
             .catch(() => undefined);
         }
+
       }
       toast.success("Added");
       setOpen(false);

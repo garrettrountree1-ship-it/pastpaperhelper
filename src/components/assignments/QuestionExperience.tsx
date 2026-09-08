@@ -216,12 +216,17 @@ export function QuestionExperience({
       </div>
 
       {keywordTranslation ? (
-        <QuestionVocabBox
-          className="mt-3"
-          terms={tutorTerms}
-          language={glossary.data?.language ?? "Chinese (Simplified)"}
-        />
+        tutorTerms.length > 0 ? (
+          <QuestionVocabBox
+            className="mt-3"
+            terms={tutorTerms}
+            language={glossary.data?.language ?? "Chinese (Simplified)"}
+          />
+        ) : glossary.isPending ? (
+          <p className="mt-3 text-xs text-muted-foreground">Preparing the key words…</p>
+        ) : null
       ) : null}
+
 
 
       {sentBack ? (

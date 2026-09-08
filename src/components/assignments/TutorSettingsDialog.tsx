@@ -104,10 +104,6 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
           <div className="space-y-6">
             <section className="rounded-lg border border-border p-4">
               <h3 className="font-display text-lg">Whole class</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                These apply to every student unless you set an individual override below.
-                Copying, pasting and screenshots of questions are always blocked on homework.
-              </p>
 
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
@@ -129,9 +125,6 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Students still write their exam answers in English.
-                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -151,63 +144,42 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">
-                    {TUTOR_LEVELS.find((level) => level.value === klass.tutorLevel)?.hint}
-                  </p>
                 </div>
               </div>
 
               <div className="mt-4 space-y-3">
-                <label className="flex items-start gap-3 text-sm">
+                <label className="flex items-center gap-3 text-sm">
                   <Checkbox
                     checked={klass.studentCanChangeLevel}
                     onCheckedChange={(checked) =>
                       classMutation.mutate({ classId, studentCanChangeLevel: checked === true })
                     }
                   />
-                  <span>
-                    Let students change their own tutor level
-                    <span className="block text-xs text-muted-foreground">
-                      You can still override any individual student below.
-                    </span>
-                  </span>
+                  <span>Students may change their level</span>
                 </label>
 
-                <label className="flex items-start gap-3 text-sm">
+                <label className="flex items-center gap-3 text-sm">
                   <Checkbox
                     checked={klass.keywordTranslation}
                     onCheckedChange={(checked) =>
                       classMutation.mutate({ classId, keywordTranslation: checked === true })
                     }
                   />
-                  <span>
-                    Question Vocabulary Translation
-                    <span className="block text-xs text-muted-foreground">
-                      Shows a small box under each homework question listing the key words from that
-                      question with their {klass.vocabLanguage} translation. Turn it off for
-                      individual students below.
-                    </span>
-                  </span>
+                  <span>Question Vocabulary Translation</span>
                 </label>
 
-                <label className="flex items-start gap-3 text-sm">
+                <label className="flex items-center gap-3 text-sm">
                   <Checkbox
                     checked={klass.vocabTranslation}
                     onCheckedChange={(checked) =>
                       classMutation.mutate({ classId, vocabTranslation: checked === true })
                     }
                   />
-                  <span>
-                    Translate vocabulary terms in the vocab list
-                    <span className="block text-xs text-muted-foreground">
-                      Only the term itself is translated — definitions and examples stay in simple
-                      English at the class tutor level.
-                    </span>
-                  </span>
+                  <span>Translate vocab list terms</span>
                 </label>
 
                 <div className="max-w-xs space-y-2">
-                  <Label>Vocabulary &amp; question translation language</Label>
+                  <Label>Translation language</Label>
                   <Select
                     value={klass.vocabLanguage}
                     onValueChange={(value) =>
@@ -231,12 +203,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
 
             <section className="rounded-lg border border-border p-4">
               <h3 className="font-display text-lg">Individual students</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Differentiate for key students. Each student has four settings, labelled below.
-                “Class default” means they follow the whole-class settings above. You can also
-                override any of these for a single homework in that assignment&apos;s Due date &amp;
-                answer release panel.
-              </p>
+
 
 
               {settings.data.students.length === 0 ? (
@@ -253,7 +220,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
                       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">
-                            Tutor language — the language the AI tutor speaks to this student in
+                            Tutor language
                           </Label>
                           <Select
                             value={student.tutorLanguage ?? INHERIT}
@@ -283,7 +250,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
 
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">
-                            Tutor level — how much help and how simple the English is
+                            Tutor level
                           </Label>
                           <Select
                             value={student.tutorLevel ?? INHERIT}
@@ -313,7 +280,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
 
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">
-                            Question Vocabulary Translation — key-word box under each question
+                            Question Vocabulary Translation
                           </Label>
                           <Select
                             value={
@@ -346,7 +313,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
 
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">
-                            Let this student change their own tutor level
+                            May change level
                           </Label>
                           <label className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
                             <Checkbox

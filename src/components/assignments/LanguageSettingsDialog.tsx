@@ -137,11 +137,7 @@ export function LanguageSettingsDialog({
         ) : data ? (
           <div className="space-y-6">
             <section className="rounded-lg border border-border p-4">
-              <Label className="text-sm">Photo answers for this assignment</Label>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Automatic keeps photo-only answers on drawing and calculation questions. Always on
-                offers the camera and drawing pad everywhere. Off means students type every answer.
-              </p>
+              <Label className="text-sm">Photo answers</Label>
               <div className="mt-2">
                 <PhotoModeControl
                   value={data.photoMode}
@@ -151,12 +147,7 @@ export function LanguageSettingsDialog({
               </div>
 
               <div className="mt-4 border-t border-border pt-3">
-                <Label className="text-sm">Question Vocabulary Translation for this homework</Label>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Adds a small vocabulary box under each question listing key words from that
-                  question with their translation. Only single key words are listed — never whole
-                  questions or answers.
-                </p>
+                <Label className="text-sm">Question Vocabulary Translation</Label>
                 <div className="mt-2">
                   <VocabTranslationControl
                     value={data.keywordTranslation}
@@ -169,10 +160,6 @@ export function LanguageSettingsDialog({
 
               <div className="mt-4 border-t border-border pt-3">
                 <Label className="text-sm">Vocab list translations</Label>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Controls the translations shown in the student&apos;s Vocab list for this homework.
-                  Turn them off to show English hints only.
-                </p>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
                   <label className="flex items-center gap-2 text-sm">
                     <Checkbox
@@ -209,9 +196,7 @@ export function LanguageSettingsDialog({
 
             <section className="rounded-lg border border-border p-4">
               <h3 className="font-medium">Individual students</h3>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Override the photo answers and Question Vocabulary Translation for one student only.
-              </p>
+
               {data.students.length === 0 ? (
                 <p className="mt-3 text-sm text-muted-foreground">No students have joined yet.</p>
               ) : (

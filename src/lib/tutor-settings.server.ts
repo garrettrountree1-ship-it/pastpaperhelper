@@ -59,6 +59,9 @@ export async function effectiveTutorSettings(
     keywordTranslation: Boolean(row?.keyword_translation ?? klass?.keyword_translation ?? false),
     vocabTranslation,
     vocabLanguage: (klass?.vocab_language as string | null) || language,
+    allowHint: klass?.allow_hint !== false,
+    allowSteps: klass?.allow_steps !== false,
+    maxAttempts: Math.max(0, Number(klass?.max_answer_attempts ?? 0) || 0),
   };
 }
 

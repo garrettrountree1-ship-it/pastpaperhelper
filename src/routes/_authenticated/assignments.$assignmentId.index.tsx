@@ -18,6 +18,7 @@ import { useActiveTime } from "@/hooks/use-active-time";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
 import { QuestionSnip, parseSnipBand } from "@/components/assignments/QuestionSnip";
+import { looksLikeAnswerKey } from "@/lib/answer-key";
 import {
   HELP_PILL,
   HELP_PILL_DOT,
@@ -335,7 +336,7 @@ function groupByPage(questions: Question[]) {
   const shown = new Set<string>();
   questions.forEach((question, index) => {
     // Snipped questions carry their own picture inside the question card.
-    const pageUrls = (question.imageUrls ?? []).filter((url) => !parseSnipBand(url));
+    const pageUrls = (question.imageUrls ?? []).filter((url) => !parseSnipBand(url) && !looksLikeAnswerKey(url));
     const fresh = pageUrls.filter((url) => !shown.has(pageKey(url)));
     const last = groups[groups.length - 1];
     if (fresh.length === 0 && last) {

@@ -1615,10 +1615,14 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: assignmentRow } = await db
       .from("assignments")
-      .select("id, title, subject, curriculum, instructions, due_at, class_id")
+      .select("id, title, subject, curriculum, instructions, due_at, class_id, archived_at")
       .eq("id", data.assignmentId)
       .single();
     const assignment = assignmentRow!;
+    const isTeacher = await teachesAssignment(db, data.assignmentId, userId).catch(() => false);
+    if ((assignment as { archived_at?: string | null }).archived_at && !isTeacher) {
+      throw new Error("This assignment has been archived by your teacher.");
+    }
     const { data: klass } = await db
       .from("classes")
       .select("name")

@@ -239,6 +239,44 @@ export function FreeCanvas({
     window.addEventListener("pointerup", onUp);
   }
 
+  // Drag from anywhere on a text box: a small movement starts the move, a
+  // plain click still puts the caret in the words.
+  function startMoveAnywhere(id: string, event: React.PointerEvent) {
+    if (event.button !== 0) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("button, select, input, textarea, a")) return;
+    const editor = target?.closest("[contenteditable='true']") as HTMLElement | null;
+    if (editor && document.activeElement === editor) return;
+    const block = blocks.find((b) => b.id === id);
+    if (!block || block.type === "ink") return;
+    const startClient = { x: event.clientX, y: event.clientY };
+    const origin = point(event);
+    const baseX = block.x ?? 0;
+    const baseY = block.y ?? 0;
+    let dragging = false;
+    const onMove = (move: PointerEvent) => {
+      if (!dragging) {
+        const far =
+          Math.abs(move.clientX - startClient.x) + Math.abs(move.clientY - startClient.y) > 4;
+        if (!far) return;
+        dragging = true;
+        const active = document.activeElement as HTMLElement | null;
+        if (active && typeof active.blur === "function") active.blur();
+      }
+      const next = point(move);
+      patch(id, {
+        x: Math.max(0, baseX + (next.x - origin.x)),
+        y: Math.max(0, baseY + (next.y - origin.y)),
+      });
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
   function startResize(
     id: string,
     event: React.PointerEvent,

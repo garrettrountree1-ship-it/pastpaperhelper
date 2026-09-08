@@ -82,6 +82,8 @@ export function OfficeDocView({
   // The exact slide pages (one picture per slide) shown under the editable text.
   const [slidePages, setSlidePages] = useState<string[] | null>(null);
   const [preparingPages, setPreparingPages] = useState(false);
+  const [pagesError, setPagesError] = useState<string | null>(null);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const token = useRef(0);
   // Increment when the renderer changes so old, incorrectly parsed decks are
@@ -356,19 +358,34 @@ export function OfficeDocView({
         setSlidePages(cached);
         return;
       }
+
       try {
+        setPagesError(null);
         let { url: pdfUrl } = await getSlidePdfUrl({ data: { materialId } });
         if (!pdfUrl && canPrepareShared) {
           if (!cancelled) setPreparingPages(true);
           pdfUrl = (await prepareSlidePdf({ data: { materialId } })).url;
         }
-        if (cancelled || !pdfUrl) return;
+        if (cancelled) return;
+        if (!pdfUrl) {
+          setPagesError(
+            canPrepareShared
+              ? "Couldn't get the exact slides."
+              : "The exact slides aren't ready yet — ask the teacher to open this once.",
+          );
+          return;
+        }
         const pages = await pdfToSlideImages(pdfUrl);
-        if (cancelled || !pages.length) return;
+        if (cancelled) return;
+        if (!pages.length) {
+          setPagesError("Couldn't read the exact slides.");
+          return;
+        }
         setSlidePages(pages);
         void writeCachedJson(pagesKey, pages);
-      } catch {
-        // Fall back to the rebuilt slides, which are already on screen.
+      } catch (error) {
+        console.error("Exact slide pages failed", error);
+        if (!cancelled) setPagesError("Couldn't get the exact slides.");
       } finally {
         if (!cancelled) setPreparingPages(false);
       }
@@ -377,6 +394,7 @@ export function OfficeDocView({
       cancelled = true;
     };
   }, [format, materialId, pagesKey, canPrepareShared, rebuilding]);
+
 
 
 
@@ -413,9 +431,13 @@ export function OfficeDocView({
           <span className="ml-2 text-xs text-muted-foreground">
             Slide {currentSlide + 1} of {progress?.total ?? deck.slides.length}
             {progress && progress.done < progress.total ? " · still preparing…" : ""}
-            {preparingPages ? " · getting the exact slides…" : ""}
+            {preparingPages ? " · getting the exact slides (this can take a minute)…" : ""}
           </span>
         ) : null}
+        {deck && pagesError ? (
+          <span className="ml-2 text-xs text-destructive">{pagesError}</span>
+        ) : null}
+
         {deck ? (
           <div className="ml-2 flex items-center gap-1">
             {(

@@ -930,52 +930,8 @@ export function FormativeReviewButton({ classId }: { classId: string }) {
               No class questions yet — they will appear here after your teacher sends one.
             </p>
           ) : (
-            rows.map((row) => (
-              <div key={row.id} className="rounded-lg border border-border p-4">
-                <p className="text-xs text-muted-foreground">
-                  {new Date(row.sentAt).toLocaleString()}
-                  {row.lesson ? ` · ${row.lesson}` : ""}
-                </p>
-                <p className="mt-1 whitespace-pre-wrap font-medium">{row.question}</p>
-                {row.questionImage ? (
-                  <img
-                    src={row.questionImage}
-                    alt="Question picture"
-                    className="mt-2 max-h-64 w-full rounded-md border border-border object-contain"
-                  />
-                ) : null}
-                {row.myAttempts.length > 0 ? (
-                  <div className="mt-3 space-y-1">
-                    {row.myAttempts.map((attempt, index) => (
-                      <p key={index} className="text-sm">
-                        <span className="text-muted-foreground">Your try {index + 1}: </span>
-                        <span
-                          className={
-                            attempt.verdict === "correct" ? "text-primary" : "text-destructive"
-                          }
-                        >
-                          {attempt.answer}
-                        </span>
-                      </p>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-3 text-sm text-muted-foreground">You did not answer this one.</p>
-                )}
-                {row.answer ? (
-                  <div className="mt-3 rounded-md border border-primary/40 bg-primary/10 p-3">
-                    <p className="text-sm font-medium text-primary">The answer</p>
-                    <p className="mt-1 whitespace-pre-wrap text-sm">{row.answer}</p>
-                  </div>
-                ) : (
-                  <p className="mt-3 text-sm text-muted-foreground">
-                    {row.stillLive
-                      ? "Still open — the answer appears when your teacher shares it."
-                      : "Your teacher has not shared the answer for this one."}
-                  </p>
-                )}
-              </div>
-            ))
+            rows.map((row) => <ReviewRow key={row.id} row={row} />)
+
           )}
         </div>
       </DialogContent>

@@ -180,6 +180,8 @@ export type Database = {
       }
       assignments: {
         Row: {
+          allow_hint: boolean | null
+          allow_steps: boolean | null
           archived_at: string | null
           class_id: string
           created_at: string
@@ -190,6 +192,7 @@ export type Database = {
           instructions: string | null
           keyword_translation: boolean | null
           mark_scheme_revealed: boolean
+          max_answer_attempts: number | null
           photo_mode: string
           protect_questions: boolean
           published: boolean
@@ -199,6 +202,8 @@ export type Database = {
           vocab_translation: boolean
         }
         Insert: {
+          allow_hint?: boolean | null
+          allow_steps?: boolean | null
           archived_at?: string | null
           class_id: string
           created_at?: string
@@ -209,6 +214,7 @@ export type Database = {
           instructions?: string | null
           keyword_translation?: boolean | null
           mark_scheme_revealed?: boolean
+          max_answer_attempts?: number | null
           photo_mode?: string
           protect_questions?: boolean
           published?: boolean
@@ -218,6 +224,8 @@ export type Database = {
           vocab_translation?: boolean
         }
         Update: {
+          allow_hint?: boolean | null
+          allow_steps?: boolean | null
           archived_at?: string | null
           class_id?: string
           created_at?: string
@@ -228,6 +236,7 @@ export type Database = {
           instructions?: string | null
           keyword_translation?: boolean | null
           mark_scheme_revealed?: boolean
+          max_answer_attempts?: number | null
           photo_mode?: string
           protect_questions?: boolean
           published?: boolean
@@ -547,12 +556,15 @@ export type Database = {
       classes: {
         Row: {
           ai_warning_limit: number
+          allow_hint: boolean
+          allow_steps: boolean
           created_at: string
           curriculum: string
           gradebook_detail: boolean
           id: string
           join_code: string
           keyword_translation: boolean
+          max_answer_attempts: number
           name: string
           protect_questions: boolean
           student_can_change_level: boolean
@@ -565,12 +577,15 @@ export type Database = {
         }
         Insert: {
           ai_warning_limit?: number
+          allow_hint?: boolean
+          allow_steps?: boolean
           created_at?: string
           curriculum?: string
           gradebook_detail?: boolean
           id?: string
           join_code: string
           keyword_translation?: boolean
+          max_answer_attempts?: number
           name: string
           protect_questions?: boolean
           student_can_change_level?: boolean
@@ -583,12 +598,15 @@ export type Database = {
         }
         Update: {
           ai_warning_limit?: number
+          allow_hint?: boolean
+          allow_steps?: boolean
           created_at?: string
           curriculum?: string
           gradebook_detail?: boolean
           id?: string
           join_code?: string
           keyword_translation?: boolean
+          max_answer_attempts?: number
           name?: string
           protect_questions?: boolean
           student_can_change_level?: boolean
@@ -1349,36 +1367,45 @@ export type Database = {
       }
       student_assignment_settings: {
         Row: {
+          allow_hint: boolean | null
+          allow_steps: boolean | null
           assignment_id: string
           created_at: string
           due_at: string | null
           id: string
           keyword_translation: boolean | null
           mark_scheme_revealed: boolean
+          max_answer_attempts: number | null
           photo_mode: string | null
           student_id: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          allow_hint?: boolean | null
+          allow_steps?: boolean | null
           assignment_id: string
           created_at?: string
           due_at?: string | null
           id?: string
           keyword_translation?: boolean | null
           mark_scheme_revealed?: boolean
+          max_answer_attempts?: number | null
           photo_mode?: string | null
           student_id: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          allow_hint?: boolean | null
+          allow_steps?: boolean | null
           assignment_id?: string
           created_at?: string
           due_at?: string | null
           id?: string
           keyword_translation?: boolean | null
           mark_scheme_revealed?: boolean
+          max_answer_attempts?: number | null
           photo_mode?: string | null
           student_id?: string
           updated_at?: string

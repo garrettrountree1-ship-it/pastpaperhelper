@@ -90,7 +90,9 @@ export function QuestionExperience({
   headerAction = null,
   snipAction = null,
   keywordTranslation = false,
-  
+  allowHint = true,
+  allowSteps = true,
+  maxAttempts = 0,
   assignmentId,
   sentBack = null,
   snipUrls = [],
@@ -133,6 +135,12 @@ export function QuestionExperience({
   snipAction?: ReactNode;
   /** Show the Question Vocabulary Translation box under the question. */
   keywordTranslation?: boolean;
+  /** Scaffolding: "Give me a hint" available. */
+  allowHint?: boolean;
+  /** Scaffolding: step-by-step breakdown available. */
+  allowSteps?: boolean;
+  /** Scaffolding: tries allowed per question; 0 means unlimited. */
+  maxAttempts?: number;
   /** Block copying/selecting the question text. */
   protectQuestions?: boolean;
   /** Needed to add key words from the AI tutor's replies to the vocabulary box. */
@@ -167,6 +175,7 @@ export function QuestionExperience({
   const tutorGuard = useOriginalTypingGuard();
   const bulletTarget = photoOnly ? 0 : bulletTargetFor(question.marks, requiresPhoto);
   const hasWrittenAnswer = stripBullets(draft).trim().length > 0;
+  const outOfTries = maxAttempts > 0 && attempts >= maxAttempts;
 
   // Seed the marks checklist so the student sees how many points are expected.
   useEffect(() => {
@@ -360,18 +369,31 @@ export function QuestionExperience({
 
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs text-muted-foreground">
-            {attempts > 0 ? `${attempts} attempt${attempts === 1 ? "" : "s"}` : ""}
+            {maxAttempts > 0
+              ? `${attempts} of ${maxAttempts} ${maxAttempts === 1 ? "try" : "tries"} used`
+              : attempts > 0
+                ? `${attempts} attempt${attempts === 1 ? "" : "s"}`
+                : ""}
           </span>
           <Button
             onClick={onCheck}
             disabled={
               locked ||
+              outOfTries ||
               checking ||
               (!hasWrittenAnswer && photoCount === 0) ||
               !isEnglishOnly(draft)
             }
           >
-            {locked ? "Locked" : checking ? "Marking..." : result ? "Re-check answer" : "Check answer"}
+            {locked
+              ? "Locked"
+              : outOfTries
+                ? "No tries left"
+                : checking
+                  ? "Marking..."
+                  : result
+                    ? "Re-check answer"
+                    : "Check answer"}
           </Button>
 
         </div>
@@ -469,7 +491,12 @@ export function QuestionExperience({
 
         <div className="flex flex-col items-center gap-2 pt-1">
           {headerAction}
-          <QuestionHelpButtons questionId={question.id} answerDraft={draft} />
+          <QuestionHelpButtons
+            questionId={question.id}
+            answerDraft={draft}
+            allowHint={allowHint}
+            allowSteps={allowSteps}
+          />
         </div>
       </div>
     </section>

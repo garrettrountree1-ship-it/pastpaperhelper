@@ -123,6 +123,12 @@ export const askQuestionHelp = createServerFn({ method: "POST" })
 
     const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
     const prefs = await tutorSettingsForAssignment(db, assignment.id, userId);
+    if (data.mode === "hint" && !prefs.allowHint) {
+      throw new Error("Your teacher has turned hints off for this homework.");
+    }
+    if (data.mode === "steps" && !prefs.allowSteps) {
+      throw new Error("Your teacher has turned the step-by-step breakdown off for this homework.");
+    }
 
     const { questionHelpStep } = await import("./question-help.server");
     const reply = await questionHelpStep({

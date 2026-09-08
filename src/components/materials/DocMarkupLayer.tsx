@@ -3,10 +3,12 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   emptyAnnotation,
+  HighlightLayer,
   SlideAnnotations,
   type SlideAnnotation,
   type SlideTool,
 } from "@/components/materials/SlideAnnotations";
+
 import { Button } from "@/components/ui/button";
 import { readCachedJson, writeCachedJson } from "@/lib/doc-cache";
 import { scopedKey, useMarkupScope } from "@/lib/markup-scope";

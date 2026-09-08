@@ -6,7 +6,7 @@ import {
   MARKUP_WIDTH,
   useDocMarkup,
 } from "@/components/materials/DocMarkupLayer";
-import { SlideAnnotations } from "@/components/materials/SlideAnnotations";
+import { HighlightLayer, SlideAnnotations } from "@/components/materials/SlideAnnotations";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 

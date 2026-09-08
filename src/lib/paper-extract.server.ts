@@ -17,9 +17,10 @@ export type ExtractedQuestion = {
   marks: number;
   /** 1-based page numbers of the uploaded paper this part appears on. */
   pages: number[];
-  /** Region of the page to show the student as a picture, when known. */
-  crop?: QuestionCrop | null;
+  /** Region(s) of the page(s) to show the student, in reading order. */
+  crops?: QuestionCrop[] | null;
 };
+
 
 
 export type UploadedFile = {

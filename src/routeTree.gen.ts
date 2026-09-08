@@ -22,6 +22,7 @@ import { Route as AuthenticatedWagerRoundRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAssignmentsAssignmentIdRouteImport } from './routes/_authenticated/assignments.$assignmentId'
 import { Route as AuthenticatedChallengeMatchIdRouteImport } from './routes/_authenticated/challenge.$matchId'
 import { Route as AuthenticatedQuizQuizIdRouteImport } from './routes/_authenticated/quiz.$quizId'
+import { Route as OauthGoogleDriveReturnRouteImport } from './routes/oauth/google-drive.return'
 import { Route as AuthenticatedAssignmentsAssignmentIdIndexRouteImport } from './routes/_authenticated/assignments.$assignmentId.index'
 import { Route as AuthenticatedAssignmentsAssignmentIdPreviewRouteImport } from './routes/_authenticated/assignments.$assignmentId.preview'
 import { Route as AuthenticatedClassesClassIdIndexRouteImport } from './routes/_authenticated/classes.$classId.index'
@@ -99,6 +100,11 @@ const AuthenticatedQuizQuizIdRoute = AuthenticatedQuizQuizIdRouteImport.update({
   path: '/quiz/$quizId',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const OauthGoogleDriveReturnRoute = OauthGoogleDriveReturnRouteImport.update({
+  id: '/oauth/google-drive/return',
+  path: '/oauth/google-drive/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAssignmentsAssignmentIdIndexRoute =
   AuthenticatedAssignmentsAssignmentIdIndexRouteImport.update({
     id: '/',
@@ -161,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/assignments/$assignmentId': typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
   '/challenge/$matchId': typeof AuthenticatedChallengeMatchIdRoute
   '/quiz/$quizId': typeof AuthenticatedQuizQuizIdRoute
+  '/oauth/google-drive/return': typeof OauthGoogleDriveReturnRoute
   '/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
   '/classes/$classId/games': typeof AuthenticatedClassesClassIdGamesRoute
   '/classes/$classId/homework': typeof AuthenticatedClassesClassIdHomeworkRoute
@@ -182,6 +189,7 @@ export interface FileRoutesByTo {
   '/wager-round': typeof AuthenticatedWagerRoundRoute
   '/challenge/$matchId': typeof AuthenticatedChallengeMatchIdRoute
   '/quiz/$quizId': typeof AuthenticatedQuizQuizIdRoute
+  '/oauth/google-drive/return': typeof OauthGoogleDriveReturnRoute
   '/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
   '/classes/$classId/games': typeof AuthenticatedClassesClassIdGamesRoute
   '/classes/$classId/homework': typeof AuthenticatedClassesClassIdHomeworkRoute
@@ -206,6 +214,7 @@ export interface FileRoutesById {
   '/_authenticated/assignments/$assignmentId': typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
   '/_authenticated/challenge/$matchId': typeof AuthenticatedChallengeMatchIdRoute
   '/_authenticated/quiz/$quizId': typeof AuthenticatedQuizQuizIdRoute
+  '/oauth/google-drive/return': typeof OauthGoogleDriveReturnRoute
   '/_authenticated/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
   '/_authenticated/classes/$classId/games': typeof AuthenticatedClassesClassIdGamesRoute
   '/_authenticated/classes/$classId/homework': typeof AuthenticatedClassesClassIdHomeworkRoute
@@ -230,6 +239,7 @@ export interface FileRouteTypes {
     | '/assignments/$assignmentId'
     | '/challenge/$matchId'
     | '/quiz/$quizId'
+    | '/oauth/google-drive/return'
     | '/assignments/$assignmentId/preview'
     | '/classes/$classId/games'
     | '/classes/$classId/homework'
@@ -251,6 +261,7 @@ export interface FileRouteTypes {
     | '/wager-round'
     | '/challenge/$matchId'
     | '/quiz/$quizId'
+    | '/oauth/google-drive/return'
     | '/assignments/$assignmentId/preview'
     | '/classes/$classId/games'
     | '/classes/$classId/homework'
@@ -274,6 +285,7 @@ export interface FileRouteTypes {
     | '/_authenticated/assignments/$assignmentId'
     | '/_authenticated/challenge/$matchId'
     | '/_authenticated/quiz/$quizId'
+    | '/oauth/google-drive/return'
     | '/_authenticated/assignments/$assignmentId/preview'
     | '/_authenticated/classes/$classId/games'
     | '/_authenticated/classes/$classId/homework'
@@ -289,6 +301,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  OauthGoogleDriveReturnRoute: typeof OauthGoogleDriveReturnRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -383,6 +396,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/quiz/$quizId'
       preLoaderRoute: typeof AuthenticatedQuizQuizIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/oauth/google-drive/return': {
+      id: '/oauth/google-drive/return'
+      path: '/oauth/google-drive/return'
+      fullPath: '/oauth/google-drive/return'
+      preLoaderRoute: typeof OauthGoogleDriveReturnRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/assignments/$assignmentId/': {
       id: '/_authenticated/assignments/$assignmentId/'
@@ -510,6 +530,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  OauthGoogleDriveReturnRoute: OauthGoogleDriveReturnRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

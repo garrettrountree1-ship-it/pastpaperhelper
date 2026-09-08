@@ -541,6 +541,38 @@ export const setQuestionProtection = createServerFn({ method: "POST" })
     return { ok: true, protectQuestions: data.protectQuestions };
   });
 
+/** Save a teacher's manual crop without changing any other assignment content. */
+export const updateQuestionCrop = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ questionId: z.string().uuid(), imagePaths: z.array(z.string().min(1)).min(1).max(3) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const db = await admin();
+    const question = await questionForTeacher(supabase, db, data.questionId, userId);
+    const { data: current } = await db
+      .from("questions")
+      .select("image_paths")
+      .eq("id", question.id)
+      .single();
+    const allowedPages = new Set(
+      ((current?.image_paths ?? []) as string[]).map((path) => path.split("#")[0]),
+    );
+    const cropPattern = /#crop=(0(?:\.\d+)?|1(?:\.0+)?),(0(?:\.\d+)?|1(?:\.0+)?);manual$/;
+    for (const path of data.imagePaths) {
+      const page = path.split("#")[0];
+      const match = cropPattern.exec(path);
+      if (!page || !allowedPages.has(page) || !match) throw new Error("That crop is not valid.");
+      const top = Number(match[1]);
+      const bottom = Number(match[2]);
+      if (bottom - top < 0.035) throw new Error("The crop is too small.");
+    }
+    const { error } = await db.from("questions").update({ image_paths: data.imagePaths }).eq("id", question.id);
+    if (error) throw new Error(error.message);
+    return { ok: true, imagePaths: data.imagePaths };
+  });
+
 export const updateAssignment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>

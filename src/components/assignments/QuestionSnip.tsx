@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { questionPagesOnly } from "@/lib/answer-key";
+import { parseCropFragment } from "@/lib/snip-crop";
 import { snapBandToWhitespace } from "@/lib/snip-whitespace";
 
 /**
@@ -14,14 +15,7 @@ import { snapBandToWhitespace } from "@/lib/snip-whitespace";
  * The picture cannot be selected, dragged or right-click saved.
  */
 export function parseSnipBand(url: string): { top: number; bottom: number } | null {
-  const at = url.indexOf("#crop=");
-  if (at === -1) return null;
-  const parts = url.slice(at + 6).split(",");
-  const top = Number(parts[0]);
-  const bottom = Number(parts[1]);
-  if (!Number.isFinite(top) || !Number.isFinite(bottom)) return null;
-  if (bottom <= top) return null;
-  return { top: Math.max(0, top), bottom: Math.min(1, bottom) };
+  return parseCropFragment(url);
 }
 
 const guard = {
@@ -39,6 +33,7 @@ function SnipBand({ url, alt }: { url: string; alt: string }) {
   useEffect(() => {
     if (!raw) return;
     let live = true;
+    if (url.includes(";manual")) return;
     void snapBandToWhitespace(url, raw).then((tidy) => {
       if (live) setBand(tidy);
     });

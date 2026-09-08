@@ -115,7 +115,8 @@ const CROP_AUDIT_SYSTEM = [
   "Never include Markscheme, Mark scheme, Answer, Answers, solution, marking points, ticks, highlighted answers, or text that gives the answer.",
   "If a diagram or block of choices appears twice on the page, include only the copy belonging to the clean question, never both copies.",
   "Return at most one crop per page. Use a second crop only when the SAME part genuinely continues on the next page.",
-  "Crop tightly in whitespace: start just above this part's label and end immediately after its final wording, choices, answer lines, or diagram, before any answer or next part.",
+  "Crop only through a continuous horizontal strip of completely blank white paper. Never cut through any letter, symbol, line, table, graph, image or diagram.",
+  "The bottom boundary should be the first blank white strip immediately after the printed point value such as [1], [2], (1), or (2), when a point value is present. It must be above any answer, solution, mark scheme, repeated question, or next part.",
   'Reply with JSON only: {"items":[{"label":"1(a)","crops":[{"page":2,"top":0.12,"bottom":0.34}]}]}',
 ].join(" ");
 
@@ -221,6 +222,10 @@ const RENUMBER_HEAD = new RegExp(
   "^\\s*\\(?(\\d{1,3})\\)?\\s*[.)]?\\s*((?:\\(\\s*(?:i{1,3}|iv|v|vi{1,3}|ix|x|[a-z])\\s*\\)\\s*)*)",
   "i",
 );
+const STANDALONE_SUB_HEAD = new RegExp(
+  "^\\s*(\\(\\s*(?:i{1,3}|iv|v|vi{1,3}|ix|x|[a-z])\\s*\\)|(?:[a-z])[.)])\\s*",
+  "i",
+);
 
 /**
  * Teachers often paste questions with wrong, repeated or missing numbering.
@@ -231,19 +236,36 @@ export function renumberQuestions(items: ExtractedQuestion[]): ExtractedQuestion
   let counter = 0;
   let prevMain: string | null = null;
   let usedSubs = new Set<string>();
+  let activeLetter: string | null = null;
 
   return items.map((item) => {
     const head = RENUMBER_HEAD.exec(item.questionText);
-    const main = head?.[1] ?? null;
-    const sub = (head?.[2] ?? "").replace(/\s+/g, "").toLowerCase();
-    const body = head ? item.questionText.slice(head[0].length).replace(/^[\s.):-]+/, "") : item.questionText;
+    const standalone = head ? null : STANDALONE_SUB_HEAD.exec(item.questionText);
+    const main = head?.[1] ?? (standalone && prevMain ? prevMain : null);
+    const printedSub = (head?.[2] ?? "").replace(/\s+/g, "").toLowerCase();
+    const standaloneToken = standalone?.[1]?.replace(/[^a-z]/gi, "").toLowerCase() ?? "";
+    const romanStandalone = /^(?:i{1,3}|iv|v|vi{1,3}|ix|x)$/.test(standaloneToken);
+    const sub = head
+      ? printedSub
+      : standaloneToken
+        ? `${romanStandalone && activeLetter ? `(${activeLetter})` : ""}(${standaloneToken})`
+        : "";
+    const body = head
+      ? item.questionText.slice(head[0].length).replace(/^[\s.):-]+/, "")
+      : standalone
+        ? item.questionText.slice(standalone[0].length).replace(/^[\s.):-]+/, "")
+        : item.questionText;
 
-    if (!sub || main === null || main !== prevMain || usedSubs.has(sub)) {
+    if (!sub || main === null || (head && main !== prevMain) || usedSubs.has(sub)) {
       counter += 1;
       usedSubs = new Set<string>();
+      activeLetter = null;
     }
-    prevMain = main;
+    if (main) prevMain = main;
     if (sub) usedSubs.add(sub);
+    const parts = [...sub.matchAll(/\(([a-z]+)\)/g)].map((match) => match[1] ?? "");
+    const letter = parts.find((part) => /^[a-hj-uw-z]$/.test(part));
+    if (letter) activeLetter = letter;
 
     const label = `${counter}${sub}`;
     return { ...item, questionText: `${label} ${body}`.trim() };

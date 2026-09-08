@@ -1,5 +1,5 @@
 import { formatDueDate } from "@/lib/datetime";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import {
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { VocabSheet } from "@/components/assignments/VocabSheet";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
+import { QuestionRecutDialog } from "@/components/assignments/QuestionRecutDialog";
 import { parseSnipBand } from "@/components/assignments/QuestionSnip";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,7 @@ import {
   getAssignmentPreview,
   previewGradeAnswer,
   previewTutorMessage,
+  updateQuestionCrop,
 } from "@/lib/app.functions";
 
 
@@ -73,6 +75,7 @@ type Question = {
   question_text: string;
   marks: number;
   imageUrls?: string[];
+  image_paths?: string[];
   markScheme?: string | null;
   photoMode?: PhotoMode;
 };
@@ -240,6 +243,16 @@ function PreviewQuestion({
   const [reply, setReply] = useState("");
   const [thread, setThread] = useState<Array<{ role: "tutor" | "student"; content: string }>>([]);
   const [attempts, setAttempts] = useState(0);
+  const queryClient = useQueryClient();
+  const saveCrop = useMutation({
+    mutationFn: ({ imagePaths }: { imagePaths: string[]; imageUrls: string[] }) =>
+      updateQuestionCrop({ data: { questionId: question.id, imagePaths } }),
+    onSuccess: async () => {
+      toast.success("Question crop saved");
+      await queryClient.invalidateQueries({ queryKey: ["assignment-preview", assignmentId] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   const check = useMutation({
     mutationFn: async () => {
@@ -340,25 +353,39 @@ function PreviewQuestion({
       keywordTranslation={keywordTranslation}
       assignmentId={assignmentId}
       protectQuestions={protectQuestions}
+      snipAction={
+        (question.image_paths ?? []).length > 0 && (question.imageUrls ?? []).length > 0 ? (
+          <QuestionRecutDialog
+            imagePaths={question.image_paths ?? []}
+            imageUrls={question.imageUrls ?? []}
+            saving={saveCrop.isPending}
+            onSave={async (imagePaths) => {
+              await saveCrop.mutateAsync({ imagePaths, imageUrls: [] });
+            }}
+          />
+        ) : null
+      }
       headerAction={
-        <button
-          type="button"
-          title="Ask the teacher"
-          aria-label="Ask the teacher"
-          onClick={() =>
-            toast.info(
-              "Students use this button to message you about this exact question — their message, with the question reference, lands in your class mailbox under Bulletin & Messages.",
-            )
-          }
-          className={`${HELP_PILL} border-primary/50 bg-primary/10 hover:bg-primary/20`}
-        >
-          <span className={`${HELP_PILL_DOT} bg-primary text-primary-foreground`}>
-            <TeacherIcon className="size-3.5" />
-          </span>
-          <span className={`${HELP_PILL_LABEL} text-foreground`}>
-            Ask the teacher
-          </span>
-        </button>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            title="Ask the teacher"
+            aria-label="Ask the teacher"
+            onClick={() =>
+              toast.info(
+                "Students use this button to message you about this exact question — their message, with the question reference, lands in your class mailbox under Bulletin & Messages.",
+              )
+            }
+            className={`${HELP_PILL} border-primary/50 bg-primary/10 hover:bg-primary/20`}
+          >
+            <span className={`${HELP_PILL_DOT} bg-primary text-primary-foreground`}>
+              <TeacherIcon className="size-3.5" />
+            </span>
+            <span className={`${HELP_PILL_LABEL} text-foreground`}>Ask the teacher</span>
+          </Button>
+        </div>
       }
       thread={thread}
       reply={reply}

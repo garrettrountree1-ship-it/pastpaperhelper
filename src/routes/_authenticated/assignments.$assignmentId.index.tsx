@@ -300,11 +300,6 @@ type Message = { id: string; answer_id: string; role: string; content: string };
  * shown at most once for the whole assignment: a question only starts a new
  * page block when it introduces pages that haven't been shown yet.
  */
-function pageKey(url: string) {
-  // Signed URLs carry a per-request token, so compare the storage path only.
-  return url.split("?")[0] ?? url;
-}
-
 /** The snipped picture of this question, when the upload produced one. */
 export function snipsFor(question: Question) {
   return (question.imageUrls ?? []).filter((url) => parseSnipBand(url));
@@ -313,24 +308,16 @@ export function snipsFor(question: Question) {
 function groupByPage(questions: Question[]) {
   const groups: Array<{
     key: string;
-    imageUrls: string[];
     questions: Array<{ question: Question; index: number }>;
   }> = [];
-  const shown = new Set<string>();
   questions.forEach((question, index) => {
-    // Snipped questions carry their own picture inside the question card.
-    // Whole pages are never displayed: they may contain another sub-part or
-    // an answer block. Only audited #crop images render inside each question.
-    const fresh: string[] = [];
     const last = groups[groups.length - 1];
-    if (fresh.length === 0 && last) {
+    if (last) {
       last.questions.push({ question, index });
       return;
     }
-    fresh.forEach((url) => shown.add(pageKey(url)));
     groups.push({
-      key: fresh.map(pageKey).join("|") || `none-${index}`,
-      imageUrls: fresh,
+      key: `questions-${index}`,
       questions: [{ question, index }],
     });
   });

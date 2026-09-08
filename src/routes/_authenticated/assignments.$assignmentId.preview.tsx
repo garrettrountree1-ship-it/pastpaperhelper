@@ -78,28 +78,17 @@ type Question = {
 };
 
 
-/** Signed URLs carry a per-request token, so compare the storage path only. */
-function pageKey(url: string) {
-  return url.split("?")[0] ?? url;
-}
-
 /** Each past-paper page appears once, above the questions it introduces. */
 function groupByPage(questions: Question[]) {
-  const groups: Array<{ key: string; imageUrls: string[]; questions: Question[] }> = [];
-  const shown = new Set<string>();
+  const groups: Array<{ key: string; questions: Question[] }> = [];
   questions.forEach((question, index) => {
-    // Never preview a whole page. Only the audited crop belonging to the exact
-    // question part may appear inside its question card.
-    const fresh: string[] = [];
     const last = groups[groups.length - 1];
-    if (fresh.length === 0 && last) {
+    if (last) {
       last.questions.push(question);
       return;
     }
-    fresh.forEach((url) => shown.add(pageKey(url)));
     groups.push({
-      key: fresh.map(pageKey).join("|") || `none-${index}`,
-      imageUrls: fresh,
+      key: `questions-${index}`,
       questions: [question],
     });
   });

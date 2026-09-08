@@ -113,15 +113,16 @@ export function QuestionSnip({
  * dropped.
  */
 export function mergeSnipPieces(urls: string[]): string[] {
-  const out: string[] = [];
+  const wholePages = new Map<string, string>();
   const bands: Array<{ page: string; top: number; bottom: number }> = [];
 
   for (const url of urls) {
     const band = parseSnipBand(url);
-    const page = url.slice(0, url.indexOf("#crop=") === -1 ? undefined : url.indexOf("#crop="));
+    const cropAt = url.indexOf("#crop=");
+    const rawPage = cropAt === -1 ? url : url.slice(0, cropAt);
+    const page = rawPage.split("?")[0] ?? rawPage;
     if (!band) {
-      // A whole page: only once, and never alongside bands of that same page.
-      if (!out.includes(url)) out.push(url);
+      if (!wholePages.has(page)) wholePages.set(page, url);
       continue;
     }
     const existing = bands.find(
@@ -131,15 +132,35 @@ export function mergeSnipPieces(urls: string[]): string[] {
         band.bottom > piece.top - 0.02,
     );
     if (existing) {
-      existing.top = Math.min(existing.top, band.top);
-      existing.bottom = Math.max(existing.bottom, band.bottom);
+      // Two reports for the same print must never enlarge the picture. Keep
+      // only their shared region; taking their union pulled adjacent answers
+      // and repeated diagrams into the student's question.
+      const sharedTop = Math.max(existing.top, band.top);
+      const sharedBottom = Math.min(existing.bottom, band.bottom);
+      if (sharedBottom > sharedTop + 0.035) {
+        existing.top = sharedTop;
+        existing.bottom = sharedBottom;
+      } else if (band.bottom - band.top < existing.bottom - existing.top) {
+        existing.top = band.top;
+        existing.bottom = band.bottom;
+      }
       continue;
     }
     bands.push({ page, top: band.top, bottom: band.bottom });
   }
 
+  const out: string[] = [];
+  for (const [page, url] of wholePages) {
+    if (!bands.some((piece) => piece.page === page)) out.push(url);
+  }
   for (const piece of bands) {
-    out.push(`${piece.page}#crop=${piece.top.toFixed(4)},${piece.bottom.toFixed(4)}`);
+    const signed = urls.find((url) => {
+      const at = url.indexOf("#crop=");
+      const raw = at === -1 ? url : url.slice(0, at);
+      return (raw.split("?")[0] ?? raw) === piece.page;
+    });
+    const base = signed ? signed.slice(0, signed.indexOf("#crop=")) : piece.page;
+    out.push(`${base}#crop=${piece.top.toFixed(4)},${piece.bottom.toFixed(4)}`);
   }
   return out;
 }

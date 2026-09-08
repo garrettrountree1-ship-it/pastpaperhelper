@@ -106,6 +106,19 @@ const DETAIL_SYSTEM = [
 
 ].join(" ");
 
+const CROP_AUDIT_SYSTEM = [
+  "You inspect page images from an uploaded question paper and return safe display crops.",
+  "For every requested label, locate exactly that ONE answerable part only.",
+  "Parts (a), (b), (c), (i), (ii), and (iii) are separate questions. A crop for one part must stop before the next part label.",
+  "Include its stem, every answer choice, and any diagram/table belonging to that part exactly once.",
+  "Some teacher-made documents repeat the question immediately before an answer or mark scheme. Choose only the first clean question copy. Never include the repeated copy.",
+  "Never include Markscheme, Mark scheme, Answer, Answers, solution, marking points, ticks, highlighted answers, or text that gives the answer.",
+  "If a diagram or block of choices appears twice on the page, include only the copy belonging to the clean question, never both copies.",
+  "Return at most one crop per page. Use a second crop only when the SAME part genuinely continues on the next page.",
+  "Crop tightly in whitespace: start just above this part's label and end immediately after its final wording, choices, answer lines, or diagram, before any answer or next part.",
+  'Reply with JSON only: {"items":[{"label":"1(a)","crops":[{"page":2,"top":0.12,"bottom":0.34}]}]}',
+].join(" ");
+
 
 export async function extractQuestionsFromPapers(
   input: ExtractInput,
@@ -439,7 +452,7 @@ async function runDetail(
   const parsed = parseJson(text);
   const rows = Array.isArray(parsed["questions"]) ? (parsed["questions"] as unknown[]) : [];
 
-  return rows
+  const details = rows
     .map((raw, rowIndex) => {
       const item = raw as Record<string, unknown>;
       const label = String(item["label"] ?? "").trim() || batch[rowIndex]?.label || "";
@@ -469,6 +482,44 @@ async function runDetail(
 
     })
     .filter((item) => item.questionText.length > 0);
+
+  if (details.length === 0) return details;
+  try {
+    const audited = await runCropAudit(key, header, documents, details);
+    return details.map((detail) => ({
+      ...detail,
+      crops: audited.get(detail.label.toLowerCase()) ?? detail.crops,
+    }));
+  } catch {
+    return details;
+  }
+}
+
+async function runCropAudit(
+  key: string,
+  header: string,
+  documents: Array<Record<string, unknown>>,
+  details: DetailResult[],
+) {
+  const request = details
+    .map((item) => `- ${item.label}${item.pages.length ? ` on PAGE ${item.pages.join(", ")}` : ""}: ${item.questionText.slice(0, 180)}`)
+    .join("\n");
+  const text = await callGateway(key, CROP_AUDIT_SYSTEM, [
+    { type: "text", text: `${header}\n\nReturn safe crops for only these separate parts:\n${request}` },
+    ...documents,
+  ]);
+  const parsed = parseJson(text);
+  const items = Array.isArray(parsed["items"]) ? (parsed["items"] as unknown[]) : [];
+  const allowed = new Map(details.map((item) => [item.label.toLowerCase(), item.pages]));
+  const result = new Map<string, QuestionCrop[] | null>();
+  for (const raw of items) {
+    const item = raw as Record<string, unknown>;
+    const label = String(item["label"] ?? "").trim().toLowerCase();
+    const pages = allowed.get(label);
+    if (!pages) continue;
+    result.set(label, parseCropList(item["crops"] ?? item["crop"], pages));
+  }
+  return result;
 }
 
 /**
@@ -506,14 +557,21 @@ function parseCropList(raw: unknown, pages: number[]): QuestionCrop[] | null {
   for (const entry of list) {
     const band = parseCropValue(entry, pages);
     if (!band) continue;
-    // Bands of the same page that cover the same print are one band, otherwise
-    // the student is shown the same question twice.
+    // There can only be one crop for a question part on one page. If the model
+    // reports it twice, keep the shared/narrower region rather than expanding.
     const same = out.find(
       (b) => b.page === band.page && band.top < b.bottom + 0.02 && band.bottom > b.top - 0.02,
     );
     if (same) {
-      same.top = Math.min(same.top, band.top);
-      same.bottom = Math.max(same.bottom, band.bottom);
+      const sharedTop = Math.max(same.top, band.top);
+      const sharedBottom = Math.min(same.bottom, band.bottom);
+      if (sharedBottom > sharedTop + 0.035) {
+        same.top = sharedTop;
+        same.bottom = sharedBottom;
+      } else if (band.bottom - band.top < same.bottom - same.top) {
+        same.top = band.top;
+        same.bottom = band.bottom;
+      }
       continue;
     }
     out.push(band);

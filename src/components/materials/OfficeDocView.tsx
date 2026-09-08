@@ -79,6 +79,9 @@ export function OfficeDocView({
   const [deck, setDeck] = useState<PptxDeck | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [rebuilding, setRebuilding] = useState(false);
+  // The exact slide pages (one picture per slide) shown under the editable text.
+  const [slidePages, setSlidePages] = useState<string[] | null>(null);
+  const [preparingPages, setPreparingPages] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const token = useRef(0);
   // Increment when the renderer changes so old, incorrectly parsed decks are

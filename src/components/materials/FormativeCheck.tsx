@@ -435,9 +435,10 @@ export function FormativeCheckPanel({
   });
 
   const send = useMutation({
-    mutationFn: () => submit({ data: { checkId: check!.id, answer: answer.trim() } }),
+    mutationFn: () => submit({ data: { checkId: check!.id, answer: combined.trim() } }),
     onSuccess: async () => {
       setAnswer("");
+      setPartAnswers({});
       await queryClient.invalidateQueries({ queryKey: ["formative-active", classId] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -449,8 +450,12 @@ export function FormativeCheckPanel({
   );
 
   useEffect(() => {
-    if (check?.id) setAnswer("");
+    if (check?.id) {
+      setAnswer("");
+      setPartAnswers({});
+    }
   }, [check?.id]);
+
 
   if (!check || countdown?.left === 0 || dismissed === check.id) return null;
   const correct = latest?.verdict === "correct";

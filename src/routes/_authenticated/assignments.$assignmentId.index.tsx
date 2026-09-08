@@ -17,6 +17,7 @@ import { StudentTutorControls } from "@/components/assignments/StudentTutorContr
 import { useActiveTime } from "@/hooks/use-active-time";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
+import { QuestionSnip, parseSnipBand } from "@/components/assignments/QuestionSnip";
 import {
   HELP_PILL,
   HELP_PILL_DOT,
@@ -229,17 +230,13 @@ function AssignmentPage() {
                   {group.imageUrls.length > 0 ? (
                     <div className="paper space-y-2 p-4">
                       {group.imageUrls.map((url) => (
-                        <img
+                        <QuestionSnip
                           key={url}
-                          src={url}
+                          url={url}
                           alt="Past-paper page for the questions below"
-                          loading="lazy"
-                          draggable={false}
-                          onContextMenu={(event) => event.preventDefault()}
-                          onDragStart={(event) => event.preventDefault()}
-                          className="pointer-events-none w-full select-none rounded-lg border border-border bg-card object-contain"
                         />
                       ))}
+
                       <p className="text-xs text-muted-foreground">
                         Original past-paper page. The questions below are from this page.
                       </p>
@@ -324,6 +321,11 @@ function pageKey(url: string) {
   return url.split("?")[0] ?? url;
 }
 
+/** The snipped picture of this question, when the upload produced one. */
+export function snipFor(question: Question) {
+  return (question.imageUrls ?? []).find((url) => parseSnipBand(url)) ?? null;
+}
+
 function groupByPage(questions: Question[]) {
   const groups: Array<{
     key: string;
@@ -332,7 +334,9 @@ function groupByPage(questions: Question[]) {
   }> = [];
   const shown = new Set<string>();
   questions.forEach((question, index) => {
-    const fresh = (question.imageUrls ?? []).filter((url) => !shown.has(pageKey(url)));
+    // Snipped questions carry their own picture inside the question card.
+    const pageUrls = (question.imageUrls ?? []).filter((url) => !parseSnipBand(url));
+    const fresh = pageUrls.filter((url) => !shown.has(pageKey(url)));
     const last = groups[groups.length - 1];
     if (fresh.length === 0 && last) {
       last.questions.push({ question, index });
@@ -347,6 +351,7 @@ function groupByPage(questions: Question[]) {
   });
   return groups;
 }
+
 
 
 function QuestionCard({
@@ -453,6 +458,7 @@ function QuestionCard({
     <QuestionExperience
       question={question}
       index={index}
+      snipUrl={snipFor(question)}
       draft={draft}
       onDraftChange={setDraft}
       requiresPhoto={requiresPhoto}

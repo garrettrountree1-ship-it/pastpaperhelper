@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { VocabSheet } from "@/components/assignments/VocabSheet";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
+import { QuestionSnip, parseSnipBand } from "@/components/assignments/QuestionSnip";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -87,7 +88,8 @@ function groupByPage(questions: Question[]) {
   const groups: Array<{ key: string; imageUrls: string[]; questions: Question[] }> = [];
   const shown = new Set<string>();
   questions.forEach((question, index) => {
-    const fresh = (question.imageUrls ?? []).filter((url) => !shown.has(pageKey(url)));
+    const pageUrls = (question.imageUrls ?? []).filter((url) => !parseSnipBand(url));
+    const fresh = pageUrls.filter((url) => !shown.has(pageKey(url)));
     const last = groups[groups.length - 1];
     if (fresh.length === 0 && last) {
       last.questions.push(question);
@@ -199,15 +201,10 @@ function PreviewPage() {
                   {group.imageUrls.length > 0 ? (
                     <div className="paper space-y-2 p-4">
                       {group.imageUrls.map((url) => (
-                        <img
+                        <QuestionSnip
                           key={url}
-                          src={url}
+                          url={url}
                           alt="Past-paper page for the questions below"
-                          loading="lazy"
-                          draggable={false}
-                          onContextMenu={(event) => event.preventDefault()}
-                          onDragStart={(event) => event.preventDefault()}
-                          className="pointer-events-none w-full select-none rounded-lg border border-border bg-card object-contain"
                         />
                       ))}
                       <p className="text-xs text-muted-foreground">
@@ -344,6 +341,7 @@ function PreviewQuestion({
     <QuestionExperience
       question={question}
       index={question.position}
+      snipUrl={(question.imageUrls ?? []).find((url) => parseSnipBand(url)) ?? null}
       draft={answer}
       onDraftChange={setAnswer}
       requiresPhoto={requiresPhoto}

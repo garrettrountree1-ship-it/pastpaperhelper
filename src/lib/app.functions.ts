@@ -1936,9 +1936,15 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
 
     const withPages = await Promise.all(
       questions.map(async (q) => {
-        const paths = q.pages
-          .map((page) => pagePaths[page])
-          .filter((path): path is string => Boolean(path));
+        // When the AI could locate the question on its page, keep only that
+        // page and remember the band to snip, so the student sees the printed
+        // question itself (tables, options, diagrams) and nothing else.
+        const crop = q.crop && pagePaths[q.crop.page] ? q.crop : null;
+        const paths = crop
+          ? [`${pagePaths[crop.page]}#crop=${crop.top.toFixed(4)},${crop.bottom.toFixed(4)}`]
+          : q.pages
+              .map((page) => pagePaths[page])
+              .filter((path): path is string => Boolean(path));
         return {
           questionText: q.questionText,
           markScheme: q.markScheme,
@@ -1948,6 +1954,7 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
         };
       }),
     );
+
 
     return { questions: withPages };
   });
@@ -2406,9 +2413,21 @@ async function questionForTeacher(
 
 async function signPaperPages(db: AnyClient, paths: string[]) {
   if (paths.length === 0) return [];
-  const { data } = await db.storage.from("paper-pages").createSignedUrls(paths, 60 * 60 * 8);
-  return (data ?? []).map((item) => item.signedUrl).filter((url): url is string => Boolean(url));
+  // A stored path may carry "#crop=top,bottom" — the band of that page to show.
+  const parts = paths.map((path) => {
+    const at = path.indexOf("#");
+    return at === -1
+      ? { path, hash: "" }
+      : { path: path.slice(0, at), hash: path.slice(at) };
+  });
+  const { data } = await db.storage
+    .from("paper-pages")
+    .createSignedUrls(parts.map((p) => p.path), 60 * 60 * 8);
+  return (data ?? [])
+    .map((item, index) => (item.signedUrl ? `${item.signedUrl}${parts[index]?.hash ?? ""}` : null))
+    .filter((url): url is string => Boolean(url));
 }
+
 
 async function signWorkImages(db: AnyClient, paths: string[]) {
   if (paths.length === 0) return [];

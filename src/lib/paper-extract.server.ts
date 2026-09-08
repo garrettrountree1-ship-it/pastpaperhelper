@@ -3,13 +3,24 @@ import { cleanMathText } from "@/lib/math-text";
 
 import { TUTOR_MODEL } from "./ai-gateway.server";
 
+export type QuestionCrop = {
+  /** 1-based page number the snip is taken from. */
+  page: number;
+  /** Top / bottom of the snip as a fraction (0-1) of that page's height. */
+  top: number;
+  bottom: number;
+};
+
 export type ExtractedQuestion = {
   questionText: string;
   markScheme: string;
   marks: number;
   /** 1-based page numbers of the uploaded paper this part appears on. */
   pages: number[];
+  /** Region of the page to show the student as a picture, when known. */
+  crop?: QuestionCrop | null;
 };
+
 
 export type UploadedFile = {
   filename: string;
@@ -79,9 +90,13 @@ const DETAIL_SYSTEM = [
   "If no mark scheme is supplied anywhere for that part, write a concise expected answer with marking points instead.",
   "marks: the integer marks for that part (default 1).",
   "Return one item per requested label, in the same order, and never skip a label.",
+  "crop: the exact band of the page picture that must be shown to the student for this part, so nothing printed is lost. Give {\"page\":N,\"top\":T,\"bottom\":B} where T and B are fractions of that page's full height measured from the top of the page (0 = very top, 1 = very bottom).",
+  "The crop band MUST contain the whole of this part as printed — its label, its wording, every multiple-choice option, every answer line, and any table, figure, diagram or graph that belongs to it — plus a small margin. Prefer a slightly larger band over cutting anything off. It must NOT contain the next or previous question part, and must not contain a mark scheme or answer block.",
+  "If a part spans a page break or you cannot judge the band, set crop to null.",
   "Symbols and units MUST be reproduced as real Unicode characters exactly as printed: \u00b0C, \u00b0F, \u00b5, \u03a9, \u00b1, \u00d7, \u00f7, \u2264, \u2265, \u2248, \u2192, \u21cc, \u221a, \u03b1\u03b2\u03b3\u03bb\u03c0\u0394\u03b8, subscripts/superscripts (H\u2082O, cm\u00b3, m s\u207b\u00b2, 10\u2076).",
   "Never write symbols as words, ASCII stand-ins or escapes: no \"degrees C\", \"deg C\", \"oC\", \"^oC\", \"ohms\", \"micro\", \"+/-\", \"\\\\u00b0\", \"&deg;\", \"?C\". Write 25 \u00b0C, 4.7 k\u03a9, 3 \u00b5A.",
-  'Reply with JSON only: {"questions":[{"label":"1(a)","questionText":"...","markScheme":"...","marks":2,"pages":[3]}]}',
+  'Reply with JSON only: {"questions":[{"label":"1(a)","questionText":"...","markScheme":"...","marks":2,"pages":[3],"crop":{"page":3,"top":0.12,"bottom":0.41}}]}',
+
 ].join(" ");
 
 
@@ -433,13 +448,16 @@ async function runDetail(
             .map((n) => Math.round(Number(n)))
             .filter((n) => Number.isFinite(n) && n > 0)
         : [];
+      const pages = match?.pages?.length ? match.pages : [...new Set(pagesFromModel)].slice(0, 3);
       return {
         label,
         questionText: scrubIdentifiers(normaliseSymbols(questionText)),
         markScheme: normaliseSymbols(String(item["markScheme"] ?? "").trim()),
         marks: Math.max(1, Math.round(Number(item["marks"]) || match?.marks || 1)),
-        pages: match?.pages?.length ? match.pages : [...new Set(pagesFromModel)].slice(0, 3),
+        pages,
+        crop: parseCropValue(item["crop"], pages),
       };
+
 
 
     })
@@ -447,9 +465,31 @@ async function runDetail(
 }
 
 /**
+ * Reads the model's snip band for a question and keeps it only when it is a
+ * sane region of a real page — a slightly padded band, never a sliver.
+ */
+function parseCropValue(raw: unknown, pages: number[]): QuestionCrop | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  const page = Math.round(Number(value["page"]));
+  let top = Number(value["top"]);
+  let bottom = Number(value["bottom"]);
+  if (!Number.isFinite(page) || page <= 0) return null;
+  if (pages.length > 0 && !pages.includes(page)) return null;
+  if (!Number.isFinite(top) || !Number.isFinite(bottom)) return null;
+  if (bottom <= top) return null;
+  // A little breathing room so nothing printed is clipped.
+  top = Math.max(0, top - 0.015);
+  bottom = Math.min(1, bottom + 0.015);
+  if (bottom - top < 0.04) return null;
+  return { page, top, bottom };
+}
+
+/**
  * Removes anything a student could search on (year, exam board, session and
  * paper codes, copyright and website lines) from extracted question text.
  */
+
 export function scrubIdentifiers(input: string): string {
   return input
     .replace(/©[^\n]*/g, "")
@@ -481,7 +521,9 @@ function dedupe(items: Array<ExtractedQuestion | DetailResult>): ExtractedQuesti
       markScheme: item.markScheme,
       marks: item.marks,
       pages: item.pages,
+      crop: item.crop ?? null,
     });
+
   }
   return out;
 }

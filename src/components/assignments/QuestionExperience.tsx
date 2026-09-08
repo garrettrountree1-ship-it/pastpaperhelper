@@ -4,6 +4,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { GlossaryText } from "@/components/assignments/GlossaryText";
+import { QuestionSnip } from "@/components/assignments/QuestionSnip";
+
 import { cleanMathText } from "@/lib/math-text";
 import { cleanTutorText, TutorText } from "@/lib/tutor-text";
 import { getQuestionGlossary, getTutorGlossary } from "@/lib/tutor-settings.functions";
@@ -90,10 +92,12 @@ export function QuestionExperience({
   
   assignmentId,
   sentBack = null,
+  snipUrl = null,
 
 
 }: {
   question: { id: string; question_text: string; marks: number };
+
   index: number;
   draft: string;
   onDraftChange: (value: string) => void;
@@ -132,7 +136,10 @@ export function QuestionExperience({
   assignmentId?: string;
   /** Set when the teacher sent this question back to be redone. */
   sentBack?: { at: string; note: string | null } | null;
+  /** Snipped picture of the question as printed — shown instead of typed wording. */
+  snipUrl?: string | null;
 }) {
+
   const verdict = result?.verdict ?? null;
   const glossary = useQuery({
     queryKey: ["question-glossary", question.id],
@@ -193,17 +200,29 @@ export function QuestionExperience({
         }}
       >
 
-        <GlossaryText
-          className="mt-3 whitespace-pre-wrap"
-          text={questionBody(question.question_text)}
-          terms={keywordTranslation ? (glossary.data?.terms ?? []) : []}
-        />
-        {keywordTranslation && (glossary.data?.terms?.length ?? 0) > 0 ? (
-          <p className="mt-1 text-xs text-muted-foreground">
-            Hover (or tap and hold) any underlined word — in the question or in the tutor’s replies — to see it translated.
-          </p>
-        ) : null}
+        {snipUrl ? (
+          <>
+            <QuestionSnip url={snipUrl} alt="The question exactly as printed on the paper" />
+            <p className="mt-1 text-xs text-muted-foreground">
+              The question exactly as printed. Answer it in the box below.
+            </p>
+          </>
+        ) : (
+          <>
+            <GlossaryText
+              className="mt-3 whitespace-pre-wrap"
+              text={questionBody(question.question_text)}
+              terms={keywordTranslation ? (glossary.data?.terms ?? []) : []}
+            />
+            {keywordTranslation && (glossary.data?.terms?.length ?? 0) > 0 ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Hover (or tap and hold) any underlined word — in the question or in the tutor’s replies — to see it translated.
+              </p>
+            ) : null}
+          </>
+        )}
       </div>
+
 
       {sentBack ? (
         <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4">

@@ -82,3 +82,46 @@ export async function markFormativeAnswer(input: {
     };
   }
 }
+
+/**
+ * Works out the model answer for a formative check so the teacher can release
+ * it to the class, in plain readable words a student can follow.
+ */
+export async function solveFormativeQuestion(input: {
+  question: string;
+  questionImage?: string | null;
+}): Promise<string> {
+  const content = [
+    {
+      type: "text" as const,
+      text: [
+        input.question ? `Question: ${input.question}` : "",
+        input.questionImage ? "An image of the question is attached — read it." : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    },
+    ...(input.questionImage
+      ? [
+          {
+            type: "image" as const,
+            image: input.questionImage.startsWith("data:")
+              ? input.questionImage
+              : new URL(input.questionImage),
+          },
+        ]
+      : []),
+  ];
+
+  const { text } = await generateText({
+    model: gatewayModel(),
+    system: [
+      "You give the model answer to a quick class question, for the teacher to show the class.",
+      "Answer directly and briefly: the answer first, then at most two short lines of reasoning.",
+      "Use plain readable text with real characters (°C, ×, ≤, →, H₂O). Never use LaTeX or maths delimiters.",
+      "Under 70 words.",
+    ].join("\n"),
+    messages: [{ role: "user", content }],
+  });
+  return text.trim() || "The answer could not be worked out — please type it for the class.";
+}

@@ -663,6 +663,7 @@ export type Database = {
       }
       formative_checks: {
         Row: {
+          answer_released_at: string | null
           class_id: string
           closed_at: string | null
           created_at: string
@@ -671,6 +672,7 @@ export type Database = {
           id: string
           question: string
           question_image: string | null
+          released_answer: string | null
           seconds: number
           section_id: string | null
           target_student_id: string | null
@@ -678,6 +680,7 @@ export type Database = {
           teacher_id: string
         }
         Insert: {
+          answer_released_at?: string | null
           class_id: string
           closed_at?: string | null
           created_at?: string
@@ -686,6 +689,7 @@ export type Database = {
           id?: string
           question: string
           question_image?: string | null
+          released_answer?: string | null
           seconds?: number
           section_id?: string | null
           target_student_id?: string | null
@@ -693,6 +697,7 @@ export type Database = {
           teacher_id: string
         }
         Update: {
+          answer_released_at?: string | null
           class_id?: string
           closed_at?: string | null
           created_at?: string
@@ -701,6 +706,7 @@ export type Database = {
           id?: string
           question?: string
           question_image?: string | null
+          released_answer?: string | null
           seconds?: number
           section_id?: string | null
           target_student_id?: string | null

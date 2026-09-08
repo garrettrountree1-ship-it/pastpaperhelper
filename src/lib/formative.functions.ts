@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { markFormativeAnswer } from "@/lib/formative.server";
+import { markFormativeAnswer, solveFormativeQuestion } from "@/lib/formative.server";
 import { assertClassTeacher } from "@/lib/materials.server";
 
 /** Teacher launches a timed quick question to everyone in the class. */
@@ -74,20 +74,75 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
   });
 
 
+/** Teacher adds more time to the live check. */
+export const extendFormativeCheck = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({ checkId: z.string().uuid(), seconds: z.number().int().min(5).max(1800) })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: check } = await supabase
+      .from("formative_checks")
+      .select("id, ends_at, teacher_id")
+      .eq("id", data.checkId)
+      .maybeSingle();
+    if (!check || check.teacher_id !== userId) throw new Error("You did not send this question.");
+    // Extra time always starts from now when the timer has already run out.
+    const base = Math.max(Date.now(), new Date(check.ends_at as string).getTime());
+    const endsAt = new Date(base + data.seconds * 1000).toISOString();
+    const { error } = await supabase
+      .from("formative_checks")
+      .update({ ends_at: endsAt })
+      .eq("id", data.checkId);
+    if (error) throw new Error(error.message);
+    return { endsAt };
+  });
+
+/** Teacher releases the answer to everyone still looking at the question. */
+export const releaseFormativeAnswer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ checkId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: check } = await supabase
+      .from("formative_checks")
+      .select("id, question, question_image, expected_answer, released_answer, teacher_id")
+      .eq("id", data.checkId)
+      .maybeSingle();
+    if (!check || check.teacher_id !== userId) throw new Error("You did not send this question.");
+
+    let answer = (check.released_answer as string | null) || (check.expected_answer as string | null);
+    if (!answer?.trim()) {
+      answer = await solveFormativeQuestion({
+        question: check.question as string,
+        questionImage: (check.question_image ?? null) as string | null,
+      });
+    }
+    const { error } = await supabase
+      .from("formative_checks")
+      .update({ released_answer: answer, answer_released_at: new Date().toISOString() })
+      .eq("id", data.checkId);
+    if (error) throw new Error(error.message);
+    return { answer };
+  });
+
 /** The live check for a class (if any), plus the caller's own attempts. */
 export const getActiveFormativeCheck = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ classId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    // No end-time filter: the popup stays up until the teacher closes it.
     const { data: check } = await supabase
       .from("formative_checks")
       .select(
-        "id, question, question_image, seconds, ends_at, teacher_id, expected_answer, target_student_id, target_student_ids",
+        "id, question, question_image, seconds, ends_at, teacher_id, expected_answer, released_answer, answer_released_at, target_student_id, target_student_ids",
       )
       .eq("class_id", data.classId)
       .is("closed_at", null)
-      .gt("ends_at", new Date().toISOString())
       .or(
         `and(target_student_id.is.null,target_student_ids.eq.{}),target_student_ids.cs.{${userId}},target_student_id.eq.${userId},teacher_id.eq.${userId}`,
       )
@@ -112,6 +167,9 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
       endsAt: check.ends_at as string,
       isTeacher: check.teacher_id === userId,
       hasExpectedAnswer: Boolean(check.expected_answer),
+      releasedAnswer: (check.answer_released_at ? (check.released_answer ?? null) : null) as
+        | string
+        | null,
       targetStudentId: (check.target_student_id ?? null) as string | null,
       targetStudentIds: ((check.target_student_ids ?? []) as string[]),
 
@@ -123,6 +181,7 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
       })),
     };
   });
+
 
 /** Student answers the live check; AI marks it and returns encouraging feedback. */
 export const answerFormativeCheck = createServerFn({ method: "POST" })

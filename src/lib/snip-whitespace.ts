@@ -1,10 +1,12 @@
 /**
- * Moves the top and bottom edge of a question snip onto blank paper.
+ * Tidies the top and bottom edge of a question snip.
  *
  * The cut points come from reading the paper, so they can land a hair through a
- * line of print or across a graph. Here the page picture is measured row by row
- * and each edge is nudged outwards to the nearest empty strip, so a snip never
- * slices through words or a diagram.
+ * line of print or across a graph. Here the page picture is measured row by row:
+ * an edge sitting on print is first moved to the nearest empty strip (whichever
+ * side is closer), then both edges are pulled in over any remaining blank paper
+ * so the piece holds just the question. That keeps words and diagrams whole and
+ * lets two pieces of the same question sit together with no gap between them.
  */
 
 type Band = { top: number; bottom: number };
@@ -65,7 +67,7 @@ function loadRows(url: string): Promise<boolean[] | null> {
   return job;
 }
 
-/** Finds a run of blank rows, walking outwards from a starting row. */
+/** Distance to the nearest run of blank rows in one direction, or null. */
 function blankEdge(rows: boolean[], start: number, direction: -1 | 1, limit: number) {
   const need = Math.max(2, Math.round(rows.length * 0.004));
   let run = 0;
@@ -82,20 +84,49 @@ function blankEdge(rows: boolean[], start: number, direction: -1 | 1, limit: num
   return null;
 }
 
-/** The same band, with both edges resting on empty paper wherever possible. */
+/** Moves a cut that sits on print to the closest blank strip either side. */
+function offPrint(rows: boolean[], row: number, limit: number) {
+  if (rows[row]) return row;
+  const up = blankEdge(rows, row, -1, limit);
+  const down = blankEdge(rows, row, 1, limit);
+  if (up == null) return down ?? row;
+  if (down == null) return up;
+  return row - up <= down - row ? up : down;
+}
+
+/** The same band, cut on empty paper and trimmed of blank edges. */
 export async function snapBandToWhitespace(url: string, band: Band): Promise<Band> {
   const rows = await loadRows(url);
   if (!rows || rows.length < 20) return band;
   const height = rows.length;
   const limit = Math.round(height * 0.08);
-  const topRow = Math.min(height - 1, Math.max(0, Math.round(band.top * height)));
-  const bottomRow = Math.min(height - 1, Math.max(0, Math.round(band.bottom * height)));
+  const pad = Math.max(2, Math.round(height * 0.006));
 
-  const top = blankEdge(rows, topRow, -1, limit);
-  const bottom = blankEdge(rows, bottomRow, 1, limit);
+  let top = offPrint(
+    rows,
+    Math.min(height - 1, Math.max(0, Math.round(band.top * height))),
+    limit,
+  );
+  let bottom = offPrint(
+    rows,
+    Math.min(height - 1, Math.max(0, Math.round(band.bottom * height))),
+    limit,
+  );
+  if (bottom <= top) return band;
+
+  // Trim the blank paper at each end so the piece holds only the question and
+  // two pieces of one question meet without a gap.
+  let firstInk = top;
+  while (firstInk < bottom && rows[firstInk]) firstInk += 1;
+  let lastInk = bottom;
+  while (lastInk > firstInk && rows[lastInk]) lastInk -= 1;
+  if (lastInk > firstInk) {
+    top = Math.max(top, firstInk - pad);
+    bottom = Math.min(bottom, lastInk + pad);
+  }
 
   return {
-    top: top == null ? band.top : Math.max(0, top / height),
-    bottom: bottom == null ? band.bottom : Math.min(1, (bottom + 1) / height),
+    top: Math.max(0, top / height),
+    bottom: Math.min(1, (bottom + 1) / height),
   };
 }

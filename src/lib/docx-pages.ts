@@ -100,18 +100,43 @@ export async function docxToPages(file: File): Promise<PageImage[]> {
   );
 
   const total = body.scrollHeight;
+  const step = PAGE_H - 112;
+
+  // Work out where each page ends by looking at the blocks themselves, so a
+  // paragraph, table or diagram is never sliced in half by a page break.
+  const bodyTop = body.getBoundingClientRect().top + 56;
+  const blocks = Array.from(body.children).map((child) => {
+    const box = (child as HTMLElement).getBoundingClientRect();
+    return { top: box.top - bodyTop, bottom: box.bottom - bodyTop };
+  });
+
+  const offsets: number[] = [0];
+  let pageTop = 0;
+  for (const block of blocks) {
+    if (block.bottom <= pageTop + step) continue;
+    // This block runs past the bottom of the page: start a new page at its top,
+    // unless the block alone is taller than a page (then it has to be split).
+    const start = block.top > pageTop ? block.top : pageTop + step;
+    if (start <= pageTop) continue;
+    pageTop = start;
+    offsets.push(pageTop);
+    if (offsets.length >= MAX_PAGES) break;
+  }
+  while (pageTop + step < total && offsets.length < MAX_PAGES) {
+    pageTop += step;
+    offsets.push(pageTop);
+  }
+
   const inner = serialise(body).replace(/^<div[^>]*>/, "").replace(/<\/div>$/, "");
   document.body.removeChild(holder);
 
-  const count = Math.min(Math.max(1, Math.ceil(total / (PAGE_H - 112))), MAX_PAGES);
-  const step = PAGE_H - 112;
   const pages: PageImage[] = [];
   const stem = file.name.replace(/\.docx$/i, "");
-  for (let n = 0; n < count; n += 1) {
+  for (let n = 0; n < offsets.length; n += 1) {
     pages.push({
       filename: `${stem}-page-${n + 1}.jpg`,
       mimeType: "image/jpeg",
-      base64: await pageToBase64(inner, n * step),
+      base64: await pageToBase64(inner, offsets[n] ?? n * step),
     });
   }
   return pages;

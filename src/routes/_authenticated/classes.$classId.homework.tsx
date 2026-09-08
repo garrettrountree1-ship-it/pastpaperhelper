@@ -98,7 +98,7 @@ import { filesToPages } from "@/lib/pdf-pages";
 import { PhotoModeControl } from "@/components/assignments/PhotoModeControl";
 import type { PhotoMode } from "@/lib/photo-mode";
 import { questionBody, questionLabel } from "@/lib/question-label";
-import { QuestionSnip } from "@/components/assignments/QuestionSnip";
+import { QuestionSnip, QuestionSnipStack } from "@/components/assignments/QuestionSnip";
 
 export const Route = createFileRoute("/_authenticated/classes/$classId/homework")({
   head: () => ({
@@ -842,30 +842,19 @@ function AssignmentDialog({
                       <p className="text-xs text-muted-foreground">
                         This is what your students will see — the question exactly as printed.
                       </p>
-                      <div className="space-y-2">
-                        {question.imageUrls.map((url, imageIndex) => (
-                          <div key={url} className="relative max-w-lg">
-                            <QuestionSnip
-                              url={url}
-                              alt={`Question ${index + 1} as printed on the paper`}
-                            />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="absolute right-1 top-1 bg-card/90"
-                              onClick={() =>
-                                update_(index, {
-                                  imageUrls: question.imageUrls.filter((_, i) => i !== imageIndex),
-                                  imagePaths: question.imagePaths.filter(
-                                    (_, i) => i !== imageIndex,
-                                  ),
-                                })
-                              }
-                            >
-                              <Trash2 className="size-3" />
-                            </Button>
-                          </div>
-                        ))}
+                      <div className="relative max-w-lg">
+                        <QuestionSnipStack
+                          urls={question.imageUrls}
+                          alt={`Question ${index + 1} as printed on the paper`}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-1 top-1 bg-card/90"
+                          onClick={() => update_(index, { imageUrls: [], imagePaths: [] })}
+                        >
+                          <Trash2 className="size-3" />
+                        </Button>
                       </div>
                       <details>
                         <summary className="cursor-pointer text-xs text-muted-foreground">

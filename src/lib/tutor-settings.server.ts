@@ -79,7 +79,9 @@ export async function tutorSettingsForAssignment(
 ): Promise<EffectiveTutorSettings> {
   const { data: assignment } = await db
     .from("assignments")
-    .select("class_id, keyword_translation, vocab_translation, vocab_language, protect_questions")
+    .select(
+      "class_id, keyword_translation, vocab_translation, vocab_language, protect_questions, allow_hint, allow_steps, max_answer_attempts",
+    )
     .eq("id", assignmentId)
     .maybeSingle();
   if (!assignment?.class_id) {
@@ -91,6 +93,9 @@ export async function tutorSettingsForAssignment(
       keywordTranslation: false,
       vocabTranslation: true,
       vocabLanguage: DEFAULT_TUTOR_LANGUAGE,
+      allowHint: true,
+      allowSteps: true,
+      maxAttempts: 0,
     };
   }
 
@@ -99,7 +104,7 @@ export async function tutorSettingsForAssignment(
     studentId
       ? db
           .from("student_assignment_settings")
-          .select("keyword_translation")
+          .select("keyword_translation, allow_hint, allow_steps, max_answer_attempts")
           .eq("assignment_id", assignmentId)
           .eq("student_id", studentId)
           .maybeSingle()

@@ -175,6 +175,7 @@ export function QuestionExperience({
   const tutorGuard = useOriginalTypingGuard();
   const bulletTarget = photoOnly ? 0 : bulletTargetFor(question.marks, requiresPhoto);
   const hasWrittenAnswer = stripBullets(draft).trim().length > 0;
+  const outOfTries = maxAttempts > 0 && attempts >= maxAttempts;
 
   // Seed the marks checklist so the student sees how many points are expected.
   useEffect(() => {

@@ -168,8 +168,13 @@ export function SlideAnnotations({
     setLive(null);
   }
 
-  const path = (stroke: SlideStroke) =>
-    stroke.points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  const path = strokePath;
+  // Saved highlighter marks are painted by the caller's blended layer when it
+  // has one; the mark being drawn right now is always shown here so the teacher
+  // sees the stroke follow the pointer.
+  const highlightStrokes = [...(hideHighlights ? [] : value.strokes), ...(live ? [live] : [])].filter(
+    (stroke) => stroke.highlight,
+  );
 
   return (
     <div
@@ -200,21 +205,20 @@ export function SlideAnnotations({
       >
         {/* Highlighter first, blended so the text underneath stays readable. */}
         <g style={{ mixBlendMode: "multiply" }}>
-          {[...value.strokes, ...(live ? [live] : [])]
-            .filter((stroke) => stroke.highlight)
-            .map((stroke, i) => (
-              <path
-                key={`h${i}`}
-                d={path(stroke)}
-                fill="none"
-                stroke={stroke.color}
-                strokeWidth={stroke.width}
-                strokeOpacity={0.4}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            ))}
+          {highlightStrokes.map((stroke, i) => (
+            <path
+              key={`h${i}`}
+              d={path(stroke)}
+              fill="none"
+              stroke={stroke.color}
+              strokeWidth={stroke.width}
+              strokeOpacity={0.75}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ))}
         </g>
+
         {[...value.strokes, ...(live ? [live] : [])]
           .filter((stroke) => !stroke.highlight)
           .map((stroke, i) => (

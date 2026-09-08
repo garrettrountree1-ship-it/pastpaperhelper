@@ -704,6 +704,23 @@ function AssignmentDialog({
     setQuestions((prev) => prev.map((q, i) => (i === index ? { ...q, ...patch } : q)));
   }
 
+  /** Changing one question's number shifts every question after it by the same amount. */
+  function renumberFrom(index: number, nextMain: number) {
+    setQuestions((prev) => {
+      const current = prev[index];
+      if (!current) return prev;
+      const oldMain = questionMainNumber(current.questionText) ?? index + 1;
+      const delta = Math.max(1, nextMain) - oldMain;
+      if (delta === 0) return prev;
+      return prev.map((q, i) => {
+        if (i < index) return q;
+        const main = questionMainNumber(q.questionText) ?? i + 1;
+        return { ...q, questionText: setQuestionMainNumber(q.questionText, main + delta) };
+      });
+    });
+  }
+
+
   const body = (
     <>
 

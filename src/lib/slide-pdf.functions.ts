@@ -58,11 +58,17 @@ export const prepareSlidePdf = createServerFn({ method: "POST" })
       throw new Error(downloadError?.message ?? "Could not read the original file.");
     }
 
+    // Use the teacher's own linked Google account when they have one.
+    const { getConnectionKeyForUser } = await import("@/lib/app-user-connections.server");
+    const ownDriveKey = await getConnectionKeyForUser(userId, "google_drive");
+
     const { pptxToPdf } = await import("@/lib/slide-pdf.server");
     const pdf = await pptxToPdf(
       await file.arrayBuffer(),
       material.file_name ?? "presentation.pptx",
+      ownDriveKey,
     );
+
 
     const path = slidesPdfPath(material.storage_path);
     const { error: uploadError } = await supabase.storage

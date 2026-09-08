@@ -4,6 +4,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { GlossaryText } from "@/components/assignments/GlossaryText";
+import { QuestionSnip } from "@/components/assignments/QuestionSnip";
+
 import { cleanMathText } from "@/lib/math-text";
 import { cleanTutorText, TutorText } from "@/lib/tutor-text";
 import { getQuestionGlossary, getTutorGlossary } from "@/lib/tutor-settings.functions";

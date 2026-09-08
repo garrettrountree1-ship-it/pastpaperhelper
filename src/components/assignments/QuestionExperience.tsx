@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { GlossaryText } from "@/components/assignments/GlossaryText";
-import { QuestionSnip } from "@/components/assignments/QuestionSnip";
+import { QuestionSnipStack } from "@/components/assignments/QuestionSnip";
 
 import { cleanMathText } from "@/lib/math-text";
 import { cleanTutorText, TutorText } from "@/lib/tutor-text";
@@ -202,15 +202,10 @@ export function QuestionExperience({
 
         {snipUrls.length > 0 ? (
           <>
-            <div className="space-y-2">
-              {snipUrls.map((url) => (
-                <QuestionSnip
-                  key={url}
-                  url={url}
-                  alt="The question exactly as printed on the paper"
-                />
-              ))}
-            </div>
+            <QuestionSnipStack
+              urls={snipUrls}
+              alt="The question exactly as printed on the paper"
+            />
             <p className="mt-1 text-xs text-muted-foreground">
               The question exactly as printed. Answer it in the box below.
             </p>

@@ -14,6 +14,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { VocabSheet } from "@/components/assignments/VocabSheet";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
 import { QuestionSnip, parseSnipBand } from "@/components/assignments/QuestionSnip";
+import { looksLikeAnswerKey } from "@/lib/answer-key";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -88,7 +89,7 @@ function groupByPage(questions: Question[]) {
   const groups: Array<{ key: string; imageUrls: string[]; questions: Question[] }> = [];
   const shown = new Set<string>();
   questions.forEach((question, index) => {
-    const pageUrls = (question.imageUrls ?? []).filter((url) => !parseSnipBand(url));
+    const pageUrls = (question.imageUrls ?? []).filter((url) => !parseSnipBand(url) && !looksLikeAnswerKey(url));
     const fresh = pageUrls.filter((url) => !shown.has(pageKey(url)));
     const last = groups[groups.length - 1];
     if (fresh.length === 0 && last) {

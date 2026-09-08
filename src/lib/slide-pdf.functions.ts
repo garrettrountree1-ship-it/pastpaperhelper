@@ -26,15 +26,10 @@ export const getSlidePdfUrl = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!material?.storage_path) return { url: null };
 
-    const path = slidesPdfPath(material.storage_path);
-    const { data: listed } = await supabase.storage
-      .from("class-materials")
-      .list(path.split("/").slice(0, -1).join("/"), { search: path.split("/").pop() ?? "" });
-    if (!listed?.length) return { url: null };
-
+    // No stored pages yet simply means nobody has converted this deck.
     const { data: signed } = await supabase.storage
       .from("class-materials")
-      .createSignedUrl(path, 60 * 30);
+      .createSignedUrl(slidesPdfPath(material.storage_path), 60 * 30);
     return { url: signed?.signedUrl ?? null };
   });
 

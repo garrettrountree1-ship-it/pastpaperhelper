@@ -481,6 +481,8 @@ export function OfficeDocView({
           title="Rebuild from the original file"
           onClick={async () => {
             await clearCachedDoc(key);
+            await clearCachedDoc(pagesKey);
+            setSlidePages(null);
             setRebuilding((v) => !v);
           }}
         >

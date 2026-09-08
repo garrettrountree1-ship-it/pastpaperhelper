@@ -82,6 +82,8 @@ export function OfficeDocView({
   // The exact slide pages (one picture per slide) shown under the editable text.
   const [slidePages, setSlidePages] = useState<string[] | null>(null);
   const [preparingPages, setPreparingPages] = useState(false);
+  const [pagesError, setPagesError] = useState<string | null>(null);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const token = useRef(0);
   // Increment when the renderer changes so old, incorrectly parsed decks are

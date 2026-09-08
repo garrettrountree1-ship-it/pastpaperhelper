@@ -766,11 +766,10 @@ function AssignmentDialog({
             <h3 className="font-display text-lg">Upload past paper &amp; mark scheme</h3>
             <p className="mt-1 text-sm text-muted-foreground">
               PDF, Word (.docx) or photos. Combined in one file, or paper and mark scheme
-              separately. The questions below are taken straight from the file you upload — every
-              part (1a, 1b(i), 1b(ii)…) is transcribed and matched to its marking points, and you
-              can edit anything before saving. Nothing is invented — every figure, diagram, graph
-              and equation stays as the original page image attached to the question, so students
-              see exactly what was printed rather than a description.
+              separately. Each question part (1a, 1b(i), 1b(ii)…) is cut out of the page as a
+              picture, so students answer the question exactly as printed — every table, option,
+              graph, diagram and symbol included. Nothing is retyped or invented; the mark scheme
+              is matched to each part and stays hidden from students.
             </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">

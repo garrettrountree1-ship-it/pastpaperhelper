@@ -27,6 +27,8 @@ import {
   FormativeRecordBook,
 } from "@/components/materials/FormativeCheck";
 import { LessonWorkspace } from "@/components/materials/LessonWorkspace";
+import { MyDrivePanel } from "@/components/materials/MyDrivePanel";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,8 +53,10 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDueDate } from "@/lib/datetime";
+import { saveMaterialToMyDrive } from "@/lib/google-drive.functions";
 import {
   addMaterial,
+
   createUnit,
   deleteMaterial,
   deleteUnit,
@@ -215,10 +219,14 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
     <div className="space-y-4">
       <FormativeCheckPanel classId={classId} asStudent={!canManage} />
       {canManage ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <FormativeRecordBook classId={classId} />
-        </div>
+        <>
+          <MyDrivePanel />
+          <div className="flex flex-wrap items-center gap-2">
+            <FormativeRecordBook classId={classId} />
+          </div>
+        </>
       ) : null}
+
       {canManage ? (
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -572,6 +580,15 @@ function UploadDialog({
           },
         });
 
+        // Keep a copy in the teacher's own Google Drive when they have linked it.
+        if (created?.id) {
+          void saveMaterialToMyDrive({ data: { materialId: created.id } })
+            .then((result) => {
+              if (result?.saved) toast.success("Saved a copy to your Google Drive.");
+            })
+            .catch(() => undefined);
+        }
+
         // Prepare the slides/document once, now, so the first person who opens
         // it (teacher or student) sees it instantly instead of waiting.
         const format = docFormat(file.name);
@@ -580,6 +597,7 @@ function UploadDialog({
             .then(() => toast.success("Document prepared — it will open instantly now."))
             .catch(() => undefined);
         }
+
       }
       toast.success("Added");
       setOpen(false);

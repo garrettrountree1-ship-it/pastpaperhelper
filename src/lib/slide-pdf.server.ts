@@ -12,9 +12,11 @@ const GATEWAY = "https://connector-gateway.lovable.dev/google_drive";
 const PPTX_MIME =
   "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 
-function gatewayHeaders() {
+function gatewayHeaders(userDriveKey?: string | null) {
   const lovableKey = process.env["LOVABLE_API_KEY"];
-  const driveKey = process.env["GOOGLE_DRIVE_API_KEY"];
+  // A teacher who linked their own Google account converts through their Drive;
+  // otherwise the shared workspace connection is used.
+  const driveKey = userDriveKey || process.env["GOOGLE_DRIVE_API_KEY"];
   if (!lovableKey || !driveKey) {
     throw new Error("The slide conversion service is not connected yet.");
   }
@@ -31,7 +33,11 @@ async function failed(response: Response, what: string): Promise<never> {
 }
 
 /** Uploads the deck as a Google Slides file and returns its Drive file id. */
-async function uploadAsSlides(bytes: ArrayBuffer, name: string): Promise<string> {
+async function uploadAsSlides(
+  bytes: ArrayBuffer,
+  name: string,
+  driveKey?: string | null,
+): Promise<string> {
   const boundary = `lovable-${crypto.randomUUID()}`;
   const metadata = JSON.stringify({
     name,
@@ -47,7 +53,7 @@ async function uploadAsSlides(bytes: ArrayBuffer, name: string): Promise<string>
   const response = await fetch(`${GATEWAY}/upload/drive/v3/files?uploadType=multipart`, {
     method: "POST",
     headers: {
-      ...gatewayHeaders(),
+      ...gatewayHeaders(driveKey),
       "Content-Type": `multipart/related; boundary=${boundary}`,
     },
     body,
@@ -58,20 +64,20 @@ async function uploadAsSlides(bytes: ArrayBuffer, name: string): Promise<string>
   return json.id;
 }
 
-async function exportPdf(fileId: string): Promise<ArrayBuffer> {
+async function exportPdf(fileId: string, driveKey?: string | null): Promise<ArrayBuffer> {
   const response = await fetch(
     `${GATEWAY}/drive/v3/files/${fileId}/export?mimeType=application/pdf`,
-    { headers: gatewayHeaders() },
+    { headers: gatewayHeaders(driveKey) },
   );
   if (!response.ok) await failed(response, "export");
   return await response.arrayBuffer();
 }
 
-async function removeFile(fileId: string): Promise<void> {
+async function removeFile(fileId: string, driveKey?: string | null): Promise<void> {
   try {
     await fetch(`${GATEWAY}/drive/v3/files/${fileId}`, {
       method: "DELETE",
-      headers: gatewayHeaders(),
+      headers: gatewayHeaders(driveKey),
     });
   } catch {
     // The temporary copy is disposable; a failed cleanup must not break the view.
@@ -79,11 +85,15 @@ async function removeFile(fileId: string): Promise<void> {
 }
 
 /** The whole round trip: original deck in, faithful PDF out. */
-export async function pptxToPdf(bytes: ArrayBuffer, name: string): Promise<ArrayBuffer> {
-  const fileId = await uploadAsSlides(bytes, name);
+export async function pptxToPdf(
+  bytes: ArrayBuffer,
+  name: string,
+  driveKey?: string | null,
+): Promise<ArrayBuffer> {
+  const fileId = await uploadAsSlides(bytes, name, driveKey);
   try {
-    return await exportPdf(fileId);
+    return await exportPdf(fileId, driveKey);
   } finally {
-    await removeFile(fileId);
+    await removeFile(fileId, driveKey);
   }
 }

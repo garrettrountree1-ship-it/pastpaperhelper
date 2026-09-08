@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Download,
+  Eye,
   ImagePlus,
   NotebookPen,
   PartyPopper,
@@ -30,10 +31,12 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   answerFormativeCheck,
   closeFormativeCheck,
+  extendFormativeCheck,
   getActiveFormativeCheck,
   launchFormativeCheck,
   listFormativeHistory,
   listFormativeResults,
+  releaseFormativeAnswer,
 } from "@/lib/formative.functions";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { listClassRoster } from "@/lib/materials.functions";
@@ -406,6 +409,8 @@ export function FormativeCheckPanel({
   const fetchResults = useServerFn(listFormativeResults);
   const submit = useServerFn(answerFormativeCheck);
   const close = useServerFn(closeFormativeCheck);
+  const addTime = useServerFn(extendFormativeCheck);
+  const release = useServerFn(releaseFormativeAnswer);
 
   const active = useQuery({
     queryKey: ["formative-active", classId],

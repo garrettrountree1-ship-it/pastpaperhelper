@@ -459,7 +459,7 @@ async function runDetail(
         markScheme: normaliseSymbols(String(item["markScheme"] ?? "").trim()),
         marks: Math.max(1, Math.round(Number(item["marks"]) || match?.marks || 1)),
         pages,
-        crop: parseCropValue(item["crop"], pages),
+        crops: parseCropList(item["crops"] ?? item["crop"], pages),
       };
 
 

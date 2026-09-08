@@ -689,7 +689,12 @@ function AssignmentDialog({
   const valid =
     title.trim().length > 0 &&
     questions.length > 0 &&
-    questions.every((q) => q.questionText.trim() && q.markScheme.trim() && q.marks > 0);
+    questions.every(
+      (q) =>
+        (q.questionText.trim() || q.imagePaths.length > 0) &&
+        q.markScheme.trim() &&
+        q.marks > 0,
+    );
 
   function update_(index: number, patch: Partial<QuestionDraft>) {
     setQuestions((prev) => prev.map((q, i) => (i === index ? { ...q, ...patch } : q)));

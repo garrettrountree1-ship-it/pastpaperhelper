@@ -835,19 +835,15 @@ function AssignmentDialog({
                   {question.imageUrls.length > 0 ? (
                     <div className="space-y-2">
                       <p className="text-xs text-muted-foreground">
-                        Original paper page shown to students (figures, diagrams and equations
-                        exactly as printed)
+                        This is what your students will see — the question exactly as printed.
                       </p>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="space-y-2">
                         {question.imageUrls.map((url, imageIndex) => (
-                          <div key={url} className="relative">
-                            <a href={url} target="_blank" rel="noreferrer">
-                              <img
-                                src={url}
-                                alt={`Original paper page for question ${index + 1}`}
-                                className="h-40 rounded-lg border border-border bg-card object-contain"
-                              />
-                            </a>
+                          <div key={url} className="relative max-w-lg">
+                            <QuestionSnip
+                              url={url}
+                              alt={`Question ${index + 1} as printed on the paper`}
+                            />
                             <Button
                               variant="ghost"
                               size="sm"
@@ -866,20 +862,35 @@ function AssignmentDialog({
                           </div>
                         ))}
                       </div>
+                      <details>
+                        <summary className="cursor-pointer text-xs text-muted-foreground">
+                          Wording kept only for word help and marking (students see the picture)
+                        </summary>
+                        <Textarea
+                          className="mt-2"
+                          value={question.questionText}
+                          onChange={(event) =>
+                            update_(index, { questionText: event.target.value })
+                          }
+                          rows={3}
+                        />
+                      </details>
                     </div>
-                  ) : null}
-                  <Textarea
-                    value={question.questionText}
-                    onChange={(event) => update_(index, { questionText: event.target.value })}
-                    placeholder="Paste the past-paper question here"
-                    rows={3}
-                  />
+                  ) : (
+                    <Textarea
+                      value={question.questionText}
+                      onChange={(event) => update_(index, { questionText: event.target.value })}
+                      placeholder="Paste the past-paper question here"
+                      rows={3}
+                    />
+                  )}
                   <Textarea
                     value={question.markScheme}
                     onChange={(event) => update_(index, { markScheme: event.target.value })}
                     placeholder="Paste the mark scheme answer here (students never see this)"
                     rows={3}
                   />
+
                   <div className="flex items-center gap-2">
                     <Label htmlFor={`marks-${index}`}>Marks</Label>
                     <Input

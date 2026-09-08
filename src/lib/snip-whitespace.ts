@@ -84,14 +84,26 @@ function blankEdge(rows: boolean[], start: number, direction: -1 | 1, limit: num
   return null;
 }
 
-/** Moves a cut that sits on print to the closest blank strip either side. */
-function offPrint(rows: boolean[], row: number, limit: number) {
+/**
+ * Moves a cut that sits on print onto blank paper.
+ *
+ * `grow` is deliberately tiny: growing a piece can pull in whatever is printed
+ * next — the following question, or an answer / mark-scheme block — so an edge
+ * may only reach outwards by a hair, while pulling inwards (shrinking) is free.
+ */
+function offPrint(
+  rows: boolean[],
+  row: number,
+  inward: -1 | 1,
+  shrink: number,
+  grow: number,
+) {
   if (rows[row]) return row;
-  const up = blankEdge(rows, row, -1, limit);
-  const down = blankEdge(rows, row, 1, limit);
-  if (up == null) return down ?? row;
-  if (down == null) return up;
-  return row - up <= down - row ? up : down;
+  const outward = (inward === 1 ? -1 : 1) as -1 | 1;
+  const shrunk = blankEdge(rows, row, inward, shrink);
+  const grown = blankEdge(rows, row, outward, grow);
+  if (grown != null) return grown;
+  return shrunk ?? row;
 }
 
 /** The same band, cut on empty paper and trimmed of blank edges. */
@@ -99,19 +111,16 @@ export async function snapBandToWhitespace(url: string, band: Band): Promise<Ban
   const rows = await loadRows(url);
   if (!rows || rows.length < 20) return band;
   const height = rows.length;
-  const limit = Math.round(height * 0.08);
+  const shrinkLimit = Math.round(height * 0.08);
+  const growLimit = Math.max(2, Math.round(height * 0.012));
   const pad = Math.max(2, Math.round(height * 0.006));
 
-  let top = offPrint(
-    rows,
-    Math.min(height - 1, Math.max(0, Math.round(band.top * height))),
-    limit,
-  );
-  let bottom = offPrint(
-    rows,
-    Math.min(height - 1, Math.max(0, Math.round(band.bottom * height))),
-    limit,
-  );
+  const rawTop = Math.min(height - 1, Math.max(0, Math.round(band.top * height)));
+  const rawBottom = Math.min(height - 1, Math.max(0, Math.round(band.bottom * height)));
+
+  // Top may only slide down (into the band) freely; bottom may only slide up.
+  let top = offPrint(rows, rawTop, 1, shrinkLimit, growLimit);
+  let bottom = offPrint(rows, rawBottom, -1, shrinkLimit, growLimit);
   if (bottom <= top) return band;
 
   // Trim the blank paper at each end so the piece holds only the question and
@@ -130,3 +139,4 @@ export async function snapBandToWhitespace(url: string, band: Band): Promise<Ban
     bottom: Math.min(1, (bottom + 1) / height),
   };
 }
+

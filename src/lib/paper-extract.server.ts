@@ -95,7 +95,10 @@ const DETAIL_SYSTEM = [
   "When the part runs over a page break — for example the wording is at the foot of one page and its options, table or diagram continue at the top of the next — give TWO bands in reading order: the tail of the first page, then the head of the next page. Never drop the continuation and never set crops to null just because it spans pages.",
   "Boundaries: a band starts at this part's own printed label and stops immediately BEFORE the next printed question or part label (the next number, the next (a)/(b), the next (i)/(ii)). Include only what is printed between this part's label and that next label. Never let another question's label, stem or options appear inside a band.",
   "Never include an answer inside a band. Exclude any 'Answer', 'Answer:', 'Markscheme', 'Mark scheme', 'Answers', worked solution, answer key, teacher note or highlighted/boxed answer text, and any answer written into the paper. If such an answer block sits between this part and the next label, end the band just above it. Blank ruled answer lines with no writing on them are fine to include.",
+  "Give ONE band per page. Never give two bands that cover the same print, and never repeat the same region of a page — a second band is only ever the continuation on the NEXT page.",
+  "If an answer or mark scheme is printed on the same page below this part, the band MUST end above the first character of that answer text, even if that means the band is short.",
   "Only set crops to null if you truly cannot locate the part on any page.",
+
   "Symbols and units MUST be reproduced as real Unicode characters exactly as printed: \u00b0C, \u00b0F, \u00b5, \u03a9, \u00b1, \u00d7, \u00f7, \u2264, \u2265, \u2248, \u2192, \u21cc, \u221a, \u03b1\u03b2\u03b3\u03bb\u03c0\u0394\u03b8, subscripts/superscripts (H\u2082O, cm\u00b3, m s\u207b\u00b2, 10\u2076).",
   "Never write symbols as words, ASCII stand-ins or escapes: no \"degrees C\", \"deg C\", \"oC\", \"^oC\", \"ohms\", \"micro\", \"+/-\", \"\\\\u00b0\", \"&deg;\", \"?C\". Write 25 \u00b0C, 4.7 k\u03a9, 3 \u00b5A.",
   'Reply with JSON only: {"questions":[{"label":"1(a)","questionText":"...","markScheme":"...","marks":2,"pages":[3,4],"crops":[{"page":3,"top":0.62,"bottom":0.97},{"page":4,"top":0.05,"bottom":0.3}]}]}',
@@ -482,11 +485,14 @@ function parseCropValue(raw: unknown, pages: number[]): QuestionCrop | null {
   if (pages.length > 0 && !pages.includes(page)) return null;
   if (!Number.isFinite(top) || !Number.isFinite(bottom)) return null;
   if (bottom <= top) return null;
-  // A little breathing room so nothing printed is clipped.
-  top = Math.max(0, top - 0.015);
-  bottom = Math.min(1, bottom + 0.015);
+  // A little breathing room at the top so nothing printed is clipped. The
+  // bottom is barely padded: whatever is printed below may be the answer or
+  // mark scheme for this very question.
+  top = Math.max(0, top - 0.012);
+  bottom = Math.min(1, bottom + 0.003);
   if (bottom - top < 0.04) return null;
   return { page, top, bottom };
+
 }
 
 /**
@@ -500,13 +506,23 @@ function parseCropList(raw: unknown, pages: number[]): QuestionCrop[] | null {
   for (const entry of list) {
     const band = parseCropValue(entry, pages);
     if (!band) continue;
-    if (out.some((b) => b.page === band.page && b.top === band.top)) continue;
+    // Bands of the same page that cover the same print are one band, otherwise
+    // the student is shown the same question twice.
+    const same = out.find(
+      (b) => b.page === band.page && band.top < b.bottom + 0.02 && band.bottom > b.top - 0.02,
+    );
+    if (same) {
+      same.top = Math.min(same.top, band.top);
+      same.bottom = Math.max(same.bottom, band.bottom);
+      continue;
+    }
     out.push(band);
     if (out.length === 3) break;
   }
   out.sort((a, b) => (a.page === b.page ? a.top - b.top : a.page - b.page));
   return out.length > 0 ? out : null;
 }
+
 
 /**
  * Removes anything a student could search on (year, exam board, session and

@@ -1540,6 +1540,7 @@ export const listStudentWork = createServerFn({ method: "GET" })
         .select("id, class_id, title, subject, due_at, created_at")
         .in("class_id", classIds)
         .eq("published", true)
+        .is("archived_at", null)
         .order("created_at", { ascending: false }),
     ]);
 
@@ -1614,10 +1615,17 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: assignmentRow } = await db
       .from("assignments")
-      .select("id, title, subject, curriculum, instructions, due_at, class_id")
+      .select("id, title, subject, curriculum, instructions, due_at, class_id, archived_at")
       .eq("id", data.assignmentId)
       .single();
     const assignment = assignmentRow!;
+    if ((assignment as { archived_at?: string | null }).archived_at) {
+      const { data: canTeach } = await supabase.rpc("can_teach_assignment", {
+        _assignment_id: data.assignmentId,
+        _user_id: userId,
+      });
+      if (!canTeach) throw new Error("This assignment has been archived by your teacher.");
+    }
     const { data: klass } = await db
       .from("classes")
       .select("name")

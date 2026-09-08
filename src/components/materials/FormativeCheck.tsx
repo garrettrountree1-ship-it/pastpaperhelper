@@ -697,7 +697,8 @@ export function FormativeCheckPanel({
                   <span className="text-sm text-muted-foreground">
                     {check.myAttempts.length > 0
                       ? `Attempt ${check.myAttempts.length} sent — try again!`
-                      : "As many tries as you like before the timer ends"}
+                      : "As many tries as you like"}
+
                   </span>
                   <Button
                     onClick={() => send.mutate()}

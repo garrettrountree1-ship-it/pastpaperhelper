@@ -167,9 +167,14 @@ export function DocMarkupSurface({
 
   const scale = width > 0 ? width / MARKUP_WIDTH : 1;
 
+  const markupHeight = Math.max(1, Math.round(MARKUP_WIDTH * ratio));
+
   return (
     <div ref={hostRef} className="relative">
       {children}
+      {/* Highlighter marks sit here, beside the page, so the colour blends with
+          the words underneath instead of coming out almost invisible. */}
+      <HighlightLayer width={MARKUP_WIDTH} height={markupHeight} strokes={value.strokes} />
       <div
         className="absolute left-0 top-0"
         style={{
@@ -180,14 +185,16 @@ export function DocMarkupSurface({
       >
         <SlideAnnotations
           width={MARKUP_WIDTH}
-          height={Math.max(1, Math.round(MARKUP_WIDTH * ratio))}
+          height={markupHeight}
           tool={tool}
           color={penColor}
           highlightColor={highlightColor}
           value={value}
           onChange={onChange}
+          hideHighlights
         />
       </div>
     </div>
   );
 }
+

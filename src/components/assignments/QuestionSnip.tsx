@@ -151,7 +151,10 @@ export function mergeSnipPieces(urls: string[]): string[] {
       return (raw.split("?")[0] ?? raw) === piece.page;
     });
     const base = signed ? signed.slice(0, signed.indexOf("#crop=")) : piece.page;
-    out.push(`${base}#crop=${piece.top.toFixed(4)},${piece.bottom.toFixed(4)}`);
+    const manual = Boolean(signed?.includes(";manual"));
+    out.push(
+      `${base}#crop=${piece.top.toFixed(4)},${piece.bottom.toFixed(4)}${manual ? ";manual" : ""}`,
+    );
   }
   return out;
 }

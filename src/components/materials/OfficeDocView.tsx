@@ -654,7 +654,6 @@ function SlidePage({
             // With the exact slide picture showing, only the text boxes are kept
             // on top — invisible until the teacher retypes them, so the words on
             // screen are always the original ones.
-            if (pageSrc && shape.type !== "text" && !shapeEdit) return null;
             if (pageSrc && shape.type !== "text") return null;
             return (
               <SlideShape
@@ -733,6 +732,9 @@ function SlideShape({
   slideWidth,
   background,
   editable,
+  ghost = false,
+  slideBackground = "#ffffff",
+  overPicture = false,
   scale,
   edit,
   onEdit,
@@ -741,6 +743,10 @@ function SlideShape({
   slideWidth: number;
   background: string;
   editable: boolean;
+  /** Sitting invisibly over the real slide picture: the original words show through. */
+  ghost?: boolean;
+  slideBackground?: string;
+  overPicture?: boolean;
   scale: number;
   edit?: ShapeEdit | undefined;
   onEdit: (patch: ShapeEdit) => void;
@@ -798,6 +804,9 @@ function SlideShape({
       slideWidth={slideWidth}
       background={background}
       editable={editable}
+      ghost={ghost}
+      slideBackground={slideBackground}
+      overPicture={overPicture}
       scale={scale}
       edit={edit}
       onEdit={onEdit}
@@ -818,6 +827,9 @@ function TextShape({
   slideWidth,
   background,
   editable,
+  ghost,
+  slideBackground,
+  overPicture,
   scale,
   edit,
   onEdit,
@@ -827,6 +839,9 @@ function TextShape({
   slideWidth: number;
   background: string;
   editable: boolean;
+  ghost: boolean;
+  slideBackground: string;
+  overPicture: boolean;
 
   scale: number;
   edit?: ShapeEdit | undefined;

@@ -3,8 +3,8 @@ import { Camera, CheckCircle2, CircleDashed, Sparkles, XCircle } from "lucide-re
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
-import { GlossaryText } from "@/components/assignments/GlossaryText";
 import { QuestionSnipStack } from "@/components/assignments/QuestionSnip";
+import { QuestionVocabBox } from "@/components/assignments/QuestionVocabBox";
 
 import { cleanMathText } from "@/lib/math-text";
 import { cleanTutorText, TutorText } from "@/lib/tutor-text";

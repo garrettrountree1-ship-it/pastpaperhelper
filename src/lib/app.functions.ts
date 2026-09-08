@@ -1619,9 +1619,12 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
       .eq("id", data.assignmentId)
       .single();
     const assignment = assignmentRow!;
-    const isTeacher = await teachesAssignment(db, data.assignmentId, userId).catch(() => false);
-    if ((assignment as { archived_at?: string | null }).archived_at && !isTeacher) {
-      throw new Error("This assignment has been archived by your teacher.");
+    if ((assignment as { archived_at?: string | null }).archived_at) {
+      const { data: canTeach } = await supabase.rpc("can_teach_assignment", {
+        _assignment_id: data.assignmentId,
+        _user_id: userId,
+      });
+      if (!canTeach) throw new Error("This assignment has been archived by your teacher.");
     }
     const { data: klass } = await db
       .from("classes")

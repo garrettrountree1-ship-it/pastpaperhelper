@@ -350,48 +350,49 @@ export function OfficeDocView({
     if (format !== "pptx" || !materialId) return;
     let cancelled = false;
     void (async () => {
-      console.log("[slides] looking for exact pages", materialId);
       const cached = await readCachedJson<string[]>(pagesKey);
       if (cancelled) return;
       if (cached?.length) {
-        console.log("[slides] using cached exact pages", cached.length);
         setSlidePages(cached);
         return;
       }
 
       try {
+        setPagesError(null);
         let { url: pdfUrl } = await getSlidePdfUrl({ data: { materialId } });
-        console.log("[slides] existing pdf?", pdfUrl ? "yes" : "no", "canPrepare", canPrepareShared);
         if (!pdfUrl && canPrepareShared) {
           if (!cancelled) setPreparingPages(true);
-          console.log("[slides] converting…");
           pdfUrl = (await prepareSlidePdf({ data: { materialId } })).url;
-          console.log("[slides] converted", pdfUrl ? "ok" : "empty");
         }
-        if (cancelled || !pdfUrl) {
-          console.error("Exact slide pages unavailable: no converted file yet.");
+        if (cancelled) return;
+        if (!pdfUrl) {
+          setPagesError(
+            canPrepareShared
+              ? "Couldn't get the exact slides."
+              : "The exact slides aren't ready yet — ask the teacher to open this once.",
+          );
           return;
         }
         const pages = await pdfToSlideImages(pdfUrl);
-        console.log("[slides] rendered pages", pages.length);
-
-        if (cancelled || !pages.length) {
-          console.error("Exact slide pages unavailable: conversion produced no pages.");
+        if (cancelled) return;
+        if (!pages.length) {
+          setPagesError("Couldn't read the exact slides.");
           return;
         }
         setSlidePages(pages);
         void writeCachedJson(pagesKey, pages);
       } catch (error) {
         console.error("Exact slide pages failed", error);
+        if (!cancelled) setPagesError("Couldn't get the exact slides.");
       } finally {
         if (!cancelled) setPreparingPages(false);
       }
-
     })();
     return () => {
       cancelled = true;
     };
   }, [format, materialId, pagesKey, canPrepareShared, rebuilding]);
+
 
 
 

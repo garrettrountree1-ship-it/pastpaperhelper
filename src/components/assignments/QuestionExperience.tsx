@@ -88,6 +88,7 @@ export function QuestionExperience({
   locked = false,
   markScheme = null,
   headerAction = null,
+  snipAction = null,
   keywordTranslation = false,
   
   assignmentId,
@@ -128,6 +129,8 @@ export function QuestionExperience({
   markScheme?: string | null;
   /** Optional action shown in the question header (e.g. message the teacher). */
   headerAction?: ReactNode;
+  /** Teacher-only action displayed beside the printed question image. */
+  snipAction?: ReactNode;
   /** Show the Question Vocabulary Translation box under the question. */
   keywordTranslation?: boolean;
   /** Block copying/selecting the question text. */
@@ -206,6 +209,7 @@ export function QuestionExperience({
               urls={snipUrls}
               alt="The question exactly as printed on the paper"
             />
+            {snipAction ? <div className="mt-2 flex justify-end">{snipAction}</div> : null}
             <p className="mt-1 text-xs text-muted-foreground">
               The question exactly as printed. Answer it in the box below.
             </p>

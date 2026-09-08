@@ -69,14 +69,16 @@ function loadRows(url: string): Promise<boolean[] | null> {
 
 /** Distance to the nearest run of blank rows in one direction, or null. */
 function blankEdge(rows: boolean[], start: number, direction: -1 | 1, limit: number) {
-  const need = Math.max(2, Math.round(rows.length * 0.004));
+  // A single pale scan-line can pass through the gap inside a letter. Require a
+  // visible strip of paper before treating a boundary as safe.
+  const need = Math.max(5, Math.round(rows.length * 0.007));
   let run = 0;
   for (let step = 0; step <= limit; step += 1) {
     const y = start + direction * step;
     if (y < 0 || y >= rows.length) return direction === -1 ? 0 : rows.length - 1;
     if (rows[y]) {
       run += 1;
-      if (run >= need) return y;
+      if (run >= need) return y - direction * Math.floor(need / 2);
     } else {
       run = 0;
     }
@@ -98,12 +100,12 @@ function offPrint(
   shrink: number,
   grow: number,
 ) {
-  if (rows[row]) return row;
   const outward = (inward === 1 ? -1 : 1) as -1 | 1;
   const shrunk = blankEdge(rows, row, inward, shrink);
   const grown = blankEdge(rows, row, outward, grow);
-  if (grown != null) return grown;
-  return shrunk ?? row;
+  // Prefer shrinking the crop. Expanding can expose the next question or an
+  // answer, and is only a last resort when no inward white strip exists.
+  return shrunk ?? grown ?? row;
 }
 
 /** The same band, cut on empty paper and trimmed of blank edges. */

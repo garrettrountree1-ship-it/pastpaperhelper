@@ -99,6 +99,7 @@ import { PhotoModeControl } from "@/components/assignments/PhotoModeControl";
 import type { PhotoMode } from "@/lib/photo-mode";
 import { questionBody, questionLabel } from "@/lib/question-label";
 import { QuestionSnipStack } from "@/components/assignments/QuestionSnip";
+import { QuestionRecutDialog } from "@/components/assignments/QuestionRecutDialog";
 
 export const Route = createFileRoute("/_authenticated/classes/$classId/homework")({
   head: () => ({
@@ -856,6 +857,11 @@ function AssignmentDialog({
                           <Trash2 className="size-3" />
                         </Button>
                       </div>
+                      <QuestionRecutDialog
+                        imagePaths={question.imagePaths}
+                        imageUrls={question.imageUrls}
+                        onSave={(imagePaths, imageUrls) => update_(index, { imagePaths, imageUrls })}
+                      />
                       <details>
                         <summary className="cursor-pointer text-xs text-muted-foreground">
                           Wording kept only for word help and marking (students see the picture)

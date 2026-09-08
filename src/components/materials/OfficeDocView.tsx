@@ -37,6 +37,8 @@ import {
   saveSharedRender,
 } from "@/lib/office-prerender";
 import { type PptxDeck, type PptxShape } from "@/lib/pptx-render";
+import { pdfToSlideImages } from "@/lib/slide-images";
+import { getSlidePdfUrl, prepareSlidePdf } from "@/lib/slide-pdf.functions";
 
 /** A teacher's change to one slide element: retyped text, or a moved/resized box. */
 export type ShapeEdit = { text?: string; x?: number; y?: number; w?: number; h?: number };
@@ -77,6 +79,9 @@ export function OfficeDocView({
   const [deck, setDeck] = useState<PptxDeck | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [rebuilding, setRebuilding] = useState(false);
+  // The exact slide pages (one picture per slide) shown under the editable text.
+  const [slidePages, setSlidePages] = useState<string[] | null>(null);
+  const [preparingPages, setPreparingPages] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const token = useRef(0);
   // Increment when the renderer changes so old, incorrectly parsed decks are
@@ -338,6 +343,43 @@ export function OfficeDocView({
     };
   }, [format, key, rebuilding, materialId, canPrepareShared]);
 
+  // The exact slides: converted once from the original PowerPoint, then kept as
+  // pictures in this browser so they open instantly afterwards.
+  const pagesKey = `slide-pages-v1:${cacheKey ?? title}`;
+  useEffect(() => {
+    if (format !== "pptx" || !materialId) return;
+    let cancelled = false;
+    void (async () => {
+      const cached = await readCachedJson<string[]>(pagesKey);
+      if (cancelled) return;
+      if (cached?.length) {
+        setSlidePages(cached);
+        return;
+      }
+      try {
+        let { url: pdfUrl } = await getSlidePdfUrl({ data: { materialId } });
+        if (!pdfUrl && canPrepareShared) {
+          if (!cancelled) setPreparingPages(true);
+          pdfUrl = (await prepareSlidePdf({ data: { materialId } })).url;
+        }
+        if (cancelled || !pdfUrl) return;
+        const pages = await pdfToSlideImages(pdfUrl);
+        if (cancelled || !pages.length) return;
+        setSlidePages(pages);
+        void writeCachedJson(pagesKey, pages);
+      } catch {
+        // Fall back to the rebuilt slides, which are already on screen.
+      } finally {
+        if (!cancelled) setPreparingPages(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [format, materialId, pagesKey, canPrepareShared, rebuilding]);
+
+
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-1 pb-1">
@@ -371,6 +413,7 @@ export function OfficeDocView({
           <span className="ml-2 text-xs text-muted-foreground">
             Slide {currentSlide + 1} of {progress?.total ?? deck.slides.length}
             {progress && progress.done < progress.total ? " · still preparing…" : ""}
+            {preparingPages ? " · getting the exact slides…" : ""}
           </span>
         ) : null}
         {deck ? (
@@ -438,6 +481,8 @@ export function OfficeDocView({
           title="Rebuild from the original file"
           onClick={async () => {
             await clearCachedDoc(key);
+            await clearCachedDoc(pagesKey);
+            setSlidePages(null);
             setRebuilding((v) => !v);
           }}
         >
@@ -506,7 +551,9 @@ export function OfficeDocView({
                     onAnnotationChange={(next) => updateNotes(index, next)}
                     edits={edits}
                     onEdit={(shapeIndex, patch) => updateEdit(index, shapeIndex, patch)}
+                    pageSrc={slidePages?.[index]}
                   />
+
                 </div>
               ))}
             </div>
@@ -544,6 +591,7 @@ function SlidePage({
   onAnnotationChange,
   edits,
   onEdit,
+  pageSrc,
 }: {
   deck: PptxDeck;
   index: number;
@@ -554,6 +602,8 @@ function SlidePage({
   onAnnotationChange: (next: SlideAnnotation) => void;
   edits: Record<string, ShapeEdit>;
   onEdit: (shapeIndex: number, patch: ShapeEdit) => void;
+  /** The exact slide, as a picture. When present it replaces the rebuilt slide. */
+  pageSrc?: string | undefined;
 }) {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);
@@ -583,6 +633,16 @@ function SlidePage({
           background: slide.background ?? "#ffffff",
         }}
       >
+        {pageSrc ? (
+          <img
+            src={pageSrc}
+            alt={`Slide ${index + 1}`}
+            className="absolute left-0 top-0 h-full w-full"
+            style={{ objectFit: "contain" }}
+            loading="lazy"
+            decoding="async"
+          />
+        ) : null}
         <div
           className="absolute left-0 top-0"
           style={{
@@ -593,6 +653,11 @@ function SlidePage({
           }}
         >
           {slide.shapes.map((shape, i) => {
+            const shapeEdit = edits[`${index}:${i}`];
+            // With the exact slide picture showing, only the text boxes are kept
+            // on top — invisible until the teacher retypes them, so the words on
+            // screen are always the original ones.
+            if (pageSrc && shape.type !== "text") return null;
             return (
               <SlideShape
                 key={i}
@@ -605,12 +670,16 @@ function SlidePage({
                   slide.background ?? "#ffffff",
                 )}
                 editable={tool === "edit"}
+                ghost={Boolean(pageSrc) && shapeEdit?.text == null}
+                slideBackground={slide.background ?? "#ffffff"}
+                overPicture={Boolean(pageSrc)}
                 scale={scale}
-                edit={edits[`${index}:${i}`]}
+                edit={shapeEdit}
                 onEdit={(patch) => onEdit(i, patch)}
               />
             );
           })}
+
 
 
 
@@ -666,6 +735,9 @@ function SlideShape({
   slideWidth,
   background,
   editable,
+  ghost = false,
+  slideBackground = "#ffffff",
+  overPicture = false,
   scale,
   edit,
   onEdit,
@@ -674,6 +746,10 @@ function SlideShape({
   slideWidth: number;
   background: string;
   editable: boolean;
+  /** Sitting invisibly over the real slide picture: the original words show through. */
+  ghost?: boolean;
+  slideBackground?: string;
+  overPicture?: boolean;
   scale: number;
   edit?: ShapeEdit | undefined;
   onEdit: (patch: ShapeEdit) => void;
@@ -731,6 +807,9 @@ function SlideShape({
       slideWidth={slideWidth}
       background={background}
       editable={editable}
+      ghost={ghost}
+      slideBackground={slideBackground}
+      overPicture={overPicture}
       scale={scale}
       edit={edit}
       onEdit={onEdit}
@@ -751,6 +830,9 @@ function TextShape({
   slideWidth,
   background,
   editable,
+  ghost,
+  slideBackground,
+  overPicture,
   scale,
   edit,
   onEdit,
@@ -760,6 +842,9 @@ function TextShape({
   slideWidth: number;
   background: string;
   editable: boolean;
+  ghost: boolean;
+  slideBackground: string;
+  overPicture: boolean;
 
   scale: number;
   edit?: ShapeEdit | undefined;
@@ -847,7 +932,12 @@ function TextShape({
   // Whatever ends up behind these words: this box's own fill, else the shape or
   // slide colour underneath. Text is never allowed to match it.
   const surface = shape.fill ?? background;
-  const ink = (color: string | null | undefined) => readableTextColor(color, surface);
+  // Over the exact slide picture the box stays invisible so the original words
+  // show through; it becomes solid as soon as the teacher clicks in to type.
+  const [focused, setFocused] = useState(false);
+  const hidden = ghost && !focused;
+  const ink = (color: string | null | undefined) =>
+    hidden ? "transparent" : readableTextColor(color, surface);
 
   return (
     <div
@@ -864,12 +954,19 @@ function TextShape({
         justifyContent:
           shape.anchor === "ctr" ? "center" : shape.anchor === "b" ? "flex-end" : "flex-start",
         padding: `${tIns}px ${rIns}px ${bIns}px ${lIns}px`,
-        background: shape.fill ?? undefined,
-        border: shape.line ? `${shape.line.width}px solid ${shape.line.color}` : undefined,
+        background: hidden
+          ? undefined
+          : overPicture
+            ? (shape.fill ?? slideBackground)
+            : (shape.fill ?? undefined),
+        border: hidden || !shape.line
+          ? undefined
+          : `${shape.line.width}px solid ${shape.line.color}`,
         outline: editable ? "1px dashed hsl(var(--primary))" : undefined,
         borderRadius: shape.radius || undefined,
         boxSizing: "border-box",
         color: ink(null) ?? "#111",
+        caretColor: "hsl(var(--primary))",
         // Never clip words: PowerPoint lets text spill out of its box too.
         overflow: "visible",
       }}
@@ -880,7 +977,9 @@ function TextShape({
           contentEditable={editable}
           suppressContentEditableWarning
           spellCheck={false}
+          onFocus={() => setFocused(true)}
           onBlur={(event) => {
+            setFocused(false);
             if (!editable) return;
             const next = (event.currentTarget as HTMLElement).innerText.replace(/\u00a0/g, " ");
             const current =

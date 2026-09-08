@@ -3,13 +3,24 @@ import { cleanMathText } from "@/lib/math-text";
 
 import { TUTOR_MODEL } from "./ai-gateway.server";
 
+export type QuestionCrop = {
+  /** 1-based page number the snip is taken from. */
+  page: number;
+  /** Top / bottom of the snip as a fraction (0-1) of that page's height. */
+  top: number;
+  bottom: number;
+};
+
 export type ExtractedQuestion = {
   questionText: string;
   markScheme: string;
   marks: number;
   /** 1-based page numbers of the uploaded paper this part appears on. */
   pages: number[];
+  /** Region of the page to show the student as a picture, when known. */
+  crop?: QuestionCrop | null;
 };
+
 
 export type UploadedFile = {
   filename: string;

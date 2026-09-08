@@ -295,9 +295,15 @@ export const getQuestionGlossary = createServerFn({ method: "POST" })
     ]);
     if (!canStudy && !canTeach) throw new Error("Not available to you.");
 
+    const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
+    const settings = await tutorSettingsForAssignment(db, question!.assignment_id, userId);
+
     const cached = question!.keyword_glossary;
     if (Array.isArray(cached) && cached.length > 0) {
-      return { terms: cached as Array<{ term: string; translation: string }> };
+      return {
+        terms: cached as Array<{ term: string; translation: string }>,
+        language: settings.vocabLanguage,
+      };
     }
 
     const { data: assignment } = await db
@@ -307,8 +313,6 @@ export const getQuestionGlossary = createServerFn({ method: "POST" })
       .maybeSingle();
 
     const { keywordGlossary } = await import("./glossary.server");
-    const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
-    const settings = await tutorSettingsForAssignment(db, question!.assignment_id, userId);
     const terms = await keywordGlossary(
       question!.question_text,
       assignment?.subject ?? "",
@@ -317,7 +321,7 @@ export const getQuestionGlossary = createServerFn({ method: "POST" })
     if (terms.length > 0) {
       await db.from("questions").update({ keyword_glossary: terms }).eq("id", question!.id);
     }
-    return { terms };
+    return { terms, language: settings.vocabLanguage };
   });
 
 /** Gloss for the key words the AI tutor used in one of its replies. */

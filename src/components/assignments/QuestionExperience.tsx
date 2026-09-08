@@ -134,7 +134,10 @@ export function QuestionExperience({
   assignmentId?: string;
   /** Set when the teacher sent this question back to be redone. */
   sentBack?: { at: string; note: string | null } | null;
+  /** Snipped picture of the question as printed — shown instead of typed wording. */
+  snipUrl?: string | null;
 }) {
+
   const verdict = result?.verdict ?? null;
   const glossary = useQuery({
     queryKey: ["question-glossary", question.id],

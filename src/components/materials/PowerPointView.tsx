@@ -119,6 +119,11 @@ export function PowerPointView({
           referrerPolicy="no-referrer"
           onLoad={() => setLoaded(true)}
         />
+        <HighlightLayer
+          width={MARKUP_WIDTH}
+          height={markupHeight}
+          strokes={markup.annotationOf(0).strokes}
+        />
         <div
           className="absolute left-0 top-0 z-20"
           style={{
@@ -135,8 +140,10 @@ export function PowerPointView({
             highlightColor={markup.highlightColor}
             value={markup.annotationOf(0)}
             onChange={(next) => markup.update(0, next)}
+            hideHighlights
           />
         </div>
+
       </div>
     </div>
   );

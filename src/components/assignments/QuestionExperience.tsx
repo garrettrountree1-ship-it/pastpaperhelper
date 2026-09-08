@@ -3,8 +3,8 @@ import { Camera, CheckCircle2, CircleDashed, Sparkles, XCircle } from "lucide-re
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
-import { GlossaryText } from "@/components/assignments/GlossaryText";
 import { QuestionSnipStack } from "@/components/assignments/QuestionSnip";
+import { QuestionVocabBox } from "@/components/assignments/QuestionVocabBox";
 
 import { cleanMathText } from "@/lib/math-text";
 import { cleanTutorText, TutorText } from "@/lib/tutor-text";
@@ -128,11 +128,11 @@ export function QuestionExperience({
   markScheme?: string | null;
   /** Optional action shown in the question header (e.g. message the teacher). */
   headerAction?: ReactNode;
-  /** Show a Chinese gloss on key words when hovered. */
+  /** Show the Question Vocabulary Translation box under the question. */
   keywordTranslation?: boolean;
   /** Block copying/selecting the question text. */
   protectQuestions?: boolean;
-  /** Needed to gloss the AI tutor's replies in the student's language. */
+  /** Needed to add key words from the AI tutor's replies to the vocabulary box. */
   assignmentId?: string;
   /** Set when the teacher sent this question back to be redone. */
   sentBack?: { at: string; note: string | null } | null;
@@ -211,20 +211,17 @@ export function QuestionExperience({
             </p>
           </>
         ) : (
-          <>
-            <GlossaryText
-              className="mt-3 whitespace-pre-wrap"
-              text={questionBody(question.question_text)}
-              terms={keywordTranslation ? (glossary.data?.terms ?? []) : []}
-            />
-            {keywordTranslation && (glossary.data?.terms?.length ?? 0) > 0 ? (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Hover (or tap and hold) any underlined word — in the question or in the tutor’s replies — to see it translated.
-              </p>
-            ) : null}
-          </>
+          <p className="mt-3 whitespace-pre-wrap">{questionBody(question.question_text)}</p>
         )}
       </div>
+
+      {keywordTranslation ? (
+        <QuestionVocabBox
+          className="mt-3"
+          terms={tutorTerms}
+          language={glossary.data?.language ?? "Chinese (Simplified)"}
+        />
+      ) : null}
 
 
       {sentBack ? (
@@ -411,11 +408,7 @@ export function QuestionExperience({
                     {message.role === "tutor" ? "Tutor" : "You"}
                   </p>
                   {message.role === "tutor" ? (
-                    <GlossaryText
-                      className="whitespace-pre-wrap"
-                      text={cleanTutorText(message.content)}
-                      terms={tutorTerms}
-                    />
+                    <p className="whitespace-pre-wrap">{cleanTutorText(message.content)}</p>
                   ) : (
                     <p className="whitespace-pre-wrap">{message.content}</p>
                   )}

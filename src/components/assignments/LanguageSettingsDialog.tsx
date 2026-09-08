@@ -32,8 +32,8 @@ import { TUTOR_LANGUAGES } from "@/lib/tutor-settings";
 
 const INHERIT = "__inherit__";
 
-/** Class default / On / Off picker for the key-word hover translation. */
-function HoverTranslationControl({
+/** Class default / On / Off picker for Question Vocabulary Translation. */
+function VocabTranslationControl({
   value,
   inheritLabel,
   disabled,
@@ -55,8 +55,8 @@ function HoverTranslationControl({
       </SelectTrigger>
       <SelectContent>
         <SelectItem value={INHERIT}>{inheritLabel}</SelectItem>
-        <SelectItem value="on">Hover translation on</SelectItem>
-        <SelectItem value="off">Hover translation off</SelectItem>
+        <SelectItem value="on">Question vocabulary: on</SelectItem>
+        <SelectItem value="off">Question vocabulary: off</SelectItem>
       </SelectContent>
     </Select>
   );
@@ -64,7 +64,7 @@ function HoverTranslationControl({
 
 /**
  * Teacher panel for an assignment's language and answer-input settings: photo
- * answers, key-word hover translation, and the Vocab list translations.
+ * answers, Question Vocabulary Translation, and the Vocab list translations.
  */
 export function LanguageSettingsDialog({
   classId,
@@ -151,13 +151,14 @@ export function LanguageSettingsDialog({
               </div>
 
               <div className="mt-4 border-t border-border pt-3">
-                <Label className="text-sm">Key-word hover translation for this homework</Label>
+                <Label className="text-sm">Question Vocabulary Translation for this homework</Label>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Applies to the question text and to the AI tutor&apos;s replies. Only single key
-                  words are glossed — never whole questions or answers.
+                  Adds a small vocabulary box under each question listing key words from that
+                  question with their translation. Only single key words are listed — never whole
+                  questions or answers.
                 </p>
                 <div className="mt-2">
-                  <HoverTranslationControl
+                  <VocabTranslationControl
                     value={data.keywordTranslation}
                     inheritLabel="Use class setting"
                     disabled={classMutation.isPending}
@@ -209,7 +210,7 @@ export function LanguageSettingsDialog({
             <section className="rounded-lg border border-border p-4">
               <h3 className="font-medium">Individual students</h3>
               <p className="mt-1 text-xs text-muted-foreground">
-                Override the photo answers and hover translation for one student only.
+                Override the photo answers and Question Vocabulary Translation for one student only.
               </p>
               {data.students.length === 0 ? (
                 <p className="mt-3 text-sm text-muted-foreground">No students have joined yet.</p>
@@ -235,11 +236,11 @@ export function LanguageSettingsDialog({
                       </div>
                       <div className="mt-2">
                         <Label className="text-xs text-muted-foreground">
-                          Key-word hover translation (homework setting:{" "}
+                          Question Vocabulary Translation (homework setting:{" "}
                           {data.keywordTranslation ? "on" : "off"})
                         </Label>
                         <div className="mt-1">
-                          <HoverTranslationControl
+                          <VocabTranslationControl
                             value={student.keywordTranslation}
                             inheritLabel="Homework setting"
                             disabled={studentMutation.isPending}

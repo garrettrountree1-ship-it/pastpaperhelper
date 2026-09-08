@@ -181,10 +181,10 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
                     }
                   />
                   <span>
-                    Hover translation of key words
+                    Question Vocabulary Translation
                     <span className="block text-xs text-muted-foreground">
-                      Underlines key words in questions, tutor replies and vocab definitions so
-                      students can hover for the word in {klass.vocabLanguage}. Turn it off for
+                      Shows a small box under each homework question listing the key words from that
+                      question with their {klass.vocabLanguage} translation. Turn it off for
                       individual students below.
                     </span>
                   </span>
@@ -207,7 +207,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
                 </label>
 
                 <div className="max-w-xs space-y-2">
-                  <Label>Vocabulary &amp; hover translation language</Label>
+                  <Label>Vocabulary &amp; question translation language</Label>
                   <Select
                     value={klass.vocabLanguage}
                     onValueChange={(value) =>
@@ -232,10 +232,10 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
             <section className="rounded-lg border border-border p-4">
               <h3 className="font-display text-lg">Individual students</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Differentiate for key students. “Class default” means they follow the settings
-                above, including hover translation — set a student to “Hover: off” to switch it off
-                just for them, or override it for one homework in that assignment&apos;s Due date
-                &amp; answer release panel.
+                Differentiate for key students. Each student has four settings, labelled below.
+                “Class default” means they follow the whole-class settings above. You can also
+                override any of these for a single homework in that assignment&apos;s Due date &amp;
+                answer release panel.
               </p>
 
 
@@ -246,98 +246,123 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
                   {settings.data.students.map((student) => (
                     <div
                       key={student.id}
-                      className="grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-[1.2fr_1fr_1fr_1fr_auto] sm:items-center"
+                      className="rounded-lg border border-border p-3"
                     >
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{student.name}</p>
-                        
+                      <p className="truncate font-medium">{student.name}</p>
+
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">
+                            Tutor language — the language the AI tutor speaks to this student in
+                          </Label>
+                          <Select
+                            value={student.tutorLanguage ?? INHERIT}
+                            onValueChange={(value) =>
+                              studentMutation.mutate({
+                                classId,
+                                studentId: student.id,
+                                tutorLanguage: value === INHERIT ? null : value,
+                              })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={INHERIT}>
+                                Class default ({klass.tutorLanguage})
+                              </SelectItem>
+                              {TUTOR_LANGUAGES.map((language) => (
+                                <SelectItem key={language} value={language}>
+                                  {language}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">
+                            Tutor level — how much help and how simple the English is
+                          </Label>
+                          <Select
+                            value={student.tutorLevel ?? INHERIT}
+                            onValueChange={(value) =>
+                              studentMutation.mutate({
+                                classId,
+                                studentId: student.id,
+                                tutorLevel: value === INHERIT ? null : value,
+                              })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={INHERIT}>
+                                Class default ({TUTOR_LEVELS.find((l) => l.value === klass.tutorLevel)?.label})
+                              </SelectItem>
+                              {TUTOR_LEVELS.map((level) => (
+                                <SelectItem key={level.value} value={level.value}>
+                                  {level.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">
+                            Question Vocabulary Translation — key-word box under each question
+                          </Label>
+                          <Select
+                            value={
+                              student.keywordTranslation === null
+                                ? INHERIT
+                                : student.keywordTranslation
+                                  ? "on"
+                                  : "off"
+                            }
+                            onValueChange={(value) =>
+                              studentMutation.mutate({
+                                classId,
+                                studentId: student.id,
+                                keywordTranslation: value === INHERIT ? null : value === "on",
+                              })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={INHERIT}>
+                                Class default ({klass.keywordTranslation ? "on" : "off"})
+                              </SelectItem>
+                              <SelectItem value="on">Vocabulary box: on</SelectItem>
+                              <SelectItem value="off">Vocabulary box: off</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">
+                            Let this student change their own tutor level
+                          </Label>
+                          <label className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
+                            <Checkbox
+                              checked={student.studentCanChangeLevel ?? klass.studentCanChangeLevel}
+                              onCheckedChange={(checked) =>
+                                studentMutation.mutate({
+                                  classId,
+                                  studentId: student.id,
+                                  studentCanChangeLevel: checked === true,
+                                })
+                              }
+                            />
+                            Student can change their level
+                          </label>
+                        </div>
                       </div>
-
-                      <Select
-                        value={student.tutorLanguage ?? INHERIT}
-                        onValueChange={(value) =>
-                          studentMutation.mutate({
-                            classId,
-                            studentId: student.id,
-                            tutorLanguage: value === INHERIT ? null : value,
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={INHERIT}>Class default</SelectItem>
-                          {TUTOR_LANGUAGES.map((language) => (
-                            <SelectItem key={language} value={language}>
-                              {language}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <Select
-                        value={student.tutorLevel ?? INHERIT}
-                        onValueChange={(value) =>
-                          studentMutation.mutate({
-                            classId,
-                            studentId: student.id,
-                            tutorLevel: value === INHERIT ? null : value,
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={INHERIT}>Class default</SelectItem>
-                          {TUTOR_LEVELS.map((level) => (
-                            <SelectItem key={level.value} value={level.value}>
-                              {level.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <Select
-                        value={
-                          student.keywordTranslation === null
-                            ? INHERIT
-                            : student.keywordTranslation
-                              ? "on"
-                              : "off"
-                        }
-                        onValueChange={(value) =>
-                          studentMutation.mutate({
-                            classId,
-                            studentId: student.id,
-                            keywordTranslation: value === INHERIT ? null : value === "on",
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={INHERIT}>Hover: class default</SelectItem>
-                          <SelectItem value="on">Hover: on</SelectItem>
-                          <SelectItem value="off">Hover: off</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Checkbox
-                          checked={student.studentCanChangeLevel ?? klass.studentCanChangeLevel}
-                          onCheckedChange={(checked) =>
-                            studentMutation.mutate({
-                              classId,
-                              studentId: student.id,
-                              studentCanChangeLevel: checked === true,
-                            })
-                          }
-                        />
-                        Student control
-                      </label>
                     </div>
                   ))}
                 </div>

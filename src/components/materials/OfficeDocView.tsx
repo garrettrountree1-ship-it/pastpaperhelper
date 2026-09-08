@@ -929,7 +929,12 @@ function TextShape({
   // Whatever ends up behind these words: this box's own fill, else the shape or
   // slide colour underneath. Text is never allowed to match it.
   const surface = shape.fill ?? background;
-  const ink = (color: string | null | undefined) => readableTextColor(color, surface);
+  // Over the exact slide picture the box stays invisible so the original words
+  // show through; it becomes solid as soon as the teacher clicks in to type.
+  const [focused, setFocused] = useState(false);
+  const hidden = ghost && !focused;
+  const ink = (color: string | null | undefined) =>
+    hidden ? "transparent" : readableTextColor(color, surface);
 
   return (
     <div
@@ -946,12 +951,19 @@ function TextShape({
         justifyContent:
           shape.anchor === "ctr" ? "center" : shape.anchor === "b" ? "flex-end" : "flex-start",
         padding: `${tIns}px ${rIns}px ${bIns}px ${lIns}px`,
-        background: shape.fill ?? undefined,
-        border: shape.line ? `${shape.line.width}px solid ${shape.line.color}` : undefined,
+        background: hidden
+          ? undefined
+          : overPicture
+            ? (shape.fill ?? slideBackground)
+            : (shape.fill ?? undefined),
+        border: hidden || !shape.line
+          ? undefined
+          : `${shape.line.width}px solid ${shape.line.color}`,
         outline: editable ? "1px dashed hsl(var(--primary))" : undefined,
         borderRadius: shape.radius || undefined,
         boxSizing: "border-box",
         color: ink(null) ?? "#111",
+        caretColor: "hsl(var(--primary))",
         // Never clip words: PowerPoint lets text spill out of its box too.
         overflow: "visible",
       }}
@@ -962,7 +974,9 @@ function TextShape({
           contentEditable={editable}
           suppressContentEditableWarning
           spellCheck={false}
+          onFocus={() => setFocused(true)}
           onBlur={(event) => {
+            setFocused(false);
             if (!editable) return;
             const next = (event.currentTarget as HTMLElement).innerText.replace(/\u00a0/g, " ");
             const current =

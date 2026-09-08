@@ -128,11 +128,11 @@ export function QuestionExperience({
   markScheme?: string | null;
   /** Optional action shown in the question header (e.g. message the teacher). */
   headerAction?: ReactNode;
-  /** Show a Chinese gloss on key words when hovered. */
+  /** Show the Question Vocabulary Translation box under the question. */
   keywordTranslation?: boolean;
   /** Block copying/selecting the question text. */
   protectQuestions?: boolean;
-  /** Needed to gloss the AI tutor's replies in the student's language. */
+  /** Needed to add key words from the AI tutor's replies to the vocabulary box. */
   assignmentId?: string;
   /** Set when the teacher sent this question back to be redone. */
   sentBack?: { at: string; note: string | null } | null;

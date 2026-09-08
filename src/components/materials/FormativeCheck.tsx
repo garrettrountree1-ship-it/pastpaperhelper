@@ -481,10 +481,19 @@ export function FormativeCheckPanel({
     }
   }, [check?.id]);
 
+  // A student's question box only leaves the screen when they get it right (a
+// short celebration first) or when the teacher closes it for everyone.
+  const gotItRight = latest?.verdict === "correct";
+  useEffect(() => {
+    if (!check?.id || check.isTeacher || !gotItRight) return;
+    const id = window.setTimeout(() => setDismissed(check.id), 6000);
+    return () => window.clearTimeout(id);
+  }, [check?.id, check?.isTeacher, gotItRight]);
 
   if (!check || dismissed === check.id) return null;
-  const correct = latest?.verdict === "correct";
+  const correct = gotItRight;
   const timeUp = countdown?.left === 0;
+
 
   const student = !check.isTeacher;
 

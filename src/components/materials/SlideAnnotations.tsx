@@ -33,6 +33,49 @@ export type SlideTool = "none" | "edit" | "draw" | "highlight" | "erase" | "text
 /** Highlighter stroke thickness in document coordinates. */
 export const HIGHLIGHT_WIDTH = 22;
 
+const strokePath = (stroke: SlideStroke) =>
+  stroke.points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+
+/**
+ * Highlighter marks, painted so they behave like a real highlighter: the colour
+ * multiplies with whatever is underneath, so the words stay readable and the
+ * colour stays strong. This layer must sit in the same stacking context as the
+ * page/slide it marks (a sibling of the picture), otherwise the blend has
+ * nothing to mix with and the colour comes out almost invisible.
+ */
+export function HighlightLayer({
+  width,
+  height,
+  strokes,
+}: {
+  width: number;
+  height: number;
+  strokes: SlideStroke[];
+}) {
+  const marks = strokes.filter((stroke) => stroke.highlight);
+  if (marks.length === 0) return null;
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
+      className="pointer-events-none absolute left-0 top-0 h-full w-full"
+      style={{ mixBlendMode: "multiply" }}
+    >
+      {marks.map((stroke, i) => (
+        <path
+          key={i}
+          d={strokePath(stroke)}
+          fill="none"
+          stroke={stroke.color}
+          strokeWidth={stroke.width}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ))}
+    </svg>
+  );
+}
+
 /**
  * Transparent drawing / text-box layer that sits on top of a rendered slide.
  * Coordinates are stored in slide space (the deck's own pixel size), so the
@@ -46,6 +89,7 @@ export function SlideAnnotations({
   highlightColor,
   value,
   onChange,
+  hideHighlights = false,
 }: {
   width: number;
   height: number;
@@ -54,7 +98,10 @@ export function SlideAnnotations({
   highlightColor?: string | undefined;
   value: SlideAnnotation;
   onChange: (next: SlideAnnotation) => void;
+  /** Set when the caller paints highlighter marks with its own blended layer. */
+  hideHighlights?: boolean;
 }) {
+
   const hostRef = useRef<HTMLDivElement | null>(null);
   const drawing = useRef(false);
   const [live, setLive] = useState<SlideStroke | null>(null);

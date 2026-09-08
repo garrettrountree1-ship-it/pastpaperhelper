@@ -295,9 +295,11 @@ export function PdfDocView({
 
 /**
  * Transparent but selectable copy of the page text, scaled to the rendered page
- * so selection and copy/paste work on top of the page image.
+ * so selection and copy/paste work on top of the page image. Each run is
+ * stretched horizontally to the width the PDF reports, so the selection
+ * highlight lines up with the printed words.
  */
-function PdfTextLayer({ page }: { page: PageText }) {
+function PdfTextLayer({ page, selectable }: { page: PageText; selectable: boolean }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState(0);
 
@@ -314,7 +316,15 @@ function PdfTextLayer({ page }: { page: PageText }) {
   const scale = width > 0 ? width / page.w : 1;
 
   return (
-    <div ref={hostRef} className="absolute inset-0 overflow-hidden">
+    <div
+      ref={hostRef}
+      className="absolute inset-0 overflow-hidden"
+      style={{
+        zIndex: 20,
+        pointerEvents: selectable ? "auto" : "none",
+        cursor: selectable ? "text" : undefined,
+      }}
+    >
       <div
         className="absolute left-0 top-0 select-text"
         style={{
@@ -332,9 +342,18 @@ function PdfTextLayer({ page }: { page: PageText }) {
               left: run.x,
               top: run.y,
               fontSize: run.h,
+              fontFamily: "sans-serif",
               lineHeight: 1,
-              width: run.w,
               transformOrigin: "left top",
+            }}
+            ref={(el) => {
+              if (!el) return;
+              // Match the run's real width so the selection sits on the words.
+              el.style.transform = "none";
+              const natural = el.getBoundingClientRect().width / (scale || 1);
+              if (natural > 0 && run.w > 0) {
+                el.style.transform = `scaleX(${run.w / natural})`;
+              }
             }}
           >
             {run.s}
@@ -344,3 +363,4 @@ function PdfTextLayer({ page }: { page: PageText }) {
     </div>
   );
 }
+

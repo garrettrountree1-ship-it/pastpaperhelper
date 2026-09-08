@@ -284,20 +284,20 @@ export function QuestionExperience({
           <p className="text-sm text-destructive">{ENGLISH_ONLY_MESSAGE}</p>
         ) : null}
 
-        <div className="rounded-lg border border-dashed border-border p-3">
-          <Label
-            htmlFor={`photo-${question.id}`}
-            className="flex items-center gap-2 text-sm font-medium"
-          >
+        {/* Photo and pad sections stay folded away until they're needed. */}
+        <details
+          open={photoCount > 0 || photoUrls.length > 0 || requiresPhoto}
+          className="rounded-lg border border-dashed border-border p-3"
+        >
+          <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">
             <Camera className="size-4" />
-            Your working or diagram
+            Photo of your working or diagram
             {requiresPhoto ? <Badge variant="secondary">recommended here</Badge> : null}
-          </Label>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Photograph your own hand-written or hand-drawn work, take one with your device camera,
-            or draw it on the pad below. Diagrams or images copied from websites, textbooks,
-            screenshots or apps are rejected as plagiarism. This is optional if you typed your
-            answer.
+          </summary>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Photograph your own hand-written or hand-drawn work, or take one with your device
+            camera. Diagrams or images copied from websites, textbooks, screenshots or apps are
+            rejected as plagiarism. This is optional if you typed your answer.
           </p>
           <Input
             id={`photo-${question.id}`}
@@ -338,13 +338,18 @@ export function QuestionExperience({
               final answer.
             </p>
           ) : null}
+        </details>
 
-          {onAddDrawing ? (
+        {onAddDrawing ? (
+          <details className="rounded-lg border border-dashed border-border p-3">
+            <summary className="cursor-pointer text-sm font-medium">
+              Draw your answer on the pad
+            </summary>
             <div className="mt-3">
               <DrawingPad disabled={locked} onAttach={onAddDrawing} />
             </div>
-          ) : null}
-        </div>
+          </details>
+        ) : null}
 
 
         <div className="flex items-center justify-between gap-3">

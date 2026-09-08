@@ -588,6 +588,7 @@ function SlidePage({
   onAnnotationChange,
   edits,
   onEdit,
+  pageSrc,
 }: {
   deck: PptxDeck;
   index: number;
@@ -598,6 +599,8 @@ function SlidePage({
   onAnnotationChange: (next: SlideAnnotation) => void;
   edits: Record<string, ShapeEdit>;
   onEdit: (shapeIndex: number, patch: ShapeEdit) => void;
+  /** The exact slide, as a picture. When present it replaces the rebuilt slide. */
+  pageSrc?: string | undefined;
 }) {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);
@@ -627,6 +630,16 @@ function SlidePage({
           background: slide.background ?? "#ffffff",
         }}
       >
+        {pageSrc ? (
+          <img
+            src={pageSrc}
+            alt={`Slide ${index + 1}`}
+            className="absolute left-0 top-0 h-full w-full"
+            style={{ objectFit: "contain" }}
+            loading="lazy"
+            decoding="async"
+          />
+        ) : null}
         <div
           className="absolute left-0 top-0"
           style={{
@@ -637,6 +650,12 @@ function SlidePage({
           }}
         >
           {slide.shapes.map((shape, i) => {
+            const shapeEdit = edits[`${index}:${i}`];
+            // With the exact slide picture showing, only the text boxes are kept
+            // on top — invisible until the teacher retypes them, so the words on
+            // screen are always the original ones.
+            if (pageSrc && shape.type !== "text" && !shapeEdit) return null;
+            if (pageSrc && shape.type !== "text") return null;
             return (
               <SlideShape
                 key={i}
@@ -649,12 +668,16 @@ function SlidePage({
                   slide.background ?? "#ffffff",
                 )}
                 editable={tool === "edit"}
+                ghost={Boolean(pageSrc) && shapeEdit?.text == null}
+                slideBackground={slide.background ?? "#ffffff"}
+                overPicture={Boolean(pageSrc)}
                 scale={scale}
-                edit={edits[`${index}:${i}`]}
+                edit={shapeEdit}
                 onEdit={(patch) => onEdit(i, patch)}
               />
             );
           })}
+
 
 
 

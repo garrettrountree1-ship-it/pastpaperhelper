@@ -127,9 +127,29 @@ export async function tutorSettingsForAssignment(
   ] as Array<boolean | null | undefined>;
   const keywordTranslation = Boolean(chain.find((value) => value === true || value === false));
 
+  // Scaffolding: student+assignment override → assignment → class default.
+  const pickBool = (...values: Array<boolean | null | undefined>) => {
+    const found = values.find((value) => value === true || value === false);
+    return found === undefined ? null : found;
+  };
+  const pickNumber = (...values: Array<number | null | undefined>) => {
+    const found = values.find((value) => typeof value === "number" && !Number.isNaN(value));
+    return found === undefined ? null : (found as number);
+  };
+  const allowHint =
+    pickBool(studentOverride?.data?.allow_hint, assignment.allow_hint) ?? base.allowHint;
+  const allowSteps =
+    pickBool(studentOverride?.data?.allow_steps, assignment.allow_steps) ?? base.allowSteps;
+  const maxAttempts =
+    pickNumber(studentOverride?.data?.max_answer_attempts, assignment.max_answer_attempts) ??
+    base.maxAttempts;
+
   return {
     ...base,
     keywordTranslation,
+    allowHint,
+    allowSteps,
+    maxAttempts: Math.max(0, maxAttempts || 0),
     // Copying question wording is always blocked on the student homework portal.
     protectQuestions: true,
     // Class switch is the default; a homework can only turn translations further off.

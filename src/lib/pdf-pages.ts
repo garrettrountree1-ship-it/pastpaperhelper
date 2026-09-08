@@ -146,5 +146,15 @@ export async function filesToPages(files: File[]): Promise<PageImage[]> {
       });
     }
   }
-  return out.slice(0, MAX_PAGES);
+  // Word exports and teacher-made compilations can contain the same rendered
+  // page more than once. Do not send or store an identical picture twice.
+  const seen = new Set<string>();
+  return out
+    .filter((page) => {
+      const fingerprint = `${page.mimeType}:${page.base64.length}:${page.base64.slice(0, 160)}:${page.base64.slice(-160)}`;
+      if (seen.has(fingerprint)) return false;
+      seen.add(fingerprint);
+      return true;
+    })
+    .slice(0, MAX_PAGES);
 }

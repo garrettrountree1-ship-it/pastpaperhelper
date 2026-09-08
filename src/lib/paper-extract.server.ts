@@ -218,14 +218,79 @@ export function separateQuestionCrops(items: ExtractedQuestion[]): ExtractedQues
   return output;
 }
 
-const RENUMBER_HEAD = new RegExp(
-  "^\\s*\\(?(\\d{1,3})\\)?\\s*[.)]?\\s*((?:\\(\\s*(?:i{1,3}|iv|v|vi{1,3}|ix|x|[a-z])\\s*\\)\\s*)*)",
+const PART_ROMAN = "i{1,3}|iv|v|vi{1,3}|ix|x";
+const RENUMBER_MAIN_HEAD = /^\s*\(?(\d{1,3})\)?\s*[.)]?\s*/i;
+const PAREN_SUBPART = new RegExp(`^\\s*\\(\\s*(${PART_ROMAN}|[a-z])\\s*\\)`, "i");
+const COMPACT_LETTER_SUBPART = new RegExp(
+  `^\\s*([a-z])(?:\\s*\\(?(${PART_ROMAN})\\)?)?(?=\\s|[.):-]|$)`,
   "i",
 );
-const STANDALONE_SUB_HEAD = new RegExp(
-  "^\\s*(\\(\\s*(?:i{1,3}|iv|v|vi{1,3}|ix|x|[a-z])\\s*\\)|(?:[a-z])[.)])\\s*",
+const STANDALONE_ROMAN_SUBPART = new RegExp(
+  `^\\s*\\(?(${PART_ROMAN})\\)?(?=\\s|[.):-]|$)`,
   "i",
 );
+
+type LeadingQuestionLabel = {
+  main: string | null;
+  letter: string | null;
+  roman: string | null;
+  consumed: number;
+};
+
+function readLeadingQuestionLabel(text: string): LeadingQuestionLabel | null {
+  const mainMatch = RENUMBER_MAIN_HEAD.exec(text);
+  const main = mainMatch?.[1] ?? null;
+  let consumed = mainMatch?.[0].length ?? 0;
+  let rest = text.slice(consumed);
+  const parenthesized: string[] = [];
+
+  for (;;) {
+    const match = PAREN_SUBPART.exec(rest);
+    const value = match?.[1];
+    if (!match || !value) break;
+    parenthesized.push(value.toLowerCase());
+    consumed += match[0].length;
+    rest = rest.slice(match[0].length);
+  }
+
+  if (parenthesized.length > 0) {
+    const first = parenthesized[0] ?? null;
+    const second = parenthesized[1] ?? null;
+    const firstIsRoman = Boolean(first && new RegExp(`^(?:${PART_ROMAN})$`, "i").test(first));
+    return {
+      main,
+      letter: first && !firstIsRoman ? first : null,
+      roman: firstIsRoman ? first : second,
+      consumed,
+    };
+  }
+
+  const compact = COMPACT_LETTER_SUBPART.exec(rest);
+  const compactLetter = compact?.[1];
+  if (compact && compactLetter) {
+    return {
+      main,
+      letter: compactLetter.toLowerCase(),
+      roman: compact[2]?.toLowerCase() ?? null,
+      consumed: consumed + compact[0].length,
+    };
+  }
+
+  if (!main) {
+    const roman = STANDALONE_ROMAN_SUBPART.exec(rest);
+    const romanValue = roman?.[1];
+    if (roman && romanValue) {
+      return {
+        main: null,
+        letter: null,
+        roman: romanValue.toLowerCase(),
+        consumed: roman[0].length,
+      };
+    }
+  }
+
+  return main ? { main, letter: null, roman: null, consumed } : null;
+}
 
 /**
  * Teachers often paste questions with wrong, repeated or missing numbering.
@@ -235,38 +300,25 @@ const STANDALONE_SUB_HEAD = new RegExp(
 export function renumberQuestions(items: ExtractedQuestion[]): ExtractedQuestion[] {
   let counter = 0;
   let prevMain: string | null = null;
-  let usedSubs = new Set<string>();
   let activeLetter: string | null = null;
 
   return items.map((item) => {
-    const head = RENUMBER_HEAD.exec(item.questionText);
-    const standalone = head ? null : STANDALONE_SUB_HEAD.exec(item.questionText);
-    const main = head?.[1] ?? (standalone && prevMain ? prevMain : null);
-    const printedSub = (head?.[2] ?? "").replace(/\s+/g, "").toLowerCase();
-    const standaloneToken = standalone?.[1]?.replace(/[^a-z]/gi, "").toLowerCase() ?? "";
-    const romanStandalone = /^(?:i{1,3}|iv|v|vi{1,3}|ix|x)$/.test(standaloneToken);
-    const sub = head
-      ? printedSub
-      : standaloneToken
-        ? `${romanStandalone && activeLetter ? `(${activeLetter})` : ""}(${standaloneToken})`
-        : "";
-    const body = head
-      ? item.questionText.slice(head[0].length).replace(/^[\s.):-]+/, "")
-      : standalone
-        ? item.questionText.slice(standalone[0].length).replace(/^[\s.):-]+/, "")
-        : item.questionText;
+    const parsed = readLeadingQuestionLabel(item.questionText);
+    const startsNewMain = Boolean(parsed?.main && parsed.main !== prevMain);
+    const hasSubpart = Boolean(parsed?.letter || parsed?.roman);
 
-    if (!sub || main === null || (head && main !== prevMain) || usedSubs.has(sub)) {
+    if (startsNewMain || (!parsed && !hasSubpart) || counter === 0) {
       counter += 1;
-      usedSubs = new Set<string>();
       activeLetter = null;
     }
-    if (main) prevMain = main;
-    if (sub) usedSubs.add(sub);
-    const parts = [...sub.matchAll(/\(([a-z]+)\)/g)].map((match) => match[1] ?? "");
-    const letter = parts.find((part) => /^[a-hj-uw-z]$/.test(part));
-    if (letter) activeLetter = letter;
+    if (parsed?.main) prevMain = parsed.main;
+    if (parsed?.letter) activeLetter = parsed.letter;
 
+    const letter = parsed?.letter ?? (parsed?.roman ? activeLetter : null);
+    const sub = `${letter ? `(${letter})` : ""}${parsed?.roman ? `(${parsed.roman})` : ""}`;
+    const body = parsed
+      ? item.questionText.slice(parsed.consumed).replace(/^[\s.):-]+/, "")
+      : item.questionText;
     const label = `${counter}${sub}`;
     return { ...item, questionText: `${label} ${body}`.trim() };
   });

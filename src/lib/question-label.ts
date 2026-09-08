@@ -6,8 +6,12 @@ import { cleanMathText } from "@/lib/math-text";
  * show the paper's own numbering instead of a running 1, 2, 3 count.
  */
 const ROMAN = "i{1,3}|iv|v|vi{1,3}|ix|x";
-const HEAD = new RegExp(`^\\s*\\(?(\\d{1,2})\\)?\\s*[.)]?\\s*((?:${ROMAN}|[a-z])\\b)?`, "i");
+const HEAD = new RegExp(`^\\s*\\(?(\\d{1,3})\\)?\\s*[.)]?\\s*`, "i");
 const PAREN_PART = new RegExp(`^\\s*\\(\\s*(${ROMAN}|[a-z])\\s*\\)`, "i");
+const COMPACT_PART = new RegExp(
+  `^\\s*([a-z])(?:\\s*\\(?(${ROMAN})\\)?)?(?=\\s|[.):-]|$)`,
+  "i",
+);
 
 type Parsed = { label: string; rest: string };
 
@@ -15,13 +19,23 @@ function parseOnce(text: string): Parsed | null {
   const head = HEAD.exec(text);
   if (!head || !head[1]) return null;
   const parts: string[] = [];
-  if (head[2]) parts.push(head[2].toLowerCase());
   let rest = text.slice(head[0].length);
   for (;;) {
     const part = PAREN_PART.exec(rest);
     if (!part) break;
-    parts.push(part[1]!.toLowerCase());
+    const value = part[1];
+    if (value) parts.push(value.toLowerCase());
     rest = rest.slice(part[0].length);
+  }
+  if (parts.length === 0) {
+    const compact = COMPACT_PART.exec(rest);
+    const letter = compact?.[1];
+    if (compact && letter) {
+      parts.push(letter.toLowerCase());
+      const roman = compact[2];
+      if (roman) parts.push(roman.toLowerCase());
+      rest = rest.slice(compact[0].length);
+    }
   }
   const label = `${head[1]}${parts.map((p) => `(${p})`).join("")}`;
   return { label, rest: rest.replace(/^[\s.):-]+/, "") };

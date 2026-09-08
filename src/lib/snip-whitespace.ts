@@ -115,7 +115,9 @@ export async function snapBandToWhitespace(url: string, band: Band): Promise<Ban
   const height = rows.length;
   const shrinkLimit = Math.round(height * 0.08);
   const growLimit = Math.max(2, Math.round(height * 0.012));
-  const pad = Math.max(2, Math.round(height * 0.006));
+  // About one line of printed text, so letters, symbols and diagrams at the
+  // cut edge keep a small margin of paper above and below them.
+  const pad = Math.max(4, Math.round(height * 0.015));
 
   const rawTop = Math.min(height - 1, Math.max(0, Math.round(band.top * height)));
   const rawBottom = Math.min(height - 1, Math.max(0, Math.round(band.bottom * height)));

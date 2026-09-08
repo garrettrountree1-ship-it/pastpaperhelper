@@ -230,17 +230,13 @@ function AssignmentPage() {
                   {group.imageUrls.length > 0 ? (
                     <div className="paper space-y-2 p-4">
                       {group.imageUrls.map((url) => (
-                        <img
+                        <QuestionSnip
                           key={url}
-                          src={url}
+                          url={url}
                           alt="Past-paper page for the questions below"
-                          loading="lazy"
-                          draggable={false}
-                          onContextMenu={(event) => event.preventDefault()}
-                          onDragStart={(event) => event.preventDefault()}
-                          className="pointer-events-none w-full select-none rounded-lg border border-border bg-card object-contain"
                         />
                       ))}
+
                       <p className="text-xs text-muted-foreground">
                         Original past-paper page. The questions below are from this page.
                       </p>

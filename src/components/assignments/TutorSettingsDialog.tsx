@@ -220,7 +220,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
                       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">
-                            Tutor language — the language the AI tutor speaks to this student in
+                            Tutor language
                           </Label>
                           <Select
                             value={student.tutorLanguage ?? INHERIT}
@@ -250,7 +250,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
 
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">
-                            Tutor level — how much help and how simple the English is
+                            Tutor level
                           </Label>
                           <Select
                             value={student.tutorLevel ?? INHERIT}
@@ -280,7 +280,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
 
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">
-                            Question Vocabulary Translation — key-word box under each question
+                            Question Vocabulary Translation
                           </Label>
                           <Select
                             value={
@@ -313,7 +313,7 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
 
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">
-                            Let this student change their own tutor level
+                            May change level
                           </Label>
                           <label className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
                             <Checkbox

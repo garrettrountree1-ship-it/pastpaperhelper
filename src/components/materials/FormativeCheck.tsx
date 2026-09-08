@@ -36,6 +36,7 @@ import {
   launchFormativeCheck,
   listFormativeHistory,
   listFormativeResults,
+  listMyFormativeChecks,
   releaseFormativeAnswer,
 } from "@/lib/formative.functions";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
@@ -863,3 +864,93 @@ export function FormativeRecordBook({ classId }: { classId: string }) {
   );
 }
 
+
+/**
+ * Student review book: every quick class question they were asked, their own
+ * answers, and the correct answer once it is available.
+ */
+export function FormativeReviewButton({ classId }: { classId: string }) {
+  const fetchMine = useServerFn(listMyFormativeChecks);
+  const [open, setOpen] = useState(false);
+  const checks = useQuery({
+    queryKey: ["formative-mine", classId],
+    queryFn: () => fetchMine({ data: { classId } }),
+    enabled: open,
+  });
+  const rows = checks.data ?? [];
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline">
+          <NotebookPen className="size-4" />
+          Review class questions
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Class questions</DialogTitle>
+          <DialogDescription>
+            Every quick question from this class, what you answered, and the answer.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[70vh] space-y-3 overflow-y-auto">
+          {checks.isPending ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : rows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No class questions yet — they will appear here after your teacher sends one.
+            </p>
+          ) : (
+            rows.map((row) => (
+              <div key={row.id} className="rounded-lg border border-border p-4">
+                <p className="text-xs text-muted-foreground">
+                  {new Date(row.sentAt).toLocaleString()}
+                  {row.lesson ? ` · ${row.lesson}` : ""}
+                </p>
+                <p className="mt-1 whitespace-pre-wrap font-medium">{row.question}</p>
+                {row.questionImage ? (
+                  <img
+                    src={row.questionImage}
+                    alt="Question picture"
+                    className="mt-2 max-h-64 w-full rounded-md border border-border object-contain"
+                  />
+                ) : null}
+                {row.myAttempts.length > 0 ? (
+                  <div className="mt-3 space-y-1">
+                    {row.myAttempts.map((attempt, index) => (
+                      <p key={index} className="text-sm">
+                        <span className="text-muted-foreground">Your try {index + 1}: </span>
+                        <span
+                          className={
+                            attempt.verdict === "correct" ? "text-primary" : "text-destructive"
+                          }
+                        >
+                          {attempt.answer}
+                        </span>
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-muted-foreground">You did not answer this one.</p>
+                )}
+                {row.answer ? (
+                  <div className="mt-3 rounded-md border border-primary/40 bg-primary/10 p-3">
+                    <p className="text-sm font-medium text-primary">The answer</p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm">{row.answer}</p>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    {row.stillLive
+                      ? "Still open — the answer appears when your teacher shares it."
+                      : "Your teacher has not shared the answer for this one."}
+                  </p>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

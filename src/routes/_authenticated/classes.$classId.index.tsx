@@ -6,6 +6,7 @@ import { BookOpen, ChevronDown, Gamepad2, NotebookPen, Timer, Users } from "luci
 
 import { AppHeader } from "@/components/AppHeader";
 import { CoteacherPanel } from "@/components/classes/CoteacherPanel";
+import { FormativeReviewButton } from "@/components/materials/FormativeCheck";
 import { ClassBulletinBoard, ClassBulletinPanel, ClassBulletinPopup } from "@/components/messaging/ClassBulletin";
 import { RemoveStudentButton } from "@/components/classes/RemoveStudentButton";
 import { useMyClasses } from "@/components/SectionShell";
@@ -118,10 +119,14 @@ function ClassHome() {
               </>
             ) : (
               <>
+                <div className="mt-6">
+                  <FormativeReviewButton classId={classId} />
+                </div>
                 <ClassBulletinBoard classId={classId} />
                 <ClassBulletinPopup classId={classId} />
               </>
             )}
+
 
 
           </>

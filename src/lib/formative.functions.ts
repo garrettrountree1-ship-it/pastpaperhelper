@@ -410,3 +410,89 @@ export const listFormativeHistory = createServerFn({ method: "POST" })
       };
     });
   });
+
+/**
+ * Student review book: every class question they were asked, their own
+ * attempts, and the answer once it is available.
+ */
+export const listMyFormativeChecks = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ classId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: checks } = await supabase
+      .from("formative_checks")
+      .select(
+        "id, question, question_image, expected_answer, released_answer, answer_released_at, ends_at, closed_at, created_at, section_id, target_student_id, target_student_ids",
+      )
+      .eq("class_id", data.classId)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (!checks || checks.length === 0) return [];
+
+    // Only the questions this student was actually asked.
+    const mine = checks.filter((c) => {
+      const targets = [
+        ...((c.target_student_ids ?? []) as string[]),
+        ...(c.target_student_id ? [c.target_student_id as string] : []),
+      ];
+      return targets.length === 0 || targets.includes(userId);
+    });
+    if (mine.length === 0) return [];
+
+    const ids = mine.map((c) => c.id as string);
+    const { data: responses } = await supabase
+      .from("formative_responses")
+      .select("check_id, answer, verdict, feedback, attempt, created_at")
+      .in("check_id", ids)
+      .eq("student_id", userId)
+      .order("created_at", { ascending: true });
+
+    const sectionIds = [
+      ...new Set(mine.map((c) => c.section_id as string | null).filter(Boolean) as string[]),
+    ];
+    const sectionTitles = new Map<string, string>();
+    if (sectionIds.length > 0) {
+      const { data: sections } = await supabase
+        .from("unit_sections")
+        .select("id, title, class_units(title)")
+        .in("id", sectionIds);
+      for (const section of sections ?? []) {
+        const unit = (section as { class_units?: { title?: string } | null }).class_units;
+        sectionTitles.set(
+          section.id as string,
+          unit?.title ? `${unit.title} · ${section.title as string}` : (section.title as string),
+        );
+      }
+    }
+
+    return mine.map((check) => {
+      const finished =
+        Boolean(check.closed_at) || new Date(check.ends_at as string).getTime() < Date.now();
+      const released = Boolean(check.answer_released_at);
+      // The answer is shown once the teacher released it, or once the
+      // question is over — never while it is still live.
+      const answer =
+        released || finished
+          ? ((check.released_answer as string | null) ||
+              (check.expected_answer as string | null) ||
+              null)
+          : null;
+      return {
+        id: check.id as string,
+        question: check.question as string,
+        questionImage: (check.question_image ?? null) as string | null,
+        sentAt: check.created_at as string,
+        lesson: check.section_id ? (sectionTitles.get(check.section_id as string) ?? "Lesson") : "",
+        answer,
+        stillLive: !finished,
+        myAttempts: (responses ?? [])
+          .filter((r) => r.check_id === check.id)
+          .map((r) => ({
+            answer: r.answer as string,
+            verdict: r.verdict as string,
+            feedback: (r.feedback ?? "") as string,
+          })),
+      };
+    });
+  });

@@ -31,7 +31,11 @@ function serialise(node: HTMLElement) {
   return new XMLSerializer().serializeToString(node);
 }
 
-async function pageToBase64(inner: string, offset: number): Promise<string> {
+async function pageToBase64(
+  inner: string,
+  offset: number,
+  nextOffset: number | null,
+): Promise<string> {
   const width = PAGE_W;
   const height = PAGE_H;
   const svg =
@@ -40,7 +44,10 @@ async function pageToBase64(inner: string, offset: number): Promise<string> {
     `<foreignObject x="0" y="0" width="${width}" height="${height}">` +
     `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;overflow:hidden;background:#ffffff">` +
     `<style>${PAGE_CSS}</style>` +
-    `<div style="transform:translateY(${-offset}px);padding:56px 64px;">${inner}</div>` +
+     `<div style="transform:translateY(${-offset}px);padding:56px 64px;">${inner}</div>` +
+     (nextOffset == null || nextOffset - offset >= PAGE_H
+       ? ""
+       : `<div style="position:absolute;left:0;right:0;top:${Math.max(0, nextOffset - offset)}px;bottom:0;background:#ffffff"></div>`) +
     `</div></foreignObject></svg>`;
 
   const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
@@ -104,7 +111,7 @@ export async function docxToPages(file: File): Promise<PageImage[]> {
 
   // Work out where each page ends by looking at the blocks themselves, so a
   // paragraph, table or diagram is never sliced in half by a page break.
-  const bodyTop = body.getBoundingClientRect().top + 56;
+  const bodyTop = body.getBoundingClientRect().top;
   const blocks = Array.from(body.children).map((child) => {
     const box = (child as HTMLElement).getBoundingClientRect();
     return { top: box.top - bodyTop, bottom: box.bottom - bodyTop };
@@ -136,7 +143,11 @@ export async function docxToPages(file: File): Promise<PageImage[]> {
     pages.push({
       filename: `${stem}-page-${n + 1}.jpg`,
       mimeType: "image/jpeg",
-      base64: await pageToBase64(inner, offsets[n] ?? n * step),
+      base64: await pageToBase64(
+        inner,
+        offsets[n] ?? n * step,
+        offsets[n + 1] ?? null,
+      ),
     });
   }
   return pages;

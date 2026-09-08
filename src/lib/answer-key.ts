@@ -42,8 +42,6 @@ export function looksLikeAnswerKey(url: string) {
 
 /** Keeps only the pictures a student may see. */
 export function questionPagesOnly(urls: string[]) {
-  const safe = urls.filter((url) => !looksLikeAnswerKey(url));
-  // If everything looked like an answer key the teacher probably named the whole
-  // file that way, so fall back to showing what there is rather than nothing.
-  return safe.length > 0 ? safe : urls;
+  // Fail closed. Showing no picture is safer than exposing an answer page.
+  return urls.filter((url) => !looksLikeAnswerKey(url));
 }

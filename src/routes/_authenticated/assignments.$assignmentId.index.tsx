@@ -17,8 +17,7 @@ import { StudentTutorControls } from "@/components/assignments/StudentTutorContr
 import { useActiveTime } from "@/hooks/use-active-time";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
-import { QuestionSnip, parseSnipBand } from "@/components/assignments/QuestionSnip";
-import { looksLikeAnswerKey } from "@/lib/answer-key";
+import { parseSnipBand } from "@/components/assignments/QuestionSnip";
 import {
   HELP_PILL,
   HELP_PILL_DOT,
@@ -228,22 +227,6 @@ function AssignmentPage() {
               ) : null}
               {groupByPage(data.questions).map((group) => (
                 <div key={group.key} className="space-y-4">
-                  {group.imageUrls.length > 0 ? (
-                    <div className="paper space-y-2 p-4">
-                      {group.imageUrls.map((url) => (
-                        <QuestionSnip
-                          key={url}
-                          url={url}
-                          alt="Past-paper page for the questions below"
-                        />
-                      ))}
-
-                      <p className="text-xs text-muted-foreground">
-                        Original past-paper page. The questions below are from this page.
-                      </p>
-
-                    </div>
-                  ) : null}
                   {group.questions.map(({ question, index }) => (
                     <QuestionCard
                       key={question.id}
@@ -317,11 +300,6 @@ type Message = { id: string; answer_id: string; role: string; content: string };
  * shown at most once for the whole assignment: a question only starts a new
  * page block when it introduces pages that haven't been shown yet.
  */
-function pageKey(url: string) {
-  // Signed URLs carry a per-request token, so compare the storage path only.
-  return url.split("?")[0] ?? url;
-}
-
 /** The snipped picture of this question, when the upload produced one. */
 export function snipsFor(question: Question) {
   return (question.imageUrls ?? []).filter((url) => parseSnipBand(url));
@@ -330,23 +308,16 @@ export function snipsFor(question: Question) {
 function groupByPage(questions: Question[]) {
   const groups: Array<{
     key: string;
-    imageUrls: string[];
     questions: Array<{ question: Question; index: number }>;
   }> = [];
-  const shown = new Set<string>();
   questions.forEach((question, index) => {
-    // Snipped questions carry their own picture inside the question card.
-    const pageUrls = (question.imageUrls ?? []).filter((url) => !parseSnipBand(url) && !looksLikeAnswerKey(url));
-    const fresh = pageUrls.filter((url) => !shown.has(pageKey(url)));
     const last = groups[groups.length - 1];
-    if (fresh.length === 0 && last) {
+    if (last) {
       last.questions.push({ question, index });
       return;
     }
-    fresh.forEach((url) => shown.add(pageKey(url)));
     groups.push({
-      key: fresh.map(pageKey).join("|") || `none-${index}`,
-      imageUrls: fresh,
+      key: `questions-${index}`,
       questions: [{ question, index }],
     });
   });

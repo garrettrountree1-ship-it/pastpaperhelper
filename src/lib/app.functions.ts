@@ -1940,14 +1940,14 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
         // page and remember the band to snip, so the student sees the printed
         // question itself (tables, options, diagrams) and nothing else.
         const crops = (q.crops ?? []).filter((crop) => Boolean(pagePaths[crop.page]));
-        const paths = crops.length
-          ? crops.map(
-              (crop) =>
-                `${pagePaths[crop.page]}#crop=${crop.top.toFixed(4)},${crop.bottom.toFixed(4)}`,
-            )
-          : q.pages
-              .map((page) => pagePaths[page])
-              .filter((path): path is string => Boolean(path));
+        // Never fall back to a whole page. A mixed teacher document can hold
+        // the next sub-part, a repeated question and its mark scheme on that
+        // same page. If no safe crop was found, the exact transcribed wording
+        // is safer than exposing unrelated or answer content.
+        const paths = crops.map(
+          (crop) =>
+            `${pagePaths[crop.page]}#crop=${crop.top.toFixed(4)},${crop.bottom.toFixed(4)}`,
+        );
         return {
           questionText: q.questionText,
           markScheme: q.markScheme,

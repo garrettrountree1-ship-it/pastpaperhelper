@@ -13,8 +13,7 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { VocabSheet } from "@/components/assignments/VocabSheet";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
-import { QuestionSnip, parseSnipBand } from "@/components/assignments/QuestionSnip";
-import { looksLikeAnswerKey } from "@/lib/answer-key";
+import { parseSnipBand } from "@/components/assignments/QuestionSnip";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,27 +78,17 @@ type Question = {
 };
 
 
-/** Signed URLs carry a per-request token, so compare the storage path only. */
-function pageKey(url: string) {
-  return url.split("?")[0] ?? url;
-}
-
 /** Each past-paper page appears once, above the questions it introduces. */
 function groupByPage(questions: Question[]) {
-  const groups: Array<{ key: string; imageUrls: string[]; questions: Question[] }> = [];
-  const shown = new Set<string>();
+  const groups: Array<{ key: string; questions: Question[] }> = [];
   questions.forEach((question, index) => {
-    const pageUrls = (question.imageUrls ?? []).filter((url) => !parseSnipBand(url) && !looksLikeAnswerKey(url));
-    const fresh = pageUrls.filter((url) => !shown.has(pageKey(url)));
     const last = groups[groups.length - 1];
-    if (fresh.length === 0 && last) {
+    if (last) {
       last.questions.push(question);
       return;
     }
-    fresh.forEach((url) => shown.add(pageKey(url)));
     groups.push({
-      key: fresh.map(pageKey).join("|") || `none-${index}`,
-      imageUrls: fresh,
+      key: `questions-${index}`,
       questions: [question],
     });
   });
@@ -199,22 +188,6 @@ function PreviewPage() {
               ) : null}
               {groupByPage(data.questions).map((group) => (
                 <div key={group.key} className="space-y-4">
-                  {group.imageUrls.length > 0 ? (
-                    <div className="paper space-y-2 p-4">
-                      {group.imageUrls.map((url) => (
-                        <QuestionSnip
-                          key={url}
-                          url={url}
-                          alt="Past-paper page for the questions below"
-                        />
-                      ))}
-                      <p className="text-xs text-muted-foreground">
-                        Original past-paper page. The questions below are from this page.
-                      </p>
-
-                    </div>
-                  ) : null}
-
                   {group.questions.map((question) => (
                     <PreviewQuestion
                       key={question.id}

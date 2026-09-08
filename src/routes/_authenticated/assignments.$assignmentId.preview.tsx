@@ -341,7 +341,7 @@ function PreviewQuestion({
     <QuestionExperience
       question={question}
       index={question.position}
-      snipUrl={(question.imageUrls ?? []).find((url) => parseSnipBand(url)) ?? null}
+      snipUrls={(question.imageUrls ?? []).filter((url) => parseSnipBand(url))}
       draft={answer}
       onDraftChange={setAnswer}
       requiresPhoto={requiresPhoto}

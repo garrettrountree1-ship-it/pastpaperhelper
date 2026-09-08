@@ -322,8 +322,8 @@ function pageKey(url: string) {
 }
 
 /** The snipped picture of this question, when the upload produced one. */
-export function snipFor(question: Question) {
-  return (question.imageUrls ?? []).find((url) => parseSnipBand(url)) ?? null;
+export function snipsFor(question: Question) {
+  return (question.imageUrls ?? []).filter((url) => parseSnipBand(url));
 }
 
 function groupByPage(questions: Question[]) {
@@ -458,7 +458,7 @@ function QuestionCard({
     <QuestionExperience
       question={question}
       index={index}
-      snipUrl={snipFor(question)}
+      snipUrls={snipsFor(question)}
       draft={draft}
       onDraftChange={setDraft}
       requiresPhoto={requiresPhoto}

@@ -544,7 +544,7 @@ function dedupe(items: Array<ExtractedQuestion | DetailResult>): ExtractedQuesti
       markScheme: item.markScheme,
       marks: item.marks,
       pages: item.pages,
-      crop: item.crop ?? null,
+      crops: item.crops ?? null,
     });
 
   }

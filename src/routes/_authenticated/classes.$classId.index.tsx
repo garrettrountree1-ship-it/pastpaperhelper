@@ -118,10 +118,14 @@ function ClassHome() {
               </>
             ) : (
               <>
+                <div className="mt-6">
+                  <FormativeReviewButton classId={classId} />
+                </div>
                 <ClassBulletinBoard classId={classId} />
                 <ClassBulletinPopup classId={classId} />
               </>
             )}
+
 
 
           </>

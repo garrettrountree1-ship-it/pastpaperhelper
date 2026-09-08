@@ -17,6 +17,7 @@ import { StudentTutorControls } from "@/components/assignments/StudentTutorContr
 import { useActiveTime } from "@/hooks/use-active-time";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
+import { QuestionSnip, parseSnipBand } from "@/components/assignments/QuestionSnip";
 import {
   HELP_PILL,
   HELP_PILL_DOT,
@@ -461,6 +462,7 @@ function QuestionCard({
     <QuestionExperience
       question={question}
       index={index}
+      snipUrl={snipFor(question)}
       draft={draft}
       onDraftChange={setDraft}
       requiresPhoto={requiresPhoto}

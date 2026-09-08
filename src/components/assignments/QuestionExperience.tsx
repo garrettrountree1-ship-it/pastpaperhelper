@@ -211,20 +211,17 @@ export function QuestionExperience({
             </p>
           </>
         ) : (
-          <>
-            <GlossaryText
-              className="mt-3 whitespace-pre-wrap"
-              text={questionBody(question.question_text)}
-              terms={keywordTranslation ? (glossary.data?.terms ?? []) : []}
-            />
-            {keywordTranslation && (glossary.data?.terms?.length ?? 0) > 0 ? (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Hover (or tap and hold) any underlined word — in the question or in the tutor’s replies — to see it translated.
-              </p>
-            ) : null}
-          </>
+          <p className="mt-3 whitespace-pre-wrap">{questionBody(question.question_text)}</p>
         )}
       </div>
+
+      {keywordTranslation ? (
+        <QuestionVocabBox
+          className="mt-3"
+          terms={tutorTerms}
+          language={glossary.data?.language ?? "Chinese (Simplified)"}
+        />
+      ) : null}
 
 
       {sentBack ? (

@@ -281,7 +281,9 @@ export function PdfDocView({
                   );
                 }}
               />
-              {texts?.[index] ? <PdfTextLayer page={texts[index]!} /> : null}
+              {texts?.[index] ? (
+                <PdfTextLayer page={texts[index]!} selectable={markup.tool === "none"} />
+              ) : null}
             </DocMarkupSurface>
           </div>
         ))}

@@ -362,16 +362,23 @@ export function OfficeDocView({
           if (!cancelled) setPreparingPages(true);
           pdfUrl = (await prepareSlidePdf({ data: { materialId } })).url;
         }
-        if (cancelled || !pdfUrl) return;
+        if (cancelled || !pdfUrl) {
+          console.error("Exact slide pages unavailable: no converted file yet.");
+          return;
+        }
         const pages = await pdfToSlideImages(pdfUrl);
-        if (cancelled || !pages.length) return;
+        if (cancelled || !pages.length) {
+          console.error("Exact slide pages unavailable: conversion produced no pages.");
+          return;
+        }
         setSlidePages(pages);
         void writeCachedJson(pagesKey, pages);
-      } catch {
-        // Fall back to the rebuilt slides, which are already on screen.
+      } catch (error) {
+        console.error("Exact slide pages failed", error);
       } finally {
         if (!cancelled) setPreparingPages(false);
       }
+
     })();
     return () => {
       cancelled = true;

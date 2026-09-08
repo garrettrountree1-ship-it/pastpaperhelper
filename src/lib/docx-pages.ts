@@ -47,7 +47,7 @@ async function pageToBase64(
      `<div style="transform:translateY(${-offset}px);padding:56px 64px;">${inner}</div>` +
      (nextOffset == null || nextOffset - offset >= PAGE_H
        ? ""
-       : `<div style="position:absolute;left:0;right:0;top:${Math.max(0, 56 + nextOffset - offset)}px;bottom:0;background:#ffffff"></div>`) +
+       : `<div style="position:absolute;left:0;right:0;top:${Math.max(0, nextOffset - offset)}px;bottom:0;background:#ffffff"></div>`) +
     `</div></foreignObject></svg>`;
 
   const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;

@@ -153,7 +153,7 @@ export async function extractQuestionsFromPapers(
 
   if (inventory.length === 0) {
     // Fall back to a single-pass extraction if the index could not be built.
-    return dedupe(await runDetail(key, header, documents, [], true));
+    return separateQuestionCrops(dedupe(await runDetail(key, header, documents, [], true)));
   }
 
   const results = await runBatches(key, header, documents, inventory);
@@ -165,7 +165,56 @@ export async function extractQuestionsFromPapers(
     results.push(...(await runBatches(key, header, documents, missing)));
   }
 
-  return renumberQuestions(dedupe(results));
+  return renumberQuestions(separateQuestionCrops(dedupe(results)));
+}
+
+/**
+ * A final paper-wide guard: two different question parts must not display the
+ * same vertical region of a page. Near-identical regions are removed from the
+ * later part (which then uses its safe transcript); partial overlaps meet at a
+ * single boundary and can never repeat a diagram, choices or wording.
+ */
+export function separateQuestionCrops(items: ExtractedQuestion[]): ExtractedQuestion[] {
+  const output = items.map((item) => ({
+    ...item,
+    crops: item.crops?.map((crop) => ({ ...crop })) ?? null,
+  }));
+  const accepted = new Map<number, Array<{ crop: QuestionCrop; question: number }>>();
+
+  for (let question = 0; question < output.length; question += 1) {
+    const item = output[question];
+    if (!item?.crops) continue;
+    const safe: QuestionCrop[] = [];
+    for (const crop of item.crops) {
+      const earlier = accepted.get(crop.page) ?? [];
+      let candidate: QuestionCrop | null = { ...crop };
+      for (const previous of earlier) {
+        if (!candidate) break;
+        const overlap = Math.min(candidate.bottom, previous.crop.bottom) - Math.max(candidate.top, previous.crop.top);
+        if (overlap <= 0) continue;
+        const smaller = Math.min(
+          candidate.bottom - candidate.top,
+          previous.crop.bottom - previous.crop.top,
+        );
+        if (overlap / smaller >= 0.72) {
+          candidate = null;
+          break;
+        }
+        if (candidate.top >= previous.crop.top) {
+          candidate.top = Math.max(candidate.top, previous.crop.bottom);
+        } else {
+          candidate.bottom = Math.min(candidate.bottom, previous.crop.top);
+        }
+        if (candidate.bottom - candidate.top < 0.04) candidate = null;
+      }
+      if (!candidate) continue;
+      safe.push(candidate);
+      earlier.push({ crop: candidate, question });
+      accepted.set(candidate.page, earlier);
+    }
+    item.crops = safe.length > 0 ? safe : null;
+  }
+  return output;
 }
 
 const RENUMBER_HEAD = new RegExp(

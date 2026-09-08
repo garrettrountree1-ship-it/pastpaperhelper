@@ -444,6 +444,25 @@ export function FormativeCheckPanel({
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const extend = useMutation({
+    mutationFn: (seconds: number) => addTime({ data: { checkId: check!.id, seconds } }),
+    onSuccess: async () => {
+      toast.success("30 seconds added");
+      await queryClient.invalidateQueries({ queryKey: ["formative-active", classId] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const reveal = useMutation({
+    mutationFn: () => release({ data: { checkId: check!.id } }),
+    onSuccess: async () => {
+      toast.success("Answer released to everyone");
+      await queryClient.invalidateQueries({ queryKey: ["formative-active", classId] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+
   const latest = useMemo(
     () => (check?.myAttempts.length ? check.myAttempts[check.myAttempts.length - 1] : null),
     [check],

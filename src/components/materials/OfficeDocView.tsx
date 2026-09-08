@@ -350,12 +350,15 @@ export function OfficeDocView({
     if (format !== "pptx" || !materialId) return;
     let cancelled = false;
     void (async () => {
+      console.log("[slides] looking for exact pages", materialId);
       const cached = await readCachedJson<string[]>(pagesKey);
       if (cancelled) return;
       if (cached?.length) {
+        console.log("[slides] using cached exact pages", cached.length);
         setSlidePages(cached);
         return;
       }
+
       try {
         let { url: pdfUrl } = await getSlidePdfUrl({ data: { materialId } });
         if (!pdfUrl && canPrepareShared) {

@@ -363,15 +363,40 @@ export function QuestionExperience({
               <CameraCapture disabled={locked} onCapture={onAddDrawing} />
             </div>
           ) : null}
-          {photoCount > 0 ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              {photoCount} photo{photoCount === 1 ? "" : "s"} ready — they&apos;ll be marked with
-              your answer.
-            </p>
+          {attachedPhotos.length > 0 ? (
+            <>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {attachedPhotos.length} photo{attachedPhotos.length === 1 ? "" : "s"} ready —
+                they&apos;ll be marked with your answer.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {attachedPhotos.map((item) => (
+                  <div key={item.key} className="relative">
+                    <img
+                      src={item.url}
+                      alt={item.name}
+                      loading="lazy"
+                      className="size-20 rounded-lg border border-border object-cover"
+                    />
+                    {onRemovePhoto && !locked ? (
+                      <button
+                        type="button"
+                        aria-label={`Remove ${item.name}`}
+                        title="Remove this photo"
+                        onClick={() => onRemovePhoto(item.name)}
+                        className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm hover:text-destructive"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </>
           ) : null}
-          {photoUrls.length > 0 ? (
+          {submittedPhotoUrls.length > 0 ? (
             <div className="mt-3 flex flex-wrap gap-2">
-              {photoUrls.map((url, photoIndex) => (
+              {submittedPhotoUrls.map((url, photoIndex) => (
                 <img
                   key={`${photoIndex}-${url.slice(-12)}`}
                   src={url}

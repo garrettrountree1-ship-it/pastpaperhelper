@@ -180,6 +180,7 @@ export function FormativeCheckButton({
       setQuestionImage(null);
       setSelected([]);
       setCustomTimer(false);
+      setCountUp(false);
       await queryClient.invalidateQueries({ queryKey: ["formative-active", classId] });
     },
     onError: (error: Error) => toast.error(error.message),

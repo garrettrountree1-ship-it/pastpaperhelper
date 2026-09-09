@@ -709,7 +709,23 @@ export const insertQuestionAfter = createServerFn({ method: "POST" })
     const lastPath = paths[paths.length - 1];
     // Seed the answer picture from the previous part's answer cut, so the
     // teacher recuts the printed mark scheme instead of typing it out.
-    const answerPaths = (current.answer_image_paths ?? []) as string[];
+    let answerPaths = (current.answer_image_paths ?? []) as string[];
+    if (answerPaths.length === 0) {
+      const { data: earlier } = await db
+        .from("questions")
+        .select("answer_image_paths, position")
+        .eq("assignment_id", current.assignment_id)
+        .lte("position", current.position)
+        .order("position", { ascending: false })
+        .limit(20);
+      for (const row of earlier ?? []) {
+        const rowPaths = (row.answer_image_paths ?? []) as string[];
+        if (rowPaths.length > 0) {
+          answerPaths = rowPaths;
+          break;
+        }
+      }
+    }
     const lastAnswerPath = answerPaths[answerPaths.length - 1];
     const { data: inserted, error } = await db
       .from("questions")

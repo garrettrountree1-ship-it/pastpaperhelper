@@ -77,6 +77,7 @@ const SWEEP_SYSTEM = [
   "Task: a first pass already indexed some question parts. Find the ones it MISSED.",
   "You are given the labels already found. Scan the whole upload again and list only answerable question parts that are not already covered.",
   "Pay special attention to multiple-choice blocks, questions pasted mid-document, questions after a mark scheme section, and unnumbered questions.",
+  "Above all, check for MISSING SUB-PARTS: for each question already indexed, read every page it touches and the pages after it and list any (a)/(b)/(c) or (i)/(ii)/(iii) part — including forms like (a.ii) or (b) alone on a line, and parts printed after a mark scheme block — that is not already in the list. Use the printed label for these, e.g. \"1(a)(ii)\", not an invented one.",
   "Give missed items a unique label that does not clash with the supplied list (e.g. \"p5-Q2\").",
   "If nothing was missed, reply with an empty items array.",
   'Reply with JSON only: {"items":[{"label":"p5-Q2","marks":1,"kind":"mcq","pages":[5]}]}',

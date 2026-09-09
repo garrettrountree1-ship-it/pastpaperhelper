@@ -226,21 +226,35 @@ export function DrawingPad({
       return;
     }
     let cancelled = false;
-    const images = backgroundUrls.slice(0, 3).map((url) => {
+    // Exactly the pieces the question box shows: answer-key pages left out,
+    // repeated pieces merged, and only the band belonging to this question.
+    const pieces = mergeSnipPieces(questionPagesOnly(backgroundUrls)).slice(0, 3);
+    const loaded = pieces.map((url) => {
+      const band = parseSnipBand(url) ?? { top: 0, bottom: 1 };
       const image = new Image();
+      const entry = { image, top: band.top, bottom: band.bottom };
       image.crossOrigin = "anonymous";
       image.onload = () => {
         if (!cancelled) redraw();
       };
       // A picture that can't be read stays out rather than blocking the pad.
       image.onerror = () => {
-        backgroundsRef.current = backgroundsRef.current.filter((item) => item !== image);
+        backgroundsRef.current = backgroundsRef.current.filter((item) => item !== entry);
         if (!cancelled) redraw();
       };
       image.src = url;
-      return image;
+      if (!url.includes(";manual") && parseSnipBand(url)) {
+        // Match the question box: cut lines nudged onto blank paper.
+        void snapBandToWhitespace(url, band).then((tidy) => {
+          if (cancelled) return;
+          entry.top = tidy.top;
+          entry.bottom = tidy.bottom;
+          redraw();
+        });
+      }
+      return entry;
     });
-    backgroundsRef.current = images;
+    backgroundsRef.current = loaded;
     redraw();
     return () => {
       cancelled = true;

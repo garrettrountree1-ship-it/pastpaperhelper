@@ -391,7 +391,11 @@ function QuestionCard({
         const uploaded: string[] = [];
         for (const photo of photos) {
           const ext = photo.name.split(".").pop() || "jpg";
-          const path = `${userId}/${assignmentId}/${question.id}/${Date.now()}-${uploaded.length}.${ext}`;
+          // Keep the pad picture recognisable so it stays inside the pad, not in the photo list.
+          const path =
+            photo.name === PAD_FILE_NAME
+              ? `${userId}/${assignmentId}/${question.id}/${PAD_FILE_NAME}`
+              : `${userId}/${assignmentId}/${question.id}/${Date.now()}-${uploaded.length}.${ext}`;
           const { error } = await supabase.storage
             .from("student-work")
             .upload(path, photo, { contentType: photo.type || "image/jpeg", upsert: true });

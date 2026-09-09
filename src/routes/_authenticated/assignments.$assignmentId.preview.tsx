@@ -343,10 +343,12 @@ function PreviewQuestion({
   allowSteps,
   maxAttempts,
   markSchemeRevealed,
+  editing,
   onFlag,
 }: {
   assignmentId: string;
   question: Question;
+  editing: boolean;
   flags: number;
   keywordTranslation: boolean;
   protectQuestions: boolean;

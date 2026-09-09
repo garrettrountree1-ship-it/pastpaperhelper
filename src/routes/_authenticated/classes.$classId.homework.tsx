@@ -709,9 +709,12 @@ function AssignmentDialog({
         q.marks > 0,
     );
 
+  const [labelDrafts, setLabelDrafts] = useState<Record<number, string>>({});
+
   function update_(index: number, patch: Partial<QuestionDraft>) {
     setQuestions((prev) => prev.map((q, i) => (i === index ? { ...q, ...patch } : q)));
   }
+
 
   /**
    * Editing one question's printed label (number and/or letter) shifts the ones

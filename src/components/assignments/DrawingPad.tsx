@@ -239,23 +239,16 @@ export function DrawingPad({
   }, [full, backgroundUrls.join("|")]);
 
 
-  // Ctrl/⌘ + wheel or trackpad pinch zooms the pad, anchored at the cursor.
-  // React's onWheel is passive, so this needs a native non-passive listener.
+  // A trackpad pinch or Ctrl/⌘ + wheel must not zoom the pad or the page:
+  // the picture is resized with the picture buttons only.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const onWheel = (event: WheelEvent) => {
       if (!event.ctrlKey && !event.metaKey) return;
       event.preventDefault();
-      const dy =
-        event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
-      const rect = canvas.getBoundingClientRect();
-      zoomTo(
-        zoomRef.current * Math.exp(-dy * 0.002),
-        event.clientX - rect.left,
-        event.clientY - rect.top,
-      );
     };
+
     canvas.addEventListener("wheel", onWheel, { passive: false });
     return () => canvas.removeEventListener("wheel", onWheel);
   }, [full]);

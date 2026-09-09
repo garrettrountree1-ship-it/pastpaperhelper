@@ -188,11 +188,13 @@ export type Database = {
           created_by: string
           curriculum: string
           due_at: string | null
+          exam_mode: boolean | null
           id: string
           instructions: string | null
           keyword_translation: boolean | null
           mark_scheme_revealed: boolean
           max_answer_attempts: number | null
+          max_paper_submissions: number | null
           photo_mode: string
           protect_questions: boolean
           published: boolean
@@ -210,11 +212,13 @@ export type Database = {
           created_by: string
           curriculum?: string
           due_at?: string | null
+          exam_mode?: boolean | null
           id?: string
           instructions?: string | null
           keyword_translation?: boolean | null
           mark_scheme_revealed?: boolean
           max_answer_attempts?: number | null
+          max_paper_submissions?: number | null
           photo_mode?: string
           protect_questions?: boolean
           published?: boolean
@@ -232,11 +236,13 @@ export type Database = {
           created_by?: string
           curriculum?: string
           due_at?: string | null
+          exam_mode?: boolean | null
           id?: string
           instructions?: string | null
           keyword_translation?: boolean | null
           mark_scheme_revealed?: boolean
           max_answer_attempts?: number | null
+          max_paper_submissions?: number | null
           photo_mode?: string
           protect_questions?: boolean
           published?: boolean
@@ -560,11 +566,13 @@ export type Database = {
           allow_steps: boolean
           created_at: string
           curriculum: string
+          exam_mode: boolean
           gradebook_detail: boolean
           id: string
           join_code: string
           keyword_translation: boolean
           max_answer_attempts: number
+          max_paper_submissions: number
           name: string
           protect_questions: boolean
           student_can_change_level: boolean
@@ -581,11 +589,13 @@ export type Database = {
           allow_steps?: boolean
           created_at?: string
           curriculum?: string
+          exam_mode?: boolean
           gradebook_detail?: boolean
           id?: string
           join_code: string
           keyword_translation?: boolean
           max_answer_attempts?: number
+          max_paper_submissions?: number
           name: string
           protect_questions?: boolean
           student_can_change_level?: boolean
@@ -602,11 +612,13 @@ export type Database = {
           allow_steps?: boolean
           created_at?: string
           curriculum?: string
+          exam_mode?: boolean
           gradebook_detail?: boolean
           id?: string
           join_code?: string
           keyword_translation?: boolean
           max_answer_attempts?: number
+          max_paper_submissions?: number
           name?: string
           protect_questions?: boolean
           student_can_change_level?: boolean
@@ -1372,10 +1384,12 @@ export type Database = {
           assignment_id: string
           created_at: string
           due_at: string | null
+          exam_mode: boolean | null
           id: string
           keyword_translation: boolean | null
           mark_scheme_revealed: boolean
           max_answer_attempts: number | null
+          max_paper_submissions: number | null
           photo_mode: string | null
           student_id: string
           updated_at: string
@@ -1387,10 +1401,12 @@ export type Database = {
           assignment_id: string
           created_at?: string
           due_at?: string | null
+          exam_mode?: boolean | null
           id?: string
           keyword_translation?: boolean | null
           mark_scheme_revealed?: boolean
           max_answer_attempts?: number | null
+          max_paper_submissions?: number | null
           photo_mode?: string | null
           student_id: string
           updated_at?: string
@@ -1402,10 +1418,12 @@ export type Database = {
           assignment_id?: string
           created_at?: string
           due_at?: string | null
+          exam_mode?: boolean | null
           id?: string
           keyword_translation?: boolean | null
           mark_scheme_revealed?: boolean
           max_answer_attempts?: number | null
+          max_paper_submissions?: number | null
           photo_mode?: string | null
           student_id?: string
           updated_at?: string
@@ -1433,6 +1451,7 @@ export type Database = {
           penalty_percent: number
           status: string
           student_id: string
+          submit_count: number
           submitted_at: string | null
           total_marks: number
         }
@@ -1447,6 +1466,7 @@ export type Database = {
           penalty_percent?: number
           status?: string
           student_id: string
+          submit_count?: number
           submitted_at?: string | null
           total_marks?: number
         }
@@ -1461,6 +1481,7 @@ export type Database = {
           penalty_percent?: number
           status?: string
           student_id?: string
+          submit_count?: number
           submitted_at?: string | null
           total_marks?: number
         }

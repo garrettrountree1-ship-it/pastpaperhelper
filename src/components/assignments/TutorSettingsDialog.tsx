@@ -148,35 +148,51 @@ export function TutorSettingsDialog({ classId }: { classId: string }) {
               </div>
 
               <div className="mt-4 space-y-3">
-                <label className="flex items-center gap-3 text-sm">
+                <label className="flex items-start gap-3 text-sm">
                   <Checkbox
                     checked={klass.studentCanChangeLevel}
                     onCheckedChange={(checked) =>
                       classMutation.mutate({ classId, studentCanChangeLevel: checked === true })
                     }
                   />
-                  <span>Students may change their level</span>
+                  <div className="flex flex-col">
+                    <span>Students may change their level</span>
+                    <span className="text-xs text-muted-foreground">
+                      Let students pick their own tutor difficulty.
+                    </span>
+                  </div>
                 </label>
 
-                <label className="flex items-center gap-3 text-sm">
+                <label className="flex items-start gap-3 text-sm">
                   <Checkbox
                     checked={klass.keywordTranslation}
                     onCheckedChange={(checked) =>
                       classMutation.mutate({ classId, keywordTranslation: checked === true })
                     }
                   />
-                  <span>Question Vocabulary Translation</span>
+                  <div className="flex flex-col">
+                    <span>Question Vocabulary Translation</span>
+                    <span className="text-xs text-muted-foreground">
+                      Show translated keywords under each question.
+                    </span>
+                  </div>
                 </label>
 
-                <label className="flex items-center gap-3 text-sm">
+                <label className="flex items-start gap-3 text-sm">
                   <Checkbox
                     checked={klass.vocabTranslation}
                     onCheckedChange={(checked) =>
                       classMutation.mutate({ classId, vocabTranslation: checked === true })
                     }
                   />
-                  <span>Translate vocab list terms</span>
+                  <div className="flex flex-col">
+                    <span>Translate vocab list terms</span>
+                    <span className="text-xs text-muted-foreground">
+                      Translate words from the class vocabulary list.
+                    </span>
+                  </div>
                 </label>
+
 
                 <div className="max-w-xs space-y-2">
                   <Label>Translation language</Label>

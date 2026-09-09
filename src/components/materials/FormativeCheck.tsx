@@ -519,7 +519,7 @@ export function FormativeCheckButton({
  * Live panel shown to everyone in the lesson while a check is running: the
  * teacher watches results come in, students answer and get marked instantly.
  */
-export { questionParts } from "@/lib/question-parts";
+export { questionParts };
 
 export function FormativeCheckPanel({
 

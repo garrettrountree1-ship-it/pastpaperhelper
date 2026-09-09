@@ -235,16 +235,47 @@ export function DrawingPad({
     }, "image/png");
   }
 
+  /** Minimising saves the sheet so the student can go straight to submitting. */
+  function minimise() {
+    if (hasInk) attach();
+    setFull(false);
+  }
+
   return (
-    <div className="rounded-lg border border-dashed border-border p-3">
-      <p className="flex items-center gap-2 text-sm font-medium">
-        <PenLine className="size-4" />
-        Write your working here
-      </p>
+    <div
+      className={
+        full
+          ? "fixed inset-0 z-50 flex select-none flex-col overflow-auto bg-background p-3 [-webkit-touch-callout:none] [-webkit-user-select:none]"
+          : "rounded-lg border border-dashed border-border p-3"
+      }
+      onCopy={(event) => event.preventDefault()}
+      onCut={(event) => event.preventDefault()}
+      onContextMenu={(event) => event.preventDefault()}
+      onDragStart={(event) => event.preventDefault()}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-sm font-medium">
+          <PenLine className="size-4" />
+          Write your working here
+        </p>
+        {full ? (
+          <Button type="button" size="sm" variant="outline" onClick={minimise}>
+            <Minimize className="size-4" />
+            Minimise &amp; save
+          </Button>
+        ) : (
+          <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={() => setFull(true)}>
+            <Expand className="size-4" />
+            Full screen
+          </Button>
+        )}
+      </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        Use a stylus, finger or mouse. Pinch or Ctrl/⌘ + scroll to zoom in for detail. When
-        you&apos;re done, attach it — it&apos;s marked step by step like a photo of paper.
+        {full
+          ? "The question is printed underneath — write straight over it. Minimise & save keeps your sheet, then press Check answer."
+          : "Use a stylus, finger or mouse. Open full screen to draw on top of the question picture."}
       </p>
+
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {PEN_COLORS.map((pen) => (
           <button

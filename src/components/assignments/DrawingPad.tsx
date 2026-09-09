@@ -143,6 +143,40 @@ export function DrawingPad({
     redraw();
   }
 
+  /** Lowest point of the picture / ink, in on-screen pixels. */
+  function contentBottom() {
+    const canvas = canvasRef.current;
+    let bottom = 0;
+    if (canvas) {
+      const padWidth = (canvas.width / dprRef.current) * photoScaleRef.current;
+      let y = 0;
+      for (const image of backgroundsRef.current) {
+        if (!image.complete || !image.naturalWidth) continue;
+        y += (padWidth * image.naturalHeight) / image.naturalWidth + 8;
+      }
+      bottom = y;
+    }
+    for (const stroke of strokesRef.current) {
+      for (const point of stroke.points) bottom = Math.max(bottom, point.y);
+    }
+    return bottom * zoomRef.current + offsetRef.current.y;
+  }
+
+  /** Grows the sheet while the student scrolls down, shrinks back on the way up. */
+  function updateSheet() {
+    const box = scrollRef.current;
+    if (!full || !box) return;
+    const view = box.clientHeight || 600;
+    const wanted = Math.max(
+      view,
+      contentBottom() + view * 0.6,
+      box.scrollTop + view * 1.5,
+    );
+    setSheetHeight((current) =>
+      Math.abs(current - wanted) < 40 ? current : Math.min(MAX_SHEET, Math.round(wanted)),
+    );
+  }
+
   // Size the bitmap to the element so strokes land under the pen tip.
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -158,7 +192,21 @@ export function DrawingPad({
     resize();
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
+  }, [full, sheetHeight]);
+
+  // Start the long sheet as soon as full screen opens.
+  useEffect(() => {
+    if (!full) {
+      setSheetHeight(0);
+      return;
+    }
+    const id = window.setTimeout(() => {
+      const view = scrollRef.current?.clientHeight || 600;
+      setSheetHeight(Math.round(view * 1.5));
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [full]);
+
 
   // Load the question picture(s) for the full-screen pad.
   useEffect(() => {

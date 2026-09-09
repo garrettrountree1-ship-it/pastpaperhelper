@@ -8,6 +8,7 @@ import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { LOCKED_MESSAGE } from "@/lib/integrity";
 import { cleanMathText } from "@/lib/math-text";
 import { isDemoEmail } from "@/lib/demo";
+import { isHigherLevelTag } from "@/lib/ib-level.functions";
 import { isPhotoMode, resolvePhotoMode } from "@/lib/photo-mode";
 import { teachesClass, teachingClassIds } from "@/lib/teach-access";
 import { cropAfter } from "@/lib/next-crop";

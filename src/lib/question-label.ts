@@ -123,3 +123,23 @@ export function shiftLetter(part: string, delta: number): string {
   if (next < 97 || next > 122) return part;
   return String.fromCharCode(next);
 }
+
+const ROMANS = ["i","ii","iii","iv","v","vi","vii","viii","ix","x","xi","xii"];
+
+/**
+ * Suggests the label for a question inserted right after `label`:
+ * "7" -> "8", "7(b)" -> "7(c)", "7(b)(ii)" -> "7(b)(iii)".
+ */
+export function nextLabelAfter(label: string): string {
+  const { main, parts } = parseLabelString(label);
+  if (parts.length === 0) return formatLabel((main ?? 0) + 1, []);
+  const last = parts[parts.length - 1] ?? "";
+  const rest = parts.slice(0, -1);
+  const romanAt = ROMANS.indexOf(last.toLowerCase());
+  if (romanAt !== -1 && romanAt + 1 < ROMANS.length) {
+    return formatLabel(main, [...rest, ROMANS[romanAt + 1] as string]);
+  }
+  if (/^[a-z]$/.test(last)) return formatLabel(main, [...rest, shiftLetter(last, 1)]);
+  if (/^\d+$/.test(last)) return formatLabel(main, [...rest, String(Number(last) + 1)]);
+  return formatLabel(main, parts);
+}

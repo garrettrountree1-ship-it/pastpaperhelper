@@ -162,8 +162,8 @@ function ClassroomLeaderboard({ rows }: { rows: FormativeBoardRow[] }) {
   }, [rows]);
 
   return (
-    <aside className="pointer-events-auto fixed bottom-3 left-3 right-3 z-[71] max-h-[34vh] overflow-hidden rounded-xl border-2 border-primary/30 bg-background shadow-2xl lg:bottom-auto lg:right-auto lg:top-1/2 lg:max-h-[86vh] lg:w-[min(32vw,26rem)] lg:-translate-y-1/2">
-      <div className="border-b border-border bg-primary px-5 py-4 text-primary-foreground">
+    <aside className="pointer-events-auto fixed bottom-3 left-3 right-3 z-[71] max-h-[34vh] overflow-hidden rounded-xl border-2 border-primary/30 bg-background shadow-2xl lg:bottom-auto lg:left-4 lg:right-auto lg:top-1/2 lg:max-h-[92vh] lg:w-[min(34vw,28rem)] lg:-translate-y-1/2">
+      <div className="border-b border-border bg-primary px-5 py-5 text-primary-foreground">
         <p className="flex items-center gap-3 font-display text-2xl">
           <span className="flex size-10 items-center justify-center rounded-full bg-primary-foreground/15">
             <Trophy className="size-6" />
@@ -172,7 +172,7 @@ function ClassroomLeaderboard({ rows }: { rows: FormativeBoardRow[] }) {
         </p>
         <p className="mt-1 text-sm text-primary-foreground/80">Every correct answer can change the race.</p>
       </div>
-      <div className="max-h-[calc(86vh-5.5rem)] space-y-2 overflow-y-auto p-3">
+      <div className="max-h-[calc(92vh-6.5rem)] space-y-3 overflow-y-auto p-4">
         {rows.map((row, index) => {
           const rank = index + 1;
           const old = previousSnapshot.get(row.alias);
@@ -181,24 +181,24 @@ function ClassroomLeaderboard({ rows }: { rows: FormativeBoardRow[] }) {
           return (
             <div
               key={`${row.alias}-${row.points}-${rank}`}
-              className={`formative-rank-row flex min-h-16 items-center gap-3 rounded-lg border px-3 py-2 shadow-sm ${
+              className={`formative-rank-row flex min-h-[4.5rem] items-center gap-3 rounded-lg border px-4 py-3 shadow-sm ${
                 row.isMe ? "border-primary bg-primary/10" : "border-border bg-card"
               } ${gained || climbed ? "formative-rank-gain" : ""}`}
             >
               <span
-                className={`flex size-9 shrink-0 items-center justify-center rounded-full font-display text-lg ${
+                className={`flex size-10 shrink-0 items-center justify-center rounded-full font-display text-lg ${
                   rank <= 3 ? "bg-warning text-warning-foreground" : "bg-secondary text-secondary-foreground"
                 }`}
               >
                 {rank}
               </span>
-              <AliasAvatar alias={row.alias} size={42} />
+              <AliasAvatar alias={row.alias} size={44} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-display text-base">{row.alias}</p>
                 {climbed ? <p className="text-xs font-medium text-success">Moving up!</p> : null}
               </div>
               <div
-                className={`min-w-20 rounded-md bg-secondary px-2 py-1 text-right font-display text-lg ${
+                className={`min-w-24 rounded-md bg-secondary px-3 py-1.5 text-right font-display text-lg ${
                   gained ? "formative-score-gain text-primary" : ""
                 }`}
               >
@@ -712,6 +712,8 @@ export function FormativeCheckPanel({
   const student = !check.isTeacher;
   const boardOn = Boolean(board.data?.enabled);
   const boardRows = board.data?.rows ?? [];
+  const myAlias = boardRows.find((row) => row.isMe)?.alias ?? "Student";
+  const boardShift = boardOn ? "lg:translate-x-24" : "";
 
   return (
     // Students get a blocking screen; the teacher's card floats in the middle so
@@ -727,10 +729,19 @@ export function FormativeCheckPanel({
       <div
         className={
           student
-            ? "max-h-[92vh] w-[min(96vw,52rem)] overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-2xl"
-            : `pointer-events-auto max-h-[80vh] w-[min(96vw,34rem)] overflow-y-auto rounded-2xl border border-border bg-background p-5 shadow-2xl transition-transform duration-300 ${boardOn ? "lg:translate-x-12" : ""}`
+            ? `max-h-[92vh] w-[min(96vw,52rem)] overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-2xl transition-transform duration-300 ${boardShift}`
+            : `pointer-events-auto max-h-[80vh] w-[min(96vw,34rem)] overflow-y-auto rounded-2xl border border-border bg-background p-5 shadow-2xl transition-transform duration-300 ${boardShift}`
         }
       >
+        {student ? (
+          <div className="mb-5 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+            <AliasAvatar alias={myAlias} size={40} />
+            <div>
+              <p className="text-sm font-medium text-foreground">You are answering as</p>
+              <p className="font-display text-base text-primary">{myAlias}</p>
+            </div>
+          </div>
+        ) : null}
 
 
         <div className="flex items-start gap-3">

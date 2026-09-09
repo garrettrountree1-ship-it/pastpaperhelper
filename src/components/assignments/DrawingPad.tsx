@@ -13,6 +13,10 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { mergeSnipPieces, parseSnipBand } from "@/components/assignments/QuestionSnip";
+import { questionPagesOnly } from "@/lib/answer-key";
+import { snapBandToWhitespace } from "@/lib/snip-whitespace";
+
 import { Button } from "@/components/ui/button";
 
 type Stroke = { points: Array<{ x: number; y: number }>; width: number; color: string };
@@ -70,7 +74,11 @@ export function DrawingPad({
   // The sheet is as long as the student needs: it stretches while they scroll
   // down and shrinks back to the work when they come back up.
   const [sheetHeight, setSheetHeight] = useState(0);
-  const backgroundsRef = useRef<HTMLImageElement[]>([]);
+  // Each piece is the picture plus the exact band of the page shown in the
+  // question box, so the pad can never reveal print outside that question.
+  const backgroundsRef = useRef<
+    Array<{ image: HTMLImageElement; top: number; bottom: number }>
+  >([]);
   const [photoScale, setPhotoScale] = useState(1);
   const photoScaleRef = useRef(photoScale);
   photoScaleRef.current = photoScale;
@@ -94,10 +102,13 @@ export function DrawingPad({
     // The question picture sits under the ink so the work is marked in context.
     const padWidth = (canvas.width / dpr) * photoScaleRef.current;
     let y = 0;
-    for (const image of backgroundsRef.current) {
+    for (const piece of backgroundsRef.current) {
+      const image = piece.image;
       if (!image.complete || !image.naturalWidth) continue;
-      const h = (padWidth * image.naturalHeight) / image.naturalWidth;
-      ctx.drawImage(image, 0, y, padWidth, h);
+      const sy = piece.top * image.naturalHeight;
+      const sh = Math.max(1, (piece.bottom - piece.top) * image.naturalHeight);
+      const h = (padWidth * sh) / image.naturalWidth;
+      ctx.drawImage(image, 0, sy, image.naturalWidth, sh, 0, y, padWidth, h);
       y += h + 8;
     }
 
@@ -151,9 +162,11 @@ export function DrawingPad({
     if (canvas) {
       const padWidth = (canvas.width / dprRef.current) * photoScaleRef.current;
       let y = 0;
-      for (const image of backgroundsRef.current) {
+      for (const piece of backgroundsRef.current) {
+        const image = piece.image;
         if (!image.complete || !image.naturalWidth) continue;
-        y += (padWidth * image.naturalHeight) / image.naturalWidth + 8;
+        const sh = Math.max(1, (piece.bottom - piece.top) * image.naturalHeight);
+        y += (padWidth * sh) / image.naturalWidth + 8;
       }
       bottom = y;
     }
@@ -217,21 +230,35 @@ export function DrawingPad({
       return;
     }
     let cancelled = false;
-    const images = backgroundUrls.slice(0, 3).map((url) => {
+    // Exactly the pieces the question box shows: answer-key pages left out,
+    // repeated pieces merged, and only the band belonging to this question.
+    const pieces = mergeSnipPieces(questionPagesOnly(backgroundUrls)).slice(0, 3);
+    const loaded = pieces.map((url) => {
+      const band = parseSnipBand(url) ?? { top: 0, bottom: 1 };
       const image = new Image();
+      const entry = { image, top: band.top, bottom: band.bottom };
       image.crossOrigin = "anonymous";
       image.onload = () => {
         if (!cancelled) redraw();
       };
       // A picture that can't be read stays out rather than blocking the pad.
       image.onerror = () => {
-        backgroundsRef.current = backgroundsRef.current.filter((item) => item !== image);
+        backgroundsRef.current = backgroundsRef.current.filter((item) => item !== entry);
         if (!cancelled) redraw();
       };
       image.src = url;
-      return image;
+      if (!url.includes(";manual") && parseSnipBand(url)) {
+        // Match the question box: cut lines nudged onto blank paper.
+        void snapBandToWhitespace(url, band).then((tidy) => {
+          if (cancelled) return;
+          entry.top = tidy.top;
+          entry.bottom = tidy.bottom;
+          redraw();
+        });
+      }
+      return entry;
     });
-    backgroundsRef.current = images;
+    backgroundsRef.current = loaded;
     redraw();
     return () => {
       cancelled = true;

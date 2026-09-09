@@ -475,6 +475,8 @@ export const createAssignment = createServerFn({ method: "POST" })
         marks: q.marks,
         image_paths: q.imagePaths ?? [],
         answer_image_paths: q.answerImagePaths ?? [],
+        tag_label: q.tagLabel ?? "",
+        tag_image: q.tagImage ?? "",
       })),
     );
     if (qError) throw new Error(qError.message);

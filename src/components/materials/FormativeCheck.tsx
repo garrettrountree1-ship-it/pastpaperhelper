@@ -591,11 +591,20 @@ export function FormativeCheckPanel({
       /* storage unavailable */
     }
   };
-  const parts = useMemo(() => (check ? questionParts(check.question) : []), [check?.question]);
+  // The teacher's launch works out the parts (reading the picture too); the
+  // text reader is the fallback for older questions.
+  const parts = useMemo(
+    () =>
+      check ? (check.parts?.length ? check.parts : questionParts(check.question)) : [],
+    [check?.parts, check?.question],
+  );
+  // Parts already right on an earlier try are frozen.
+  const solved = useMemo(() => new Set(check?.solvedParts ?? []), [check?.solvedParts]);
+  const openParts = parts.filter((label) => !solved.has(label));
   const combined = parts.length
-    ? parts
+    ? openParts
         .map((label) => `(${label}) ${(partAnswers[label] ?? "").trim()}`)
-        .filter((line) => line.replace(/^\([a-z0-9ivx]+\)\s*/i, "").length > 0)
+        .filter((line) => line.replace(/^\([a-z0-9ivx\s]+\)\s*/i, "").length > 0)
         .join("\n")
     : answer;
 

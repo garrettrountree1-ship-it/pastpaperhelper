@@ -567,6 +567,7 @@ export type Database = {
           created_at: string
           curriculum: string
           exam_mode: boolean
+          formative_leaderboard: boolean
           gradebook_detail: boolean
           id: string
           join_code: string
@@ -590,6 +591,7 @@ export type Database = {
           created_at?: string
           curriculum?: string
           exam_mode?: boolean
+          formative_leaderboard?: boolean
           gradebook_detail?: boolean
           id?: string
           join_code: string
@@ -613,6 +615,7 @@ export type Database = {
           created_at?: string
           curriculum?: string
           exam_mode?: boolean
+          formative_leaderboard?: boolean
           gradebook_detail?: boolean
           id?: string
           join_code?: string
@@ -749,6 +752,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "formative_checks_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      formative_points: {
+        Row: {
+          class_id: string
+          created_at: string
+          id: string
+          points: number
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          id?: string
+          points?: number
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          id?: string
+          points?: number
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formative_points_class_id_fkey"
             columns: ["class_id"]
             isOneToOne: false
             referencedRelation: "classes"

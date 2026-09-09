@@ -10,6 +10,7 @@ import {
   Sparkles,
   Timer,
   TimerReset,
+  Trophy,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -34,13 +35,15 @@ import {
   closeFormativeCheck,
   extendFormativeCheck,
   getActiveFormativeCheck,
+  getFormativeLeaderboard,
   launchFormativeCheck,
   listFormativeHistory,
   listFormativeResults,
   listMyFormativeChecks,
   releaseFormativeAnswer,
+  resetFormativePoints,
   revealFormativeAnswerForMe,
-
+  setFormativeLeaderboard,
 } from "@/lib/formative.functions";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { listClassRoster } from "@/lib/materials.functions";
@@ -518,6 +521,37 @@ export function FormativeCheckPanel({
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const fetchBoard = useServerFn(getFormativeLeaderboard);
+  const toggleBoard = useServerFn(setFormativeLeaderboard);
+  const zeroBoard = useServerFn(resetFormativePoints);
+
+  const board = useQuery({
+    queryKey: ["formative-leaderboard", classId],
+    queryFn: () => fetchBoard({ data: { classId } }),
+    enabled: Boolean(check?.id),
+    refetchInterval: 5000,
+  });
+
+  const setBoard = useMutation({
+    mutationFn: (enabled: boolean) => toggleBoard({ data: { classId, enabled } }),
+    onSuccess: async (result) => {
+      toast.success(result.enabled ? "Leaderboard on" : "Leaderboard off");
+      await queryClient.invalidateQueries({ queryKey: ["formative-leaderboard", classId] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const resetBoard = useMutation({
+    mutationFn: () => zeroBoard({ data: { classId } }),
+    onSuccess: async () => {
+      toast.success("Scores set back to zero");
+      await queryClient.invalidateQueries({ queryKey: ["formative-leaderboard", classId] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+
+
 
   const latest = useMemo(
     () => (check?.myAttempts.length ? check.myAttempts[check.myAttempts.length - 1] : null),
@@ -558,6 +592,8 @@ export function FormativeCheckPanel({
 
 
   const student = !check.isTeacher;
+  const boardOn = Boolean(board.data?.enabled);
+  const boardRows = board.data?.rows ?? [];
 
   return (
     // Students get a blocking screen; the teacher's card floats in the middle so
@@ -565,10 +601,41 @@ export function FormativeCheckPanel({
     <div
       className={
         student
-          ? "pointer-events-auto fixed inset-0 z-[70] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
-          : "pointer-events-none fixed inset-0 z-[70] flex items-center justify-center p-4"
+          ? `pointer-events-auto fixed inset-0 z-[70] flex items-center ${boardOn ? "justify-end" : "justify-center"} gap-4 bg-foreground/40 p-4 backdrop-blur-sm`
+          : `pointer-events-none fixed inset-0 z-[70] flex items-center ${boardOn ? "justify-end" : "justify-center"} gap-4 p-4`
       }
     >
+      {boardOn ? (
+        // Leaderboard on the left, the question on the right.
+        <div className="pointer-events-auto hidden max-h-[80vh] w-60 shrink-0 overflow-y-auto rounded-2xl border border-border bg-background p-4 shadow-2xl sm:block">
+          <p className="flex items-center gap-2 font-display text-base">
+            <Trophy className="size-4 text-primary" />
+            Leaderboard
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Class questions only — points for speed, fewer tries and a full answer.
+          </p>
+          <div className="mt-2 space-y-1">
+            {boardRows.map((row, index) => (
+              <div
+                key={row.alias}
+                className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-xs ${
+                  row.isMe ? "bg-primary/15 font-medium" : "bg-secondary/50"
+                }`}
+              >
+                <span className="truncate">
+                  {index + 1}. {row.alias}
+                  {row.isMe ? " (you)" : ""}
+                </span>
+                <span className="tabular-nums">{row.points.toLocaleString()}</span>
+              </div>
+            ))}
+            {boardRows.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No scores yet.</p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
       <div
         className={
           student
@@ -576,6 +643,7 @@ export function FormativeCheckPanel({
             : "pointer-events-auto max-h-[80vh] w-[min(96vw,34rem)] overflow-y-auto rounded-2xl border border-border bg-background p-5 shadow-2xl"
         }
       >
+
 
         <div className="flex items-start gap-3">
           <Badge
@@ -663,6 +731,26 @@ export function FormativeCheckPanel({
                   : reveal.isPending
                     ? "Working it out…"
                     : "Release the answer"}
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant={boardOn ? "default" : "outline"}
+                disabled={setBoard.isPending}
+                onClick={() => setBoard.mutate(!boardOn)}
+              >
+                <Trophy className="size-4" />
+                {boardOn ? "Leaderboard on" : "Leaderboard off"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={resetBoard.isPending}
+                onClick={() => resetBoard.mutate()}
+              >
+                <TimerReset className="size-4" />
+                Reset scores
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">

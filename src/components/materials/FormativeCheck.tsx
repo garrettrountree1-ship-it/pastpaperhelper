@@ -544,10 +544,13 @@ export function FormativeCheckPanel({
 
   classId,
   asStudent = false,
+  showPopup = true,
 }: {
   classId: string;
   /** Demo accounts viewing the class as a student answer like a student. */
   asStudent?: boolean;
+  /** The popup only appears inside the open lesson notes workspace. */
+  showPopup?: boolean;
 }) {
   const queryClient = useQueryClient();
   const fetchActive = useServerFn(getActiveFormativeCheck);
@@ -690,7 +693,7 @@ export function FormativeCheckPanel({
     return () => window.clearTimeout(id);
   }, [check?.id, check?.isTeacher, check?.countUp, gotItRight]);
 
-  if (!check || dismissed === check.id) return null;
+  if (!showPopup || !check || dismissed === check.id) return null;
   const correct = gotItRight;
   const timeUp = !check.countUp && countdown?.left === 0;
   // Count-up mode: the clock runs until this student gets it right, then the

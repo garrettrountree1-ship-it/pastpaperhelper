@@ -1,4 +1,6 @@
-import { Crop } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { ChevronLeft, ChevronRight, Crop, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -12,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { listRecutPages } from "@/lib/app.functions";
 import { pageWithoutCrop, parseCropFragment, withCrop, type SnipCrop } from "@/lib/snip-crop";
 
 type Props = {
@@ -23,7 +26,10 @@ type Props = {
   label?: string;
 };
 
+type Piece = { path: string; url: string; crop: SnipCrop };
+
 const MIN_HEIGHT = 0.035;
+const MAX_PIECES = 3;
 
 export function QuestionRecutDialog({
   imagePaths,
@@ -34,37 +40,86 @@ export function QuestionRecutDialog({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [piece, setPiece] = useState(0);
-  const initial = useMemo(
-    () => imageUrls.map((url) => parseCropFragment(url) ?? { top: 0, bottom: 1 }),
-    [imageUrls],
+  const initial = useMemo<Piece[]>(
+    () =>
+      imagePaths.map((path, index) => ({
+        path,
+        url: imageUrls[index] ?? "",
+        crop: parseCropFragment(imageUrls[index] ?? path) ?? { top: 0, bottom: 1 },
+      })),
+    [imagePaths, imageUrls],
   );
-  const [bands, setBands] = useState<SnipCrop[]>(initial);
+  const [pieces, setPieces] = useState<Piece[]>(initial);
+
+  const fetchPages = useServerFn(listRecutPages);
+  const firstPath = imagePaths[0] ?? "";
+  const pagesQuery = useQuery({
+    queryKey: ["recut-pages", pageWithoutCrop(firstPath)],
+    queryFn: () => fetchPages({ data: { imagePath: firstPath } }),
+    enabled: open && Boolean(firstPath),
+    staleTime: 60 * 60 * 1000,
+  });
+  const pages = pagesQuery.data?.pages ?? [];
 
   useEffect(() => {
     if (!open) return;
-    setBands(initial);
+    setPieces(initial);
     setPiece(0);
   }, [open, initial]);
 
-  const url = imageUrls[piece];
-  const band = bands[piece];
-  if (!url || !band || imagePaths.length !== imageUrls.length) return null;
+  const current = pieces[piece];
+  if (!current || imagePaths.length !== imageUrls.length || imagePaths.length === 0) return null;
+
+  const pageIndex = pages.findIndex((p) => p.path === pageWithoutCrop(current.path));
 
   function update(next: Partial<SnipCrop>) {
-    setBands((current) =>
-      current.map((value, index) => {
+    setPieces((list) =>
+      list.map((value, index) => {
         if (index !== piece) return value;
-        const top = Math.min(next.top ?? value.top, value.bottom - MIN_HEIGHT);
-        const bottom = Math.max(next.bottom ?? value.bottom, top + MIN_HEIGHT);
-        return { top: Math.max(0, top), bottom: Math.min(1, bottom) };
+        const top = Math.min(next.top ?? value.crop.top, value.crop.bottom - MIN_HEIGHT);
+        const bottom = Math.max(next.bottom ?? value.crop.bottom, top + MIN_HEIGHT);
+        return {
+          ...value,
+          crop: { top: Math.max(0, top), bottom: Math.min(1, bottom) },
+        };
       }),
     );
   }
 
+  function movePage(step: number) {
+    const target = pages[pageIndex + step];
+    if (!target) return;
+    setPieces((list) =>
+      list.map((value, index) =>
+        index === piece ? { ...value, path: target.path, url: target.url } : value,
+      ),
+    );
+  }
+
+  function addPiece() {
+    const nextPage = pages[pageIndex + 1] ?? pages[pageIndex];
+    const source = nextPage ?? {
+      path: pageWithoutCrop(current.path),
+      url: pageWithoutCrop(current.url),
+    };
+    setPieces((list) => [
+      ...list,
+      // A question continuing over a page break starts at the very top of the
+      // next page, so begin there and let the teacher set where it ends.
+      { path: source.path, url: source.url, crop: { top: 0, bottom: 0.35 } },
+    ]);
+    setPiece(pieces.length);
+  }
+
+  function removePiece(index: number) {
+    setPieces((list) => list.filter((_, i) => i !== index));
+    setPiece((value) => (value >= index && value > 0 ? value - 1 : value));
+  }
+
   async function save() {
     await onSave(
-      imagePaths.map((path, index) => withCrop(path, bands[index] ?? { top: 0, bottom: 1 }, true)),
-      imageUrls.map((imageUrl, index) => withCrop(imageUrl, bands[index] ?? { top: 0, bottom: 1 }, true)),
+      pieces.map((item) => withCrop(item.path, item.crop, true)),
+      pieces.map((item) => withCrop(item.url, item.crop, true)),
     );
     setOpen(false);
   }
@@ -82,50 +137,106 @@ export function QuestionRecutDialog({
           <DialogTitle>{label === "Recut" ? "Recut question" : label}</DialogTitle>
         </DialogHeader>
 
-        {imageUrls.length > 1 ? (
-          <div className="flex flex-wrap gap-2">
-            {imageUrls.map((_, index) => (
+        <div className="flex flex-wrap items-center gap-2">
+          {pieces.map((item, index) => (
+            <div key={`${item.path}-${index}`} className="flex items-center">
               <Button
-                key={imagePaths[index] ?? index}
                 type="button"
                 size="sm"
                 variant={piece === index ? "default" : "outline"}
                 onClick={() => setPiece(index)}
               >
-                Page piece {index + 1}
+                Piece {index + 1}
               </Button>
-            ))}
-          </div>
-        ) : null}
+              {pieces.length > 1 ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  title="Remove this piece"
+                  aria-label={`Remove piece ${index + 1}`}
+                  onClick={() => removePiece(index)}
+                >
+                  <X className="size-3" />
+                </Button>
+              ) : null}
+            </div>
+          ))}
+          {pieces.length < MAX_PIECES ? (
+            <Button type="button" size="sm" variant="outline" onClick={addPiece}>
+              <Plus className="size-3" />
+              Add a page
+            </Button>
+          ) : null}
+        </div>
 
         <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_15rem]">
           <div className="relative mx-auto w-full max-w-2xl overflow-hidden border border-border bg-card">
-            <img src={pageWithoutCrop(url)} alt="Full original paper page" className="block w-full" />
+            <img
+              src={pageWithoutCrop(current.url)}
+              alt="Full original paper page"
+              className="block w-full"
+            />
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-x-0 top-0 bg-foreground/45"
-              style={{ height: `${band.top * 100}%` }}
+              style={{ height: `${current.crop.top * 100}%` }}
             />
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-x-0 bottom-0 bg-foreground/45"
-              style={{ height: `${(1 - band.bottom) * 100}%` }}
+              style={{ height: `${(1 - current.crop.bottom) * 100}%` }}
             />
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-x-0 border-y-2 border-primary"
-              style={{ top: `${band.top * 100}%`, height: `${(band.bottom - band.top) * 100}%` }}
+              style={{
+                top: `${current.crop.top * 100}%`,
+                height: `${(current.crop.bottom - current.crop.top) * 100}%`,
+              }}
             />
           </div>
 
           <div className="space-y-5">
+            <div className="space-y-2">
+              <Label>Page</Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-label="Previous page"
+                  disabled={pageIndex <= 0}
+                  onClick={() => movePage(-1)}
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <span className="min-w-24 text-center text-sm text-muted-foreground">
+                  {pagesQuery.isLoading
+                    ? "Loading…"
+                    : pageIndex >= 0
+                      ? `Page ${pages[pageIndex]?.number} of ${pages.length}`
+                      : "This page"}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-label="Next page"
+                  disabled={pageIndex < 0 || pageIndex >= pages.length - 1}
+                  onClick={() => movePage(1)}
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="recut-top">Top cut</Label>
               <Slider
                 id="recut-top"
                 min={0}
                 max={1000}
-                value={[Math.round(band.top * 1000)]}
+                value={[Math.round(current.crop.top * 1000)]}
                 onValueChange={(value) => update({ top: (value[0] ?? 0) / 1000 })}
               />
             </div>
@@ -135,16 +246,21 @@ export function QuestionRecutDialog({
                 id="recut-bottom"
                 min={0}
                 max={1000}
-                value={[Math.round(band.bottom * 1000)]}
+                value={[Math.round(current.crop.bottom * 1000)]}
                 onValueChange={(value) => update({ bottom: (value[0] ?? 1000) / 1000 })}
               />
             </div>
-            <p className="text-xs text-muted-foreground">Keep every letter and diagram inside the clear area. End after the mark value.</p>
+            <p className="text-xs text-muted-foreground">
+              Keep every letter and diagram inside the clear area. End after the mark value. If the
+              question runs onto the next page, use Add a page.
+            </p>
           </div>
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
           <Button type="button" disabled={saving} onClick={() => void save()}>
             {saving ? "Saving…" : "Save recut"}
           </Button>

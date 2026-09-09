@@ -20,7 +20,15 @@ import { parseSnipBand } from "@/components/assignments/QuestionSnip";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import type { PhotoMode } from "@/lib/photo-mode";
 import { photoAvailability } from "@/lib/photo-mode";

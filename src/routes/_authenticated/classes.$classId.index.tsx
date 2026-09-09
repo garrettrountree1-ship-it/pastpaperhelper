@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getMe } from "@/lib/app.functions";
 import { useDemoView } from "@/lib/demo-view";
+import { isIbdp } from "@/lib/curricula";
+import { listIbLevels, setIbLevel, type IbLevel } from "@/lib/ib-level.functions";
 import { listClassRoster } from "@/lib/materials.functions";
 import { SECTIONS, type SectionKey } from "@/lib/sections";
 

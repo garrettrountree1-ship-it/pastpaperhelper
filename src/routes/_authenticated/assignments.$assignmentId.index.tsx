@@ -17,6 +17,7 @@ import { StudentTutorControls } from "@/components/assignments/StudentTutorContr
 import { useActiveTime } from "@/hooks/use-active-time";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
+import { PAD_FILE_NAME } from "@/components/assignments/DrawingPad";
 import { parseSnipBand } from "@/components/assignments/QuestionSnip";
 import {
   HELP_PILL,
@@ -370,6 +371,13 @@ function QuestionCard({
   const [draft, setDraft] = useState(answer?.answer_text ?? "");
   const [reply, setReply] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
+  // Local previews so a student can see and unattach each photo before submitting.
+  const [photoPreviews, setPhotoPreviews] = useState<{ name: string; url: string }[]>([]);
+  useEffect(() => {
+    const previews = photos.map((file) => ({ name: file.name, url: URL.createObjectURL(file) }));
+    setPhotoPreviews(previews);
+    return () => previews.forEach((item) => URL.revokeObjectURL(item.url));
+  }, [photos]);
   const { requiresPhoto, photoOnly } = photoAvailability(
     question.question_text,
     question.photoMode ?? "auto",
@@ -391,7 +399,11 @@ function QuestionCard({
         const uploaded: string[] = [];
         for (const photo of photos) {
           const ext = photo.name.split(".").pop() || "jpg";
-          const path = `${userId}/${assignmentId}/${question.id}/${Date.now()}-${uploaded.length}.${ext}`;
+          // Keep the pad picture recognisable so it stays inside the pad, not in the photo list.
+          const path =
+            photo.name === PAD_FILE_NAME
+              ? `${userId}/${assignmentId}/${question.id}/${PAD_FILE_NAME}`
+              : `${userId}/${assignmentId}/${question.id}/${Date.now()}-${uploaded.length}.${ext}`;
           const { error } = await supabase.storage
             .from("student-work")
             .upload(path, photo, { contentType: photo.type || "image/jpeg", upsert: true });
@@ -450,7 +462,11 @@ function QuestionCard({
       onShowPhoto={() => setShowPhoto(true)}
       photoCount={photos.length}
       photoUrls={answer?.imageUrls ?? []}
-      onPhotosChange={(files) => setPhotos(Array.from(files ?? []).slice(0, 6))}
+      photoFiles={photoPreviews}
+      onRemovePhoto={(name) => setPhotos((prev) => prev.filter((item) => item.name !== name))}
+      onPhotosChange={(files) =>
+        setPhotos((prev) => [...prev, ...Array.from(files ?? [])].slice(0, 6))
+      }
       onAddDrawing={(file) =>
         // The pad keeps one picture that is replaced each time it is saved.
         setPhotos((prev) => [...prev.filter((item) => item.name !== file.name), file].slice(0, 6))

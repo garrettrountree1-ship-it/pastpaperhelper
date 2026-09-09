@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Camera, CheckCircle2, CircleDashed, Sparkles, XCircle } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { Camera, CheckCircle2, CircleDashed, Sparkles, X, XCircle } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { QuestionSnipStack } from "@/components/assignments/QuestionSnip";
@@ -13,7 +13,7 @@ import { getQuestionGlossary, getTutorGlossary } from "@/lib/tutor-settings.func
 import { CameraCapture } from "@/components/assignments/CameraCapture";
 import { QuestionHelpButtons } from "@/components/assignments/QuestionHelpDialog";
 
-import { DrawingPad } from "@/components/assignments/DrawingPad";
+import { DrawingPad, PAD_FILE_NAME } from "@/components/assignments/DrawingPad";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +73,8 @@ export function QuestionExperience({
   onShowPhoto,
   photoCount,
   photoUrls = [],
+  photoFiles = [],
+  onRemovePhoto,
   onPhotosChange,
   onAddDrawing,
   result,
@@ -120,6 +122,9 @@ export function QuestionExperience({
   onShowPhoto: () => void;
   photoCount: number;
   photoUrls?: string[];
+  /** Photos picked but not submitted yet, so they can be previewed and removed. */
+  photoFiles?: { name: string; url: string }[];
+  onRemovePhoto?: (name: string) => void;
   onPhotosChange: (files: FileList | null) => void;
   /** Attach an on-screen (stylus) working sheet as an image. */
   onAddDrawing?: (file: File) => void;
@@ -189,6 +194,16 @@ export function QuestionExperience({
   const bulletTarget = photoOnly ? 0 : bulletTargetFor(question.marks, requiresPhoto);
   const hasWrittenAnswer = stripBullets(draft).trim().length > 0;
   const outOfTries = maxAttempts > 0 && attempts >= maxAttempts;
+
+  // The writing pad keeps its own picture inside the pad, so it never shows here.
+  const attachedPhotos = useMemo(
+    () =>
+      photoFiles
+        .filter((item) => item.name !== PAD_FILE_NAME)
+        .map((item, itemIndex) => ({ ...item, key: `${itemIndex}-${item.name}` })),
+    [photoFiles],
+  );
+  const submittedPhotoUrls = photoUrls.filter((url) => !url.includes(PAD_FILE_NAME));
 
   // Seed the marks checklist so the student sees how many points are expected.
   useEffect(() => {
@@ -336,7 +351,7 @@ export function QuestionExperience({
 
         {/* Photo and pad sections stay folded away until they're needed. */}
         <details
-          open={photoCount > 0 || photoUrls.length > 0 || requiresPhoto}
+          open={attachedPhotos.length > 0 || submittedPhotoUrls.length > 0 || requiresPhoto}
           className="rounded-lg border border-dashed border-border p-3"
         >
           <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">
@@ -363,15 +378,40 @@ export function QuestionExperience({
               <CameraCapture disabled={locked} onCapture={onAddDrawing} />
             </div>
           ) : null}
-          {photoCount > 0 ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              {photoCount} photo{photoCount === 1 ? "" : "s"} ready — they&apos;ll be marked with
-              your answer.
-            </p>
+          {attachedPhotos.length > 0 ? (
+            <>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {attachedPhotos.length} photo{attachedPhotos.length === 1 ? "" : "s"} ready —
+                they&apos;ll be marked with your answer.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {attachedPhotos.map((item) => (
+                  <div key={item.key} className="relative">
+                    <img
+                      src={item.url}
+                      alt={item.name}
+                      loading="lazy"
+                      className="size-20 rounded-lg border border-border object-cover"
+                    />
+                    {onRemovePhoto && !locked ? (
+                      <button
+                        type="button"
+                        aria-label={`Remove ${item.name}`}
+                        title="Remove this photo"
+                        onClick={() => onRemovePhoto(item.name)}
+                        className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm hover:text-destructive"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </>
           ) : null}
-          {photoUrls.length > 0 ? (
+          {submittedPhotoUrls.length > 0 ? (
             <div className="mt-3 flex flex-wrap gap-2">
-              {photoUrls.map((url, photoIndex) => (
+              {submittedPhotoUrls.map((url, photoIndex) => (
                 <img
                   key={`${photoIndex}-${url.slice(-12)}`}
                   src={url}

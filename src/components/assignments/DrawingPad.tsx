@@ -94,9 +94,9 @@ export function DrawingPad({
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
-    ctx.translate(offsetRef.current.x, offsetRef.current.y);
-    ctx.scale(zoomRef.current, zoomRef.current);
     // The question picture sits under the ink so the work is marked in context.
+    ctx.save();
+    ctx.translate(offsetRef.current.x, offsetRef.current.y);
     const padWidth = (canvas.width / dpr) * photoScaleRef.current;
     let y = 0;
     for (const piece of backgroundsRef.current) {
@@ -108,6 +108,7 @@ export function DrawingPad({
       ctx.drawImage(image, 0, sy, image.naturalWidth, sh, 0, y, padWidth, h);
       y += h + 8;
     }
+    ctx.restore();
 
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -125,32 +126,6 @@ export function DrawingPad({
     }
   }
 
-  /** Zoom keeping the given screen point (relative to the canvas) stationary. */
-  function zoomTo(next: number, px: number, py: number) {
-    const clamped = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
-    const k = clamped / zoomRef.current;
-    offsetRef.current = {
-      x: px - (px - offsetRef.current.x) * k,
-      y: py - (py - offsetRef.current.y) * k,
-    };
-    zoomRef.current = clamped;
-    setZoom(clamped);
-    redraw();
-  }
-
-  function zoomFromButton(factor: number) {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    zoomTo(zoomRef.current * factor, rect.width / 2, rect.height / 2);
-  }
-
-  function resetZoom() {
-    zoomRef.current = 1;
-    offsetRef.current = { x: 0, y: 0 };
-    setZoom(1);
-    redraw();
-  }
 
   /** Lowest point of the picture / ink, in on-screen pixels. */
   function contentBottom() {

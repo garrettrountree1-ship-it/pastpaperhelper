@@ -329,6 +329,9 @@ function PreviewQuestion({
   flags,
   keywordTranslation,
   protectQuestions,
+  allowHint,
+  allowSteps,
+  maxAttempts,
   onFlag,
 }: {
   assignmentId: string;
@@ -336,7 +339,11 @@ function PreviewQuestion({
   flags: number;
   keywordTranslation: boolean;
   protectQuestions: boolean;
+  allowHint: boolean;
+  allowSteps: boolean;
+  maxAttempts: number;
   onFlag: () => void;
+
 }) {
   const [answer, setAnswer] = useState("");
   const { requiresPhoto, photoOnly } = photoAvailability(

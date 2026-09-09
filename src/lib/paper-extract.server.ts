@@ -51,7 +51,10 @@ const SHARED_RULES = [
   "The upload is often NOT a clean official paper: teachers paste questions and mark schemes together from several different papers into a Word document or PDF, in any order, with inconsistent numbering, duplicated numbers, missing numbers, stray headings, tables and screenshots.",
   "Papers mix question types freely: multiple choice (A/B/C/D), short answer, calculations, diagram/drawing tasks and extended writing. Treat every one of them as a question.",
   "Every answerable sub-part is its own item: 1(a), 1(b)(i), 1(b)(ii), 2(a) ... Never merge sub-parts and never summarise a paper down to a few sample questions.",
+  "Sub-part labels are printed in many styles and ALL of them count as their own part: (a), a), a., (i), (ii), (a)(i), (a.i), (a.ii), (b.iii), c.i, ai, aii, bi, bii. A label such as \"(a.ii)\" or \"(b)\" standing alone on its own line is a real sub-part even when its parent number is printed pages earlier.",
   "Work through the documents page by page, in order, from the first question to the very last one, including anything that appears after a mark scheme block or between mark scheme blocks.",
+  "In teacher-made documents each sub-part is usually followed immediately by its own mark scheme block, then the NEXT sub-part continues below or on the following page. Always keep reading past every mark scheme block: the parts printed after it are still questions and are the ones most often missed.",
+  "Before you finish, walk the sub-part letters and roman numerals of every question in order and check none is absent: if you have (a) and (a)(i) and (b), make sure (a)(ii) is not printed somewhere between them. A gap in the sequence means you missed a part — go back and find it.",
   "Never skip a question because it looks out of place, unnumbered, repeated, or because its numbering clashes with an earlier one.",
 ].join(" ");
 
@@ -74,6 +77,7 @@ const SWEEP_SYSTEM = [
   "Task: a first pass already indexed some question parts. Find the ones it MISSED.",
   "You are given the labels already found. Scan the whole upload again and list only answerable question parts that are not already covered.",
   "Pay special attention to multiple-choice blocks, questions pasted mid-document, questions after a mark scheme section, and unnumbered questions.",
+  "Above all, check for MISSING SUB-PARTS: for each question already indexed, read every page it touches and the pages after it and list any (a)/(b)/(c) or (i)/(ii)/(iii) part — including forms like (a.ii) or (b) alone on a line, and parts printed after a mark scheme block — that is not already in the list. Use the printed label for these, e.g. \"1(a)(ii)\", not an invented one.",
   "Give missed items a unique label that does not clash with the supplied list (e.g. \"p5-Q2\").",
   "If nothing was missed, reply with an empty items array.",
   'Reply with JSON only: {"items":[{"label":"p5-Q2","marks":1,"kind":"mcq","pages":[5]}]}',
@@ -143,18 +147,18 @@ export async function extractQuestionsFromPapers(
 
   let inventory = await runInventory(key, header, documents);
 
-  if (inventory.length > 0) {
-    // Second sweep: messy compilations routinely lose questions in pass one.
+  // Repeat sweeps: messy compilations routinely lose sub-parts in pass one, and
+  // a sweep that finds something usually means more is still hiding.
+  for (let pass = 0; pass < 2 && inventory.length > 0; pass += 1) {
     const missed = await runSweep(key, header, documents, inventory);
-    if (missed.length > 0) {
-      const seen = new Set(inventory.map((i) => i.label.toLowerCase()));
-      for (const item of missed) {
-        if (seen.has(item.label.toLowerCase())) continue;
-        seen.add(item.label.toLowerCase());
-        inventory.push(item);
-      }
-      inventory = inventory.slice(0, MAX_ITEMS);
+    if (missed.length === 0) break;
+    const seen = new Set(inventory.map((i) => i.label.toLowerCase()));
+    for (const item of missed) {
+      if (seen.has(item.label.toLowerCase())) continue;
+      seen.add(item.label.toLowerCase());
+      inventory.push(item);
     }
+    inventory = inventory.slice(0, MAX_ITEMS);
   }
 
   const hasAnswerPages = input.markSchemeFiles.length > 0;

@@ -283,12 +283,10 @@ function PreviewQuestion({
   allowSteps,
   maxAttempts,
   markSchemeRevealed,
-  editing,
   onFlag,
 }: {
   assignmentId: string;
   question: Question;
-  editing: boolean;
   flags: number;
   keywordTranslation: boolean;
   protectQuestions: boolean;
@@ -297,7 +295,6 @@ function PreviewQuestion({
   maxAttempts: number;
   markSchemeRevealed: boolean;
   onFlag: () => void;
-
 }) {
   const [answer, setAnswer] = useState("");
   const { requiresPhoto, photoOnly } = photoAvailability(
@@ -310,22 +307,6 @@ function PreviewQuestion({
   const [reply, setReply] = useState("");
   const [thread, setThread] = useState<Array<{ role: "tutor" | "student"; content: string }>>([]);
   const [attempts, setAttempts] = useState(0);
-  const queryClient = useQueryClient();
-  const saveCrop = useMutation({
-    mutationFn: ({
-      imagePaths,
-      target,
-    }: {
-      imagePaths: string[];
-      imageUrls: string[];
-      target?: "question" | "answer";
-    }) => updateQuestionCrop({ data: { questionId: question.id, imagePaths, target: target ?? "question" } }),
-    onSuccess: async () => {
-      toast.success("Question crop saved");
-      await queryClient.invalidateQueries({ queryKey: ["assignment-preview", assignmentId] });
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
 
   const check = useMutation({
     mutationFn: async () => {

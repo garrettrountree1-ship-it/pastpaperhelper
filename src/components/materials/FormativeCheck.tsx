@@ -536,9 +536,10 @@ export function FormativeCheckPanel({
   const gotItRight = latest?.verdict === "correct";
   useEffect(() => {
     if (!check?.id || check.isTeacher || !gotItRight) return;
-    const id = window.setTimeout(() => setDismissed(check.id), 6000);
+    // In count-up mode the total time is on screen, so leave it up a little longer.
+    const id = window.setTimeout(() => setDismissed(check.id), check.countUp ? 12000 : 6000);
     return () => window.clearTimeout(id);
-  }, [check?.id, check?.isTeacher, gotItRight]);
+  }, [check?.id, check?.isTeacher, check?.countUp, gotItRight]);
 
   if (!check || dismissed === check.id) return null;
   const correct = gotItRight;

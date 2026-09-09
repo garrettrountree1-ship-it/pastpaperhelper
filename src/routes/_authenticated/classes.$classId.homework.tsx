@@ -100,11 +100,14 @@ import { filesToPages } from "@/lib/pdf-pages";
 import { PhotoModeControl } from "@/components/assignments/PhotoModeControl";
 import type { PhotoMode } from "@/lib/photo-mode";
 import {
+  formatLabel,
+  parseLabelString,
   questionBody,
   questionLabel,
-  questionMainNumber,
-  setQuestionMainNumber,
+  setQuestionLabel,
+  shiftLetter,
 } from "@/lib/question-label";
+
 
 import { QuestionSnipStack } from "@/components/assignments/QuestionSnip";
 import { QuestionRecutDialog } from "@/components/assignments/QuestionRecutDialog";

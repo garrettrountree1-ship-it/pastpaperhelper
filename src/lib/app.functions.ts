@@ -430,6 +430,8 @@ export const createAssignment = createServerFn({ method: "POST" })
             marks: z.number().int().positive(),
             imagePaths: z.array(z.string()).default([]),
             answerImagePaths: z.array(z.string()).default([]),
+            tagLabel: z.string().max(12).default(""),
+            tagImage: z.string().max(200000).default(""),
           }),
         ),
       })
@@ -473,6 +475,8 @@ export const createAssignment = createServerFn({ method: "POST" })
         marks: q.marks,
         image_paths: q.imagePaths ?? [],
         answer_image_paths: q.answerImagePaths ?? [],
+        tag_label: q.tagLabel ?? "",
+        tag_image: q.tagImage ?? "",
       })),
     );
     if (qError) throw new Error(qError.message);
@@ -500,7 +504,9 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
 
     const { data: questions, error: qError } = await supabase
       .from("questions")
-      .select("id, question_text, mark_scheme, marks, position, image_paths, answer_image_paths")
+      .select(
+        "id, question_text, mark_scheme, marks, position, image_paths, answer_image_paths, tag_label, tag_image",
+      )
       .eq("assignment_id", data.assignmentId)
       .order("position");
     if (qError) throw new Error(qError.message);
@@ -522,6 +528,8 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
           imageUrls: await signPaperPages(await admin(), q.image_paths ?? []),
           answerImagePaths: q.answer_image_paths ?? [],
           answerImageUrls: await signPaperPages(await admin(), q.answer_image_paths ?? []),
+          tagLabel: q.tag_label ?? "",
+          tagImage: q.tag_image ?? "",
         })),
       ),
     };
@@ -763,6 +771,8 @@ export const updateAssignment = createServerFn({ method: "POST" })
             marks: z.number().int().positive(),
             imagePaths: z.array(z.string()).default([]),
             answerImagePaths: z.array(z.string()).default([]),
+            tagLabel: z.string().max(12).default(""),
+            tagImage: z.string().max(200000).default(""),
           }),
         ),
       })
@@ -807,6 +817,8 @@ export const updateAssignment = createServerFn({ method: "POST" })
         position: index + 1,
         image_paths: q.imagePaths ?? [],
         answer_image_paths: q.answerImagePaths ?? [],
+        tag_label: q.tagLabel ?? "",
+        tag_image: q.tagImage ?? "",
       };
       if (q.id && existingIds.has(q.id)) {
         const { error } = await supabase.from("questions").update(payload).eq("id", q.id);
@@ -1810,7 +1822,9 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     // Mark schemes are only sent once the teacher reveals them.
     const { data: allQuestions } = await db
       .from("questions")
-      .select("id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode")
+      .select(
+        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image",
+      )
       .eq("assignment_id", data.assignmentId)
       .order("position");
 
@@ -1886,6 +1900,8 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
             assignment: access.assignmentPhotoMode,
           }),
           imageUrls: await signPaperPages(db, q.image_paths ?? []),
+          tagLabel: q.tag_label ?? "",
+          tagImage: q.tag_image ?? "",
         })),
       ),
 
@@ -2399,7 +2415,9 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
       .maybeSingle();
     const { data: questions } = await db
       .from("questions")
-      .select("id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode")
+      .select(
+        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image",
+      )
       .eq("assignment_id", data.assignmentId)
       .order("position");
 
@@ -2472,6 +2490,8 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
             assignment: assignment.photo_mode as string | null,
           }),
           imageUrls: await signPaperPages(db, q.image_paths ?? []),
+          tagLabel: q.tag_label ?? "",
+          tagImage: q.tag_image ?? "",
         })),
       ),
 

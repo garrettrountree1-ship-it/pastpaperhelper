@@ -1201,6 +1201,8 @@ export type Database = {
           photo_mode: string
           position: number
           question_text: string
+          tag_image: string
+          tag_label: string
         }
         Insert: {
           answer_image_paths?: string[]
@@ -1214,6 +1216,8 @@ export type Database = {
           photo_mode?: string
           position?: number
           question_text: string
+          tag_image?: string
+          tag_label?: string
         }
         Update: {
           answer_image_paths?: string[]
@@ -1227,6 +1231,8 @@ export type Database = {
           photo_mode?: string
           position?: number
           question_text?: string
+          tag_image?: string
+          tag_label?: string
         }
         Relationships: [
           {

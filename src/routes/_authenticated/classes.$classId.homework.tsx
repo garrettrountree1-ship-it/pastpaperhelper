@@ -113,6 +113,8 @@ import { cropAfter } from "@/lib/next-crop";
 
 
 import { QuestionSnipStack } from "@/components/assignments/QuestionSnip";
+import { QuestionTagPicker } from "@/components/assignments/QuestionTagPicker";
+import { QuestionTagBadge } from "@/components/assignments/QuestionTagBadge";
 import { QuestionRecutDialog } from "@/components/assignments/QuestionRecutDialog";
 
 export const Route = createFileRoute("/_authenticated/classes/$classId/homework")({
@@ -141,6 +143,8 @@ type QuestionDraft = {
   imageUrls: string[];
   answerImagePaths: string[];
   answerImageUrls: string[];
+  tagLabel: string;
+  tagImage: string;
 };
 
 const emptyQuestion = (): QuestionDraft => ({
@@ -152,6 +156,8 @@ const emptyQuestion = (): QuestionDraft => ({
   imageUrls: [],
   answerImagePaths: [],
   answerImageUrls: [],
+  tagLabel: "",
+  tagImage: "",
 });
 
 function PendingClassPage() {
@@ -658,6 +664,8 @@ function AssignmentDialog({
           imageUrls: q.imageUrls ?? [],
           answerImagePaths: q.answerImagePaths ?? [],
           answerImageUrls: q.answerImageUrls ?? [],
+          tagLabel: "",
+          tagImage: "",
         })),
       );
       toast.success(`${result.questions.length} questions read from your files`);
@@ -716,6 +724,8 @@ function AssignmentDialog({
         marks: q.marks,
         imagePaths: q.imagePaths ?? [],
         answerImagePaths: q.answerImagePaths ?? [],
+        tagLabel: q.tagLabel ?? "",
+        tagImage: q.tagImage ?? "",
       }));
       if (editing) {
         return update({
@@ -1065,6 +1075,7 @@ function AssignmentDialog({
                           className="w-28"
                           placeholder="1(a)(ii)"
                         />
+                        <QuestionTagBadge label={question.tagLabel} image={question.tagImage} />
                       </div>
                     );
                   })()}
@@ -1169,6 +1180,17 @@ function AssignmentDialog({
                       rows={3}
                     />
                   )}
+
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      Label beside this question (e.g. HL only)
+                    </p>
+                    <QuestionTagPicker
+                      tagLabel={question.tagLabel}
+                      tagImage={question.tagImage}
+                      onChange={(patch) => update_(index, patch)}
+                    />
+                  </div>
 
                   <div className="flex items-center gap-2">
                     <Label htmlFor={`marks-${index}`}>Marks</Label>

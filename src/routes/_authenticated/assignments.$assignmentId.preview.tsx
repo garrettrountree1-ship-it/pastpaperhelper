@@ -470,8 +470,12 @@ function PreviewQuestion({
       markScheme={question.markScheme ?? null}
       markSchemeImageUrls={question.answerImageUrls ?? []}
       keywordTranslation={keywordTranslation}
+      allowHint={allowHint}
+      allowSteps={allowSteps}
+      maxAttempts={maxAttempts}
       assignmentId={assignmentId}
       protectQuestions={protectQuestions}
+
       snipAction={
         (question.image_paths ?? []).length > 0 && (question.imageUrls ?? []).length > 0 ? (
           <QuestionRecutDialog

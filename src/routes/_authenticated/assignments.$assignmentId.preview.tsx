@@ -464,7 +464,7 @@ function PreviewQuestion({
           }),
       ),
     );
-    setPhotos(dataUrls);
+    setPhotos((prev) => [...prev, ...dataUrls].slice(0, 3));
   }
 
   return (

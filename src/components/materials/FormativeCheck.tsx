@@ -640,15 +640,17 @@ export function FormativeCheckPanel({
         {check.isTeacher ? (
           <div className="mt-3 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={extend.isPending}
-                onClick={() => extend.mutate(30)}
-              >
-                <Timer className="size-4" />
-                Add 30 sec
-              </Button>
+              {check.countUp ? null : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={extend.isPending}
+                  onClick={() => extend.mutate(30)}
+                >
+                  <Timer className="size-4" />
+                  Add 30 sec
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="outline"

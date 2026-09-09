@@ -271,6 +271,11 @@ export function DrawingPad({
   function start(event: React.PointerEvent<HTMLCanvasElement>) {
     if (disabled) return;
     event.currentTarget.setPointerCapture(event.pointerId);
+    // Middle button or the Move tool drags the picture and work around.
+    if (modeRef.current === "move" || event.button === 1) {
+      panning.current = { x: event.clientX, y: event.clientY };
+      return;
+    }
     drawing.current = true;
     const width = event.pointerType === "pen" ? Math.max(1.2, event.pressure * 4 || 2) : 2.4;
     strokesRef.current.push({ points: [positionOf(event)], width, color: colorRef.current });
@@ -278,6 +283,16 @@ export function DrawingPad({
   }
 
   function move(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (panning.current) {
+      event.preventDefault();
+      offsetRef.current = {
+        x: offsetRef.current.x + (event.clientX - panning.current.x),
+        y: offsetRef.current.y + (event.clientY - panning.current.y),
+      };
+      panning.current = { x: event.clientX, y: event.clientY };
+      redraw();
+      return;
+    }
     if (!drawing.current) return;
     event.preventDefault();
     strokesRef.current[strokesRef.current.length - 1]?.points.push(positionOf(event));
@@ -286,7 +301,10 @@ export function DrawingPad({
 
   function end() {
     drawing.current = false;
+    panning.current = null;
+    updateSheet();
   }
+
 
   function attach() {
     const canvas = canvasRef.current;

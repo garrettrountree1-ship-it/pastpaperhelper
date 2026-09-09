@@ -631,11 +631,11 @@ export const insertQuestionAfter = createServerFn({ method: "POST" })
     const parsed = parseLabelString(label);
 
     for (const row of later ?? []) {
-      const patch: Record<string, unknown> = { position: row.position + 1 };
+      const patch: { position: number; question_text?: string } = { position: row.position + 1 };
       if (parsed.parts.length === 0 && parsed.main !== null) {
         const rowLabel = parseLabelString(questionLabel(row.question_text ?? "", row.position - 1));
         if (rowLabel.main !== null && rowLabel.main >= parsed.main) {
-          patch['question_text'] = setQuestionLabel(
+          patch.question_text = setQuestionLabel(
             row.question_text ?? "",
             formatLabel(rowLabel.main + 1, rowLabel.parts),
           );

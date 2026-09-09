@@ -585,6 +585,7 @@ function AssignmentDialog({
   const [schemeFiles, setSchemeFiles] = useState<File[]>([]);
   const [questions, setQuestions] = useState<QuestionDraft[]>([emptyQuestion()]);
   const [protectQuestions, setProtectQuestions] = useState(true);
+  const [reviewNotes, setReviewNotes] = useState<string[]>([]);
 
   const editing = Boolean(assignmentId);
 
@@ -647,6 +648,7 @@ function AssignmentDialog({
       });
     },
     onSuccess: (result) => {
+      setReviewNotes(result.warnings ?? []);
       setQuestions(
         result.questions.map((q) => ({
           ...q,
@@ -976,6 +978,32 @@ function AssignmentDialog({
               </p>
             ) : null}
           </div>
+
+          {reviewNotes.length > 0 ? (
+            <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-4">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-medium">Please check these before you publish</p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => setReviewNotes([])}
+                >
+                  Dismiss
+                </Button>
+              </div>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                {reviewNotes.map((note) => (
+                  <li key={note}>{note}</li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Nothing was changed or removed — these are only checks against the printed totals and
+                the mark scheme.
+              </p>
+            </div>
+          ) : null}
 
 
           <div className="space-y-4">

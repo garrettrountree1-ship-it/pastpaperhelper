@@ -1140,6 +1140,7 @@ export type Database = {
       }
       questions: {
         Row: {
+          answer_image_paths: string[]
           assignment_id: string
           created_at: string
           id: string
@@ -1152,6 +1153,7 @@ export type Database = {
           question_text: string
         }
         Insert: {
+          answer_image_paths?: string[]
           assignment_id: string
           created_at?: string
           id?: string
@@ -1164,6 +1166,7 @@ export type Database = {
           question_text: string
         }
         Update: {
+          answer_image_paths?: string[]
           assignment_id?: string
           created_at?: string
           id?: string

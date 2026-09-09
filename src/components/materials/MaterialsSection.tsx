@@ -190,8 +190,6 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
     onError: (error: Error) => toast.error(error.message),
   });
 
-  if (units.isLoading) return <Skeleton className="h-40 w-full" />;
-
   const reorderMutation = useMutation({
     mutationFn: (unitIds: string[]) => reorder({ data: { classId, unitIds } }),
     onError: (error: Error) => {
@@ -200,6 +198,13 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
       invalidate();
     },
   });
+
+  // Once the server list refreshes after a reorder, stop overriding the order.
+  useEffect(() => {
+    setOrderedIds(null);
+  }, [units.data]);
+
+  if (units.isLoading) return <Skeleton className="h-40 w-full" />;
 
   const allUnits = units.data ?? [];
   const archivedUnits = allUnits.filter(
@@ -215,11 +220,6 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
           .map((id) => fetchedActive.find((unit) => unit.id === id))
           .filter((unit): unit is (typeof fetchedActive)[number] => Boolean(unit))
       : fetchedActive;
-
-  useEffect(() => {
-    if (!dragUnitId && orderedIds && !reorderMutation.isPending) setOrderedIds(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [units.data]);
 
   const handleUnitDrop = (targetId: string) => {
     if (!dragUnitId || dragUnitId === targetId) return;

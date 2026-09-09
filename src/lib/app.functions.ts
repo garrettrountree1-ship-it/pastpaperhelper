@@ -771,6 +771,8 @@ export const updateAssignment = createServerFn({ method: "POST" })
             marks: z.number().int().positive(),
             imagePaths: z.array(z.string()).default([]),
             answerImagePaths: z.array(z.string()).default([]),
+            tagLabel: z.string().max(12).default(""),
+            tagImage: z.string().max(200000).default(""),
           }),
         ),
       })

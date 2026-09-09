@@ -205,10 +205,12 @@ export const reorderUnits = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await assertClassTeacher(supabase, data.classId, userId);
     for (let i = 0; i < data.unitIds.length; i += 1) {
+      const unitId = data.unitIds[i];
+      if (!unitId) continue;
       const { error } = await supabase
         .from("class_units")
         .update({ position: i, updated_at: new Date().toISOString() })
-        .eq("id", data.unitIds[i])
+        .eq("id", unitId)
         .eq("class_id", data.classId);
       if (error) throw new Error(error.message);
     }

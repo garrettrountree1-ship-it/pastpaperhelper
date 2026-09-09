@@ -167,6 +167,8 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
       question: check.question as string,
       questionImage: (check.question_image ?? null) as string | null,
       seconds: check.seconds as number,
+      countUp: Boolean(check.count_up),
+      startedAt: check.created_at as string,
       endsAt: check.ends_at as string,
       isTeacher: check.teacher_id === userId,
       hasExpectedAnswer: Boolean(check.expected_answer),
@@ -181,6 +183,7 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
         answer: r.answer as string,
         verdict: r.verdict as string,
         feedback: (r.feedback ?? "") as string,
+        createdAt: r.created_at as string,
       })),
     };
   });

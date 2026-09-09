@@ -449,6 +449,7 @@ export function DrawingPad({
     drawing.current = false;
     panning.current = null;
     resizing.current = null;
+    setHoverCorner(null);
     updateSheet();
   }
 

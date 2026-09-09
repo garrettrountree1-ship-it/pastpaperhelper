@@ -491,6 +491,7 @@ function PreviewQuestion({
       protectQuestions={protectQuestions}
 
       snipAction={
+        editing &&
         (question.image_paths ?? []).length > 0 && (question.imageUrls ?? []).length > 0 ? (
           <QuestionRecutDialog
             imagePaths={question.image_paths ?? []}
@@ -503,6 +504,7 @@ function PreviewQuestion({
         ) : null
       }
       answerAction={
+        editing &&
         (question.answerImagePaths ?? []).length > 0 && (question.answerImageUrls ?? []).length > 0 ? (
           <QuestionRecutDialog
             label="Recut answer"

@@ -57,7 +57,7 @@ function SubmissionsSelect({
   value,
   inheritLabel,
   onChange,
-  disabled,
+  disabled = false,
 }: {
   value: number | null;
   inheritLabel: string | null;

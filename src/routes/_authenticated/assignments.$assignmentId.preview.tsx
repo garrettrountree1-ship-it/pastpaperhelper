@@ -115,6 +115,9 @@ function PreviewPage() {
   const { assignmentId } = Route.useParams();
   const [flags, setFlags] = useState(0);
   const [studentId, setStudentId] = useState<string>("class");
+  // Teacher-only editing tools (recut / add a question). Off by default so the
+  // preview shows exactly what a student sees — students never get these controls.
+  const [editing, setEditing] = useState(false);
   const preview = useQuery({
     queryKey: ["assignment-preview", assignmentId, studentId],
     queryFn: () =>
@@ -289,10 +292,12 @@ You can test any question here — the AI marks it exactly as it would for a stu
 function AddQuestionRow({
   assignmentId,
   questionId,
+  editing,
   children,
 }: {
   assignmentId: string;
   questionId: string;
+  editing: boolean;
   children: ReactNode;
 }) {
   const queryClient = useQueryClient();

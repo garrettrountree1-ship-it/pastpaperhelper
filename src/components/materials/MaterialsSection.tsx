@@ -227,7 +227,8 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
       ) : null}
 
       {canManage ? (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <div className="flex flex-wrap items-center gap-3">
+          <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>New unit</Button>
           </DialogTrigger>

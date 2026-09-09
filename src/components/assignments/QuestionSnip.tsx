@@ -163,17 +163,22 @@ export function mergeSnipPieces(urls: string[]): string[] {
  * Every piece of one question joined into a single picture — so a question that
  * carries on over a page break reads as one thing, with the answer-key pages
  * left out and no piece repeated.
+ *
+ * Set `answers` when the pictures ARE the official answer (a released mark
+ * scheme); only then are answer pages allowed through.
  */
 export function QuestionSnipStack({
   urls,
   alt = "Question as printed on the original paper",
   className = "",
+  answers = false,
 }: {
   urls: string[];
   alt?: string;
   className?: string;
+  answers?: boolean;
 }) {
-  const pieces = mergeSnipPieces(questionPagesOnly(urls));
+  const pieces = mergeSnipPieces(answers ? urls : questionPagesOnly(urls));
   if (pieces.length === 0) return null;
   return (
     <div className={`overflow-hidden rounded-lg border border-border bg-card ${className}`}>
@@ -183,4 +188,5 @@ export function QuestionSnipStack({
     </div>
   );
 }
+
 

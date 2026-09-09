@@ -1822,7 +1822,9 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     // Mark schemes are only sent once the teacher reveals them.
     const { data: allQuestions } = await db
       .from("questions")
-      .select("id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode")
+      .select(
+        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image",
+      )
       .eq("assignment_id", data.assignmentId)
       .order("position");
 
@@ -1898,6 +1900,8 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
             assignment: access.assignmentPhotoMode,
           }),
           imageUrls: await signPaperPages(db, q.image_paths ?? []),
+          tagLabel: q.tag_label ?? "",
+          tagImage: q.tag_image ?? "",
         })),
       ),
 
@@ -2411,7 +2415,9 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
       .maybeSingle();
     const { data: questions } = await db
       .from("questions")
-      .select("id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode")
+      .select(
+        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image",
+      )
       .eq("assignment_id", data.assignmentId)
       .order("position");
 
@@ -2484,6 +2490,8 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
             assignment: assignment.photo_mode as string | null,
           }),
           imageUrls: await signPaperPages(db, q.image_paths ?? []),
+          tagLabel: q.tag_label ?? "",
+          tagImage: q.tag_image ?? "",
         })),
       ),
 

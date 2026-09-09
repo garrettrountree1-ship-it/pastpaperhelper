@@ -26,6 +26,8 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
         seconds: z.number().int().min(15).max(1800),
         /** Stopwatch mode: no time limit, just count the time taken. */
         countUp: z.boolean().optional(),
+        /** 0 means as many tries as they like. */
+        maxAttempts: z.number().int().min(0).max(20).optional(),
         targetStudentId: z.string().uuid().nullable().optional(),
         targetStudentIds: z.array(z.string().uuid()).max(200).optional(),
       })
@@ -77,6 +79,7 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
         question_image: data.questionImage || null,
         seconds: data.seconds,
         count_up: data.countUp ?? false,
+        max_attempts: data.maxAttempts ?? 0,
         ends_at: endsAt,
         parts,
         target_student_id: targets.length === 1 ? (targets[0] ?? null) : null,
@@ -154,7 +157,7 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
     const { data: check } = await supabase
       .from("formative_checks")
       .select(
-        "id, question, question_image, seconds, count_up, created_at, ends_at, teacher_id, expected_answer, released_answer, answer_released_at, parts, target_student_id, target_student_ids",
+        "id, question, question_image, seconds, count_up, created_at, ends_at, teacher_id, expected_answer, released_answer, answer_released_at, parts, max_attempts, target_student_id, target_student_ids",
       )
       .eq("class_id", data.classId)
       .is("closed_at", null)
@@ -198,6 +201,7 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
         | null,
       parts: ((check.parts ?? []) as string[]),
       solvedParts,
+      maxAttempts: (check.max_attempts ?? 0) as number,
       targetStudentId: (check.target_student_id ?? null) as string | null,
       targetStudentIds: ((check.target_student_ids ?? []) as string[]),
 
@@ -236,7 +240,7 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
     const { data: check } = await supabase
       .from("formative_checks")
       .select(
-        "id, class_id, question, question_image, expected_answer, seconds, count_up, created_at, ends_at, closed_at, teacher_id, parts, target_student_id, target_student_ids",
+        "id, class_id, question, question_image, expected_answer, seconds, count_up, created_at, ends_at, closed_at, teacher_id, parts, max_attempts, target_student_id, target_student_ids",
       )
       .eq("id", data.checkId)
       .maybeSingle();
@@ -261,6 +265,14 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
       .eq("check_id", data.checkId)
       .eq("student_id", userId);
     const attempt = (previous ?? []).length + 1;
+
+    // The teacher can cap how many tries each student gets on this question.
+    const maxAttempts = (check.max_attempts ?? 0) as number;
+    if (!data.practice && maxAttempts > 0 && attempt > maxAttempts) {
+      throw new Error(
+        `You have used all ${maxAttempts} ${maxAttempts === 1 ? "try" : "tries"} for this question.`,
+      );
+    }
 
     // Parts already right on an earlier try stay right — no need to redo them.
     const alreadyRight = new Set<string>();

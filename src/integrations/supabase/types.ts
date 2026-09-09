@@ -704,6 +704,7 @@ export type Database = {
           ends_at: string
           expected_answer: string | null
           id: string
+          max_attempts: number
           parts: string[]
           question: string
           question_image: string | null
@@ -723,6 +724,7 @@ export type Database = {
           ends_at: string
           expected_answer?: string | null
           id?: string
+          max_attempts?: number
           parts?: string[]
           question: string
           question_image?: string | null
@@ -742,6 +744,7 @@ export type Database = {
           ends_at?: string
           expected_answer?: string | null
           id?: string
+          max_attempts?: number
           parts?: string[]
           question?: string
           question_image?: string | null

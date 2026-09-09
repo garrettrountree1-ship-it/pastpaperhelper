@@ -94,6 +94,15 @@ const TIMER_OPTIONS = [
   { label: "10 min", value: 600 },
 ];
 
+/** How many goes a student gets on a formative check (0 = unlimited). */
+const ATTEMPT_OPTIONS = [
+  { value: 0, label: "Unlimited" },
+  { value: 1, label: "1 try" },
+  { value: 2, label: "2 tries" },
+  { value: 3, label: "3 tries" },
+  { value: 5, label: "5 tries" },
+] as const;
+
 function formatDuration(totalSeconds: number) {
   const safe = Math.max(0, Math.round(totalSeconds));
   const mm = Math.floor(safe / 60);
@@ -238,6 +247,8 @@ export function FormativeCheckButton({
   const [customMinutes, setCustomMinutes] = useState("1");
   const [customSeconds, setCustomSeconds] = useState("30");
   const [selected, setSelected] = useState<string[]>([]);
+  // 0 = as many tries as they like.
+  const [maxAttempts, setMaxAttempts] = useState(0);
   const wholeClass = selected.length === 0;
   const customTotal =
     Math.max(0, Math.floor(Number(customMinutes) || 0)) * 60 +
@@ -262,6 +273,7 @@ export function FormativeCheckButton({
           questionImage,
           seconds: effectiveSeconds,
           countUp,
+          maxAttempts,
           targetStudentIds: selected,
         },
       }),
@@ -278,6 +290,7 @@ export function FormativeCheckButton({
       setSelected([]);
       setCustomTimer(false);
       setCountUp(false);
+      setMaxAttempts(0);
       await queryClient.invalidateQueries({ queryKey: ["formative-active", classId] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -497,6 +510,23 @@ export function FormativeCheckButton({
                 </span>
               </div>
             ) : null}
+          </div>
+          <div className="space-y-1">
+            <Label>Tries allowed</Label>
+            <p className="text-xs text-muted-foreground">How many goes each student gets</p>
+            <div className="flex flex-wrap gap-2">
+              {ATTEMPT_OPTIONS.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={maxAttempts === option.value ? "default" : "outline"}
+                  onClick={() => setMaxAttempts(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
           </div>
 
         </div>
@@ -726,6 +756,12 @@ export function FormativeCheckPanel({
 
 
   const student = !check.isTeacher;
+  // Teacher's tries limit for this question (0 = as many as they like).
+  const triesLeft =
+    check.maxAttempts && check.maxAttempts > 0
+      ? Math.max(0, check.maxAttempts - check.myAttempts.length)
+      : null;
+  const outOfTries = triesLeft === 0;
   const boardOn = Boolean(board.data?.enabled);
   const boardRows = board.data?.rows ?? [];
   const myAlias = boardRows.find((row) => row.isMe)?.alias ?? "Student";
@@ -930,6 +966,13 @@ export function FormativeCheckPanel({
               </div>
             ) : null}
 
+            {outOfTries && !correct ? (
+              <p className="rounded-lg border border-border bg-secondary/40 p-3 text-base">
+                You have used all {check.maxAttempts} of your tries for this question — wait for
+                your teacher to go through it.
+              </p>
+            ) : null}
+
             {timeUp && !correct ? (
               <p className="rounded-lg border border-border bg-secondary/40 p-3 text-base">
                 Time is up — you can still keep trying until you get it right.
@@ -992,14 +1035,23 @@ export function FormativeCheckPanel({
                 ) : null}
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm text-muted-foreground">
-                    {check.myAttempts.length > 0
-                      ? `Attempt ${check.myAttempts.length} sent — try again!`
-                      : "As many tries as you like"}
+                    {triesLeft !== null
+                      ? triesLeft > 0
+                        ? `${triesLeft} ${triesLeft === 1 ? "try" : "tries"} left`
+                        : "No tries left on this question"
+                      : check.myAttempts.length > 0
+                        ? `Attempt ${check.myAttempts.length} sent — try again!`
+                        : "As many tries as you like"}
 
                   </span>
                   <Button
                     onClick={() => send.mutate()}
-                    disabled={!combined.trim() || send.isPending || !isEnglishOnly(combined)}
+                    disabled={
+                      !combined.trim() ||
+                      send.isPending ||
+                      !isEnglishOnly(combined) ||
+                      outOfTries
+                    }
                   >
                     {send.isPending ? "Checking..." : "Send answer"}
                   </Button>

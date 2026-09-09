@@ -1,0 +1,1 @@
+ALTER TABLE public.formative_checks ADD COLUMN IF NOT EXISTS max_attempts integer NOT NULL DEFAULT 0;

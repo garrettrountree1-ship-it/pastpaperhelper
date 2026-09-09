@@ -51,7 +51,10 @@ const SHARED_RULES = [
   "The upload is often NOT a clean official paper: teachers paste questions and mark schemes together from several different papers into a Word document or PDF, in any order, with inconsistent numbering, duplicated numbers, missing numbers, stray headings, tables and screenshots.",
   "Papers mix question types freely: multiple choice (A/B/C/D), short answer, calculations, diagram/drawing tasks and extended writing. Treat every one of them as a question.",
   "Every answerable sub-part is its own item: 1(a), 1(b)(i), 1(b)(ii), 2(a) ... Never merge sub-parts and never summarise a paper down to a few sample questions.",
+  "Sub-part labels are printed in many styles and ALL of them count as their own part: (a), a), a., (i), (ii), (a)(i), (a.i), (a.ii), (b.iii), c.i, ai, aii, bi, bii. A label such as \"(a.ii)\" or \"(b)\" standing alone on its own line is a real sub-part even when its parent number is printed pages earlier.",
   "Work through the documents page by page, in order, from the first question to the very last one, including anything that appears after a mark scheme block or between mark scheme blocks.",
+  "In teacher-made documents each sub-part is usually followed immediately by its own mark scheme block, then the NEXT sub-part continues below or on the following page. Always keep reading past every mark scheme block: the parts printed after it are still questions and are the ones most often missed.",
+  "Before you finish, walk the sub-part letters and roman numerals of every question in order and check none is absent: if you have (a) and (a)(i) and (b), make sure (a)(ii) is not printed somewhere between them. A gap in the sequence means you missed a part — go back and find it.",
   "Never skip a question because it looks out of place, unnumbered, repeated, or because its numbering clashes with an earlier one.",
 ].join(" ");
 

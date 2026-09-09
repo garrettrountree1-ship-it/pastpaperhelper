@@ -1,0 +1,3 @@
+ALTER TABLE public.questions
+  ADD COLUMN IF NOT EXISTS tag_label text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS tag_image text NOT NULL DEFAULT '';

@@ -707,6 +707,10 @@ export const insertQuestionAfter = createServerFn({ method: "POST" })
 
     const paths = (current.image_paths ?? []) as string[];
     const lastPath = paths[paths.length - 1];
+    // Seed the answer picture from the previous part's answer cut, so the
+    // teacher recuts the printed mark scheme instead of typing it out.
+    const answerPaths = (current.answer_image_paths ?? []) as string[];
+    const lastAnswerPath = answerPaths[answerPaths.length - 1];
     const { data: inserted, error } = await db
       .from("questions")
       .insert({
@@ -716,7 +720,7 @@ export const insertQuestionAfter = createServerFn({ method: "POST" })
         marks: 1,
         position: current.position + 1,
         image_paths: lastPath ? [cropAfter(lastPath)] : [],
-        answer_image_paths: [],
+        answer_image_paths: lastAnswerPath ? [cropAfter(lastAnswerPath)] : [],
       })
       .select("id")
       .single();

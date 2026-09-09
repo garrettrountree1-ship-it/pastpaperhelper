@@ -631,6 +631,13 @@ function AssignmentDialog({
 
   const extractMutation = useMutation({
     mutationFn: async () => {
+      if (typeof Notification !== "undefined" && Notification.permission === "default") {
+        try {
+          await Notification.requestPermission();
+        } catch {
+          // notifications are optional — ignore
+        }
+      }
       const [paper, scheme] = await Promise.all([
         filesToPages(paperFiles),
         filesToPages(schemeFiles),
@@ -651,9 +658,32 @@ function AssignmentDialog({
         })),
       );
       toast.success(`${result.questions.length} questions read from your files`);
+      if (typeof document !== "undefined" && document.hidden) {
+        document.title = "✅ Your paper is ready — PastPaperHelper.AI";
+        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+          try {
+            new Notification("PastPaperHelper.AI", {
+              body: `Finished reading your paper — ${result.questions.length} questions found.`,
+            });
+          } catch {
+            // ignore
+          }
+        }
+      }
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
+  const extractPending = extractMutation.isPending;
+  useEffect(() => {
+    if (!extractPending || typeof document === "undefined") return;
+    const previous = document.title;
+    document.title = "⏳ Reading your paper… — PastPaperHelper.AI";
+    return () => {
+      // Keep the "paper is ready" title set on success while the teacher was away.
+      if (document.title.startsWith("⏳")) document.title = previous;
+    };
+  }, [extractPending]);
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -918,6 +948,14 @@ function AssignmentDialog({
                 ? "Reading your uploaded paper..."
                 : "Extract questions from uploaded paper"}
             </Button>
+            {extractMutation.isPending ? (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Carefully cutting out every question, diagram and symbol takes a few minutes for a
+                full paper — sit back and grab a coffee ☕ You can switch to another tab while you
+                wait: the tab title will update and you&apos;ll get a notification the moment
+                it&apos;s ready.
+              </p>
+            ) : null}
             {editing ? (
               <p className="mt-2 text-xs text-muted-foreground">
                 Extracting replaces the questions below.

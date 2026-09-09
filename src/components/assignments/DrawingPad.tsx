@@ -1,4 +1,4 @@
-import { Eraser, Maximize, PenLine, Undo2, ZoomIn, ZoomOut } from "lucide-react";
+import { Eraser, Expand, Maximize, Minimize, PenLine, Undo2, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -24,15 +24,20 @@ const MAX_ZOOM = 4;
  * Supports zooming in for fine detail (buttons, trackpad pinch, or Ctrl/⌘ +
  * scroll wheel); strokes are stored in pad coordinates so zooming never
  * distorts the work.
+ * When `backgroundUrls` are given, the pad can be opened full screen with the
+ * question picture printed underneath so the student writes straight onto it.
  */
 export function DrawingPad({
   disabled = false,
   height = "h-[28rem]",
+  backgroundUrls = [],
   onAttach,
 }: {
   disabled?: boolean;
   /** Tailwind height class for the pad surface. */
   height?: string;
+  /** Question picture(s) shown faintly under the ink in full screen. */
+  backgroundUrls?: string[];
   onAttach: (file: File) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -43,9 +48,12 @@ export function DrawingPad({
   const offsetRef = useRef({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [hasInk, setHasInk] = useState(false);
+  const [full, setFull] = useState(false);
+  const backgroundsRef = useRef<HTMLImageElement[]>([]);
   const [color, setColor] = useState(PEN_COLORS[0]!.value);
   const colorRef = useRef(color);
   colorRef.current = color;
+
 
   function redraw() {
     const canvas = canvasRef.current;
@@ -57,8 +65,18 @@ export function DrawingPad({
     ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
     ctx.translate(offsetRef.current.x, offsetRef.current.y);
     ctx.scale(zoomRef.current, zoomRef.current);
+    // The question picture sits under the ink so the work is marked in context.
+    const padWidth = canvas.width / dpr;
+    let y = 0;
+    for (const image of backgroundsRef.current) {
+      if (!image.complete || !image.naturalWidth) continue;
+      const h = (padWidth * image.naturalHeight) / image.naturalWidth;
+      ctx.drawImage(image, 0, y, padWidth, h);
+      y += h + 8;
+    }
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
+
     for (const stroke of strokesRef.current) {
       ctx.strokeStyle = stroke.color;
       ctx.lineWidth = stroke.width;
@@ -114,7 +132,38 @@ export function DrawingPad({
     resize();
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
-  }, []);
+  }, [full]);
+
+  // Load the question picture(s) for the full-screen pad.
+  useEffect(() => {
+    if (!full || backgroundUrls.length === 0) {
+      backgroundsRef.current = [];
+      redraw();
+      return;
+    }
+    let cancelled = false;
+    const images = backgroundUrls.slice(0, 3).map((url) => {
+      const image = new Image();
+      image.crossOrigin = "anonymous";
+      image.onload = () => {
+        if (!cancelled) redraw();
+      };
+      // A picture that can't be read stays out rather than blocking the pad.
+      image.onerror = () => {
+        backgroundsRef.current = backgroundsRef.current.filter((item) => item !== image);
+        if (!cancelled) redraw();
+      };
+      image.src = url;
+      return image;
+    });
+    backgroundsRef.current = images;
+    redraw();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [full, backgroundUrls.join("|")]);
+
 
   // Ctrl/⌘ + wheel or trackpad pinch zooms the pad, anchored at the cursor.
   // React's onWheel is passive, so this needs a native non-passive listener.
@@ -186,16 +235,47 @@ export function DrawingPad({
     }, "image/png");
   }
 
+  /** Minimising saves the sheet so the student can go straight to submitting. */
+  function minimise() {
+    if (hasInk) attach();
+    setFull(false);
+  }
+
   return (
-    <div className="rounded-lg border border-dashed border-border p-3">
-      <p className="flex items-center gap-2 text-sm font-medium">
-        <PenLine className="size-4" />
-        Write your working here
-      </p>
+    <div
+      className={
+        full
+          ? "fixed inset-0 z-50 flex select-none flex-col overflow-auto bg-background p-3 [-webkit-touch-callout:none] [-webkit-user-select:none]"
+          : "rounded-lg border border-dashed border-border p-3"
+      }
+      onCopy={(event) => event.preventDefault()}
+      onCut={(event) => event.preventDefault()}
+      onContextMenu={(event) => event.preventDefault()}
+      onDragStart={(event) => event.preventDefault()}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-sm font-medium">
+          <PenLine className="size-4" />
+          Write your working here
+        </p>
+        {full ? (
+          <Button type="button" size="sm" variant="outline" onClick={minimise}>
+            <Minimize className="size-4" />
+            Minimise &amp; save
+          </Button>
+        ) : (
+          <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={() => setFull(true)}>
+            <Expand className="size-4" />
+            Full screen
+          </Button>
+        )}
+      </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        Use a stylus, finger or mouse. Pinch or Ctrl/⌘ + scroll to zoom in for detail. When
-        you&apos;re done, attach it — it&apos;s marked step by step like a photo of paper.
+        {full
+          ? "The question is printed underneath — write straight over it. Minimise & save keeps your sheet, then press Check answer."
+          : "Use a stylus, finger or mouse. Open full screen to draw on top of the question picture."}
       </p>
+
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {PEN_COLORS.map((pen) => (
           <button
@@ -254,8 +334,11 @@ export function DrawingPad({
         onPointerUp={end}
         onPointerLeave={end}
         onPointerCancel={end}
-        className={`mt-2 w-full touch-none rounded-md border border-border bg-white ${height}`}
+        className={`mt-2 w-full touch-none rounded-md border border-border bg-white ${
+          full ? "min-h-0 flex-1" : height
+        }`}
       />
+
 
       <div className="mt-2 flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={attach} disabled={disabled || !hasInk}>

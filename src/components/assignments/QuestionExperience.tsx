@@ -396,7 +396,7 @@ export function QuestionExperience({
               Draw your answer on the pad
             </summary>
             <div className="mt-3">
-              <DrawingPad disabled={locked} onAttach={onAddDrawing} />
+              <DrawingPad disabled={locked} backgroundUrls={snipUrls} onAttach={onAddDrawing} />
             </div>
           </details>
         ) : null}

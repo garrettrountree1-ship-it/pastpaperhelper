@@ -122,6 +122,9 @@ export function QuestionExperience({
   onShowPhoto: () => void;
   photoCount: number;
   photoUrls?: string[];
+  /** Photos picked but not submitted yet, so they can be previewed and removed. */
+  photoFiles?: { name: string; url: string }[];
+  onRemovePhoto?: (name: string) => void;
   onPhotosChange: (files: FileList | null) => void;
   /** Attach an on-screen (stylus) working sheet as an image. */
   onAddDrawing?: (file: File) => void;

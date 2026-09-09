@@ -966,6 +966,13 @@ export function FormativeCheckPanel({
               </div>
             ) : null}
 
+            {outOfTries && !correct ? (
+              <p className="rounded-lg border border-border bg-secondary/40 p-3 text-base">
+                You have used all {check.maxAttempts} of your tries for this question — wait for
+                your teacher to go through it.
+              </p>
+            ) : null}
+
             {timeUp && !correct ? (
               <p className="rounded-lg border border-border bg-secondary/40 p-3 text-base">
                 Time is up — you can still keep trying until you get it right.

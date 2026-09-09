@@ -1,9 +1,7 @@
 import { formatDueDate } from "@/lib/datetime";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import type { ReactNode } from "react";
 import { useRef, useState } from "react";
-import { Plus } from "lucide-react";
 import {
   HELP_PILL,
   HELP_PILL_DOT,
@@ -15,7 +13,6 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { VocabSheet } from "@/components/assignments/VocabSheet";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
-import { QuestionRecutDialog } from "@/components/assignments/QuestionRecutDialog";
 import { parseSnipBand } from "@/components/assignments/QuestionSnip";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { Badge } from "@/components/ui/badge";
@@ -34,10 +31,8 @@ import type { PhotoMode } from "@/lib/photo-mode";
 import { photoAvailability } from "@/lib/photo-mode";
 import {
   getAssignmentPreview,
-  insertQuestionAfter,
   previewGradeAnswer,
   previewTutorMessage,
-  updateQuestionCrop,
 } from "@/lib/app.functions";
 
 
@@ -115,9 +110,6 @@ function PreviewPage() {
   const { assignmentId } = Route.useParams();
   const [flags, setFlags] = useState(0);
   const [studentId, setStudentId] = useState<string>("class");
-  // Teacher-only editing tools (recut / add a question). Off by default so the
-  // preview shows exactly what a student sees — students never get these controls.
-  const [editing, setEditing] = useState(false);
   const preview = useQuery({
     queryKey: ["assignment-preview", assignmentId, studentId],
     queryFn: () =>
@@ -182,16 +174,6 @@ function PreviewPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button
-                  type="button"
-                  variant={editing ? "default" : "outline"}
-                  size="sm"
-                  className="h-8 text-xs"
-                  onClick={() => setEditing((on) => !on)}
-                  title="Teacher only — students never see these controls"
-                >
-                  {editing ? "Done editing cuts" : "Edit cuts"}
-                </Button>
               </div>
               {settings ? (
                 <div className="mb-3 flex flex-wrap gap-2 text-xs">
@@ -262,13 +244,8 @@ function PreviewPage() {
               {groupByPage(data.questions).map((group) => (
                 <div key={group.key} className="space-y-4">
                   {group.questions.map((question) => (
-                    <AddQuestionRow
-                      key={question.id}
-                      assignmentId={assignmentId}
-                      questionId={question.id}
-                      editing={editing}
-                    >
                     <PreviewQuestion
+                      key={question.id}
                       assignmentId={assignmentId}
                       question={question}
                       flags={flags}
@@ -278,13 +255,9 @@ function PreviewPage() {
                       allowSteps={settings?.allowSteps !== false}
                       maxAttempts={settings?.maxAttempts ?? 0}
                       markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
-                      editing={editing}
                       onFlag={() => setFlags((count) => count + 1)}
-
                     />
-                    </AddQuestionRow>
                   ))}
-
                 </div>
               ))}
             </div>
@@ -300,49 +273,6 @@ You can test any question here — the AI marks it exactly as it would for a stu
   );
 }
 
-/** Wraps a question with a teacher-only "add a question here" control below it. */
-function AddQuestionRow({
-  assignmentId,
-  questionId,
-  editing,
-  children,
-}: {
-  assignmentId: string;
-  questionId: string;
-  editing: boolean;
-  children: ReactNode;
-}) {
-  const queryClient = useQueryClient();
-  const add = useMutation({
-    mutationFn: () => insertQuestionAfter({ data: { questionId } }),
-    onSuccess: async (result) => {
-      toast.success(`Added question ${result.label} — cut its picture next.`);
-      await queryClient.invalidateQueries({ queryKey: ["assignment-preview", assignmentId] });
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-  return (
-    <div>
-      {children}
-      {editing ? (
-      <div className="flex justify-center py-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="text-xs text-muted-foreground"
-          disabled={add.isPending}
-          onClick={() => add.mutate()}
-        >
-          <Plus className="size-3" />
-          {add.isPending ? "Adding..." : "Add a question here"}
-        </Button>
-      </div>
-      ) : null}
-    </div>
-  );
-}
-
 function PreviewQuestion({
   assignmentId,
   question,
@@ -353,12 +283,10 @@ function PreviewQuestion({
   allowSteps,
   maxAttempts,
   markSchemeRevealed,
-  editing,
   onFlag,
 }: {
   assignmentId: string;
   question: Question;
-  editing: boolean;
   flags: number;
   keywordTranslation: boolean;
   protectQuestions: boolean;
@@ -367,7 +295,6 @@ function PreviewQuestion({
   maxAttempts: number;
   markSchemeRevealed: boolean;
   onFlag: () => void;
-
 }) {
   const [answer, setAnswer] = useState("");
   const { requiresPhoto, photoOnly } = photoAvailability(
@@ -380,22 +307,6 @@ function PreviewQuestion({
   const [reply, setReply] = useState("");
   const [thread, setThread] = useState<Array<{ role: "tutor" | "student"; content: string }>>([]);
   const [attempts, setAttempts] = useState(0);
-  const queryClient = useQueryClient();
-  const saveCrop = useMutation({
-    mutationFn: ({
-      imagePaths,
-      target,
-    }: {
-      imagePaths: string[];
-      imageUrls: string[];
-      target?: "question" | "answer";
-    }) => updateQuestionCrop({ data: { questionId: question.id, imagePaths, target: target ?? "question" } }),
-    onSuccess: async () => {
-      toast.success("Question crop saved");
-      await queryClient.invalidateQueries({ queryKey: ["assignment-preview", assignmentId] });
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
 
   const check = useMutation({
     mutationFn: async () => {
@@ -518,34 +429,6 @@ function PreviewQuestion({
       maxAttempts={maxAttempts}
       assignmentId={assignmentId}
       protectQuestions={protectQuestions}
-
-      snipAction={
-        editing &&
-        (question.image_paths ?? []).length > 0 && (question.imageUrls ?? []).length > 0 ? (
-          <QuestionRecutDialog
-            imagePaths={question.image_paths ?? []}
-            imageUrls={question.imageUrls ?? []}
-            saving={saveCrop.isPending}
-            onSave={async (imagePaths) => {
-              await saveCrop.mutateAsync({ imagePaths, imageUrls: [] });
-            }}
-          />
-        ) : null
-      }
-      answerAction={
-        editing &&
-        (question.answerImagePaths ?? []).length > 0 && (question.answerImageUrls ?? []).length > 0 ? (
-          <QuestionRecutDialog
-            label="Recut answer"
-            imagePaths={question.answerImagePaths ?? []}
-            imageUrls={question.answerImageUrls ?? []}
-            saving={saveCrop.isPending}
-            onSave={async (imagePaths) => {
-              await saveCrop.mutateAsync({ imagePaths, imageUrls: [], target: "answer" });
-            }}
-          />
-        ) : null
-      }
       headerAction={
         <div className="flex flex-wrap justify-end gap-2">
           <Button

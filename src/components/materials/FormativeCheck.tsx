@@ -582,7 +582,13 @@ export function FormativeCheckPanel({
             className={student ? "shrink-0 text-sm" : "shrink-0"}
           >
             <Timer className={student ? "mr-1 size-4" : "mr-1 size-3"} />
-            {timeUp ? "Time up" : (countdown?.label ?? "--")}
+            {check.countUp
+              ? totalSeconds !== null
+                ? formatDuration(totalSeconds)
+                : (stopwatch?.label ?? "0s")
+              : timeUp
+                ? "Time up"
+                : (countdown?.label ?? "--")}
           </Badge>
           <p
             className={

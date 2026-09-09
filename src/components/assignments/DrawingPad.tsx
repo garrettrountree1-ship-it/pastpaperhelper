@@ -158,9 +158,11 @@ export function DrawingPad({
     if (canvas) {
       const padWidth = (canvas.width / dprRef.current) * photoScaleRef.current;
       let y = 0;
-      for (const image of backgroundsRef.current) {
+      for (const piece of backgroundsRef.current) {
+        const image = piece.image;
         if (!image.complete || !image.naturalWidth) continue;
-        y += (padWidth * image.naturalHeight) / image.naturalWidth + 8;
+        const sh = Math.max(1, (piece.bottom - piece.top) * image.naturalHeight);
+        y += (padWidth * sh) / image.naturalWidth + 8;
       }
       bottom = y;
     }

@@ -9,6 +9,7 @@ import {
   Send,
   Sparkles,
   Timer,
+  TimerReset,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -88,6 +89,13 @@ const TIMER_OPTIONS = [
   { label: "10 min", value: 600 },
 ];
 
+function formatDuration(totalSeconds: number) {
+  const safe = Math.max(0, Math.round(totalSeconds));
+  const mm = Math.floor(safe / 60);
+  const ss = String(safe % 60).padStart(2, "0");
+  return mm > 0 ? `${mm}:${ss}` : `${safe}s`;
+}
+
 function useCountdown(endsAt: string | undefined) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -97,9 +105,20 @@ function useCountdown(endsAt: string | undefined) {
   }, [endsAt]);
   if (!endsAt) return null;
   const left = Math.max(0, Math.round((new Date(endsAt).getTime() - now) / 1000));
-  const mm = Math.floor(left / 60);
-  const ss = String(left % 60).padStart(2, "0");
-  return { left, label: mm > 0 ? `${mm}:${ss}` : `${left}s` };
+  return { left, label: formatDuration(left) };
+}
+
+/** Counts up for as long as the student needs, from when the question was sent. */
+function useStopwatch(startedAt: string | undefined, running: boolean) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!startedAt || !running) return;
+    const id = window.setInterval(() => setNow(Date.now()), 500);
+    return () => window.clearInterval(id);
+  }, [startedAt, running]);
+  if (!startedAt) return null;
+  const elapsed = Math.max(0, Math.round((now - new Date(startedAt).getTime()) / 1000));
+  return { elapsed, label: formatDuration(elapsed) };
 }
 
 /** Teacher-only launcher for a timed quick class question. */
@@ -119,6 +138,7 @@ export function FormativeCheckButton({
   const [questionImage, setQuestionImage] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(60);
   const [customTimer, setCustomTimer] = useState(false);
+  const [countUp, setCountUp] = useState(false);
   const [customMinutes, setCustomMinutes] = useState("1");
   const [customSeconds, setCustomSeconds] = useState("30");
   const [selected, setSelected] = useState<string[]>([]);
@@ -126,8 +146,8 @@ export function FormativeCheckButton({
   const customTotal =
     Math.max(0, Math.floor(Number(customMinutes) || 0)) * 60 +
     Math.max(0, Math.floor(Number(customSeconds) || 0));
-  const effectiveSeconds = customTimer ? customTotal : seconds;
-  const timerValid = effectiveSeconds >= 15 && effectiveSeconds <= 1800;
+  const effectiveSeconds = countUp ? 1800 : customTimer ? customTotal : seconds;
+  const timerValid = countUp || (effectiveSeconds >= 15 && effectiveSeconds <= 1800);
 
   const students = useQuery({
     queryKey: ["class-roster", classId],
@@ -145,6 +165,7 @@ export function FormativeCheckButton({
           expectedAnswer: expected.trim() || null,
           questionImage,
           seconds: effectiveSeconds,
+          countUp,
           targetStudentIds: selected,
         },
       }),
@@ -160,6 +181,7 @@ export function FormativeCheckButton({
       setQuestionImage(null);
       setSelected([]);
       setCustomTimer(false);
+      setCountUp(false);
       await queryClient.invalidateQueries({ queryKey: ["formative-active", classId] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -301,14 +323,18 @@ export function FormativeCheckButton({
             <Label>Timer</Label>
             <div className="flex flex-wrap gap-2">
 
+
               {TIMER_OPTIONS.map((option) => (
                 <Button
                   key={option.value}
                   type="button"
                   size="sm"
-                  variant={seconds === option.value && !customTimer ? "default" : "outline"}
+                  variant={
+                    seconds === option.value && !customTimer && !countUp ? "default" : "outline"
+                  }
                   onClick={() => {
                     setCustomTimer(false);
+                    setCountUp(false);
                     setSeconds(option.value);
                   }}
                 >
@@ -319,14 +345,35 @@ export function FormativeCheckButton({
               <Button
                 type="button"
                 size="sm"
-                variant={customTimer ? "default" : "outline"}
-                onClick={() => setCustomTimer(true)}
+                variant={customTimer && !countUp ? "default" : "outline"}
+                onClick={() => {
+                  setCountUp(false);
+                  setCustomTimer(true);
+                }}
               >
                 <Timer className="size-3" />
                 Custom
               </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={countUp ? "default" : "outline"}
+                onClick={() => {
+                  setCustomTimer(false);
+                  setCountUp(true);
+                }}
+              >
+                <TimerReset className="size-3" />
+                Count up
+              </Button>
             </div>
-            {customTimer ? (
+            {countUp ? (
+              <p className="pt-1 text-xs text-muted-foreground">
+                No time limit — the clock counts up while students work, and each student sees
+                the total time they took once they get it right.
+              </p>
+            ) : null}
+            {customTimer && !countUp ? (
               <div className="flex items-center gap-2 pt-1">
                 <Input
                   id="formative-custom-minutes"
@@ -422,7 +469,8 @@ export function FormativeCheckPanel({
   });
   const raw = active.data ?? null;
   const check = raw ? { ...raw, isTeacher: raw.isTeacher && !asStudent } : null;
-  const countdown = useCountdown(check?.endsAt);
+  const countdown = useCountdown(check?.countUp ? undefined : check?.endsAt);
+  const stopwatch = useStopwatch(check?.startedAt, Boolean(check?.countUp));
   const [answer, setAnswer] = useState("");
   const [partAnswers, setPartAnswers] = useState<Record<string, string>>({});
   const [dismissed, setDismissed] = useState<string | null>(null);
@@ -488,13 +536,25 @@ export function FormativeCheckPanel({
   const gotItRight = latest?.verdict === "correct";
   useEffect(() => {
     if (!check?.id || check.isTeacher || !gotItRight) return;
-    const id = window.setTimeout(() => setDismissed(check.id), 6000);
+    // In count-up mode the total time is on screen, so leave it up a little longer.
+    const id = window.setTimeout(() => setDismissed(check.id), check.countUp ? 12000 : 6000);
     return () => window.clearTimeout(id);
-  }, [check?.id, check?.isTeacher, gotItRight]);
+  }, [check?.id, check?.isTeacher, check?.countUp, gotItRight]);
 
   if (!check || dismissed === check.id) return null;
   const correct = gotItRight;
-  const timeUp = countdown?.left === 0;
+  const timeUp = !check.countUp && countdown?.left === 0;
+  // Count-up mode: the clock runs until this student gets it right, then the
+  // total time they took stays on screen.
+  const totalSeconds =
+    correct && latest?.createdAt && check.startedAt
+      ? Math.max(
+          0,
+          Math.round(
+            (new Date(latest.createdAt).getTime() - new Date(check.startedAt).getTime()) / 1000,
+          ),
+        )
+      : null;
 
 
   const student = !check.isTeacher;
@@ -523,7 +583,13 @@ export function FormativeCheckPanel({
             className={student ? "shrink-0 text-sm" : "shrink-0"}
           >
             <Timer className={student ? "mr-1 size-4" : "mr-1 size-3"} />
-            {timeUp ? "Time up" : (countdown?.label ?? "--")}
+            {check.countUp
+              ? totalSeconds !== null
+                ? formatDuration(totalSeconds)
+                : (stopwatch?.label ?? "0s")
+              : timeUp
+                ? "Time up"
+                : (countdown?.label ?? "--")}
           </Badge>
           <p
             className={
@@ -574,15 +640,17 @@ export function FormativeCheckPanel({
         {check.isTeacher ? (
           <div className="mt-3 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={extend.isPending}
-                onClick={() => extend.mutate(30)}
-              >
-                <Timer className="size-4" />
-                Add 30 sec
-              </Button>
+              {check.countUp ? null : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={extend.isPending}
+                  onClick={() => extend.mutate(30)}
+                >
+                  <Timer className="size-4" />
+                  Add 30 sec
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="outline"
@@ -636,6 +704,12 @@ export function FormativeCheckPanel({
                   <PartyPopper className="size-5" />
                   Yes! That&apos;s exactly right — brilliant work!
                 </p>
+                {check.countUp && totalSeconds !== null ? (
+                  <p className="mt-1 flex items-center gap-2 text-base font-medium">
+                    <TimerReset className="size-4" />
+                    You took {formatDuration(totalSeconds)} in total.
+                  </p>
+                ) : null}
                 {latest?.feedback ? <p className="mt-1 text-base">{latest.feedback}</p> : null}
                 <div className="mt-3 flex items-center gap-2">
                   <Button size="sm" onClick={() => setDismissed(check.id)}>

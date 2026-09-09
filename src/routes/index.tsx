@@ -199,7 +199,7 @@ function Landing() {
             A-Level · AP · IB · IGCSE
           </p>
           <h1 className="mt-4 max-w-4xl text-4xl leading-[1.05] sm:text-5xl lg:text-6xl">
-            Teach the lesson. Set the questions. One place for both.
+            Teach the lesson. Set the homework. One place for both.
           </h1>
           <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
             PastPaperHelper.AI gives every class two things that work together: a live

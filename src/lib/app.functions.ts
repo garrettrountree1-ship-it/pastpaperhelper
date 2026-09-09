@@ -2131,7 +2131,8 @@ export const submitAssignment = createServerFn({ method: "POST" })
     if (submitAccess.pastDue) throw new Error(PAST_DUE_MESSAGE);
 
     // "Take it like a real paper": the whole paper may only be handed in a set number of times.
-    const paperRules = await tutorSettingsForAssignment(db, data.assignmentId, userId);
+    const { tutorSettingsForAssignment: paperSettings } = await import("./tutor-settings.server");
+    const paperRules = await paperSettings(db, data.assignmentId, userId);
     const used = Number(current?.submit_count ?? 0) || 0;
     if (paperRules.maxPaperSubmissions > 0 && used >= paperRules.maxPaperSubmissions) {
       throw new Error(

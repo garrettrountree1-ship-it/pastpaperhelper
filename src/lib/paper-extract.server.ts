@@ -25,6 +25,13 @@ export type ExtractedQuestion = {
   answerCrops?: QuestionCrop[] | null;
 };
 
+/** Questions plus non-destructive notes for the teacher to review before publishing. */
+export type ExtractionResult = {
+  questions: ExtractedQuestion[];
+  warnings: string[];
+};
+
+
 
 
 export type UploadedFile = {
@@ -129,10 +136,21 @@ const CROP_AUDIT_SYSTEM = [
   'Reply with JSON only: {"items":[{"label":"1(a)","crops":[{"page":2,"top":0.12,"bottom":0.34}]}]}',
 ].join(" ");
 
+const CROSSCHECK_SYSTEM = [
+  "You are a bookkeeper checking an uploaded question paper and its mark scheme. You do not transcribe questions.",
+  "Report two things only.",
+  "totals: for every printed main question number, the total marks printed for the WHOLE question (e.g. \"[Total: 9]\", \"(9 marks)\" or the sum shown in the mark scheme). Omit a question when no total is printed.",
+  "answerLabels: every question part label that the mark scheme / answer key lists an answer for, using the printed form, e.g. \"7(a)\", \"7(b)(ii)\", \"12\".",
+  "Never invent labels or totals. Only report what is printed.",
+  'Reply with JSON only: {"totals":[{"question":"7","printedTotal":9}],"answerLabels":["7(a)","7(b)(i)","7(b)(ii)"]}',
+].join(" ");
+
+
+
 
 export async function extractQuestionsFromPapers(
   input: ExtractInput,
-): Promise<ExtractedQuestion[]> {
+): Promise<ExtractionResult> {
   const key = process.env["LOVABLE_API_KEY"];
   if (!key) throw new Error("AI is not configured yet. Missing LOVABLE_API_KEY.");
 
@@ -165,10 +183,31 @@ export async function extractQuestionsFromPapers(
 
   if (inventory.length === 0) {
     // Fall back to a single-pass extraction if the index could not be built.
-    return separateQuestionCrops(
-      dedupe(await runDetail(key, header, documents, [], true, hasAnswerPages)),
-    );
+    return {
+      questions: separateQuestionCrops(
+        dedupe(await runDetail(key, header, documents, [], true, hasAnswerPages)),
+      ),
+      warnings: [],
+    };
   }
+
+  // Two independent cross-checks before transcription: the printed mark totals
+  // and the labels the mark scheme answers. Neither removes anything — they only
+  // add parts that were clearly missed, plus notes for the teacher to review.
+  const crossCheck = await runCrossCheck(key, header, documents);
+  const warnings: string[] = [];
+  const missedFromAnswerKey = answerKeyGaps(inventory, crossCheck.answerLabels);
+  if (missedFromAnswerKey.length > 0) {
+    for (const label of missedFromAnswerKey) {
+      inventory.push({ label, marks: 1, pages: [] });
+      warnings.push(
+        `The mark scheme lists ${label}, which the first read did not find in the paper — it was searched for again. Check it is here, and use "Add a question here" if it is still missing.`,
+      );
+    }
+    inventory = inventory.slice(0, MAX_ITEMS);
+  }
+  warnings.push(...markTotalNotes(inventory, crossCheck.totals));
+  warnings.push(...sequenceGapNotes(inventory));
 
   const results = await runBatches(key, header, documents, inventory, hasAnswerPages);
 
@@ -179,8 +218,139 @@ export async function extractQuestionsFromPapers(
     results.push(...(await runBatches(key, header, documents, missing, hasAnswerPages)));
   }
 
-  return renumberQuestions(separateQuestionCrops(dedupe(results)));
+  const kept = new Set(results.map((r) => r.label.toLowerCase()));
+  for (const label of missedFromAnswerKey) {
+    if (!kept.has(label.toLowerCase())) {
+      warnings.push(`${label} appears in the mark scheme but could not be read from the paper.`);
+    }
+  }
+
+  return {
+    questions: renumberQuestions(separateQuestionCrops(dedupe(results))),
+    warnings: [...new Set(warnings)].slice(0, 20),
+  };
 }
+
+/** Bookkeeping only: printed totals per question and the labels the answer key covers. */
+async function runCrossCheck(
+  key: string,
+  header: string,
+  documents: Array<Record<string, unknown>>,
+): Promise<{ totals: Map<string, number>; answerLabels: string[] }> {
+  try {
+    const text = await callGateway(key, CROSSCHECK_SYSTEM, [
+      {
+        type: "text",
+        text: `${header}\n\nReport the printed question totals and the labels answered by the mark scheme.`,
+      },
+      ...documents,
+    ]);
+    const parsed = parseJson(text);
+    const totals = new Map<string, number>();
+    for (const raw of Array.isArray(parsed["totals"]) ? (parsed["totals"] as unknown[]) : []) {
+      const row = raw as Record<string, unknown>;
+      const question = String(row["question"] ?? "").trim().replace(/[^\d]/g, "");
+      const total = Math.round(Number(row["printedTotal"]));
+      if (question && Number.isFinite(total) && total > 0) totals.set(question, total);
+    }
+    const answerLabels = (
+      Array.isArray(parsed["answerLabels"]) ? (parsed["answerLabels"] as unknown[]) : []
+    )
+      .map((value) => String(value ?? "").trim())
+      .filter((value) => value.length > 0 && value.length <= 20)
+      .slice(0, MAX_ITEMS);
+    return { totals, answerLabels };
+  } catch {
+    return { totals: new Map(), answerLabels: [] };
+  }
+}
+
+/** "7(b)(ii)", "7 b ii" and "7bii" all compare equal. */
+function labelKey(label: string): string {
+  return label.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function mainNumberOf(label: string): string {
+  return /^\s*\(?(\d{1,3})/.exec(label)?.[1] ?? "";
+}
+
+/** Labels the mark scheme answers that no indexed question part covers. */
+function answerKeyGaps(inventory: InventoryItem[], answerLabels: string[]): string[] {
+  const have = new Set(inventory.map((item) => labelKey(item.label)));
+  const seen = new Set<string>();
+  const gaps: string[] = [];
+  for (const label of answerLabels) {
+    const keyed = labelKey(label);
+    if (!keyed || have.has(keyed) || seen.has(keyed)) continue;
+    // Only trust answer-key labels that name a printed question number.
+    if (!mainNumberOf(label)) continue;
+    seen.add(keyed);
+    gaps.push(label);
+  }
+  return gaps.slice(0, 30);
+}
+
+/** Notes where the parts found do not add up to the paper's printed total. */
+function markTotalNotes(inventory: InventoryItem[], totals: Map<string, number>): string[] {
+  const sums = new Map<string, number>();
+  for (const item of inventory) {
+    const main = mainNumberOf(item.label);
+    if (!main) continue;
+    sums.set(main, (sums.get(main) ?? 0) + item.marks);
+  }
+  const notes: string[] = [];
+  for (const [question, printed] of totals) {
+    const found = sums.get(question);
+    if (found === undefined || found === printed) continue;
+    notes.push(
+      `Question ${question} is printed as ${printed} marks but the parts found add up to ${found}. A part may be missing, or the paper's own total may differ.`,
+    );
+  }
+  return notes;
+}
+
+const LETTER_SEQUENCE = "abcdefghijklmnopqrstuvwxyz".split("");
+const ROMAN_SEQUENCE = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x"];
+
+/** Notes gaps such as "question 4 jumps from (a) to (c)". */
+function sequenceGapNotes(inventory: InventoryItem[]): string[] {
+  const groups = new Map<string, Set<string>>();
+  for (const item of inventory) {
+    const main = mainNumberOf(item.label);
+    if (!main) continue;
+    const rest = item.label.slice(item.label.indexOf(main) + main.length).toLowerCase();
+    const parts = rest.match(/[a-z]+/g) ?? [];
+    const first = parts[0];
+    if (!first) continue;
+    const set = groups.get(main) ?? new Set<string>();
+    set.add(first);
+    groups.set(main, set);
+  }
+  const notes: string[] = [];
+  for (const [question, parts] of groups) {
+    const list = [...parts];
+    const romans = list.filter((p) => ROMAN_SEQUENCE.includes(p));
+    const letters = list.filter((p) => p.length === 1 && !romans.includes(p));
+    const check = (values: string[], sequence: string[]) => {
+      const indexes = values.map((v) => sequence.indexOf(v)).filter((i) => i >= 0).sort((a, b) => a - b);
+      const first = indexes[0];
+      const last = indexes[indexes.length - 1];
+      if (first === undefined || last === undefined) return;
+      for (let i = first; i <= last; i += 1) {
+        if (!indexes.includes(i)) {
+          notes.push(
+            `Question ${question} has (${sequence[first]}) and (${sequence[last]}) but no (${sequence[i]}) — check whether that part was missed.`,
+          );
+          return;
+        }
+      }
+    };
+    check(letters, LETTER_SEQUENCE);
+    check(romans, ROMAN_SEQUENCE);
+  }
+  return notes.slice(0, 10);
+}
+
 
 /**
  * A final paper-wide guard: two different question parts must not display the

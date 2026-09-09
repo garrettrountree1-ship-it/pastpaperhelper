@@ -948,6 +948,14 @@ function AssignmentDialog({
                 ? "Reading your uploaded paper..."
                 : "Extract questions from uploaded paper"}
             </Button>
+            {extractMutation.isPending ? (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Carefully cutting out every question, diagram and symbol takes a few minutes for a
+                full paper — sit back and grab a coffee ☕ You can switch to another tab while you
+                wait: the tab title will update and you&apos;ll get a notification the moment
+                it&apos;s ready.
+              </p>
+            ) : null}
             {editing ? (
               <p className="mt-2 text-xs text-muted-foreground">
                 Extracting replaces the questions below.

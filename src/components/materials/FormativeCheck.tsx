@@ -960,23 +960,41 @@ export function FormativeCheckPanel({
 
                 {parts.length ? (
                   <div className="space-y-3">
-                    {parts.map((label) => (
-                      <div key={label} className="space-y-1">
-                        <Label htmlFor={`part-${label}`} className="text-base">
-                          Part ({label})
-                        </Label>
-                        <Textarea
-                          id={`part-${label}`}
-                          rows={2}
-                          className="text-base"
-                          value={partAnswers[label] ?? ""}
-                          onChange={(event) =>
-                            setPartAnswers((prev) => ({ ...prev, [label]: event.target.value }))
-                          }
-                          placeholder={`Your answer to (${label}), in English`}
-                        />
-                      </div>
-                    ))}
+                    <p className="text-sm text-muted-foreground">
+                      This question has {parts.length} parts — answer each one in its own box.
+                      {solved.size > 0
+                        ? ` ${solved.size} of ${parts.length} already right and locked in.`
+                        : ""}
+                    </p>
+                    {parts.map((label) =>
+                      solved.has(label) ? (
+                        <div
+                          key={label}
+                          className="flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-3 text-base"
+                        >
+                          <PartyPopper className="size-4 shrink-0 text-primary" />
+                          <span>
+                            Part ({label}) is correct — locked in. Keep going with the rest!
+                          </span>
+                        </div>
+                      ) : (
+                        <div key={label} className="space-y-1">
+                          <Label htmlFor={`part-${label}`} className="text-base">
+                            Part ({label})
+                          </Label>
+                          <Textarea
+                            id={`part-${label}`}
+                            rows={2}
+                            className="text-base"
+                            value={partAnswers[label] ?? ""}
+                            onChange={(event) =>
+                              setPartAnswers((prev) => ({ ...prev, [label]: event.target.value }))
+                            }
+                            placeholder={`Your answer to (${label}), in English`}
+                          />
+                        </div>
+                      ),
+                    )}
                   </div>
                 ) : (
                   <Textarea

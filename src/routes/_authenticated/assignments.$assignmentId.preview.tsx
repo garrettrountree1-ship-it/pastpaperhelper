@@ -263,6 +263,7 @@ function PreviewPage() {
                       allowHint={settings?.allowHint !== false}
                       allowSteps={settings?.allowSteps !== false}
                       maxAttempts={settings?.maxAttempts ?? 0}
+                      markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
                       onFlag={() => setFlags((count) => count + 1)}
 
                     />
@@ -332,6 +333,7 @@ function PreviewQuestion({
   allowHint,
   allowSteps,
   maxAttempts,
+  markSchemeRevealed,
   onFlag,
 }: {
   assignmentId: string;
@@ -342,6 +344,7 @@ function PreviewQuestion({
   allowHint: boolean;
   allowSteps: boolean;
   maxAttempts: number;
+  markSchemeRevealed: boolean;
   onFlag: () => void;
 
 }) {
@@ -468,7 +471,7 @@ function PreviewQuestion({
       checkError={check.isError ? (check.error as Error).message : undefined}
       onCheck={() => check.mutate()}
       markScheme={question.markScheme ?? null}
-      markSchemeImageUrls={question.answerImageUrls ?? []}
+      markSchemeImageUrls={markSchemeRevealed ? (question.answerImageUrls ?? []) : []}
       keywordTranslation={keywordTranslation}
       allowHint={allowHint}
       allowSteps={allowSteps}

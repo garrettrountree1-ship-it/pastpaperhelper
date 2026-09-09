@@ -30,7 +30,13 @@ import {
 
 const INHERIT = "__inherit__";
 
-type Row = { allowHint: boolean | null; allowSteps: boolean | null; maxAttempts: number | null };
+type Row = {
+  allowHint: boolean | null;
+  allowSteps: boolean | null;
+  maxAttempts: number | null;
+  examMode: boolean | null;
+  maxPaperSubmissions: number | null;
+};
 type AssignmentRow = Row & { id: string; title: string };
 type StudentRow = { id: string; name: string };
 type OverrideRow = Row & { assignmentId: string; studentId: string };
@@ -38,6 +44,43 @@ const ATTEMPT_CHOICES = [1, 2, 3, 4, 5, 6, 8, 10];
 
 function attemptLabel(value: number) {
   return value === 0 ? "Unlimited tries" : `${value} ${value === 1 ? "try" : "tries"}`;
+}
+
+const SUBMISSION_CHOICES = [1, 2, 3, 4, 5];
+
+function submissionLabel(value: number) {
+  return value === 0 ? "Unlimited hand-ins" : `${value} hand-in${value === 1 ? "" : "s"}`;
+}
+
+/** How many times the whole paper may be handed in. */
+function SubmissionsSelect({
+  value,
+  inheritLabel,
+  onChange,
+}: {
+  value: number | null;
+  inheritLabel: string | null;
+  onChange: (value: number | null) => void;
+}) {
+  return (
+    <Select
+      value={value === null ? INHERIT : String(value)}
+      onValueChange={(next) => onChange(next === INHERIT ? null : Number(next))}
+    >
+      <SelectTrigger>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {inheritLabel ? <SelectItem value={INHERIT}>{inheritLabel}</SelectItem> : null}
+        <SelectItem value="0">Unlimited hand-ins</SelectItem>
+        {SUBMISSION_CHOICES.map((count) => (
+          <SelectItem key={count} value={String(count)}>
+            {submissionLabel(count)}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 }
 
 /** On / Off / follow-the-level-above picker. */
@@ -200,7 +243,35 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                     onChange={(value) => classMutation.mutate({ maxAttempts: value ?? 0 })}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Take it like a real paper</Label>
+                  <Select
+                    value={data.klass.examMode ? "on" : "off"}
+                    onValueChange={(value) => classMutation.mutate({ examMode: value === "on" })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="on">On</SelectItem>
+                      <SelectItem value="off">Off</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Hand-ins per paper</Label>
+                  <SubmissionsSelect
+                    value={data.klass.maxPaperSubmissions}
+                    inheritLabel={null}
+                    onChange={(value) =>
+                      classMutation.mutate({ maxPaperSubmissions: value ?? 0 })
+                    }
+                  />
+                </div>
               </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Exam conditions: hints and step-by-step help are switched off.
+              </p>
             </section>
 
             <section className="rounded-lg border border-border p-4">
@@ -215,6 +286,9 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                       allowSteps: assignment.allowSteps ?? data.klass.allowSteps,
                       allowHint: assignment.allowHint ?? data.klass.allowHint,
                       maxAttempts: assignment.maxAttempts ?? data.klass.maxAttempts,
+                      examMode: assignment.examMode ?? data.klass.examMode,
+                      maxPaperSubmissions:
+                        assignment.maxPaperSubmissions ?? data.klass.maxPaperSubmissions,
                     };
                     return (
                       <div key={assignment.id} className="rounded-lg border border-border p-3">
@@ -255,6 +329,32 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                                 assignmentMutation.mutate({
                                   assignmentId: assignment.id,
                                   maxAttempts: value,
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Real paper</Label>
+                            <OnOffSelect
+                              value={assignment.examMode}
+                              inheritLabel={`Class default (${data.klass.examMode ? "on" : "off"})`}
+                              onChange={(value) =>
+                                assignmentMutation.mutate({
+                                  assignmentId: assignment.id,
+                                  examMode: value,
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Hand-ins</Label>
+                            <SubmissionsSelect
+                              value={assignment.maxPaperSubmissions}
+                              inheritLabel={`Class default (${submissionLabel(data.klass.maxPaperSubmissions)})`}
+                              onChange={(value) =>
+                                assignmentMutation.mutate({
+                                  assignmentId: assignment.id,
+                                  maxPaperSubmissions: value,
                                 })
                               }
                             />
@@ -316,6 +416,28 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                                             assignmentId: assignment.id,
                                             studentId: student.id,
                                             maxAttempts: value,
+                                          })
+                                        }
+                                      />
+                                      <OnOffSelect
+                                        value={override?.examMode ?? null}
+                                        inheritLabel={`Real paper: same as homework (${effective.examMode ? "on" : "off"})`}
+                                        onChange={(value) =>
+                                          studentMutation.mutate({
+                                            assignmentId: assignment.id,
+                                            studentId: student.id,
+                                            examMode: value,
+                                          })
+                                        }
+                                      />
+                                      <SubmissionsSelect
+                                        value={override?.maxPaperSubmissions ?? null}
+                                        inheritLabel={`Hand-ins: same as homework (${submissionLabel(effective.maxPaperSubmissions)})`}
+                                        onChange={(value) =>
+                                          studentMutation.mutate({
+                                            assignmentId: assignment.id,
+                                            studentId: student.id,
+                                            maxPaperSubmissions: value,
                                           })
                                         }
                                       />

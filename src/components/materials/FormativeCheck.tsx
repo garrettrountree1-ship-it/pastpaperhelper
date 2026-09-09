@@ -322,7 +322,6 @@ export function FormativeCheckButton({
             <Label>Timer</Label>
             <div className="flex flex-wrap gap-2">
 
-            <div className="flex flex-wrap gap-2">
 
               {TIMER_OPTIONS.map((option) => (
                 <Button

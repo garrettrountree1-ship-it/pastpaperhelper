@@ -274,9 +274,10 @@ export function DrawingPad({
   function positionOf(event: React.PointerEvent<HTMLCanvasElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
     return {
-      x: (event.clientX - rect.left - offsetRef.current.x) / zoomRef.current,
-      y: (event.clientY - rect.top - offsetRef.current.y) / zoomRef.current,
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
     };
+
   }
 
   function start(event: React.PointerEvent<HTMLCanvasElement>) {

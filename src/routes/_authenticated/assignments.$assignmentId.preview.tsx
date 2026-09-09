@@ -244,13 +244,8 @@ function PreviewPage() {
               {groupByPage(data.questions).map((group) => (
                 <div key={group.key} className="space-y-4">
                   {group.questions.map((question) => (
-                    <AddQuestionRow
-                      key={question.id}
-                      assignmentId={assignmentId}
-                      questionId={question.id}
-                      editing={editing}
-                    >
                     <PreviewQuestion
+                      key={question.id}
                       assignmentId={assignmentId}
                       question={question}
                       flags={flags}
@@ -260,13 +255,9 @@ function PreviewPage() {
                       allowSteps={settings?.allowSteps !== false}
                       maxAttempts={settings?.maxAttempts ?? 0}
                       markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
-                      editing={editing}
                       onFlag={() => setFlags((count) => count + 1)}
-
                     />
-                    </AddQuestionRow>
                   ))}
-
                 </div>
               ))}
             </div>

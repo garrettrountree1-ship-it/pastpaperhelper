@@ -37,9 +37,9 @@ export const PAD_FILE_NAME = "working-pad.png";
  * Stylus / finger / mouse writing pad for working out calculations on screen
  * (e.g. an iPad with an Apple Pencil). The finished sheet is attached as an
  * image file exactly like an uploaded photo, so marking is unchanged.
- * Supports zooming in for fine detail (buttons, trackpad pinch, or Ctrl/⌘ +
- * scroll wheel); strokes are stored in pad coordinates so zooming never
- * distorts the work.
+ * The student can only write, drag the question picture, and make that picture
+ * bigger or smaller — nothing zooms the pad itself.
+
  * When `backgroundUrls` are given, the pad can be opened full screen with the
  * question picture printed underneath so the student writes straight onto it.
  */

@@ -115,6 +115,9 @@ function PreviewPage() {
   const { assignmentId } = Route.useParams();
   const [flags, setFlags] = useState(0);
   const [studentId, setStudentId] = useState<string>("class");
+  // Teacher-only editing tools (recut / add a question). Off by default so the
+  // preview shows exactly what a student sees — students never get these controls.
+  const [editing, setEditing] = useState(false);
   const preview = useQuery({
     queryKey: ["assignment-preview", assignmentId, studentId],
     queryFn: () =>
@@ -179,6 +182,16 @@ function PreviewPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                <Button
+                  type="button"
+                  variant={editing ? "default" : "outline"}
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => setEditing((on) => !on)}
+                  title="Teacher only — students never see these controls"
+                >
+                  {editing ? "Done editing cuts" : "Edit cuts"}
+                </Button>
               </div>
               {settings ? (
                 <div className="mb-3 flex flex-wrap gap-2 text-xs">
@@ -253,6 +266,7 @@ function PreviewPage() {
                       key={question.id}
                       assignmentId={assignmentId}
                       questionId={question.id}
+                      editing={editing}
                     >
                     <PreviewQuestion
                       assignmentId={assignmentId}
@@ -264,6 +278,7 @@ function PreviewPage() {
                       allowSteps={settings?.allowSteps !== false}
                       maxAttempts={settings?.maxAttempts ?? 0}
                       markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
+                      editing={editing}
                       onFlag={() => setFlags((count) => count + 1)}
 
                     />
@@ -289,10 +304,12 @@ You can test any question here — the AI marks it exactly as it would for a stu
 function AddQuestionRow({
   assignmentId,
   questionId,
+  editing,
   children,
 }: {
   assignmentId: string;
   questionId: string;
+  editing: boolean;
   children: ReactNode;
 }) {
   const queryClient = useQueryClient();
@@ -307,6 +324,7 @@ function AddQuestionRow({
   return (
     <div>
       {children}
+      {editing ? (
       <div className="flex justify-center py-2">
         <Button
           type="button"
@@ -320,6 +338,7 @@ function AddQuestionRow({
           {add.isPending ? "Adding..." : "Add a question here"}
         </Button>
       </div>
+      ) : null}
     </div>
   );
 }
@@ -334,10 +353,12 @@ function PreviewQuestion({
   allowSteps,
   maxAttempts,
   markSchemeRevealed,
+  editing,
   onFlag,
 }: {
   assignmentId: string;
   question: Question;
+  editing: boolean;
   flags: number;
   keywordTranslation: boolean;
   protectQuestions: boolean;
@@ -480,6 +501,7 @@ function PreviewQuestion({
       protectQuestions={protectQuestions}
 
       snipAction={
+        editing &&
         (question.image_paths ?? []).length > 0 && (question.imageUrls ?? []).length > 0 ? (
           <QuestionRecutDialog
             imagePaths={question.image_paths ?? []}
@@ -492,6 +514,7 @@ function PreviewQuestion({
         ) : null
       }
       answerAction={
+        editing &&
         (question.answerImagePaths ?? []).length > 0 && (question.answerImageUrls ?? []).length > 0 ? (
           <QuestionRecutDialog
             label="Recut answer"

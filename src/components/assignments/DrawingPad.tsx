@@ -86,6 +86,7 @@ export function DrawingPad({
   const photoScaleRef = useRef(photoScale);
   photoScaleRef.current = photoScale;
   const [saved, setSaved] = useState(false);
+  const [hoverCorner, setHoverCorner] = useState<"nw" | "ne" | "sw" | "se" | null>(null);
   /** Small picture of the last saved sheet, shown under the closed pad. */
   const [thumbnail, setThumbnail] = useState<string | null>(null);
 
@@ -125,18 +126,27 @@ export function DrawingPad({
 
   /** Bottom-right (or any corner) grab square that resizes the picture. */
   function hitHandle(point: { x: number; y: number }) {
+    return hitHandleCorner(point) !== null;
+  }
+
+  function hitHandleCorner(point: { x: number; y: number }) {
     const rect = pictureRect();
-    if (!rect || !selectedRef.current) return false;
-    const corners = [
-      { x: rect.x, y: rect.y },
-      { x: rect.x + rect.width, y: rect.y },
-      { x: rect.x, y: rect.y + rect.height },
-      { x: rect.x + rect.width, y: rect.y + rect.height },
+    if (!rect || !selectedRef.current) return null;
+    const corners: Array<{ key: "nw" | "ne" | "sw" | "se"; x: number; y: number }> = [
+      { key: "nw", x: rect.x, y: rect.y },
+      { key: "ne", x: rect.x + rect.width, y: rect.y },
+      { key: "sw", x: rect.x, y: rect.y + rect.height },
+      { key: "se", x: rect.x + rect.width, y: rect.y + rect.height },
     ];
-    return corners.some(
-      (corner) =>
-        Math.abs(point.x - corner.x) <= HANDLE && Math.abs(point.y - corner.y) <= HANDLE,
-    );
+    for (const corner of corners) {
+      if (
+        Math.abs(point.x - corner.x) <= HANDLE &&
+        Math.abs(point.y - corner.y) <= HANDLE
+      ) {
+        return corner.key;
+      }
+    }
+    return null;
   }
 
   function redraw() {
@@ -422,7 +432,10 @@ export function DrawingPad({
       redraw();
       return;
     }
-    if (!drawing.current) return;
+    if (!drawing.current) {
+      setHoverCorner(hitHandleCorner(positionOf(event)));
+      return;
+    }
     event.preventDefault();
     strokesRef.current[strokesRef.current.length - 1]?.points.push(positionOf(event));
     redraw();
@@ -436,6 +449,7 @@ export function DrawingPad({
     drawing.current = false;
     panning.current = null;
     resizing.current = null;
+    setHoverCorner(null);
     updateSheet();
   }
 
@@ -566,16 +580,30 @@ export function DrawingPad({
         <>
             <span className="mx-1 h-5 w-px bg-border" aria-hidden />
 
-            <Button
-              type="button"
-              size="sm"
-              variant={mode === "move" ? "default" : "outline"}
-              disabled={disabled}
-              onClick={() => setMode(mode === "move" ? "draw" : "move")}
-            >
-              {mode === "move" ? <Hand className="size-4" /> : <PenLine className="size-4" />}
-              {mode === "move" ? "Moving" : "Drawing"}
-            </Button>
+            <div className="inline-flex items-center rounded-lg border border-border p-1">
+              <Button
+                type="button"
+                size="sm"
+                variant={mode === "draw" ? "default" : "ghost"}
+                disabled={disabled}
+                onClick={() => setMode("draw")}
+                className="rounded-md"
+              >
+                <PenLine className="size-4" />
+                Write
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={mode === "move" ? "default" : "ghost"}
+                disabled={disabled}
+                onClick={() => setMode("move")}
+                className="rounded-md"
+              >
+                <Hand className="size-4" />
+                Move picture
+              </Button>
+            </div>
             <Button
               type="button"
               size="sm"
@@ -627,7 +655,16 @@ export function DrawingPad({
             onPointerCancel={end}
             style={{ height: sheetHeight ? `${sheetHeight}px` : "150vh" }}
             className={`w-full touch-none rounded-md border border-border bg-white ${
-              selected || mode === "move" ? "cursor-grab" : "cursor-crosshair"
+              hoverCorner
+                ? {
+                    nw: "cursor-nwse-resize",
+                    se: "cursor-nwse-resize",
+                    ne: "cursor-nesw-resize",
+                    sw: "cursor-nesw-resize",
+                  }[hoverCorner]
+                : selected || mode === "move"
+                  ? "cursor-grab"
+                  : "cursor-crosshair"
             }`}
           />
       </div>

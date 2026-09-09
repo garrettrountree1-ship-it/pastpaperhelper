@@ -2122,13 +2122,22 @@ export const submitAssignment = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: current } = await db
       .from("submissions")
-      .select("locked_at")
+      .select("locked_at, submit_count")
       .eq("assignment_id", data.assignmentId)
       .eq("student_id", userId)
       .maybeSingle();
     if (current?.locked_at) throw new Error(LOCKED_MESSAGE);
     const submitAccess = await studentAccess(db, data.assignmentId, userId);
     if (submitAccess.pastDue) throw new Error(PAST_DUE_MESSAGE);
+
+    // "Take it like a real paper": the whole paper may only be handed in a set number of times.
+    const paperRules = await tutorSettingsForAssignment(db, data.assignmentId, userId);
+    const used = Number(current?.submit_count ?? 0) || 0;
+    if (paperRules.maxPaperSubmissions > 0 && used >= paperRules.maxPaperSubmissions) {
+      throw new Error(
+        `You have used all ${paperRules.maxPaperSubmissions} hand-ins your teacher allowed for this paper.`,
+      );
+    }
 
 
     const { error } = await supabase
@@ -2137,6 +2146,12 @@ export const submitAssignment = createServerFn({ method: "POST" })
       .eq("assignment_id", data.assignmentId)
       .eq("student_id", userId);
     if (error) throw new Error(error.message);
+
+    await db
+      .from("submissions")
+      .update({ submit_count: used + 1 })
+      .eq("assignment_id", data.assignmentId)
+      .eq("student_id", userId);
 
     return { ok: true };
   });

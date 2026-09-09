@@ -137,8 +137,8 @@ export async function extractQuestionsFromPapers(
     `Curriculum: ${input.curriculum}`,
     `Subject/topic: ${input.subject || "unspecified"}`,
     input.markSchemeFiles.length > 0
-      ? "The first document(s) are the past paper(s); the last document(s) are the mark scheme(s). Either set may be a teacher-made compilation pasted from several papers, in any order."
-      : "The document(s) may contain both questions and mark schemes combined, pasted together from several papers in any order — separate them yourself.",
+      ? "The first document(s) are the past paper(s); the last document(s) are the mark scheme(s). Either set may be a teacher-made compilation pasted from several papers, in any order. Every official answer lives on an ANSWER PAGE sheet, so every answerCrops band must use sheet \"answer\"."
+      : "The document(s) may contain both questions and mark schemes combined, pasted together from several papers in any order — separate them yourself. Answer pictures are cut from the same pages as the questions, so answerCrops bands use sheet \"paper\".",
   ].join("\n");
 
   let inventory = await runInventory(key, header, documents);
@@ -157,18 +157,22 @@ export async function extractQuestionsFromPapers(
     }
   }
 
+  const hasAnswerPages = input.markSchemeFiles.length > 0;
+
   if (inventory.length === 0) {
     // Fall back to a single-pass extraction if the index could not be built.
-    return separateQuestionCrops(dedupe(await runDetail(key, header, documents, [], true)));
+    return separateQuestionCrops(
+      dedupe(await runDetail(key, header, documents, [], true, hasAnswerPages)),
+    );
   }
 
-  const results = await runBatches(key, header, documents, inventory);
+  const results = await runBatches(key, header, documents, inventory, hasAnswerPages);
 
   // Any label the detail pass dropped gets one focused retry.
   const done = new Set(results.map((r) => r.label.toLowerCase()));
   const missing = inventory.filter((i) => !done.has(i.label.toLowerCase()));
   if (missing.length > 0) {
-    results.push(...(await runBatches(key, header, documents, missing)));
+    results.push(...(await runBatches(key, header, documents, missing, hasAnswerPages)));
   }
 
   return renumberQuestions(separateQuestionCrops(dedupe(results)));
@@ -335,6 +339,7 @@ async function runBatches(
   header: string,
   documents: Array<Record<string, unknown>>,
   items: InventoryItem[],
+  hasAnswerPages = false,
 ): Promise<DetailResult[]> {
   const batches: InventoryItem[][] = [];
   for (let i = 0; i < items.length; i += BATCH_SIZE) {
@@ -347,7 +352,9 @@ async function runBatches(
     const slice = batches.slice(i, i + CONCURRENCY);
     const settled = await Promise.all(
       slice.map((batch) =>
-        runDetail(key, header, documents, batch, false).catch(() => [] as DetailResult[]),
+        runDetail(key, header, documents, batch, false, hasAnswerPages).catch(
+          () => [] as DetailResult[],
+        ),
       ),
     );
     for (const part of settled) results.push(...part);
@@ -559,6 +566,7 @@ async function runDetail(
   documents: Array<Record<string, unknown>>,
   batch: InventoryItem[],
   everything: boolean,
+  hasAnswerPages = false,
 ): Promise<DetailResult[]> {
   const instruction = everything
     ? "Transcribe EVERY answerable question part in the upload with its mark scheme, including multiple-choice items. Do not stop early and do not sample."
@@ -606,7 +614,11 @@ async function runDetail(
         marks: Math.max(1, Math.round(Number(item["marks"]) || match?.marks || 1)),
         pages,
         crops: parseCropList(item["crops"] ?? item["crop"], pages),
-        answerCrops: parseCropList(item["answerCrops"] ?? item["answerCrop"], []),
+        answerCrops: parseCropList(
+          item["answerCrops"] ?? item["answerCrop"],
+          [],
+          hasAnswerPages ? "answer" : "paper",
+        ),
       };
 
 
@@ -661,10 +673,17 @@ async function runCropAudit(
  * Reads the model's snip band for a question and keeps it only when it is a
  * sane region of a real page — a slightly padded band, never a sliver.
  */
-function parseCropValue(raw: unknown, pages: number[]): QuestionCrop | null {
+function parseCropValue(
+  raw: unknown,
+  pages: number[],
+  defaultSheet: "paper" | "answer" = "paper",
+): QuestionCrop | null {
   if (!raw || typeof raw !== "object") return null;
   const value = raw as Record<string, unknown>;
-  const sheet = String(value["sheet"] ?? "paper").toLowerCase() === "answer" ? "answer" : "paper";
+  // When the teacher uploaded a separate answer-key document, an answer crop
+  // without an explicit sheet belongs to that document, not the question paper.
+  const rawSheet = String(value["sheet"] ?? defaultSheet).toLowerCase();
+  const sheet = rawSheet === "answer" ? "answer" : "paper";
   const page = Math.round(Number(value["page"]));
   let top = Number(value["top"]);
   let bottom = Number(value["bottom"]);
@@ -687,11 +706,15 @@ function parseCropValue(raw: unknown, pages: number[]): QuestionCrop | null {
  * two bands (foot of one page, head of the next); they are kept in reading
  * order so the student sees the whole question joined together.
  */
-function parseCropList(raw: unknown, pages: number[]): QuestionCrop[] | null {
+function parseCropList(
+  raw: unknown,
+  pages: number[],
+  defaultSheet: "paper" | "answer" = "paper",
+): QuestionCrop[] | null {
   const list = Array.isArray(raw) ? raw : [raw];
   const out: QuestionCrop[] = [];
   for (const entry of list) {
-    const band = parseCropValue(entry, pages);
+    const band = parseCropValue(entry, pages, defaultSheet);
     if (!band) continue;
     // There can only be one crop for a question part on one page. If the model
     // reports it twice, keep the shared/narrower region rather than expanding.

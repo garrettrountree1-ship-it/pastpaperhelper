@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Camera, CheckCircle2, CircleDashed, Sparkles, XCircle } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { Camera, CheckCircle2, CircleDashed, Sparkles, X, XCircle } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { QuestionSnipStack } from "@/components/assignments/QuestionSnip";

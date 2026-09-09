@@ -192,6 +192,7 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
 
   const reorderMutation = useMutation({
     mutationFn: (unitIds: string[]) => reorder({ data: { classId, unitIds } }),
+    onSuccess: () => invalidate(),
     onError: (error: Error) => {
       toast.error(error.message);
       setOrderedIds(null);

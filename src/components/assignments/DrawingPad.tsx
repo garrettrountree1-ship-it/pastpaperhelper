@@ -1,4 +1,4 @@
-import { Eraser, Maximize, PenLine, Undo2, ZoomIn, ZoomOut } from "lucide-react";
+import { Eraser, Expand, Maximize, Minimize, PenLine, Undo2, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -24,15 +24,20 @@ const MAX_ZOOM = 4;
  * Supports zooming in for fine detail (buttons, trackpad pinch, or Ctrl/⌘ +
  * scroll wheel); strokes are stored in pad coordinates so zooming never
  * distorts the work.
+ * When `backgroundUrls` are given, the pad can be opened full screen with the
+ * question picture printed underneath so the student writes straight onto it.
  */
 export function DrawingPad({
   disabled = false,
   height = "h-[28rem]",
+  backgroundUrls = [],
   onAttach,
 }: {
   disabled?: boolean;
   /** Tailwind height class for the pad surface. */
   height?: string;
+  /** Question picture(s) shown faintly under the ink in full screen. */
+  backgroundUrls?: string[];
   onAttach: (file: File) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -43,9 +48,12 @@ export function DrawingPad({
   const offsetRef = useRef({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [hasInk, setHasInk] = useState(false);
+  const [full, setFull] = useState(false);
+  const backgroundsRef = useRef<HTMLImageElement[]>([]);
   const [color, setColor] = useState(PEN_COLORS[0]!.value);
   const colorRef = useRef(color);
   colorRef.current = color;
+
 
   function redraw() {
     const canvas = canvasRef.current;

@@ -247,8 +247,10 @@ function ClassPageContent({ classId }: { classId: string }) {
             onSaved={() => overview.refetch()}
           />
           <TutorSettingsDialog classId={classId} />
+          <ScaffoldingOptionsDialog classId={classId} />
           <AssignmentDialog classId={classId} trigger={<Button>New assignment</Button>} />
         </div>
+
       </div>
 
       <Tabs defaultValue="assignments" className="mt-6">

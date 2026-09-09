@@ -55,15 +55,26 @@ export function DrawingPad({
   onAttach: (file: File) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const strokesRef = useRef<Stroke[]>([]);
   const drawing = useRef(false);
+  const panning = useRef<{ x: number; y: number } | null>(null);
   const dprRef = useRef(1);
   const zoomRef = useRef(1);
   const offsetRef = useRef({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [hasInk, setHasInk] = useState(false);
   const [full, setFull] = useState(false);
+  const [mode, setMode] = useState<"draw" | "move">("draw");
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  // The sheet is as long as the student needs: it stretches while they scroll
+  // down and shrinks back to the work when they come back up.
+  const [sheetHeight, setSheetHeight] = useState(0);
   const backgroundsRef = useRef<HTMLImageElement[]>([]);
+  const [photoScale, setPhotoScale] = useState(1);
+  const photoScaleRef = useRef(photoScale);
+  photoScaleRef.current = photoScale;
   const [color, setColor] = useState(PEN_COLORS[0]!.value);
   const colorRef = useRef(color);
   colorRef.current = color;
@@ -80,7 +91,7 @@ export function DrawingPad({
     ctx.translate(offsetRef.current.x, offsetRef.current.y);
     ctx.scale(zoomRef.current, zoomRef.current);
     // The question picture sits under the ink so the work is marked in context.
-    const padWidth = canvas.width / dpr;
+    const padWidth = (canvas.width / dpr) * photoScaleRef.current;
     let y = 0;
     for (const image of backgroundsRef.current) {
       if (!image.complete || !image.naturalWidth) continue;
@@ -88,6 +99,7 @@ export function DrawingPad({
       ctx.drawImage(image, 0, y, padWidth, h);
       y += h + 8;
     }
+
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 

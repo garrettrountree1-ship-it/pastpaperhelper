@@ -578,11 +578,22 @@ export const updateQuestionCrop = createServerFn({ method: "POST" })
       ? current?.answer_image_paths
       : current?.image_paths) as string[] | null | undefined;
     const allowedPages = new Set((existingPaths ?? []).map((path) => path.split("#")[0]));
+    // The teacher may move a cut onto another page of the same uploaded document
+    // (a question often runs over a page break), so allow any page in that folder.
+    const allowedFolders = new Set(
+      [...allowedPages]
+        .map((page) => (page ?? "").slice(0, (page ?? "").lastIndexOf("/")))
+        .filter(Boolean),
+    );
     const cropPattern = /#crop=(0(?:\.\d+)?|1(?:\.0+)?),(0(?:\.\d+)?|1(?:\.0+)?);manual$/;
     for (const path of data.imagePaths) {
       const page = path.split("#")[0];
       const match = cropPattern.exec(path);
-      if (!page || !allowedPages.has(page) || !match) throw new Error("That crop is not valid.");
+      const folder = page ? page.slice(0, page.lastIndexOf("/")) : "";
+      const sameDocument = Boolean(folder) && allowedFolders.has(folder);
+      if (!page || !(allowedPages.has(page) || sameDocument) || !match) {
+        throw new Error("That crop is not valid.");
+      }
       const top = Number(match[1]);
       const bottom = Number(match[2]);
       if (bottom - top < 0.035) throw new Error("The crop is too small.");
@@ -598,6 +609,55 @@ export const updateQuestionCrop = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true, imagePaths: data.imagePaths };
   });
+
+/**
+ * Teacher-only: every page of the uploaded document a cut came from, so the
+ * recut window can step forward/backward through pages and add a second page
+ * when a question runs over a page break.
+ */
+export const listRecutPages = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ imagePath: z.string().min(1) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const page = data.imagePath.split("#")[0] ?? "";
+    const folder = page.slice(0, page.lastIndexOf("/"));
+    const classId = folder.split("/")[0] ?? "";
+    if (!folder || !classId) throw new Error("That page could not be found.");
+    if (!(await teachesClass(supabase, classId, userId))) {
+      throw new Error("You do not teach this class.");
+    }
+
+    const db = await admin();
+    const { data: files, error } = await db.storage.from("paper-pages").list(folder, {
+      limit: 500,
+      sortBy: { column: "name", order: "asc" },
+    });
+    if (error) throw new Error(error.message);
+
+    const isAnswerSheet = (page.split("/").pop() ?? "").startsWith("ms-page-");
+    const pages = (files ?? [])
+      .map((file) => {
+        const name = file.name;
+        const answerSheet = name.startsWith("ms-page-");
+        const number = Number(/page-(\d+)/.exec(name)?.[1] ?? 0);
+        return { path: `${folder}/${name}`, answerSheet, number };
+      })
+      .filter((item) => item.number > 0 && item.answerSheet === isAnswerSheet)
+      .sort((a, b) => a.number - b.number);
+
+    const urls = await signPaperPages(db, pages.map((item) => item.path));
+    return {
+      pages: pages.map((item, index) => ({
+        path: item.path,
+        url: urls[index] ?? "",
+        number: item.number,
+      })),
+    };
+  });
+
 
 /**
  * Inserts a blank question straight after an existing one — for a question the

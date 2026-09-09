@@ -461,6 +461,7 @@ export type Database = {
           class_id: string
           created_at: string
           gradebook_detail: boolean | null
+          ib_level: string | null
           id: string
           keyword_translation: boolean | null
           student_can_change_level: boolean | null
@@ -474,6 +475,7 @@ export type Database = {
           class_id: string
           created_at?: string
           gradebook_detail?: boolean | null
+          ib_level?: string | null
           id?: string
           keyword_translation?: boolean | null
           student_can_change_level?: boolean | null
@@ -487,6 +489,7 @@ export type Database = {
           class_id?: string
           created_at?: string
           gradebook_detail?: boolean | null
+          ib_level?: string | null
           id?: string
           keyword_translation?: boolean | null
           student_can_change_level?: boolean | null

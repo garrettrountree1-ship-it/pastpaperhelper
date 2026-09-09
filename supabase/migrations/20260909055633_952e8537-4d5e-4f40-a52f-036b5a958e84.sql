@@ -1,0 +1,1 @@
+ALTER TABLE public.class_student_settings ADD COLUMN IF NOT EXISTS ib_level text;

@@ -58,6 +58,7 @@ export function DrawingPad({
   const strokesRef = useRef<Stroke[]>([]);
   const drawing = useRef(false);
   const panning = useRef<{ x: number; y: number } | null>(null);
+  const resizing = useRef<{ startX: number; startWidth: number; startScale: number } | null>(null);
   const dprRef = useRef(1);
   // Where the student has dragged the question picture to. Only the picture
   // moves — their writing stays exactly where they put it.
@@ -68,6 +69,11 @@ export function DrawingPad({
   const [mode, setMode] = useState<"draw" | "move">("draw");
   const modeRef = useRef(mode);
   modeRef.current = mode;
+  // True while the student has tapped the question picture: it is outlined with
+  // corner handles and can be dragged around or made bigger / smaller.
+  const [selected, setSelected] = useState(false);
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
   // The sheet is as long as the student needs: it stretches while they scroll
   // down and shrinks back to the work when they come back up.
   const [sheetHeight, setSheetHeight] = useState(0);
@@ -85,6 +91,50 @@ export function DrawingPad({
   const colorRef = useRef(color);
   colorRef.current = color;
 
+  const HANDLE = 14;
+
+  /** On-screen box the question picture currently fills. */
+  function pictureRect() {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const width = (canvas.width / dprRef.current) * photoScaleRef.current;
+    let height = 0;
+    for (const piece of backgroundsRef.current) {
+      const image = piece.image;
+      if (!image.complete || !image.naturalWidth) continue;
+      const sh = Math.max(1, (piece.bottom - piece.top) * image.naturalHeight);
+      height += (width * sh) / image.naturalWidth + 8;
+    }
+    if (height <= 0) return null;
+    return { x: offsetRef.current.x, y: offsetRef.current.y, width, height };
+  }
+
+  function hitPicture(point: { x: number; y: number }) {
+    const rect = pictureRect();
+    if (!rect) return false;
+    return (
+      point.x >= rect.x &&
+      point.x <= rect.x + rect.width &&
+      point.y >= rect.y &&
+      point.y <= rect.y + rect.height
+    );
+  }
+
+  /** Bottom-right (or any corner) grab square that resizes the picture. */
+  function hitHandle(point: { x: number; y: number }) {
+    const rect = pictureRect();
+    if (!rect || !selectedRef.current) return false;
+    const corners = [
+      { x: rect.x, y: rect.y },
+      { x: rect.x + rect.width, y: rect.y },
+      { x: rect.x, y: rect.y + rect.height },
+      { x: rect.x + rect.width, y: rect.y + rect.height },
+    ];
+    return corners.some(
+      (corner) =>
+        Math.abs(point.x - corner.x) <= HANDLE && Math.abs(point.y - corner.y) <= HANDLE,
+    );
+  }
 
   function redraw() {
     const canvas = canvasRef.current;
@@ -124,7 +174,29 @@ export function DrawingPad({
       });
       ctx.stroke();
     }
+
+    // Highlight the picture last so the outline and grab squares stay visible.
+    const rect = selectedRef.current ? pictureRect() : null;
+    if (rect) {
+      ctx.save();
+      ctx.strokeStyle = "#2563eb";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#2563eb";
+      for (const corner of [
+        { x: rect.x, y: rect.y },
+        { x: rect.x + rect.width, y: rect.y },
+        { x: rect.x, y: rect.y + rect.height },
+        { x: rect.x + rect.width, y: rect.y + rect.height },
+      ]) {
+        ctx.fillRect(corner.x - 5, corner.y - 5, 10, 10);
+      }
+      ctx.restore();
+    }
   }
+
 
 
   /** Lowest point of the picture / ink, in on-screen pixels. */
@@ -283,6 +355,37 @@ export function DrawingPad({
   function start(event: React.PointerEvent<HTMLCanvasElement>) {
     if (disabled) return;
     event.currentTarget.setPointerCapture(event.pointerId);
+    const point = positionOf(event);
+    const rect = pictureRect();
+
+    // A corner grab square on the highlighted picture makes it bigger/smaller.
+    if (rect && hitHandle(point)) {
+      resizing.current = {
+        startX: point.x,
+        startWidth: rect.width,
+        startScale: photoScaleRef.current,
+      };
+      return;
+    }
+
+    // Tapping the picture highlights it; while it is highlighted a drag moves it.
+    if (hitPicture(point)) {
+      if (!selectedRef.current) {
+        selectedRef.current = true;
+        setSelected(true);
+      }
+      panning.current = { x: event.clientX, y: event.clientY };
+      redraw();
+      return;
+    }
+
+    // Anywhere else: put the picture down again and carry on writing.
+    if (selectedRef.current) {
+      selectedRef.current = false;
+      setSelected(false);
+      redraw();
+    }
+
     // Middle button or the Move tool drags the picture and work around.
     if (modeRef.current === "move" || event.button === 1) {
       panning.current = { x: event.clientX, y: event.clientY };
@@ -290,11 +393,22 @@ export function DrawingPad({
     }
     drawing.current = true;
     const width = event.pointerType === "pen" ? Math.max(1.2, event.pressure * 4 || 2) : 2.4;
-    strokesRef.current.push({ points: [positionOf(event)], width, color: colorRef.current });
+    strokesRef.current.push({ points: [point], width, color: colorRef.current });
     setHasInk(true);
   }
 
   function move(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (resizing.current) {
+      event.preventDefault();
+      const point = positionOf(event);
+      const grown = resizing.current.startWidth + (point.x - resizing.current.startX);
+      const factor = grown / Math.max(1, resizing.current.startWidth);
+      const next = Math.max(0.4, Math.min(2.5, resizing.current.startScale * factor));
+      photoScaleRef.current = next;
+      setPhotoScale(Number(next.toFixed(2)));
+      redraw();
+      return;
+    }
     if (panning.current) {
       event.preventDefault();
       offsetRef.current = {
@@ -318,6 +432,7 @@ export function DrawingPad({
     }
     drawing.current = false;
     panning.current = null;
+    resizing.current = null;
     updateSheet();
   }
 
@@ -327,13 +442,20 @@ export function DrawingPad({
   function attach() {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    // The blue outline is a screen guide only — never part of the saved sheet.
+    const wasSelected = selectedRef.current;
+    selectedRef.current = false;
     redraw();
     canvas.toBlob((blob) => {
-      if (!blob) return;
-      onAttach(new File([blob], PAD_FILE_NAME, { type: "image/png" }));
-      setSaved(true);
+      if (blob) {
+        onAttach(new File([blob], PAD_FILE_NAME, { type: "image/png" }));
+        setSaved(true);
+      }
+      selectedRef.current = wasSelected;
+      redraw();
     }, "image/png");
   }
+
 
 
   /** Keeps the saved picture in step with the pad without the student thinking
@@ -396,7 +518,7 @@ export function DrawingPad({
         </Button>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        {"The question is printed underneath — write straight over it. Scroll down for as much space as you need, switch to Moving to drag the picture, and use the picture buttons to make it bigger or smaller. Minimise & save keeps your sheet, then press Check answer."}
+        {"The question is printed underneath — write straight over it. Tap the picture to highlight it, then drag it anywhere or pull a blue corner square to make it bigger or smaller. Tap the blank paper to put it down and carry on writing. Scroll down for as much space as you need. Minimise & save keeps your sheet, then press Check answer."}
       </p>
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -479,7 +601,7 @@ export function DrawingPad({
             onPointerCancel={end}
             style={{ height: sheetHeight ? `${sheetHeight}px` : "150vh" }}
             className={`w-full touch-none rounded-md border border-border bg-white ${
-              mode === "move" ? "cursor-grab" : "cursor-crosshair"
+              selected || mode === "move" ? "cursor-grab" : "cursor-crosshair"
             }`}
           />
       </div>

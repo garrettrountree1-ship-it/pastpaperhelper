@@ -2021,7 +2021,15 @@ export const gradeAnswer = createServerFn({ method: "POST" })
         marks: question.marks,
       }),
       findCopiedFromPeers(db, data.questionId, guardSubmission.id, data.answerText),
-      checkHandDrawnPhotos(await signWorkImages(db, imagePaths)),
+      // Work drawn on the app's own writing pad is the student's own hand — it
+      // is digital ink on a white sheet, so it never goes to the photo check.
+      checkHandDrawnPhotos(
+        await signWorkImages(
+          db,
+          imagePaths.filter((path) => !path.endsWith("working-pad.png")),
+        ),
+      ),
+
     ]);
     const violation = photoCheck.ok
       ? (peerCopy ?? (detection.isAi ? detection : null))
@@ -2536,6 +2544,9 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
         questionId: z.string().uuid(),
         answerText: z.string(),
         imageDataUrls: z.array(z.string().startsWith("data:image/").max(8_000_000)).max(3).optional(),
+        /** Pictures produced by the in-app writing pad; skipped by the photo check. */
+        padDataUrls: z.array(z.string().startsWith("data:image/").max(8_000_000)).max(3).optional(),
+
         priorFlags: z.number().int().min(0).max(50).optional(),
       })
       .parse(input),
@@ -2589,7 +2600,10 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
         answer: data.answerText,
         marks: question.marks,
       }),
-      checkHandDrawnPhotos(previewImages),
+      checkHandDrawnPhotos(
+        previewImages.filter((url) => !(data.padDataUrls ?? []).includes(url)),
+      ),
+
     ]);
     if (!previewPhotoCheck.ok || previewDetection.isAi) {
       const strikes = (data.priorFlags ?? 0) + 1;

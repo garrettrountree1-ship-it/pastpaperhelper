@@ -406,6 +406,8 @@ function PreviewQuestion({
           questionId: question.id,
           answerText: answer,
           imageDataUrls: photos,
+          padDataUrls: padPhoto.current ? [padPhoto.current] : [],
+
           priorFlags: flags,
         },
       });

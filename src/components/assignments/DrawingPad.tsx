@@ -126,18 +126,27 @@ export function DrawingPad({
 
   /** Bottom-right (or any corner) grab square that resizes the picture. */
   function hitHandle(point: { x: number; y: number }) {
+    return hitHandleCorner(point) !== null;
+  }
+
+  function hitHandleCorner(point: { x: number; y: number }) {
     const rect = pictureRect();
-    if (!rect || !selectedRef.current) return false;
-    const corners = [
-      { x: rect.x, y: rect.y },
-      { x: rect.x + rect.width, y: rect.y },
-      { x: rect.x, y: rect.y + rect.height },
-      { x: rect.x + rect.width, y: rect.y + rect.height },
+    if (!rect || !selectedRef.current) return null;
+    const corners: Array<{ key: "nw" | "ne" | "sw" | "se"; x: number; y: number }> = [
+      { key: "nw", x: rect.x, y: rect.y },
+      { key: "ne", x: rect.x + rect.width, y: rect.y },
+      { key: "sw", x: rect.x, y: rect.y + rect.height },
+      { key: "se", x: rect.x + rect.width, y: rect.y + rect.height },
     ];
-    return corners.some(
-      (corner) =>
-        Math.abs(point.x - corner.x) <= HANDLE && Math.abs(point.y - corner.y) <= HANDLE,
-    );
+    for (const corner of corners) {
+      if (
+        Math.abs(point.x - corner.x) <= HANDLE &&
+        Math.abs(point.y - corner.y) <= HANDLE
+      ) {
+        return corner.key;
+      }
+    }
+    return null;
   }
 
   function redraw() {

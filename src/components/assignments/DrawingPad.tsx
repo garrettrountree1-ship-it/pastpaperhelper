@@ -132,7 +132,38 @@ export function DrawingPad({
     resize();
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
-  }, []);
+  }, [full]);
+
+  // Load the question picture(s) for the full-screen pad.
+  useEffect(() => {
+    if (!full || backgroundUrls.length === 0) {
+      backgroundsRef.current = [];
+      redraw();
+      return;
+    }
+    let cancelled = false;
+    const images = backgroundUrls.slice(0, 3).map((url) => {
+      const image = new Image();
+      image.crossOrigin = "anonymous";
+      image.onload = () => {
+        if (!cancelled) redraw();
+      };
+      // A picture that can't be read stays out rather than blocking the pad.
+      image.onerror = () => {
+        backgroundsRef.current = backgroundsRef.current.filter((item) => item !== image);
+        if (!cancelled) redraw();
+      };
+      image.src = url;
+      return image;
+    });
+    backgroundsRef.current = images;
+    redraw();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [full, backgroundUrls.join("|")]);
+
 
   // Ctrl/⌘ + wheel or trackpad pinch zooms the pad, anchored at the cursor.
   // React's onWheel is passive, so this needs a native non-passive listener.

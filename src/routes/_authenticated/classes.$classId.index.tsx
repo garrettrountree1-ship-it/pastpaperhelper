@@ -209,6 +209,7 @@ function ClassRoster({ classId, showIbLevels }: { classId: string; showIbLevels?
                   <tr>
                     <th className="py-2 pr-4 font-medium">Name</th>
                     <th className="py-2 pr-4 font-medium">Joined</th>
+                    {showIbLevels ? <th className="py-2 pr-4 font-medium">Level</th> : null}
                     <th className="py-2 font-medium" />
                   </tr>
                 </thead>
@@ -219,6 +220,27 @@ function ClassRoster({ classId, showIbLevels }: { classId: string; showIbLevels?
                       <td className="py-2 pr-4 text-muted-foreground">
                         {new Date(s.joinedAt).toLocaleDateString()}
                       </td>
+                      {showIbLevels ? (
+                        <td className="py-2 pr-4">
+                          <div className="flex items-center gap-4">
+                            {(["SL", "HL"] as IbLevel[]).map((option) => (
+                              <label
+                                key={option}
+                                className="flex cursor-pointer items-center gap-1.5 text-sm"
+                              >
+                                <input
+                                  type="radio"
+                                  name={`ib-level-${s.id}`}
+                                  className="size-4 accent-primary"
+                                  checked={levelOf(s.id) === option}
+                                  onChange={() => void chooseLevel(s.id, option)}
+                                />
+                                {option}
+                              </label>
+                            ))}
+                          </div>
+                        </td>
+                      ) : null}
                       <td className="py-2 text-right">
                         <RemoveStudentButton
                           classId={classId}

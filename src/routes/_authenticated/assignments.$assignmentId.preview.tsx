@@ -482,8 +482,9 @@ function PreviewQuestion({
       onPhotosChange={(files) => void addPhotos(files)}
       onAddDrawing={(file) => {
         const reader = new FileReader();
+        // The pad keeps one picture, replaced each time the working is saved.
         reader.onload = () =>
-          setPhotos((prev) => [...prev, String(reader.result)].slice(0, 3));
+          setPhotos((prev) => [...prev.slice(0, padIndex.current ?? prev.length), String(reader.result)].slice(0, 3));
         reader.readAsDataURL(file);
       }}
       result={result ?? null}

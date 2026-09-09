@@ -451,7 +451,10 @@ function QuestionCard({
       photoCount={photos.length}
       photoUrls={answer?.imageUrls ?? []}
       onPhotosChange={(files) => setPhotos(Array.from(files ?? []).slice(0, 6))}
-      onAddDrawing={(file) => setPhotos((prev) => [...prev, file].slice(0, 6))}
+      onAddDrawing={(file) =>
+        // The pad keeps one picture that is replaced each time it is saved.
+        setPhotos((prev) => [...prev.filter((item) => item.name !== file.name), file].slice(0, 6))
+      }
       sentBack={
         answer?.rejected_at ? { at: answer.rejected_at, note: answer.rejection_note ?? null } : null
       }

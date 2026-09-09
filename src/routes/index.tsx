@@ -196,7 +196,7 @@ function Landing() {
         {/* Hero */}
         <section className="py-12 lg:py-16">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            IGCSE · A-Level · IB
+            A-Level · AP · IB · IGCSE
           </p>
           <h1 className="mt-4 max-w-4xl text-4xl leading-[1.05] sm:text-5xl lg:text-6xl">
             Teach the lesson. Set the questions. One place for both.

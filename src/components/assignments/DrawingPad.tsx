@@ -580,16 +580,30 @@ export function DrawingPad({
         <>
             <span className="mx-1 h-5 w-px bg-border" aria-hidden />
 
-            <Button
-              type="button"
-              size="sm"
-              variant={mode === "move" ? "default" : "outline"}
-              disabled={disabled}
-              onClick={() => setMode(mode === "move" ? "draw" : "move")}
-            >
-              {mode === "move" ? <Hand className="size-4" /> : <PenLine className="size-4" />}
-              {mode === "move" ? "Moving" : "Drawing"}
-            </Button>
+            <div className="inline-flex items-center rounded-lg border border-border p-1">
+              <Button
+                type="button"
+                size="sm"
+                variant={mode === "draw" ? "default" : "ghost"}
+                disabled={disabled}
+                onClick={() => setMode("draw")}
+                className="rounded-md"
+              >
+                <PenLine className="size-4" />
+                Write
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={mode === "move" ? "default" : "ghost"}
+                disabled={disabled}
+                onClick={() => setMode("move")}
+                className="rounded-md"
+              >
+                <Hand className="size-4" />
+                Move picture
+              </Button>
+            </div>
             <Button
               type="button"
               size="sm"

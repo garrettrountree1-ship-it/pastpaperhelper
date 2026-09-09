@@ -928,7 +928,9 @@ function AssignmentDialog({
 
           <div className="space-y-4">
             {questions.map((question, index) => (
-              <div key={question.id ?? `new-${index}`} className="rounded-xl border border-border p-4">
+              <div key={question.id ?? `new-${index}`}>
+              <div className="rounded-xl border border-border p-4">
+
                 <div className="flex items-center justify-between gap-2">
                   {(() => {
                     const label = questionLabel(question.questionText, index);

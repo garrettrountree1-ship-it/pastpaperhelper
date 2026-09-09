@@ -100,11 +100,14 @@ import { filesToPages } from "@/lib/pdf-pages";
 import { PhotoModeControl } from "@/components/assignments/PhotoModeControl";
 import type { PhotoMode } from "@/lib/photo-mode";
 import {
+  formatLabel,
+  parseLabelString,
   questionBody,
   questionLabel,
-  questionMainNumber,
-  setQuestionMainNumber,
+  setQuestionLabel,
+  shiftLetter,
 } from "@/lib/question-label";
+
 
 import { QuestionSnipStack } from "@/components/assignments/QuestionSnip";
 import { QuestionRecutDialog } from "@/components/assignments/QuestionRecutDialog";
@@ -706,25 +709,51 @@ function AssignmentDialog({
         q.marks > 0,
     );
 
+  const [labelDrafts, setLabelDrafts] = useState<Record<number, string>>({});
+
   function update_(index: number, patch: Partial<QuestionDraft>) {
     setQuestions((prev) => prev.map((q, i) => (i === index ? { ...q, ...patch } : q)));
   }
 
-  /** Changing one question's number shifts every question after it by the same amount. */
-  function renumberFrom(index: number, nextMain: number) {
+
+  /**
+   * Editing one question's printed label (number and/or letter) shifts the ones
+   * after it by the same amount, while leaving the typed text exactly as typed.
+   */
+  function relabelFrom(index: number, nextLabel: string) {
     setQuestions((prev) => {
       const current = prev[index];
       if (!current) return prev;
-      const oldMain = questionMainNumber(current.questionText) ?? index + 1;
-      const delta = Math.max(1, nextMain) - oldMain;
-      if (delta === 0) return prev;
+      const oldParsed = parseLabelString(questionLabel(current.questionText, index));
+      const nextParsed = parseLabelString(nextLabel);
+      const mainDelta =
+        oldParsed.main !== null && nextParsed.main !== null ? nextParsed.main - oldParsed.main : 0;
+      const oldLetter = oldParsed.parts[0] ?? "";
+      const newLetter = nextParsed.parts[0] ?? "";
+      const letterDelta =
+        mainDelta === 0 && /^[a-z]$/.test(oldLetter) && /^[a-z]$/.test(newLetter)
+          ? newLetter.charCodeAt(0) - oldLetter.charCodeAt(0)
+          : 0;
       return prev.map((q, i) => {
         if (i < index) return q;
-        const main = questionMainNumber(q.questionText) ?? i + 1;
-        return { ...q, questionText: setQuestionMainNumber(q.questionText, main + delta) };
+        if (i === index) return { ...q, questionText: setQuestionLabel(q.questionText, nextLabel) };
+        const parsed = parseLabelString(questionLabel(q.questionText, i));
+        if (mainDelta !== 0) {
+          if (parsed.main === null) return q;
+          const shifted = formatLabel(Math.max(1, parsed.main + mainDelta), parsed.parts);
+          return { ...q, questionText: setQuestionLabel(q.questionText, shifted) };
+        }
+        if (letterDelta !== 0 && parsed.main === oldParsed.main && parsed.parts.length > 0) {
+          const parts = [...parsed.parts];
+          parts[0] = shiftLetter(parts[0] ?? "", letterDelta);
+          const shifted = formatLabel(parsed.main, parts);
+          return { ...q, questionText: setQuestionLabel(q.questionText, shifted) };
+        }
+        return q;
       });
     });
   }
+
 
 
   const body = (
@@ -850,10 +879,16 @@ function AssignmentDialog({
                 <div className="flex items-center justify-between gap-2">
                   {(() => {
                     const label = questionLabel(question.questionText, index);
-                    const main = questionMainNumber(question.questionText) ?? index + 1;
-                    const parts = label.startsWith(String(main))
-                      ? label.slice(String(main).length)
-                      : "";
+                    const draft = labelDrafts[index];
+                    const commit = () => {
+                      const next = (draft ?? "").trim();
+                      setLabelDrafts((prev) => {
+                        const copy = { ...prev };
+                        delete copy[index];
+                        return copy;
+                      });
+                      if (next && next !== label) relabelFrom(index, next);
+                    };
                     return (
                       <div className="flex items-center gap-2">
                         <Label htmlFor={`qnum-${index}`} className="font-display text-lg">
@@ -861,19 +896,24 @@ function AssignmentDialog({
                         </Label>
                         <Input
                           id={`qnum-${index}`}
-                          type="number"
-                          min={1}
-                          value={main}
-                          onChange={(event) => {
-                            const next = Number(event.target.value);
-                            if (Number.isFinite(next) && next >= 1) renumberFrom(index, next);
+                          value={draft ?? label}
+                          onChange={(event) =>
+                            setLabelDrafts((prev) => ({ ...prev, [index]: event.target.value }))
+                          }
+                          onBlur={commit}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              commit();
+                            }
                           }}
-                          className="w-16"
+                          className="w-28"
+                          placeholder="1(a)(ii)"
                         />
-                        {parts ? <span className="font-display text-lg">{parts}</span> : null}
                       </div>
                     );
                   })()}
+
 
                   {questions.length > 1 ? (
                     <Button

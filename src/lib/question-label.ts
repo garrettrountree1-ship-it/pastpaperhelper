@@ -76,3 +76,50 @@ export function questionBody(questionText: string): string {
   if (again && again.label === first.label && again.rest) text = again.rest;
   return text.trim() || cleanMathText((questionText ?? "").trim());
 }
+
+/** Splits a printed label such as "12(b)(ii)" into its number and part letters. */
+export function parseLabelString(label: string): { main: number | null; parts: string[] } {
+  const text = (label ?? "").trim();
+  const head = HEAD.exec(text);
+  const main = head?.[1] ? Number(head[1]) : null;
+  let rest = head ? text.slice(head[0].length) : text;
+  const parts: string[] = [];
+  for (;;) {
+    const part = PAREN_PART.exec(rest);
+    if (part?.[1]) {
+      parts.push(part[1].toLowerCase());
+      rest = rest.slice(part[0].length);
+      continue;
+    }
+    const compact = COMPACT_PART.exec(rest);
+    if (compact?.[1]) {
+      parts.push(compact[1].toLowerCase());
+      if (compact[2]) parts.push(compact[2].toLowerCase());
+      rest = rest.slice(compact[0].length);
+      continue;
+    }
+    break;
+  }
+  return { main, parts };
+}
+
+export function formatLabel(main: number | null, parts: string[]): string {
+  return `${main ?? ""}${parts.map((p) => `(${p})`).join("")}`;
+}
+
+/** Replaces the printed label at the start of a question, keeping the wording. */
+export function setQuestionLabel(questionText: string, label: string): string {
+  const text = (questionText ?? "").trim();
+  const parsed = parseOnce(text);
+  const body = parsed ? parsed.rest : text;
+  const clean = (label ?? "").trim();
+  return clean ? `${clean} ${body}`.trim() : body;
+}
+
+/** Shifts a single letter part ("b" -> "d"), leaving roman numerals alone. */
+export function shiftLetter(part: string, delta: number): string {
+  if (!/^[a-z]$/.test(part) || delta === 0) return part;
+  const next = part.charCodeAt(0) + delta;
+  if (next < 97 || next > 122) return part;
+  return String.fromCharCode(next);
+}

@@ -58,6 +58,7 @@ export function DrawingPad({
   const strokesRef = useRef<Stroke[]>([]);
   const drawing = useRef(false);
   const panning = useRef<{ x: number; y: number } | null>(null);
+  const resizing = useRef<{ startX: number; startWidth: number; startScale: number } | null>(null);
   const dprRef = useRef(1);
   // Where the student has dragged the question picture to. Only the picture
   // moves — their writing stays exactly where they put it.
@@ -68,6 +69,11 @@ export function DrawingPad({
   const [mode, setMode] = useState<"draw" | "move">("draw");
   const modeRef = useRef(mode);
   modeRef.current = mode;
+  // True while the student has tapped the question picture: it is outlined with
+  // corner handles and can be dragged around or made bigger / smaller.
+  const [selected, setSelected] = useState(false);
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
   // The sheet is as long as the student needs: it stretches while they scroll
   // down and shrinks back to the work when they come back up.
   const [sheetHeight, setSheetHeight] = useState(0);
@@ -85,6 +91,50 @@ export function DrawingPad({
   const colorRef = useRef(color);
   colorRef.current = color;
 
+  const HANDLE = 14;
+
+  /** On-screen box the question picture currently fills. */
+  function pictureRect() {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const width = (canvas.width / dprRef.current) * photoScaleRef.current;
+    let height = 0;
+    for (const piece of backgroundsRef.current) {
+      const image = piece.image;
+      if (!image.complete || !image.naturalWidth) continue;
+      const sh = Math.max(1, (piece.bottom - piece.top) * image.naturalHeight);
+      height += (width * sh) / image.naturalWidth + 8;
+    }
+    if (height <= 0) return null;
+    return { x: offsetRef.current.x, y: offsetRef.current.y, width, height };
+  }
+
+  function hitPicture(point: { x: number; y: number }) {
+    const rect = pictureRect();
+    if (!rect) return false;
+    return (
+      point.x >= rect.x &&
+      point.x <= rect.x + rect.width &&
+      point.y >= rect.y &&
+      point.y <= rect.y + rect.height
+    );
+  }
+
+  /** Bottom-right (or any corner) grab square that resizes the picture. */
+  function hitHandle(point: { x: number; y: number }) {
+    const rect = pictureRect();
+    if (!rect || !selectedRef.current) return false;
+    const corners = [
+      { x: rect.x, y: rect.y },
+      { x: rect.x + rect.width, y: rect.y },
+      { x: rect.x, y: rect.y + rect.height },
+      { x: rect.x + rect.width, y: rect.y + rect.height },
+    ];
+    return corners.some(
+      (corner) =>
+        Math.abs(point.x - corner.x) <= HANDLE && Math.abs(point.y - corner.y) <= HANDLE,
+    );
+  }
 
   function redraw() {
     const canvas = canvasRef.current;
@@ -124,7 +174,29 @@ export function DrawingPad({
       });
       ctx.stroke();
     }
+
+    // Highlight the picture last so the outline and grab squares stay visible.
+    const rect = selectedRef.current ? pictureRect() : null;
+    if (rect) {
+      ctx.save();
+      ctx.strokeStyle = "#2563eb";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#2563eb";
+      for (const corner of [
+        { x: rect.x, y: rect.y },
+        { x: rect.x + rect.width, y: rect.y },
+        { x: rect.x, y: rect.y + rect.height },
+        { x: rect.x + rect.width, y: rect.y + rect.height },
+      ]) {
+        ctx.fillRect(corner.x - 5, corner.y - 5, 10, 10);
+      }
+      ctx.restore();
+    }
   }
+
 
 
   /** Lowest point of the picture / ink, in on-screen pixels. */

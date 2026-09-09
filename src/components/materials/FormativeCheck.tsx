@@ -164,6 +164,7 @@ export function FormativeCheckButton({
           expectedAnswer: expected.trim() || null,
           questionImage,
           seconds: effectiveSeconds,
+          countUp,
           targetStudentIds: selected,
         },
       }),

@@ -611,6 +611,55 @@ export const updateQuestionCrop = createServerFn({ method: "POST" })
   });
 
 /**
+ * Teacher-only: every page of the uploaded document a cut came from, so the
+ * recut window can step forward/backward through pages and add a second page
+ * when a question runs over a page break.
+ */
+export const listRecutPages = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ imagePath: z.string().min(1) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const page = data.imagePath.split("#")[0] ?? "";
+    const folder = page.slice(0, page.lastIndexOf("/"));
+    const classId = folder.split("/")[0] ?? "";
+    if (!folder || !classId) throw new Error("That page could not be found.");
+    if (!(await teachesClass(supabase, classId, userId))) {
+      throw new Error("You do not teach this class.");
+    }
+
+    const db = await admin();
+    const { data: files, error } = await db.storage.from("paper-pages").list(folder, {
+      limit: 500,
+      sortBy: { column: "name", order: "asc" },
+    });
+    if (error) throw new Error(error.message);
+
+    const isAnswerSheet = (page.split("/").pop() ?? "").startsWith("ms-page-");
+    const pages = (files ?? [])
+      .map((file) => {
+        const name = file.name;
+        const answerSheet = name.startsWith("ms-page-");
+        const number = Number(/page-(\d+)/.exec(name)?.[1] ?? 0);
+        return { path: `${folder}/${name}`, answerSheet, number };
+      })
+      .filter((item) => item.number > 0 && item.answerSheet === isAnswerSheet)
+      .sort((a, b) => a.number - b.number);
+
+    const urls = await signPaperPages(db, pages.map((item) => item.path));
+    return {
+      pages: pages.map((item, index) => ({
+        path: item.path,
+        url: urls[index] ?? "",
+        number: item.number,
+      })),
+    };
+  });
+
+
+/**
  * Inserts a blank question straight after an existing one — for a question the
  * AI extraction missed. The number is suggested and the ones after it move
  * down, and the picture starts where the previous question's cut ended.

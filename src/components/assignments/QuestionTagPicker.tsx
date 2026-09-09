@@ -44,6 +44,7 @@ export function QuestionTagPicker({
   const [open, setOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const marked = Boolean(tagLabel.trim() || tagImage);
+  const isHl = tagLabel.trim().toUpperCase() === "HL";
 
   return (
     <div className="flex flex-wrap items-center gap-2">

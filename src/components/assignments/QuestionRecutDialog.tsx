@@ -19,11 +19,19 @@ type Props = {
   imageUrls: string[];
   onSave: (imagePaths: string[], imageUrls: string[]) => void | Promise<void>;
   saving?: boolean;
+  /** "Recut" by default; use "Recut answer" for the mark-scheme picture. */
+  label?: string;
 };
 
 const MIN_HEIGHT = 0.035;
 
-export function QuestionRecutDialog({ imagePaths, imageUrls, onSave, saving = false }: Props) {
+export function QuestionRecutDialog({
+  imagePaths,
+  imageUrls,
+  onSave,
+  saving = false,
+  label = "Recut",
+}: Props) {
   const [open, setOpen] = useState(false);
   const [piece, setPiece] = useState(0);
   const initial = useMemo(
@@ -66,12 +74,12 @@ export function QuestionRecutDialog({ imagePaths, imageUrls, onSave, saving = fa
       <DialogTrigger asChild>
         <Button type="button" variant="secondary" size="sm">
           <Crop />
-          Recut
+          {label}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[94vh] max-w-4xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Recut question</DialogTitle>
+          <DialogTitle>{label === "Recut" ? "Recut question" : label}</DialogTitle>
         </DialogHeader>
 
         {imageUrls.length > 1 ? (

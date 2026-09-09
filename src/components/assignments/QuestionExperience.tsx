@@ -87,6 +87,7 @@ export function QuestionExperience({
   onSend,
   locked = false,
   markScheme = null,
+  markSchemeImageUrls = [],
   headerAction = null,
   snipAction = null,
   keywordTranslation = false,
@@ -129,6 +130,8 @@ export function QuestionExperience({
   locked?: boolean;
   /** Mark-scheme answer, only present once the teacher reveals it. */
   markScheme?: string | null;
+  /** The official answer exactly as printed, shown only once released. */
+  markSchemeImageUrls?: string[];
   /** Optional action shown in the question header (e.g. message the teacher). */
   headerAction?: ReactNode;
   /** Teacher-only action displayed beside the printed question image. */
@@ -251,10 +254,19 @@ export function QuestionExperience({
         </div>
       ) : null}
 
-      {markScheme ? (
+      {markScheme || markSchemeImageUrls.length > 0 ? (
         <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
           <p className="text-sm font-medium">Mark scheme (released by your teacher)</p>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{cleanMathText(markScheme)}</p>
+          {markSchemeImageUrls.length > 0 ? (
+            <QuestionSnipStack
+              urls={markSchemeImageUrls}
+              answers
+              alt="Official answer as printed in the mark scheme"
+              className="mt-2"
+            />
+          ) : (
+            <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{cleanMathText(markScheme ?? "")}</p>
+          )}
         </div>
       ) : null}
 

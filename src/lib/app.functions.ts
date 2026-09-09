@@ -2152,12 +2152,13 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
     }
 
     const { extractQuestionsFromPapers } = await import("./paper-extract.server");
-    const questions = await extractQuestionsFromPapers({
+    const extraction = await extractQuestionsFromPapers({
       curriculum: klass.curriculum,
       subject: data.subject,
       paperFiles: data.paperFiles,
       markSchemeFiles: data.markSchemeFiles,
     });
+    const questions = extraction.questions;
     if (questions.length === 0) {
       throw new Error("No questions could be read from those files. Try clearer or fewer pages.");
     }
@@ -2232,7 +2233,7 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
     );
 
 
-    return { questions: withPages };
+    return { questions: withPages, warnings: extraction.warnings };
   });
 
 export const sendTutorMessage = createServerFn({ method: "POST" })

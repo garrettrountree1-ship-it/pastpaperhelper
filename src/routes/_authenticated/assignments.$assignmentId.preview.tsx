@@ -273,49 +273,6 @@ You can test any question here — the AI marks it exactly as it would for a stu
   );
 }
 
-/** Wraps a question with a teacher-only "add a question here" control below it. */
-function AddQuestionRow({
-  assignmentId,
-  questionId,
-  editing,
-  children,
-}: {
-  assignmentId: string;
-  questionId: string;
-  editing: boolean;
-  children: ReactNode;
-}) {
-  const queryClient = useQueryClient();
-  const add = useMutation({
-    mutationFn: () => insertQuestionAfter({ data: { questionId } }),
-    onSuccess: async (result) => {
-      toast.success(`Added question ${result.label} — cut its picture next.`);
-      await queryClient.invalidateQueries({ queryKey: ["assignment-preview", assignmentId] });
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-  return (
-    <div>
-      {children}
-      {editing ? (
-      <div className="flex justify-center py-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="text-xs text-muted-foreground"
-          disabled={add.isPending}
-          onClick={() => add.mutate()}
-        >
-          <Plus className="size-3" />
-          {add.isPending ? "Adding..." : "Add a question here"}
-        </Button>
-      </div>
-      ) : null}
-    </div>
-  );
-}
-
 function PreviewQuestion({
   assignmentId,
   question,

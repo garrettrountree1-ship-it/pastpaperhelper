@@ -1062,6 +1062,28 @@ function AssignmentDialog({
                     };
                     return (
                       <div className="flex items-center gap-2">
+                        {ibdp ? (
+                          <button
+                            type="button"
+                            aria-label="Mark this question as HL only"
+                            aria-pressed={question.tagLabel.trim().toUpperCase() === "HL"}
+                            title="HL only"
+                            onClick={() =>
+                              update_(index, {
+                                tagLabel:
+                                  question.tagLabel.trim().toUpperCase() === "HL" ? "" : "HL",
+                                tagImage: "",
+                              })
+                            }
+                            className={`flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                              question.tagLabel.trim().toUpperCase() === "HL"
+                                ? "border-[hsl(215_75%_28%)] bg-[hsl(215_75%_28%)]"
+                                : "border-border bg-transparent hover:border-[hsl(215_75%_28%)]"
+                            }`}
+                          >
+                            <span className="sr-only">HL</span>
+                          </button>
+                        ) : null}
                         <Label htmlFor={`qnum-${index}`} className="font-display text-lg">
                           Question
                         </Label>

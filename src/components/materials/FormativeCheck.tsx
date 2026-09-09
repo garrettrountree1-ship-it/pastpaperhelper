@@ -9,6 +9,7 @@ import {
   Send,
   Sparkles,
   Timer,
+  TimerReset,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";

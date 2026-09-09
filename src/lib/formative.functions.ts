@@ -3,7 +3,12 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { uniqueAlias } from "@/lib/game-alias";
-import { markFormativeAnswer, solveFormativeQuestion } from "@/lib/formative.server";
+import {
+  detectQuestionParts,
+  markFormativeAnswer,
+  markFormativePart,
+  solveFormativeQuestion,
+} from "@/lib/formative.server";
 import { assertClassTeacher } from "@/lib/materials.server";
 
 /** Teacher launches a timed quick question to everyone in the class. */
@@ -56,6 +61,11 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
       .is("closed_at", null);
 
     const endsAt = new Date(Date.now() + data.seconds * 1000).toISOString();
+    // Multi-part questions get one answer box per part, so work the parts out now.
+    const parts = await detectQuestionParts({
+      question: data.question.trim(),
+      questionImage: data.questionImage || null,
+    });
     const { data: row, error } = await supabase
       .from("formative_checks")
       .insert({
@@ -68,6 +78,7 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
         seconds: data.seconds,
         count_up: data.countUp ?? false,
         ends_at: endsAt,
+        parts,
         target_student_id: targets.length === 1 ? (targets[0] ?? null) : null,
         target_student_ids: targets,
       })

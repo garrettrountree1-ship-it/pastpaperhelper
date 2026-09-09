@@ -49,16 +49,17 @@ export function QuestionTagPicker({
     <div className="flex flex-wrap items-center gap-2">
       <Button
         type="button"
-        variant={tagLabel.trim().toUpperCase() === "HL" ? "default" : "outline"}
+        variant={isHl ? "default" : "outline"}
         size="sm"
+        aria-pressed={isHl}
         onClick={() =>
-          tagLabel.trim().toUpperCase() === "HL"
+          isHl
             ? onChange({ tagLabel: "", tagImage: "" })
             : onChange({ tagLabel: "HL", tagImage: "" })
         }
       >
-        <QuestionTagBadge label="HL" />
-        Mark HL
+        {isHl ? <QuestionTagBadge label="HL" /> : null}
+        {isHl ? "HL only — click to remove" : "Mark this question HL"}
       </Button>
       <Button type="button" variant="ghost" size="sm" onClick={() => setOpen((v) => !v)}>
         Own label

@@ -544,10 +544,13 @@ export function FormativeCheckPanel({
 
   classId,
   asStudent = false,
+  showPopup = true,
 }: {
   classId: string;
   /** Demo accounts viewing the class as a student answer like a student. */
   asStudent?: boolean;
+  /** The popup only appears inside the open lesson notes workspace. */
+  showPopup?: boolean;
 }) {
   const queryClient = useQueryClient();
   const fetchActive = useServerFn(getActiveFormativeCheck);

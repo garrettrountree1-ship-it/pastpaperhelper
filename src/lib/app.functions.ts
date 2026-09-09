@@ -675,7 +675,7 @@ export const insertQuestionAfter = createServerFn({ method: "POST" })
     const question = await questionForTeacher(supabase, db, data.questionId, userId);
     const { data: current } = await db
       .from("questions")
-      .select("id, assignment_id, position, question_text, image_paths")
+      .select("id, assignment_id, position, question_text, image_paths, answer_image_paths")
       .eq("id", question.id)
       .single();
     if (!current) throw new Error("Question not found.");

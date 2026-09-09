@@ -2600,7 +2600,10 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
         answer: data.answerText,
         marks: question.marks,
       }),
-      checkHandDrawnPhotos(previewImages),
+      checkHandDrawnPhotos(
+        previewImages.filter((url) => !(data.padDataUrls ?? []).includes(url)),
+      ),
+
     ]);
     if (!previewPhotoCheck.ok || previewDetection.isAi) {
       const strikes = (data.priorFlags ?? 0) + 1;

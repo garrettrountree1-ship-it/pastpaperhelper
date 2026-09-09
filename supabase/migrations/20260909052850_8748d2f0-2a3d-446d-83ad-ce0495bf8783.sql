@@ -1,0 +1,2 @@
+ALTER TABLE public.formative_checks ADD COLUMN IF NOT EXISTS parts text[] NOT NULL DEFAULT '{}';
+ALTER TABLE public.formative_responses ADD COLUMN IF NOT EXISTS part_verdicts jsonb NOT NULL DEFAULT '{}'::jsonb;

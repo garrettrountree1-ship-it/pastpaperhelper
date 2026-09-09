@@ -704,6 +704,7 @@ export type Database = {
           ends_at: string
           expected_answer: string | null
           id: string
+          parts: string[]
           question: string
           question_image: string | null
           released_answer: string | null
@@ -722,6 +723,7 @@ export type Database = {
           ends_at: string
           expected_answer?: string | null
           id?: string
+          parts?: string[]
           question: string
           question_image?: string | null
           released_answer?: string | null
@@ -740,6 +742,7 @@ export type Database = {
           ends_at?: string
           expected_answer?: string | null
           id?: string
+          parts?: string[]
           question?: string
           question_image?: string | null
           released_answer?: string | null
@@ -802,6 +805,7 @@ export type Database = {
           created_at: string
           feedback: string | null
           id: string
+          part_verdicts: Json
           student_id: string
           verdict: string
         }
@@ -812,6 +816,7 @@ export type Database = {
           created_at?: string
           feedback?: string | null
           id?: string
+          part_verdicts?: Json
           student_id: string
           verdict: string
         }
@@ -822,6 +827,7 @@ export type Database = {
           created_at?: string
           feedback?: string | null
           id?: string
+          part_verdicts?: Json
           student_id?: string
           verdict?: string
         }

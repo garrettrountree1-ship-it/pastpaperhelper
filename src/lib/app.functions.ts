@@ -2425,7 +2425,7 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
       .select("name")
       .eq("id", assignment.class_id)
       .maybeSingle();
-    const { data: questions } = await db
+    const { data: allPreviewQuestions } = await db
       .from("questions")
       .select(
         "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image",

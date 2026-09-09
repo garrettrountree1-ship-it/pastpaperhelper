@@ -392,7 +392,6 @@ export function DrawingPad({
   return (
     <div
       className={
-
         "fixed inset-0 z-50 flex select-none flex-col overflow-hidden bg-background p-3 [-webkit-touch-callout:none] [-webkit-user-select:none]"
       }
       onCopy={(event) => event.preventDefault()}

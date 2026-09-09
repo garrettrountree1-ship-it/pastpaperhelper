@@ -2425,6 +2425,19 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
     const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
     const tutorSettings = await tutorSettingsForAssignment(db, data.assignmentId, studentId);
 
+    // Answers only appear in the preview when they are actually released — for the
+    // whole class, or for the student being previewed.
+    const { data: studentRelease } = studentId
+      ? await db
+          .from("student_assignment_settings")
+          .select("mark_scheme_revealed")
+          .eq("assignment_id", data.assignmentId)
+          .eq("student_id", studentId)
+          .maybeSingle()
+      : { data: null };
+    const markSchemeRevealed = Boolean(
+      assignment.mark_scheme_revealed || studentRelease?.mark_scheme_revealed,
+    );
 
     return {
       tutorSettings,
@@ -2440,7 +2453,7 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
         instructions: assignment.instructions,
         dueAt: assignment.due_at,
         pastDue,
-        markSchemeRevealed: Boolean(assignment.mark_scheme_revealed),
+        markSchemeRevealed,
         className: klass?.name ?? "",
       },
       questions: await Promise.all(
@@ -2450,7 +2463,8 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
           question_text: q.question_text,
           marks: q.marks,
           image_paths: q.image_paths,
-          markScheme: assignment.mark_scheme_revealed ? q.mark_scheme : null,
+          markScheme: markSchemeRevealed ? q.mark_scheme : null,
+
           answerImagePaths: q.answer_image_paths ?? [],
           answerImageUrls: await signPaperPages(db, q.answer_image_paths ?? []),
           photoMode: resolvePhotoMode({

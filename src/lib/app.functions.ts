@@ -528,6 +528,8 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
           imageUrls: await signPaperPages(await admin(), q.image_paths ?? []),
           answerImagePaths: q.answer_image_paths ?? [],
           answerImageUrls: await signPaperPages(await admin(), q.answer_image_paths ?? []),
+          tagLabel: q.tag_label ?? "",
+          tagImage: q.tag_image ?? "",
         })),
       ),
     };

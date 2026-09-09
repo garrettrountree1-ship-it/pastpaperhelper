@@ -371,6 +371,13 @@ function QuestionCard({
   const [draft, setDraft] = useState(answer?.answer_text ?? "");
   const [reply, setReply] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
+  // Local previews so a student can see and unattach each photo before submitting.
+  const [photoPreviews, setPhotoPreviews] = useState<{ name: string; url: string }[]>([]);
+  useEffect(() => {
+    const previews = photos.map((file) => ({ name: file.name, url: URL.createObjectURL(file) }));
+    setPhotoPreviews(previews);
+    return () => previews.forEach((item) => URL.revokeObjectURL(item.url));
+  }, [photos]);
   const { requiresPhoto, photoOnly } = photoAvailability(
     question.question_text,
     question.photoMode ?? "auto",

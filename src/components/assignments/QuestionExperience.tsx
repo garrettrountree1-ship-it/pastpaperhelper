@@ -351,7 +351,7 @@ export function QuestionExperience({
 
         {/* Photo and pad sections stay folded away until they're needed. */}
         <details
-          open={photoCount > 0 || photoUrls.length > 0 || requiresPhoto}
+          open={attachedPhotos.length > 0 || submittedPhotoUrls.length > 0 || requiresPhoto}
           className="rounded-lg border border-dashed border-border p-3"
         >
           <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">

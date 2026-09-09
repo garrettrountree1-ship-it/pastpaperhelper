@@ -174,16 +174,6 @@ function PreviewPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button
-                  type="button"
-                  variant={editing ? "default" : "outline"}
-                  size="sm"
-                  className="h-8 text-xs"
-                  onClick={() => setEditing((on) => !on)}
-                  title="Teacher only — students never see these controls"
-                >
-                  {editing ? "Done editing cuts" : "Edit cuts"}
-                </Button>
               </div>
               {settings ? (
                 <div className="mb-3 flex flex-wrap gap-2 text-xs">

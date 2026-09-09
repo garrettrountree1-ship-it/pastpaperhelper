@@ -503,7 +503,23 @@ export function DrawingPad({
             ? "Your working is saved. Open the pad again to carry on from where you left off."
             : "Opens full screen with the question printed underneath, so you can write straight over it with a stylus, finger or mouse."}
         </p>
+        {thumbnail ? (
+          <div className="mt-2 flex items-center gap-3">
+            <img
+              src={thumbnail}
+              alt="Your saved working"
+              draggable={false}
+              onContextMenu={(event) => event.preventDefault()}
+              onDragStart={(event) => event.preventDefault()}
+              className="pointer-events-none h-24 w-auto max-w-[9rem] select-none rounded border border-border bg-white object-contain object-top"
+            />
+            <p className="text-xs text-muted-foreground">
+              This is attached to your answer. Open the writing pad to change it.
+            </p>
+          </div>
+        ) : null}
       </div>
+
     );
   }
 

@@ -148,6 +148,15 @@ export async function snapBandToWhitespace(url: string, band: Band): Promise<Ban
     bottom = Math.min(bottom, lastInk + pad);
   }
 
+  // Safety net: a faint page (thin print, a table rule, a pale scan) can make
+  // the row measurement believe nearly everything is empty paper, which would
+  // squeeze the piece down to a sliver and look blank on screen. Whenever the
+  // tidy-up would lose a large part of the chosen piece, keep the chosen piece
+  // exactly as the teacher (or the reading step) set it.
+  const askedRows = rawBottom - rawTop;
+  const keptRows = bottom - top;
+  if (askedRows > 0 && keptRows < Math.max(askedRows * 0.6, height * 0.02)) return band;
+
   return {
     top: Math.max(0, top / height),
     bottom: Math.min(1, (bottom + 1) / height),

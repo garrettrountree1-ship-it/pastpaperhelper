@@ -33,15 +33,7 @@ import { OfficeDocView } from "@/components/materials/OfficeDocView";
 import { PdfDocView } from "@/components/materials/PdfDocView";
 import { SlideDeckView } from "@/components/materials/SlideDeckView";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -50,7 +42,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTutorThread } from "@/hooks/use-tutor-thread";
 import { docFormat } from "@/lib/doc-kind";
@@ -536,7 +527,11 @@ export function LessonWorkspace({
           Close
         </Button>
         <div className="min-w-0">
-          <h2 className="truncate font-display text-lg leading-tight">{unit.title}</h2>
+          {canManage ? (
+            <UnitTitleEditor unit={unit} onSaved={onUnitChanged} />
+          ) : (
+            <h2 className="truncate font-display text-lg leading-tight">{unit.title}</h2>
+          )}
           <p className="flex items-center gap-1 text-xs text-muted-foreground">
             <CalendarDays className="size-3" />
             {planLine(unit)}
@@ -619,7 +614,7 @@ export function LessonWorkspace({
                   <Trash2 className="size-4" />
                 </Button>
               ) : null}
-              <UnitPlanDialog unit={unit} onSaved={onUnitChanged} />
+              
             </>
           ) : null}
           {canManage ? (
@@ -1075,95 +1070,75 @@ export function LessonWorkspace({
   );
 }
 
-function UnitPlanDialog({ unit, onSaved }: { unit: WorkspaceUnit; onSaved: () => void }) {
+// Click-to-rename unit title shown in the lesson workspace header.
+// Passes through the existing plan fields so a title-only save never wipes them.
+function UnitTitleEditor({ unit, onSaved }: { unit: WorkspaceUnit; onSaved: () => void }) {
   const save = useServerFn(updateUnit);
-  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(unit.title);
-  const [description, setDescription] = useState(unit.description ?? "");
-  const [start, setStart] = useState(unit.planned_start ?? "");
-  const [end, setEnd] = useState(unit.planned_end ?? "");
-  const [classes, setClasses] = useState(String(unit.planned_classes ?? ""));
 
-  const mutation = useMutation({
-    mutationFn: () =>
-      save({
+  useEffect(() => {
+    if (!editing) setTitle(unit.title);
+  }, [unit.title, editing]);
+
+  const commit = async () => {
+    const next = title.trim();
+    setEditing(false);
+    if (!next || next === unit.title) {
+      setTitle(unit.title);
+      return;
+    }
+    try {
+      await save({
         data: {
           unitId: unit.id,
-          title: title.trim(),
-          description,
-          plannedStart: start || null,
-          plannedEnd: end || null,
-          plannedClasses: classes ? Number(classes) : null,
+          title: next,
+          description: unit.description ?? "",
+          plannedStart: unit.planned_start ?? null,
+          plannedEnd: unit.planned_end ?? null,
+          plannedClasses: unit.planned_classes ?? null,
         },
-      }),
-    onSuccess: () => {
-      toast.success("Unit plan updated");
-      setOpen(false);
+      });
+      toast.success("Unit title updated");
       onSaved();
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
+    } catch (error) {
+      toast.error((error as Error).message);
+      setTitle(unit.title);
+    }
+  };
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setTitle(unit.title);
+          setEditing(true);
+        }}
+        title="Click to rename unit"
+        className="max-w-full truncate text-left font-display text-lg leading-tight transition-colors hover:text-primary"
+      >
+        {unit.title}
+      </button>
+    );
+  }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        Edit unit plan
-      </Button>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Unit plan</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="plan-title">Unit title</Label>
-            <Input id="plan-title" value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="plan-start">Start date</Label>
-              <Input
-                id="plan-start"
-                type="date"
-                value={start}
-                onChange={(e) => setStart(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="plan-end">End date</Label>
-              <Input
-                id="plan-end"
-                type="date"
-                value={end}
-                onChange={(e) => setEnd(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="plan-classes">Classes</Label>
-              <Input
-                id="plan-classes"
-                type="number"
-                min={0}
-                value={classes}
-                onChange={(e) => setClasses(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="plan-description">Description</Label>
-            <Textarea
-              id="plan-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button onClick={() => mutation.mutate()} disabled={!title.trim() || mutation.isPending}>
-            Save plan
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <Input
+      autoFocus
+      value={title}
+      onChange={(e) => setTitle(e.target.value)}
+      onBlur={() => void commit()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") void commit();
+        if (e.key === "Escape") {
+          setTitle(unit.title);
+          setEditing(false);
+        }
+      }}
+      className="h-8 w-64 font-display text-lg"
+      aria-label="Unit title"
+    />
   );
 }
 

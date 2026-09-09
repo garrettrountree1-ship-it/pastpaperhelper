@@ -1654,7 +1654,7 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     // Mark schemes are only sent once the teacher reveals them.
     const { data: allQuestions } = await db
       .from("questions")
-      .select("id, position, question_text, marks, image_paths, mark_scheme, photo_mode")
+      .select("id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode")
       .eq("assignment_id", data.assignmentId)
       .order("position");
 
@@ -1720,6 +1720,10 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
           marks: q.marks,
           image_paths: q.image_paths,
           markScheme: access.markSchemeRevealed ? q.mark_scheme : null,
+          answerImagePaths: access.markSchemeRevealed ? (q.answer_image_paths ?? []) : [],
+          answerImageUrls: access.markSchemeRevealed
+            ? await signPaperPages(db, q.answer_image_paths ?? [])
+            : [],
           photoMode: resolvePhotoMode({
             student: access.studentPhotoMode,
             question: q.photo_mode as string | null,
@@ -2231,7 +2235,7 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
       .maybeSingle();
     const { data: questions } = await db
       .from("questions")
-      .select("id, position, question_text, marks, image_paths, mark_scheme, photo_mode")
+      .select("id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode")
       .eq("assignment_id", data.assignmentId)
       .order("position");
 
@@ -2265,6 +2269,8 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
           marks: q.marks,
           image_paths: q.image_paths,
           markScheme: assignment.mark_scheme_revealed ? q.mark_scheme : null,
+          answerImagePaths: q.answer_image_paths ?? [],
+          answerImageUrls: await signPaperPages(db, q.answer_image_paths ?? []),
           photoMode: resolvePhotoMode({
             question: q.photo_mode as string | null,
             assignment: assignment.photo_mode as string | null,

@@ -98,10 +98,13 @@ export function DrawingPad({
     // The question picture sits under the ink so the work is marked in context.
     const padWidth = (canvas.width / dpr) * photoScaleRef.current;
     let y = 0;
-    for (const image of backgroundsRef.current) {
+    for (const piece of backgroundsRef.current) {
+      const image = piece.image;
       if (!image.complete || !image.naturalWidth) continue;
-      const h = (padWidth * image.naturalHeight) / image.naturalWidth;
-      ctx.drawImage(image, 0, y, padWidth, h);
+      const sy = piece.top * image.naturalHeight;
+      const sh = Math.max(1, (piece.bottom - piece.top) * image.naturalHeight);
+      const h = (padWidth * sh) / image.naturalWidth;
+      ctx.drawImage(image, 0, sy, image.naturalWidth, sh, 0, y, padWidth, h);
       y += h + 8;
     }
 

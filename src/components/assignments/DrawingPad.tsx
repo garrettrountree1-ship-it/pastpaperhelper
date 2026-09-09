@@ -59,9 +59,10 @@ export function DrawingPad({
   const drawing = useRef(false);
   const panning = useRef<{ x: number; y: number } | null>(null);
   const dprRef = useRef(1);
-  const zoomRef = useRef(1);
+  // Where the student has dragged the question picture to. Only the picture
+  // moves — their writing stays exactly where they put it.
   const offsetRef = useRef({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
+
   const [hasInk, setHasInk] = useState(false);
   const [full, setFull] = useState(false);
   const [mode, setMode] = useState<"draw" | "move">("draw");

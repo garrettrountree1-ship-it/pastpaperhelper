@@ -322,14 +322,19 @@ export function FormativeCheckButton({
             <Label>Timer</Label>
             <div className="flex flex-wrap gap-2">
 
+            <div className="flex flex-wrap gap-2">
+
               {TIMER_OPTIONS.map((option) => (
                 <Button
                   key={option.value}
                   type="button"
                   size="sm"
-                  variant={seconds === option.value && !customTimer ? "default" : "outline"}
+                  variant={
+                    seconds === option.value && !customTimer && !countUp ? "default" : "outline"
+                  }
                   onClick={() => {
                     setCustomTimer(false);
+                    setCountUp(false);
                     setSeconds(option.value);
                   }}
                 >
@@ -340,14 +345,35 @@ export function FormativeCheckButton({
               <Button
                 type="button"
                 size="sm"
-                variant={customTimer ? "default" : "outline"}
-                onClick={() => setCustomTimer(true)}
+                variant={customTimer && !countUp ? "default" : "outline"}
+                onClick={() => {
+                  setCountUp(false);
+                  setCustomTimer(true);
+                }}
               >
                 <Timer className="size-3" />
                 Custom
               </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={countUp ? "default" : "outline"}
+                onClick={() => {
+                  setCustomTimer(false);
+                  setCountUp(true);
+                }}
+              >
+                <TimerReset className="size-3" />
+                Count up
+              </Button>
             </div>
-            {customTimer ? (
+            {countUp ? (
+              <p className="pt-1 text-xs text-muted-foreground">
+                No time limit — the clock counts up while students work, and each student sees
+                the total time they took once they get it right.
+              </p>
+            ) : null}
+            {customTimer && !countUp ? (
               <div className="flex items-center gap-2 pt-1">
                 <Input
                   id="formative-custom-minutes"

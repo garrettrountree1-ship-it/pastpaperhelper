@@ -710,21 +710,44 @@ function AssignmentDialog({
     setQuestions((prev) => prev.map((q, i) => (i === index ? { ...q, ...patch } : q)));
   }
 
-  /** Changing one question's number shifts every question after it by the same amount. */
-  function renumberFrom(index: number, nextMain: number) {
+  /**
+   * Editing one question's printed label (number and/or letter) shifts the ones
+   * after it by the same amount, while leaving the typed text exactly as typed.
+   */
+  function relabelFrom(index: number, nextLabel: string) {
     setQuestions((prev) => {
       const current = prev[index];
       if (!current) return prev;
-      const oldMain = questionMainNumber(current.questionText) ?? index + 1;
-      const delta = Math.max(1, nextMain) - oldMain;
-      if (delta === 0) return prev;
+      const oldParsed = parseLabelString(questionLabel(current.questionText, index));
+      const nextParsed = parseLabelString(nextLabel);
+      const mainDelta =
+        oldParsed.main !== null && nextParsed.main !== null ? nextParsed.main - oldParsed.main : 0;
+      const oldLetter = oldParsed.parts[0] ?? "";
+      const newLetter = nextParsed.parts[0] ?? "";
+      const letterDelta =
+        mainDelta === 0 && /^[a-z]$/.test(oldLetter) && /^[a-z]$/.test(newLetter)
+          ? newLetter.charCodeAt(0) - oldLetter.charCodeAt(0)
+          : 0;
       return prev.map((q, i) => {
         if (i < index) return q;
-        const main = questionMainNumber(q.questionText) ?? i + 1;
-        return { ...q, questionText: setQuestionMainNumber(q.questionText, main + delta) };
+        if (i === index) return { ...q, questionText: setQuestionLabel(q.questionText, nextLabel) };
+        const parsed = parseLabelString(questionLabel(q.questionText, i));
+        if (mainDelta !== 0) {
+          if (parsed.main === null) return q;
+          const shifted = formatLabel(Math.max(1, parsed.main + mainDelta), parsed.parts);
+          return { ...q, questionText: setQuestionLabel(q.questionText, shifted) };
+        }
+        if (letterDelta !== 0 && parsed.main === oldParsed.main && parsed.parts.length > 0) {
+          const parts = [...parsed.parts];
+          parts[0] = shiftLetter(parts[0] ?? "", letterDelta);
+          const shifted = formatLabel(parsed.main, parts);
+          return { ...q, questionText: setQuestionLabel(q.questionText, shifted) };
+        }
+        return q;
       });
     });
   }
+
 
 
   const body = (

@@ -256,6 +256,7 @@ function PreviewPage() {
                       key={question.id}
                       assignmentId={assignmentId}
                       questionId={question.id}
+                      editing={editing}
                     >
                     <PreviewQuestion
                       assignmentId={assignmentId}
@@ -267,6 +268,7 @@ function PreviewPage() {
                       allowSteps={settings?.allowSteps !== false}
                       maxAttempts={settings?.maxAttempts ?? 0}
                       markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
+                      editing={editing}
                       onFlag={() => setFlags((count) => count + 1)}
 
                     />

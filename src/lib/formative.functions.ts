@@ -224,7 +224,9 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
     z
       .object({
         checkId: z.string().uuid(),
-        answer: z.string().min(1).max(2000),
+        answer: z.string().min(1).max(4000),
+        /** Multi-part questions send one answer per part label. */
+        partAnswers: z.record(z.string(), z.string().max(2000)).optional(),
         practice: z.boolean().optional(),
       })
       .parse(input),
@@ -234,7 +236,7 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
     const { data: check } = await supabase
       .from("formative_checks")
       .select(
-        "id, class_id, question, question_image, expected_answer, seconds, count_up, created_at, ends_at, closed_at, teacher_id, target_student_id, target_student_ids",
+        "id, class_id, question, question_image, expected_answer, seconds, count_up, created_at, ends_at, closed_at, teacher_id, parts, target_student_id, target_student_ids",
       )
       .eq("id", data.checkId)
       .maybeSingle();
@@ -253,22 +255,74 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
       throw new Error("Your teacher has closed this question.");
     }
 
-    const { count } = await supabase
+    const { data: previous } = await supabase
       .from("formative_responses")
-      .select("id", { count: "exact", head: true })
+      .select("id, part_verdicts")
       .eq("check_id", data.checkId)
       .eq("student_id", userId);
-    const attempt = (count ?? 0) + 1;
+    const attempt = (previous ?? []).length + 1;
 
-    const marked = await markFormativeAnswer({
-      question: check.question as string,
-      expectedAnswer: check.expected_answer as string | null,
-      questionImage: (check.question_image ?? null) as string | null,
-      answer: data.answer,
-      attempt,
-    });
+    // Parts already right on an earlier try stay right — no need to redo them.
+    const alreadyRight = new Set<string>();
+    for (const row of previous ?? []) {
+      for (const [label, verdict] of Object.entries(
+        (row.part_verdicts ?? {}) as Record<string, string>,
+      )) {
+        if (verdict === "correct") alreadyRight.add(label);
+      }
+    }
 
-    if (data.practice) return { ...marked, attempt };
+    const parts = ((check.parts ?? []) as string[]).filter(Boolean);
+    const partAnswers = data.partAnswers ?? {};
+    const multipart = parts.length >= 2;
+
+    const partVerdicts: Record<string, string> = {};
+    const newlyRight: string[] = [];
+    let marked: { verdict: string; feedback: string };
+
+    if (multipart) {
+      const toMark = parts.filter(
+        (label) => !alreadyRight.has(label) && (partAnswers[label] ?? "").trim().length > 0,
+      );
+      if (toMark.length === 0) {
+        throw new Error("Answer at least one part you have not got right yet.");
+      }
+      const results = await Promise.all(
+        toMark.map(async (label) => ({
+          label,
+          ...(await markFormativePart({
+            question: check.question as string,
+            questionImage: (check.question_image ?? null) as string | null,
+            expectedAnswer: check.expected_answer as string | null,
+            partLabel: label,
+            answer: (partAnswers[label] ?? "").trim(),
+            attempt,
+          })),
+        })),
+      );
+      for (const label of alreadyRight) partVerdicts[label] = "correct";
+      const notes: string[] = [];
+      for (const result of results) {
+        partVerdicts[result.label] = result.verdict;
+        if (result.verdict === "correct") newlyRight.push(result.label);
+        notes.push(`(${result.label}) ${result.feedback}`);
+      }
+      const allRight = parts.every((label) => partVerdicts[label] === "correct");
+      marked = {
+        verdict: allRight ? "correct" : newlyRight.length > 0 ? "close" : "incorrect",
+        feedback: notes.join("\n"),
+      };
+    } else {
+      marked = await markFormativeAnswer({
+        question: check.question as string,
+        expectedAnswer: check.expected_answer as string | null,
+        questionImage: (check.question_image ?? null) as string | null,
+        answer: data.answer,
+        attempt,
+      });
+    }
+
+    if (data.practice) return { ...marked, attempt, partVerdicts, awardedPoints: 0 };
 
     const { error } = await supabase.from("formative_responses").insert({
       check_id: data.checkId,
@@ -277,14 +331,16 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
       verdict: marked.verdict,
       feedback: marked.feedback,
       attempt,
+      part_verdicts: partVerdicts,
     });
     if (error) throw new Error(error.message);
 
     // Leaderboard points for class questions only — kept apart from game tokens.
-    // Anyone answering as a student in the class scores, including the demo
-    // account when it is switched into the student view.
+    // Multi-part questions pay out part by part, so a student sees their score
+    // rise as soon as one box is right.
     let awardedPoints = 0;
-    if (marked.verdict === "correct") {
+    const scoringUnits = multipart ? newlyRight.length : marked.verdict === "correct" ? 1 : 0;
+    if (scoringUnits > 0) {
       const { count: memberCount } = await supabase
         .from("class_members")
         .select("id", { count: "exact", head: true })
@@ -295,17 +351,20 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
           0,
           Math.round((Date.now() - new Date(check.created_at as string).getTime()) / 1000),
         );
-        awardedPoints = formativePointsFor({
+        const full = formativePointsFor({
           attempt,
           elapsedSeconds: elapsed,
           limitSeconds: check.count_up ? null : (check.seconds as number),
           answerLength: data.answer.trim().length,
         });
+        awardedPoints = multipart
+          ? Math.round((full * scoringUnits) / parts.length)
+          : full;
         await addFormativePoints(check.class_id as string, userId, awardedPoints);
       }
     }
 
-    return { ...marked, attempt, awardedPoints };
+    return { ...marked, attempt, partVerdicts, awardedPoints };
   });
 
 /**

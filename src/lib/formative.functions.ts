@@ -255,8 +255,160 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
       attempt,
     });
     if (error) throw new Error(error.message);
-    return { ...marked, attempt };
+
+    // Leaderboard points for class questions only — kept apart from game tokens.
+    let awardedPoints = 0;
+    if (marked.verdict === "correct" && check.teacher_id !== userId) {
+      const elapsed = Math.max(
+        0,
+        Math.round((Date.now() - new Date(check.created_at as string).getTime()) / 1000),
+      );
+      awardedPoints = formativePointsFor({
+        attempt,
+        elapsedSeconds: elapsed,
+        limitSeconds: check.count_up ? null : (check.seconds as number),
+        answerLength: data.answer.trim().length,
+      });
+      await addFormativePoints(check.class_id as string, userId, awardedPoints);
+    }
+    return { ...marked, attempt, awardedPoints };
   });
+
+/**
+ * Formative leaderboard scoring: a solid base for getting it right, a speed
+ * bonus, a little credit for a fuller answer, and less for each extra try.
+ */
+export function formativePointsFor(input: {
+  attempt: number;
+  elapsedSeconds: number;
+  limitSeconds: number | null;
+  answerLength: number;
+}) {
+  const base = 1000;
+  const speed =
+    input.limitSeconds && input.limitSeconds > 0
+      ? Math.round(600 * Math.max(0, 1 - input.elapsedSeconds / input.limitSeconds))
+      : Math.round(600 * (60 / (60 + Math.max(0, input.elapsedSeconds))));
+  const quality = input.answerLength >= 40 ? 200 : input.answerLength >= 15 ? 120 : 60;
+  const tryFactor = Math.max(0.35, 1 - 0.25 * (input.attempt - 1));
+  return Math.max(100, Math.round((base + speed + quality) * tryFactor));
+}
+
+async function admin() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
+}
+
+/** Adds points to this student's formative total for the class. */
+async function addFormativePoints(classId: string, studentId: string, delta: number) {
+  const db = await admin();
+  const { data: existing } = await db
+    .from("formative_points")
+    .select("id, points")
+    .eq("class_id", classId)
+    .eq("student_id", studentId)
+    .maybeSingle();
+  if (existing) {
+    await db
+      .from("formative_points")
+      .update({ points: Math.max(0, existing.points + delta) })
+      .eq("id", existing.id);
+  } else {
+    await db
+      .from("formative_points")
+      .insert({ class_id: classId, student_id: studentId, points: Math.max(0, delta) });
+  }
+}
+
+/** Reuses the student's games nickname so both leaderboards show the same name. */
+async function ensureAlias(classId: string, studentId: string) {
+  const db = await admin();
+  const { data: existing } = await db
+    .from("game_profiles")
+    .select("alias")
+    .eq("class_id", classId)
+    .eq("student_id", studentId)
+    .maybeSingle();
+  if (existing?.alias) return existing.alias as string;
+  const { data: taken } = await db.from("game_profiles").select("alias").eq("class_id", classId);
+  const alias = uniqueAlias(new Set((taken ?? []).map((row) => row.alias as string)));
+  await db.from("game_profiles").insert({ class_id: classId, student_id: studentId, alias });
+  return alias;
+}
+
+/** The formative leaderboard for a class: nicknames only, highest points first. */
+export const getFormativeLeaderboard = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ classId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const [{ data: isTeacher }, { data: isMember }] = await Promise.all([
+      supabase.rpc("is_class_teacher", { _class_id: data.classId, _user_id: userId }),
+      supabase.rpc("is_class_member", { _class_id: data.classId, _user_id: userId }),
+    ]);
+    if (!isTeacher && !isMember) throw new Error("You are not in this class.");
+
+    const db = await admin();
+    const { data: klass } = await db
+      .from("classes")
+      .select("formative_leaderboard")
+      .eq("id", data.classId)
+      .maybeSingle();
+    const enabled = Boolean(klass?.formative_leaderboard);
+
+    if (isMember) await ensureAlias(data.classId, userId);
+    const [{ data: members }, { data: profiles }, { data: points }] = await Promise.all([
+      db.from("class_members").select("student_id").eq("class_id", data.classId),
+      db.from("game_profiles").select("student_id, alias").eq("class_id", data.classId),
+      db.from("formative_points").select("student_id, points").eq("class_id", data.classId),
+    ]);
+
+    const rows = (members ?? []).map((m) => {
+      const id = m.student_id as string;
+      return {
+        alias: ((profiles ?? []).find((p) => p.student_id === id)?.alias as string) ?? "Student",
+        points: ((points ?? []).find((p) => p.student_id === id)?.points as number) ?? 0,
+        isMe: id === userId,
+      };
+    });
+    rows.sort((a, b) => b.points - a.points || a.alias.localeCompare(b.alias));
+    return { enabled, isTeacher: Boolean(isTeacher), rows };
+  });
+
+/** Teacher turns the formative leaderboard on or off for the class. */
+export const setFormativeLeaderboard = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ classId: z.string().uuid(), enabled: z.boolean() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertClassTeacher(supabase, data.classId, userId);
+    const db = await admin();
+    const { error } = await db
+      .from("classes")
+      .update({ formative_leaderboard: data.enabled })
+      .eq("id", data.classId);
+    if (error) throw new Error(error.message);
+    return { enabled: data.enabled };
+  });
+
+/** Teacher sets every formative leaderboard score in the class back to zero. */
+export const resetFormativePoints = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ classId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertClassTeacher(supabase, data.classId, userId);
+    const db = await admin();
+    const { error } = await db
+      .from("formative_points")
+      .update({ points: 0 })
+      .eq("class_id", data.classId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 
 /**
  * A student asks to see the answer to a past class question. Only for

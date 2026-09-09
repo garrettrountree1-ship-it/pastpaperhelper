@@ -114,7 +114,7 @@ function ClassHome() {
             {role === "teacher" ? (
               <>
                 <ClassBulletinPanel classId={classId} />
-                <ClassRoster classId={classId} />
+                <ClassRoster classId={classId} showIbLevels={isIbdp(klass.curriculum)} />
                 <CoteacherPanel classId={classId} />
               </>
             ) : (

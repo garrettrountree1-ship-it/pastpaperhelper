@@ -23,6 +23,7 @@ import { bulletTargetFor, normaliseBullets, stripBullets } from "@/lib/bullet-sc
 import { NO_PASTE_MESSAGE } from "@/lib/integrity";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { questionBody, questionLabel } from "@/lib/question-label";
+import { QuestionTagBadge } from "@/components/assignments/QuestionTagBadge";
 
 
 /** Blocks paste, drag-drop and autofill-style bulk insertion into answer inputs. */
@@ -101,7 +102,13 @@ export function QuestionExperience({
 
 
 }: {
-  question: { id: string; question_text: string; marks: number };
+  question: {
+    id: string;
+    question_text: string;
+    marks: number;
+    tagLabel?: string | null;
+    tagImage?: string | null;
+  };
 
   index: number;
   draft: string;
@@ -194,7 +201,8 @@ export function QuestionExperience({
     <section className="paper p-6">
       <div className="flex items-start justify-between gap-4">
         <h2 className="font-display text-xl">
-          Question {questionLabel(question.question_text, index)}
+          Question {questionLabel(question.question_text, index)}{" "}
+          <QuestionTagBadge label={question.tagLabel} image={question.tagImage} />
         </h2>
         <Badge variant="secondary">
           {result ? `${result.awardedMarks}/` : ""}{question.marks} marks

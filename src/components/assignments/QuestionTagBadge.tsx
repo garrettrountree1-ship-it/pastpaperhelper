@@ -7,9 +7,9 @@ export function QuestionTagBadge({
   image,
   className = "",
 }: {
-  label?: string | null;
-  image?: string | null;
-  className?: string;
+  label?: string | null | undefined;
+  image?: string | null | undefined;
+  className?: string | undefined;
 }) {
   if (image) {
     return (

@@ -264,6 +264,21 @@ export function DrawingPad({
     return () => canvas.removeEventListener("wheel", onWheel);
   }, [full]);
 
+  // Full screen freezes the page behind it and puts the student back on the
+  // same question when they close it, instead of somewhere further down.
+  useEffect(() => {
+    if (!full) return;
+    const y = window.scrollY;
+    const body = document.body.style;
+    const saved = { overflow: body.overflow };
+    body.overflow = "hidden";
+    return () => {
+      body.overflow = saved.overflow;
+      window.scrollTo({ top: y, behavior: "auto" });
+      window.setTimeout(() => window.scrollTo({ top: y, behavior: "auto" }), 0);
+    };
+  }, [full]);
+
   // Never leave a pending save behind when the pad closes.
   useEffect(() => () => window.clearTimeout(saveTimer.current), []);
 

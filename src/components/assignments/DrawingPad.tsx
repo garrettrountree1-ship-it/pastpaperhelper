@@ -58,7 +58,14 @@ export function DrawingPad({
   const strokesRef = useRef<Stroke[]>([]);
   const drawing = useRef(false);
   const panning = useRef<{ x: number; y: number } | null>(null);
-  const resizing = useRef<{ startX: number; startWidth: number; startScale: number } | null>(null);
+  const resizing = useRef<{
+    startX: number;
+    startY: number;
+    startWidth: number;
+    startHeight: number;
+    startScale: number;
+    corner: "nw" | "ne" | "sw" | "se";
+  } | null>(null);
   const dprRef = useRef(1);
   // Where the student has dragged the question picture to. Only the picture
   // moves — their writing stays exactly where they put it.

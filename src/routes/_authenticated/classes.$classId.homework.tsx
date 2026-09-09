@@ -809,11 +809,25 @@ function AssignmentDialog({
         : String(prev.length + 1);
       const lastPath = previous?.imagePaths[previous.imagePaths.length - 1];
       const lastUrl = previous?.imageUrls[previous.imageUrls.length - 1];
+      // Seed the answer picture from the nearest earlier answer cut, so the new
+      // part offers "Recut answer" instead of a box to type the answer into.
+      let answerSource: QuestionDraft | undefined;
+      for (let i = index; i >= 0; i -= 1) {
+        const q = prev[i];
+        if (q && q.answerImagePaths.length > 0 && q.answerImageUrls.length > 0) {
+          answerSource = q;
+          break;
+        }
+      }
+      const lastAnswerPath = answerSource?.answerImagePaths[answerSource.answerImagePaths.length - 1];
+      const lastAnswerUrl = answerSource?.answerImageUrls[answerSource.answerImageUrls.length - 1];
       const draft: QuestionDraft = {
         ...emptyQuestion(),
         questionText: label,
         imagePaths: lastPath ? [cropAfter(lastPath)] : [],
         imageUrls: lastUrl ? [cropAfter(lastUrl)] : [],
+        answerImagePaths: lastAnswerPath ? [cropAfter(lastAnswerPath)] : [],
+        answerImageUrls: lastAnswerUrl ? [cropAfter(lastAnswerUrl)] : [],
       };
       const next = [...prev];
       next.splice(index + 1, 0, draft);

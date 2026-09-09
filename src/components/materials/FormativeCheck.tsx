@@ -701,6 +701,12 @@ export function FormativeCheckPanel({
                   <PartyPopper className="size-5" />
                   Yes! That&apos;s exactly right — brilliant work!
                 </p>
+                {check.countUp && totalSeconds !== null ? (
+                  <p className="mt-1 flex items-center gap-2 text-base font-medium">
+                    <TimerReset className="size-4" />
+                    You took {formatDuration(totalSeconds)} in total.
+                  </p>
+                ) : null}
                 {latest?.feedback ? <p className="mt-1 text-base">{latest.feedback}</p> : null}
                 <div className="mt-3 flex items-center gap-2">
                   <Button size="sm" onClick={() => setDismissed(check.id)}>

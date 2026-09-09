@@ -152,6 +152,9 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
   const [openTab, setOpenTab] = useState<"notes" | "summary">("notes");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [dragUnitId, setDragUnitId] = useState<string | null>(null);
+  const [orderedIds, setOrderedIds] = useState<string[] | null>(null);
+  const reorder = useServerFn(reorderUnits);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["class-units", classId] });
 

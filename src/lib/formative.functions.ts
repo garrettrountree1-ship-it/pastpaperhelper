@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { uniqueAlias } from "@/lib/game-alias";
 import { markFormativeAnswer, solveFormativeQuestion } from "@/lib/formative.server";
 import { assertClassTeacher } from "@/lib/materials.server";
 

@@ -137,8 +137,8 @@ export async function extractQuestionsFromPapers(
     `Curriculum: ${input.curriculum}`,
     `Subject/topic: ${input.subject || "unspecified"}`,
     input.markSchemeFiles.length > 0
-      ? "The first document(s) are the past paper(s); the last document(s) are the mark scheme(s). Either set may be a teacher-made compilation pasted from several papers, in any order."
-      : "The document(s) may contain both questions and mark schemes combined, pasted together from several papers in any order — separate them yourself.",
+      ? "The first document(s) are the past paper(s); the last document(s) are the mark scheme(s). Either set may be a teacher-made compilation pasted from several papers, in any order. Every official answer lives on an ANSWER PAGE sheet, so every answerCrops band must use sheet \"answer\"."
+      : "The document(s) may contain both questions and mark schemes combined, pasted together from several papers in any order — separate them yourself. Answer pictures are cut from the same pages as the questions, so answerCrops bands use sheet \"paper\".",
   ].join("\n");
 
   let inventory = await runInventory(key, header, documents);
@@ -157,18 +157,22 @@ export async function extractQuestionsFromPapers(
     }
   }
 
+  const hasAnswerPages = input.markSchemeFiles.length > 0;
+
   if (inventory.length === 0) {
     // Fall back to a single-pass extraction if the index could not be built.
-    return separateQuestionCrops(dedupe(await runDetail(key, header, documents, [], true)));
+    return separateQuestionCrops(
+      dedupe(await runDetail(key, header, documents, [], true, hasAnswerPages)),
+    );
   }
 
-  const results = await runBatches(key, header, documents, inventory);
+  const results = await runBatches(key, header, documents, inventory, hasAnswerPages);
 
   // Any label the detail pass dropped gets one focused retry.
   const done = new Set(results.map((r) => r.label.toLowerCase()));
   const missing = inventory.filter((i) => !done.has(i.label.toLowerCase()));
   if (missing.length > 0) {
-    results.push(...(await runBatches(key, header, documents, missing)));
+    results.push(...(await runBatches(key, header, documents, missing, hasAnswerPages)));
   }
 
   return renumberQuestions(separateQuestionCrops(dedupe(results)));

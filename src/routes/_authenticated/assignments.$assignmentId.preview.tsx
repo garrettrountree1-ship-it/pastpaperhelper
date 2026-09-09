@@ -106,20 +106,26 @@ function groupByPage(questions: Question[]) {
 function PreviewPage() {
   const { assignmentId } = Route.useParams();
   const [flags, setFlags] = useState(0);
+  const [studentId, setStudentId] = useState<string>("class");
   const preview = useQuery({
-    queryKey: ["assignment-preview", assignmentId],
-    queryFn: () => getAssignmentPreview({ data: { assignmentId } }),
+    queryKey: ["assignment-preview", assignmentId, studentId],
+    queryFn: () =>
+      getAssignmentPreview({
+        data: { assignmentId, studentId: studentId === "class" ? null : studentId },
+      }),
     retry: 2,
   });
 
 
   const data = preview.data;
+  const settings = data?.tutorSettings;
   // The student view must behave exactly like the student page, deterrents included.
   const protection = useContentProtection({
     blockCopy: Boolean(preview.data?.tutorSettings?.protectQuestions),
     blockCapture: true,
   });
   const totalMarks = data?.questions.reduce((sum, q) => sum + q.marks, 0) ?? 0;
+
 
   return (
     <div className="min-h-screen">

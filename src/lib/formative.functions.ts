@@ -65,6 +65,7 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
         expected_answer: data.expectedAnswer?.trim() || null,
         question_image: data.questionImage || null,
         seconds: data.seconds,
+        count_up: data.countUp ?? false,
         ends_at: endsAt,
         target_student_id: targets.length === 1 ? (targets[0] ?? null) : null,
         target_student_ids: targets,

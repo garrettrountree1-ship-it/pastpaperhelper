@@ -435,11 +435,30 @@ export function DrawingPad({
   function move(event: React.PointerEvent<HTMLCanvasElement>) {
     if (resizing.current) {
       event.preventDefault();
+      const grab = resizing.current;
       const point = positionOf(event);
-      const grown = resizing.current.startWidth + (point.x - resizing.current.startX);
-      const factor = grown / Math.max(1, resizing.current.startWidth);
-      const next = Math.max(0.4, Math.min(2.5, resizing.current.startScale * factor));
+      // Dragging outwards from the corner grows the picture, inwards shrinks it,
+      // whichever corner is held.
+      const signX = grab.corner === "ne" || grab.corner === "se" ? 1 : -1;
+      const signY = grab.corner === "sw" || grab.corner === "se" ? 1 : -1;
+      const byWidth = (grab.startWidth + signX * (point.x - grab.startX)) / Math.max(1, grab.startWidth);
+      const byHeight =
+        (grab.startHeight + signY * (point.y - grab.startY)) / Math.max(1, grab.startHeight);
+      const factor = Math.max(0.05, (byWidth + byHeight) / 2);
+      const next = Math.max(0.4, Math.min(2.5, grab.startScale * factor));
+      const applied = next / grab.startScale;
       photoScaleRef.current = next;
+      // Keep the corner opposite the one being dragged exactly where it is.
+      offsetRef.current = {
+        x:
+          signX === 1
+            ? resizeOrigin.current.x
+            : resizeOrigin.current.x + grab.startWidth - grab.startWidth * applied,
+        y:
+          signY === 1
+            ? resizeOrigin.current.y
+            : resizeOrigin.current.y + grab.startHeight - grab.startHeight * applied,
+      };
       setPhotoScale(Number(next.toFixed(2)));
       redraw();
       return;

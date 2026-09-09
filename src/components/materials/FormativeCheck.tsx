@@ -520,6 +520,37 @@ export function FormativeCheckPanel({
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const fetchBoard = useServerFn(getFormativeLeaderboard);
+  const toggleBoard = useServerFn(setFormativeLeaderboard);
+  const zeroBoard = useServerFn(resetFormativePoints);
+
+  const board = useQuery({
+    queryKey: ["formative-leaderboard", classId],
+    queryFn: () => fetchBoard({ data: { classId } }),
+    enabled: Boolean(check?.id),
+    refetchInterval: 5000,
+  });
+
+  const setBoard = useMutation({
+    mutationFn: (enabled: boolean) => toggleBoard({ data: { classId, enabled } }),
+    onSuccess: async (result) => {
+      toast.success(result.enabled ? "Leaderboard on" : "Leaderboard off");
+      await queryClient.invalidateQueries({ queryKey: ["formative-leaderboard", classId] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const resetBoard = useMutation({
+    mutationFn: () => zeroBoard({ data: { classId } }),
+    onSuccess: async () => {
+      toast.success("Scores set back to zero");
+      await queryClient.invalidateQueries({ queryKey: ["formative-leaderboard", classId] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+
+
 
   const latest = useMemo(
     () => (check?.myAttempts.length ? check.myAttempts[check.myAttempts.length - 1] : null),

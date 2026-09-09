@@ -733,6 +733,26 @@ export function FormativeCheckPanel({
                     : "Release the answer"}
               </Button>
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant={boardOn ? "default" : "outline"}
+                disabled={setBoard.isPending}
+                onClick={() => setBoard.mutate(!boardOn)}
+              >
+                <Trophy className="size-4" />
+                {boardOn ? "Leaderboard on" : "Leaderboard off"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={resetBoard.isPending}
+                onClick={() => resetBoard.mutate()}
+              >
+                <TimerReset className="size-4" />
+                Reset scores
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground">
               {(results.data ?? []).length} answered
               {" · "}

@@ -678,14 +678,27 @@ function AssignmentDialog({
 
   const extractPending = extractMutation.isPending;
   useEffect(() => {
-    if (!extractPending || typeof document === "undefined") return;
+    if (typeof document === "undefined") return;
     const previous = document.title;
-    document.title = "⏳ Reading your paper… — PastPaperHelper.AI";
+
+    const onVisibility = () => {
+      if (!document.hidden && (document.title.startsWith("⏳") || document.title.startsWith("✅"))) {
+        document.title = previous;
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    if (extractPending) {
+      document.title = "⏳ Reading your paper… — PastPaperHelper.AI";
+    }
+
     return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
       // Keep the "paper is ready" title set on success while the teacher was away.
       if (document.title.startsWith("⏳")) document.title = previous;
     };
   }, [extractPending]);
+
 
   const mutation = useMutation({
     mutationFn: () => {

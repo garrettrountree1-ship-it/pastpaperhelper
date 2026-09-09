@@ -3,9 +3,10 @@
 export const TUTOR_LEVELS = [
   {
     value: "beginner",
-    label: "Beginner ESL",
-    hint: "Very short, simple English. Extra scaffolding, one small step at a time.",
+    label: "Beginner",
+    hint: "Very short, simple language. Extra scaffolding, one small step at a time.",
   },
+
   {
     value: "medium",
     label: "Medium",

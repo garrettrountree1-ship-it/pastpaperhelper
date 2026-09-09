@@ -192,13 +192,46 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
 
   if (units.isLoading) return <Skeleton className="h-40 w-full" />;
 
+  const reorderMutation = useMutation({
+    mutationFn: (unitIds: string[]) => reorder({ data: { classId, unitIds } }),
+    onError: (error: Error) => {
+      toast.error(error.message);
+      setOrderedIds(null);
+      invalidate();
+    },
+  });
+
   const allUnits = units.data ?? [];
   const archivedUnits = allUnits.filter(
     (unit) => Boolean((unit as { archived_at?: string | null }).archived_at),
   );
-  const activeUnits = allUnits.filter(
+  const fetchedActive = allUnits.filter(
     (unit) => !(unit as { archived_at?: string | null }).archived_at,
   );
+  // While dragging, show the teacher's chosen order; otherwise follow the server order.
+  const activeUnits =
+    orderedIds && orderedIds.length === fetchedActive.length
+      ? orderedIds
+          .map((id) => fetchedActive.find((unit) => unit.id === id))
+          .filter((unit): unit is (typeof fetchedActive)[number] => Boolean(unit))
+      : fetchedActive;
+
+  useEffect(() => {
+    if (!dragUnitId && orderedIds && !reorderMutation.isPending) setOrderedIds(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [units.data]);
+
+  const handleUnitDrop = (targetId: string) => {
+    if (!dragUnitId || dragUnitId === targetId) return;
+    const ids = activeUnits.map((unit) => unit.id);
+    const from = ids.indexOf(dragUnitId);
+    const to = ids.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    ids.splice(to, 0, ids.splice(from, 1)[0]!);
+    setOrderedIds(ids);
+    setDragUnitId(null);
+    reorderMutation.mutate(ids);
+  };
 
   const openUnit = allUnits.find((unit) => unit.id === openUnitId);
   if (openUnit) {

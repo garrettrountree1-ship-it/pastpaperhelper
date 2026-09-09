@@ -355,6 +355,37 @@ export function DrawingPad({
   function start(event: React.PointerEvent<HTMLCanvasElement>) {
     if (disabled) return;
     event.currentTarget.setPointerCapture(event.pointerId);
+    const point = positionOf(event);
+    const rect = pictureRect();
+
+    // A corner grab square on the highlighted picture makes it bigger/smaller.
+    if (rect && hitHandle(point)) {
+      resizing.current = {
+        startX: point.x,
+        startWidth: rect.width,
+        startScale: photoScaleRef.current,
+      };
+      return;
+    }
+
+    // Tapping the picture highlights it; while it is highlighted a drag moves it.
+    if (hitPicture(point)) {
+      if (!selectedRef.current) {
+        selectedRef.current = true;
+        setSelected(true);
+      }
+      panning.current = { x: event.clientX, y: event.clientY };
+      redraw();
+      return;
+    }
+
+    // Anywhere else: put the picture down again and carry on writing.
+    if (selectedRef.current) {
+      selectedRef.current = false;
+      setSelected(false);
+      redraw();
+    }
+
     // Middle button or the Move tool drags the picture and work around.
     if (modeRef.current === "move" || event.button === 1) {
       panning.current = { x: event.clientX, y: event.clientY };
@@ -362,11 +393,22 @@ export function DrawingPad({
     }
     drawing.current = true;
     const width = event.pointerType === "pen" ? Math.max(1.2, event.pressure * 4 || 2) : 2.4;
-    strokesRef.current.push({ points: [positionOf(event)], width, color: colorRef.current });
+    strokesRef.current.push({ points: [point], width, color: colorRef.current });
     setHasInk(true);
   }
 
   function move(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (resizing.current) {
+      event.preventDefault();
+      const point = positionOf(event);
+      const grown = resizing.current.startWidth + (point.x - resizing.current.startX);
+      const factor = grown / Math.max(1, resizing.current.startWidth);
+      const next = Math.max(0.4, Math.min(2.5, resizing.current.startScale * factor));
+      photoScaleRef.current = next;
+      setPhotoScale(Number(next.toFixed(2)));
+      redraw();
+      return;
+    }
     if (panning.current) {
       event.preventDefault();
       offsetRef.current = {
@@ -390,6 +432,7 @@ export function DrawingPad({
     }
     drawing.current = false;
     panning.current = null;
+    resizing.current = null;
     updateSheet();
   }
 
@@ -399,13 +442,20 @@ export function DrawingPad({
   function attach() {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    // The blue outline is a screen guide only — never part of the saved sheet.
+    const wasSelected = selectedRef.current;
+    selectedRef.current = false;
     redraw();
     canvas.toBlob((blob) => {
-      if (!blob) return;
-      onAttach(new File([blob], PAD_FILE_NAME, { type: "image/png" }));
-      setSaved(true);
+      if (blob) {
+        onAttach(new File([blob], PAD_FILE_NAME, { type: "image/png" }));
+        setSaved(true);
+      }
+      selectedRef.current = wasSelected;
+      redraw();
     }, "image/png");
   }
+
 
 
   /** Keeps the saved picture in step with the pad without the student thinking

@@ -109,6 +109,9 @@ function offPrint(
   grow: number,
   clearance: number,
 ) {
+  // An edge already standing on clear paper is left exactly where it is —
+  // sliding it outwards used to pull in a whole extra strip of the page.
+  if (rows[row]) return row;
   const outward = (inward === 1 ? -1 : 1) as -1 | 1;
   const grown = blankEdge(rows, row, outward, grow, clearance);
   const shrunk = blankEdge(rows, row, inward, shrink, clearance);
@@ -143,23 +146,20 @@ export async function snapBandToWhitespace(url: string, band: Band): Promise<Ban
   while (firstInk < bottom && rows[firstInk]) firstInk += 1;
   let lastInk = bottom;
   while (lastInk > firstInk && rows[lastInk]) lastInk -= 1;
-  if (lastInk > firstInk) {
-    top = Math.max(top, firstInk - pad);
-    bottom = Math.min(bottom, lastInk + pad);
-  }
 
-  // Safety net: a faint page (thin print, a table rule, a pale scan) can make
-  // the row measurement believe nearly everything is empty paper, which would
-  // squeeze the piece down to a sliver and look blank on screen. Whenever the
-  // tidy-up would lose a large part of the chosen piece, keep the chosen piece
-  // exactly as the teacher (or the reading step) set it.
-  const askedRows = rawBottom - rawTop;
-  const keptRows = bottom - top;
-  if (askedRows > 0 && keptRows < Math.max(askedRows * 0.6, height * 0.02)) return band;
+  // Nothing printed inside the chosen piece: this is a faint or unreadable
+  // page, so keep the piece exactly as it was chosen rather than shrinking it
+  // to a sliver that looks blank on screen.
+  if (lastInk <= firstInk) return band;
+
+  top = Math.max(top, firstInk - pad);
+  bottom = Math.min(bottom, lastInk + pad);
+  if (bottom <= top) return band;
 
   return {
     top: Math.max(0, top / height),
     bottom: Math.min(1, (bottom + 1) / height),
   };
 }
+
 

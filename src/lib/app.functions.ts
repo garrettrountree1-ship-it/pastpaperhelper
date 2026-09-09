@@ -817,6 +817,8 @@ export const updateAssignment = createServerFn({ method: "POST" })
         position: index + 1,
         image_paths: q.imagePaths ?? [],
         answer_image_paths: q.answerImagePaths ?? [],
+        tag_label: q.tagLabel ?? "",
+        tag_image: q.tagImage ?? "",
       };
       if (q.id && existingIds.has(q.id)) {
         const { error } = await supabase.from("questions").update(payload).eq("id", q.id);

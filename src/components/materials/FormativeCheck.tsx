@@ -13,9 +13,10 @@ import {
   Trophy,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { AliasAvatar } from "@/components/games/AliasAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -122,6 +123,97 @@ function useStopwatch(startedAt: string | undefined, running: boolean) {
   if (!startedAt) return null;
   const elapsed = Math.max(0, Math.round((now - new Date(startedAt).getTime()) / 1000));
   return { elapsed, label: formatDuration(elapsed) };
+}
+
+function AnimatedScore({ from, to }: { from: number; to: number }) {
+  const [shown, setShown] = useState(to);
+
+  useEffect(() => {
+    if (from === to) {
+      setShown(to);
+      return;
+    }
+    const started = performance.now();
+    const duration = 850;
+    let frame = 0;
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - started) / duration);
+      const eased = 1 - (1 - progress) ** 3;
+      setShown(Math.round(from + (to - from) * eased));
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [from, to]);
+
+  return <span className="tabular-nums">{shown.toLocaleString()}</span>;
+}
+
+type FormativeBoardRow = { alias: string; points: number; isMe: boolean };
+
+function ClassroomLeaderboard({ rows }: { rows: FormativeBoardRow[] }) {
+  const previous = useRef(new Map<string, { points: number; rank: number }>());
+  const previousSnapshot = previous.current;
+
+  useEffect(() => {
+    previous.current = new Map(
+      rows.map((row, index) => [row.alias, { points: row.points, rank: index + 1 }]),
+    );
+  }, [rows]);
+
+  return (
+    <aside className="pointer-events-auto fixed bottom-3 left-3 right-3 z-[71] max-h-[34vh] overflow-hidden rounded-xl border-2 border-primary/30 bg-background shadow-2xl lg:bottom-auto lg:right-auto lg:top-1/2 lg:max-h-[86vh] lg:w-[min(32vw,26rem)] lg:-translate-y-1/2">
+      <div className="border-b border-border bg-primary px-5 py-4 text-primary-foreground">
+        <p className="flex items-center gap-3 font-display text-2xl">
+          <span className="flex size-10 items-center justify-center rounded-full bg-primary-foreground/15">
+            <Trophy className="size-6" />
+          </span>
+          Live leaderboard
+        </p>
+        <p className="mt-1 text-sm text-primary-foreground/80">Every correct answer can change the race.</p>
+      </div>
+      <div className="max-h-[calc(86vh-5.5rem)] space-y-2 overflow-y-auto p-3">
+        {rows.map((row, index) => {
+          const rank = index + 1;
+          const old = previousSnapshot.get(row.alias);
+          const gained = row.points > (old?.points ?? row.points);
+          const climbed = old ? rank < old.rank : false;
+          return (
+            <div
+              key={`${row.alias}-${row.points}-${rank}`}
+              className={`formative-rank-row flex min-h-16 items-center gap-3 rounded-lg border px-3 py-2 shadow-sm ${
+                row.isMe ? "border-primary bg-primary/10" : "border-border bg-card"
+              } ${gained || climbed ? "formative-rank-gain" : ""}`}
+            >
+              <span
+                className={`flex size-9 shrink-0 items-center justify-center rounded-full font-display text-lg ${
+                  rank <= 3 ? "bg-warning text-warning-foreground" : "bg-secondary text-secondary-foreground"
+                }`}
+              >
+                {rank}
+              </span>
+              <AliasAvatar alias={row.alias} size={42} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-display text-base">{row.alias}</p>
+                {climbed ? <p className="text-xs font-medium text-success">Moving up!</p> : null}
+              </div>
+              <div
+                className={`min-w-20 rounded-md bg-secondary px-2 py-1 text-right font-display text-lg ${
+                  gained ? "formative-score-gain text-primary" : ""
+                }`}
+              >
+                <AnimatedScore from={old?.points ?? row.points} to={row.points} />
+                <span className="ml-1 text-xs font-medium text-muted-foreground">pts</span>
+              </div>
+            </div>
+          );
+        })}
+        {rows.length === 0 ? (
+          <p className="p-6 text-center text-sm text-muted-foreground">Scores appear after the first correct answer.</p>
+        ) : null}
+      </div>
+    </aside>
+  );
 }
 
 /** Teacher-only launcher for a timed quick class question. */
@@ -529,7 +621,7 @@ export function FormativeCheckPanel({
     queryKey: ["formative-leaderboard", classId],
     queryFn: () => fetchBoard({ data: { classId } }),
     enabled: Boolean(check?.id),
-    refetchInterval: 5000,
+    refetchInterval: 1500,
   });
 
   const setBoard = useMutation({
@@ -601,46 +693,16 @@ export function FormativeCheckPanel({
     <div
       className={
         student
-          ? `pointer-events-auto fixed inset-0 z-[70] flex items-center ${boardOn ? "justify-end" : "justify-center"} gap-4 bg-foreground/40 p-4 backdrop-blur-sm`
-          : `pointer-events-none fixed inset-0 z-[70] flex items-center ${boardOn ? "justify-end" : "justify-center"} gap-4 p-4`
+          ? "pointer-events-auto fixed inset-0 z-[70] flex items-center justify-center bg-foreground/40 p-4 pb-[36vh] backdrop-blur-sm lg:pb-4"
+          : "pointer-events-none fixed inset-0 z-[70] flex items-center justify-center p-4"
       }
     >
-      {boardOn ? (
-        // Leaderboard on the left, the question on the right.
-        <div className="pointer-events-auto hidden max-h-[80vh] w-60 shrink-0 overflow-y-auto rounded-2xl border border-border bg-background p-4 shadow-2xl sm:block">
-          <p className="flex items-center gap-2 font-display text-base">
-            <Trophy className="size-4 text-primary" />
-            Leaderboard
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Class questions only — points for speed, fewer tries and a full answer.
-          </p>
-          <div className="mt-2 space-y-1">
-            {boardRows.map((row, index) => (
-              <div
-                key={row.alias}
-                className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-xs ${
-                  row.isMe ? "bg-primary/15 font-medium" : "bg-secondary/50"
-                }`}
-              >
-                <span className="truncate">
-                  {index + 1}. {row.alias}
-                  {row.isMe ? " (you)" : ""}
-                </span>
-                <span className="tabular-nums">{row.points.toLocaleString()}</span>
-              </div>
-            ))}
-            {boardRows.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No scores yet.</p>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
+      {boardOn ? <ClassroomLeaderboard rows={boardRows} /> : null}
       <div
         className={
           student
             ? "max-h-[92vh] w-[min(96vw,52rem)] overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-2xl"
-            : "pointer-events-auto max-h-[80vh] w-[min(96vw,34rem)] overflow-y-auto rounded-2xl border border-border bg-background p-5 shadow-2xl"
+            : `pointer-events-auto max-h-[80vh] w-[min(96vw,34rem)] overflow-y-auto rounded-2xl border border-border bg-background p-5 shadow-2xl transition-transform duration-300 ${boardOn ? "lg:translate-x-12" : ""}`
         }
       >
 

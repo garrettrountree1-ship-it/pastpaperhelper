@@ -145,7 +145,7 @@ export function DrawingPad({
     for (const stroke of strokesRef.current) {
       for (const point of stroke.points) bottom = Math.max(bottom, point.y);
     }
-    return bottom * zoomRef.current + offsetRef.current.y;
+    return bottom + Math.max(0, offsetRef.current.y);
   }
 
   /** Grows the sheet while the student scrolls down, shrinks back on the way up. */

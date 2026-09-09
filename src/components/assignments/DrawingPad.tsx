@@ -446,6 +446,12 @@ export function DrawingPad({
     const wasSelected = selectedRef.current;
     selectedRef.current = false;
     redraw();
+    // A small picture of the sheet, so the student can see it is attached.
+    try {
+      setThumbnail(canvas.toDataURL("image/png"));
+    } catch {
+      /* ignore: the preview is a nicety, never a blocker */
+    }
     canvas.toBlob((blob) => {
       if (blob) {
         onAttach(new File([blob], PAD_FILE_NAME, { type: "image/png" }));
@@ -454,6 +460,7 @@ export function DrawingPad({
       selectedRef.current = wasSelected;
       redraw();
     }, "image/png");
+
   }
 
 

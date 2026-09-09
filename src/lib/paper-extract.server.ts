@@ -337,7 +337,16 @@ async function runBatches(
   items: InventoryItem[],
   hasAnswerPages = false,
 ): Promise<DetailResult[]> {
-...
+  const batches: InventoryItem[][] = [];
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    batches.push(items.slice(i, i + BATCH_SIZE));
+  }
+
+  const results: DetailResult[] = [];
+  const CONCURRENCY = 3;
+  for (let i = 0; i < batches.length; i += CONCURRENCY) {
+    const slice = batches.slice(i, i + CONCURRENCY);
+    const settled = await Promise.all(
       slice.map((batch) =>
         runDetail(key, header, documents, batch, false, hasAnswerPages).catch(
           () => [] as DetailResult[],

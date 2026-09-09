@@ -599,7 +599,7 @@ export function DrawingPad({
         </Button>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        {"The question is printed underneath — write straight over it. Tap the picture to highlight it, then drag it anywhere or pull a blue corner square to make it bigger or smaller. Tap the blank paper to put it down and carry on writing. Scroll down for as much space as you need. Minimise & save keeps your sheet, then press Check answer."}
+        {"The question is printed underneath. In Write mode every touch draws, even over the picture. Switch to Move picture to tap the picture, drag it anywhere, or pull a blue corner square to make it bigger or smaller — then switch back to Write. Scroll down for as much space as you need. Minimise & save keeps your sheet, then press Check answer."}
       </p>
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">

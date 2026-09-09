@@ -13,6 +13,10 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { mergeSnipPieces, parseSnipBand } from "@/components/assignments/QuestionSnip";
+import { questionPagesOnly } from "@/lib/answer-key";
+import { snapBandToWhitespace } from "@/lib/snip-whitespace";
+
 import { Button } from "@/components/ui/button";
 
 type Stroke = { points: Array<{ x: number; y: number }>; width: number; color: string };

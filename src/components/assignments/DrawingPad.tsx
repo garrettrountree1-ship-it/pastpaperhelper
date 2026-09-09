@@ -28,7 +28,7 @@ const PEN_COLORS = [
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 4;
-const MAX_SHEET = 12000;
+const MAX_SHEET = 6000;
 
 
 /**
@@ -258,7 +258,7 @@ export function DrawingPad({
     };
     canvas.addEventListener("wheel", onWheel, { passive: false });
     return () => canvas.removeEventListener("wheel", onWheel);
-  }, []);
+  }, [full]);
 
   function positionOf(event: React.PointerEvent<HTMLCanvasElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -337,7 +337,7 @@ export function DrawingPad({
     <div
       className={
         full
-          ? "fixed inset-0 z-50 flex select-none flex-col overflow-auto bg-background p-3 [-webkit-touch-callout:none] [-webkit-user-select:none]"
+          ? "fixed inset-0 z-50 flex select-none flex-col overflow-hidden bg-background p-3 [-webkit-touch-callout:none] [-webkit-user-select:none]"
           : "rounded-lg border border-dashed border-border p-3"
       }
       onCopy={(event) => event.preventDefault()}
@@ -364,7 +364,7 @@ export function DrawingPad({
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
         {full
-          ? "The question is printed underneath — write straight over it. Minimise & save keeps your sheet, then press Check answer."
+          ? "The question is printed underneath — write straight over it. Scroll down for as much space as you need, switch to Moving to drag the picture, and use the picture buttons to make it bigger or smaller. Minimise & save keeps your sheet, then press Check answer."
           : "Use a stylus, finger or mouse. Open full screen to draw on top of the question picture."}
       </p>
 

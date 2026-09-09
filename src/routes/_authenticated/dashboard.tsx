@@ -30,6 +30,7 @@ import { listMaterialClasses } from "@/lib/materials.functions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDemoView } from "@/lib/demo-view";
+import { CurriculumSelect } from "@/components/classes/CurriculumSelect";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -441,10 +442,11 @@ function ManageClassDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor={`curriculum-${klass.id}`}>Curriculum</Label>
-              <Input
+              <CurriculumSelect
                 id={`curriculum-${klass.id}`}
                 value={curriculum}
-                onChange={(event) => setCurriculum(event.target.value)}
+                onChange={setCurriculum}
+                className="w-full"
               />
             </div>
           </div>

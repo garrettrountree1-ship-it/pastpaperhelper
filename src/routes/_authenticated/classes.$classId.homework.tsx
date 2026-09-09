@@ -101,12 +101,15 @@ import { PhotoModeControl } from "@/components/assignments/PhotoModeControl";
 import type { PhotoMode } from "@/lib/photo-mode";
 import {
   formatLabel,
+  nextLabelAfter,
   parseLabelString,
   questionBody,
   questionLabel,
   setQuestionLabel,
   shiftLetter,
 } from "@/lib/question-label";
+import { cropAfter } from "@/lib/next-crop";
+
 
 
 import { QuestionSnipStack } from "@/components/assignments/QuestionSnip";

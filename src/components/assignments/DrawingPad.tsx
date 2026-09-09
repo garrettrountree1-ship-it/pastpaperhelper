@@ -4,12 +4,9 @@ import {
   Hand,
   ImageMinus,
   ImagePlus,
-  Maximize,
   Minimize,
   PenLine,
   Undo2,
-  ZoomIn,
-  ZoomOut,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -30,20 +27,19 @@ const PEN_COLORS = [
   { name: "Purple", value: "#7c3aed" },
 ];
 
-const MIN_ZOOM = 0.5;
-const MAX_ZOOM = 4;
 const MAX_SHEET = 6000;
 /** One fixed name so a new save replaces the last pad picture, never stacks. */
 export const PAD_FILE_NAME = "working-pad.png";
+
 
 
 /**
  * Stylus / finger / mouse writing pad for working out calculations on screen
  * (e.g. an iPad with an Apple Pencil). The finished sheet is attached as an
  * image file exactly like an uploaded photo, so marking is unchanged.
- * Supports zooming in for fine detail (buttons, trackpad pinch, or Ctrl/⌘ +
- * scroll wheel); strokes are stored in pad coordinates so zooming never
- * distorts the work.
+ * The student can only write, drag the question picture, and make that picture
+ * bigger or smaller — nothing zooms the pad itself.
+
  * When `backgroundUrls` are given, the pad can be opened full screen with the
  * question picture printed underneath so the student writes straight onto it.
  */
@@ -63,9 +59,10 @@ export function DrawingPad({
   const drawing = useRef(false);
   const panning = useRef<{ x: number; y: number } | null>(null);
   const dprRef = useRef(1);
-  const zoomRef = useRef(1);
+  // Where the student has dragged the question picture to. Only the picture
+  // moves — their writing stays exactly where they put it.
   const offsetRef = useRef({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
+
   const [hasInk, setHasInk] = useState(false);
   const [full, setFull] = useState(false);
   const [mode, setMode] = useState<"draw" | "move">("draw");
@@ -97,9 +94,9 @@ export function DrawingPad({
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
-    ctx.translate(offsetRef.current.x, offsetRef.current.y);
-    ctx.scale(zoomRef.current, zoomRef.current);
     // The question picture sits under the ink so the work is marked in context.
+    ctx.save();
+    ctx.translate(offsetRef.current.x, offsetRef.current.y);
     const padWidth = (canvas.width / dpr) * photoScaleRef.current;
     let y = 0;
     for (const piece of backgroundsRef.current) {
@@ -111,6 +108,7 @@ export function DrawingPad({
       ctx.drawImage(image, 0, sy, image.naturalWidth, sh, 0, y, padWidth, h);
       y += h + 8;
     }
+    ctx.restore();
 
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -128,32 +126,6 @@ export function DrawingPad({
     }
   }
 
-  /** Zoom keeping the given screen point (relative to the canvas) stationary. */
-  function zoomTo(next: number, px: number, py: number) {
-    const clamped = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
-    const k = clamped / zoomRef.current;
-    offsetRef.current = {
-      x: px - (px - offsetRef.current.x) * k,
-      y: py - (py - offsetRef.current.y) * k,
-    };
-    zoomRef.current = clamped;
-    setZoom(clamped);
-    redraw();
-  }
-
-  function zoomFromButton(factor: number) {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    zoomTo(zoomRef.current * factor, rect.width / 2, rect.height / 2);
-  }
-
-  function resetZoom() {
-    zoomRef.current = 1;
-    offsetRef.current = { x: 0, y: 0 };
-    setZoom(1);
-    redraw();
-  }
 
   /** Lowest point of the picture / ink, in on-screen pixels. */
   function contentBottom() {
@@ -173,7 +145,7 @@ export function DrawingPad({
     for (const stroke of strokesRef.current) {
       for (const point of stroke.points) bottom = Math.max(bottom, point.y);
     }
-    return bottom * zoomRef.current + offsetRef.current.y;
+    return bottom + Math.max(0, offsetRef.current.y);
   }
 
   /** Grows the sheet while the student scrolls down, shrinks back on the way up. */
@@ -267,23 +239,16 @@ export function DrawingPad({
   }, [full, backgroundUrls.join("|")]);
 
 
-  // Ctrl/⌘ + wheel or trackpad pinch zooms the pad, anchored at the cursor.
-  // React's onWheel is passive, so this needs a native non-passive listener.
+  // A trackpad pinch or Ctrl/⌘ + wheel must not zoom the pad or the page:
+  // the picture is resized with the picture buttons only.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const onWheel = (event: WheelEvent) => {
       if (!event.ctrlKey && !event.metaKey) return;
       event.preventDefault();
-      const dy =
-        event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
-      const rect = canvas.getBoundingClientRect();
-      zoomTo(
-        zoomRef.current * Math.exp(-dy * 0.002),
-        event.clientX - rect.left,
-        event.clientY - rect.top,
-      );
     };
+
     canvas.addEventListener("wheel", onWheel, { passive: false });
     return () => canvas.removeEventListener("wheel", onWheel);
   }, [full]);
@@ -309,9 +274,10 @@ export function DrawingPad({
   function positionOf(event: React.PointerEvent<HTMLCanvasElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
     return {
-      x: (event.clientX - rect.left - offsetRef.current.x) / zoomRef.current,
-      y: (event.clientY - rect.top - offsetRef.current.y) / zoomRef.current,
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
     };
+
   }
 
   function start(event: React.PointerEvent<HTMLCanvasElement>) {
@@ -361,21 +327,14 @@ export function DrawingPad({
   function attach() {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    // Export the whole sheet at 100% zoom, whatever the student is viewing at.
-    const savedZoom = zoomRef.current;
-    const savedOffset = { ...offsetRef.current };
-    zoomRef.current = 1;
-    offsetRef.current = { x: 0, y: 0 };
     redraw();
     canvas.toBlob((blob) => {
-      zoomRef.current = savedZoom;
-      offsetRef.current = savedOffset;
-      redraw();
       if (!blob) return;
       onAttach(new File([blob], PAD_FILE_NAME, { type: "image/png" }));
       setSaved(true);
     }, "image/png");
   }
+
 
   /** Keeps the saved picture in step with the pad without the student thinking
    * about it, so pressing Check answer always marks their latest working. */
@@ -456,42 +415,9 @@ export function DrawingPad({
             style={{ backgroundColor: pen.value }}
           />
         ))}
-        <span className="mx-1 h-5 w-px bg-border" aria-hidden />
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={disabled || zoom <= MIN_ZOOM}
-          onClick={() => zoomFromButton(1 / 1.25)}
-          aria-label="Zoom out"
-        >
-          <ZoomOut className="size-4" />
-        </Button>
-        <span className="w-12 text-center text-xs text-muted-foreground">
-          {Math.round(zoom * 100)}%
-        </span>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={disabled || zoom >= MAX_ZOOM}
-          onClick={() => zoomFromButton(1.25)}
-          aria-label="Zoom in"
-        >
-          <ZoomIn className="size-4" />
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          disabled={disabled || zoom === 1}
-          onClick={resetZoom}
-        >
-          <Maximize className="size-4" />
-          Reset
-        </Button>
         <>
             <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+
             <Button
               type="button"
               size="sm"

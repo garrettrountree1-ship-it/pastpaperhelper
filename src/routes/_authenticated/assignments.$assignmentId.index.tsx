@@ -480,6 +480,8 @@ function QuestionCard({
       assignmentId={assignmentId}
       protectQuestions={protectQuestions}
       markScheme={question.markScheme ?? null}
+      markSchemeImageUrls={question.answerImageUrls ?? []}
+
       headerAction={
         <MessageTeacherDialog
           classId={classId}

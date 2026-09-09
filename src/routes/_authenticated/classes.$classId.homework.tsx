@@ -115,6 +115,7 @@ import { cropAfter } from "@/lib/next-crop";
 import { QuestionSnipStack } from "@/components/assignments/QuestionSnip";
 import { QuestionTagPicker } from "@/components/assignments/QuestionTagPicker";
 import { QuestionTagBadge } from "@/components/assignments/QuestionTagBadge";
+import { isIbdp } from "@/lib/curricula";
 import { QuestionRecutDialog } from "@/components/assignments/QuestionRecutDialog";
 
 export const Route = createFileRoute("/_authenticated/classes/$classId/homework")({
@@ -593,6 +594,11 @@ function AssignmentDialog({
   const [questions, setQuestions] = useState<QuestionDraft[]>([emptyQuestion()]);
   const [protectQuestions, setProtectQuestions] = useState(true);
   const [reviewNotes, setReviewNotes] = useState<string[]>([]);
+  const classInfo = useQuery({
+    queryKey: ["class-overview", classId],
+    queryFn: () => getClassOverview({ data: { classId } }),
+  });
+  const ibdp = isIbdp(classInfo.data?.klass.curriculum);
 
   const editing = Boolean(assignmentId);
 

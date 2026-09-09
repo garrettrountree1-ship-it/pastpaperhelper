@@ -23,10 +23,14 @@ export type EffectiveTutorSettings = {
   allowSteps: boolean;
   /** Maximum answer attempts per question; 0 means unlimited. */
   maxAttempts: number;
+  /** Exam conditions: no hints, no step-by-step help. */
+  examMode: boolean;
+  /** Times the whole paper may be handed in; 0 means unlimited. */
+  maxPaperSubmissions: number;
 };
 
 export const CLASS_SETTINGS_FIELDS =
-  "tutor_language, tutor_level, protect_questions, keyword_translation, student_can_change_level, vocab_translation, vocab_language, allow_hint, allow_steps, max_answer_attempts";
+  "tutor_language, tutor_level, protect_questions, keyword_translation, student_can_change_level, vocab_translation, vocab_language, allow_hint, allow_steps, max_answer_attempts, exam_mode, max_paper_submissions";
 
 /** Class defaults with the per-student override applied. */
 export async function effectiveTutorSettings(
@@ -62,6 +66,8 @@ export async function effectiveTutorSettings(
     allowHint: klass?.allow_hint !== false,
     allowSteps: klass?.allow_steps !== false,
     maxAttempts: Math.max(0, Number(klass?.max_answer_attempts ?? 0) || 0),
+    examMode: Boolean(klass?.exam_mode),
+    maxPaperSubmissions: Math.max(0, Number(klass?.max_paper_submissions ?? 0) || 0),
   };
 }
 
@@ -80,7 +86,7 @@ export async function tutorSettingsForAssignment(
   const { data: assignment } = await db
     .from("assignments")
     .select(
-      "class_id, keyword_translation, vocab_translation, vocab_language, protect_questions, allow_hint, allow_steps, max_answer_attempts",
+      "class_id, keyword_translation, vocab_translation, vocab_language, protect_questions, allow_hint, allow_steps, max_answer_attempts, exam_mode, max_paper_submissions",
     )
     .eq("id", assignmentId)
     .maybeSingle();
@@ -96,6 +102,8 @@ export async function tutorSettingsForAssignment(
       allowHint: true,
       allowSteps: true,
       maxAttempts: 0,
+      examMode: false,
+      maxPaperSubmissions: 0,
     };
   }
 
@@ -104,7 +112,7 @@ export async function tutorSettingsForAssignment(
     studentId
       ? db
           .from("student_assignment_settings")
-          .select("keyword_translation, allow_hint, allow_steps, max_answer_attempts")
+          .select("keyword_translation, allow_hint, allow_steps, max_answer_attempts, exam_mode, max_paper_submissions")
           .eq("assignment_id", assignmentId)
           .eq("student_id", studentId)
           .maybeSingle()
@@ -143,13 +151,23 @@ export async function tutorSettingsForAssignment(
   const maxAttempts =
     pickNumber(studentOverride?.data?.max_answer_attempts, assignment.max_answer_attempts) ??
     base.maxAttempts;
+  const examMode =
+    pickBool(studentOverride?.data?.exam_mode, assignment.exam_mode) ?? base.examMode;
+  const maxPaperSubmissions =
+    pickNumber(
+      studentOverride?.data?.max_paper_submissions,
+      assignment.max_paper_submissions,
+    ) ?? base.maxPaperSubmissions;
 
   return {
     ...base,
     keywordTranslation,
-    allowHint,
-    allowSteps,
+    // Under exam conditions the scaffolding helpers are always off.
+    allowHint: examMode ? false : allowHint,
+    allowSteps: examMode ? false : allowSteps,
     maxAttempts: Math.max(0, maxAttempts || 0),
+    examMode,
+    maxPaperSubmissions: Math.max(0, maxPaperSubmissions || 0),
     // Copying question wording is always blocked on the student homework portal.
     protectQuestions: true,
     // Class switch is the default; a homework can only turn translations further off.

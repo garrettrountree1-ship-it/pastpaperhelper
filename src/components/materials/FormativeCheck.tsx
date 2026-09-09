@@ -88,6 +88,13 @@ const TIMER_OPTIONS = [
   { label: "10 min", value: 600 },
 ];
 
+function formatDuration(totalSeconds: number) {
+  const safe = Math.max(0, Math.round(totalSeconds));
+  const mm = Math.floor(safe / 60);
+  const ss = String(safe % 60).padStart(2, "0");
+  return mm > 0 ? `${mm}:${ss}` : `${safe}s`;
+}
+
 function useCountdown(endsAt: string | undefined) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -97,9 +104,20 @@ function useCountdown(endsAt: string | undefined) {
   }, [endsAt]);
   if (!endsAt) return null;
   const left = Math.max(0, Math.round((new Date(endsAt).getTime() - now) / 1000));
-  const mm = Math.floor(left / 60);
-  const ss = String(left % 60).padStart(2, "0");
-  return { left, label: mm > 0 ? `${mm}:${ss}` : `${left}s` };
+  return { left, label: formatDuration(left) };
+}
+
+/** Counts up for as long as the student needs, from when the question was sent. */
+function useStopwatch(startedAt: string | undefined, running: boolean) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!startedAt || !running) return;
+    const id = window.setInterval(() => setNow(Date.now()), 500);
+    return () => window.clearInterval(id);
+  }, [startedAt, running]);
+  if (!startedAt) return null;
+  const elapsed = Math.max(0, Math.round((now - new Date(startedAt).getTime()) / 1000));
+  return { elapsed, label: formatDuration(elapsed) };
 }
 
 /** Teacher-only launcher for a timed quick class question. */

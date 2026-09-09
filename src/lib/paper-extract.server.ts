@@ -25,6 +25,13 @@ export type ExtractedQuestion = {
   answerCrops?: QuestionCrop[] | null;
 };
 
+/** Questions plus non-destructive notes for the teacher to review before publishing. */
+export type ExtractionResult = {
+  questions: ExtractedQuestion[];
+  warnings: string[];
+};
+
+
 
 
 export type UploadedFile = {

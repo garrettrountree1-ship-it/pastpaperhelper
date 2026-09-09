@@ -115,6 +115,7 @@ import { cropAfter } from "@/lib/next-crop";
 import { QuestionSnipStack } from "@/components/assignments/QuestionSnip";
 import { QuestionTagPicker } from "@/components/assignments/QuestionTagPicker";
 import { QuestionTagBadge } from "@/components/assignments/QuestionTagBadge";
+import { isIbdp } from "@/lib/curricula";
 import { QuestionRecutDialog } from "@/components/assignments/QuestionRecutDialog";
 
 export const Route = createFileRoute("/_authenticated/classes/$classId/homework")({
@@ -593,6 +594,11 @@ function AssignmentDialog({
   const [questions, setQuestions] = useState<QuestionDraft[]>([emptyQuestion()]);
   const [protectQuestions, setProtectQuestions] = useState(true);
   const [reviewNotes, setReviewNotes] = useState<string[]>([]);
+  const classInfo = useQuery({
+    queryKey: ["class-overview", classId],
+    queryFn: () => getClassOverview({ data: { classId } }),
+  });
+  const ibdp = isIbdp(classInfo.data?.klass.curriculum);
 
   const editing = Boolean(assignmentId);
 
@@ -1056,6 +1062,28 @@ function AssignmentDialog({
                     };
                     return (
                       <div className="flex items-center gap-2">
+                        {ibdp ? (
+                          <button
+                            type="button"
+                            aria-label="Mark this question as HL only"
+                            aria-pressed={question.tagLabel.trim().toUpperCase() === "HL"}
+                            title="HL only"
+                            onClick={() =>
+                              update_(index, {
+                                tagLabel:
+                                  question.tagLabel.trim().toUpperCase() === "HL" ? "" : "HL",
+                                tagImage: "",
+                              })
+                            }
+                            className={`flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                              question.tagLabel.trim().toUpperCase() === "HL"
+                                ? "border-[hsl(215_75%_28%)] bg-[hsl(215_75%_28%)]"
+                                : "border-border bg-transparent hover:border-[hsl(215_75%_28%)]"
+                            }`}
+                          >
+                            <span className="sr-only">HL</span>
+                          </button>
+                        ) : null}
                         <Label htmlFor={`qnum-${index}`} className="font-display text-lg">
                           Question
                         </Label>

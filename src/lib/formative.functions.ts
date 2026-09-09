@@ -10,6 +10,7 @@ import {
   solveFormativeQuestion,
 } from "@/lib/formative.server";
 import { assertClassTeacher } from "@/lib/materials.server";
+import { questionParts } from "@/lib/question-parts";
 
 /** Teacher launches a timed quick question to everyone in the class. */
 export const launchFormativeCheck = createServerFn({ method: "POST" })
@@ -199,7 +200,10 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
       releasedAnswer: (check.answer_released_at ? (check.released_answer ?? null) : null) as
         | string
         | null,
-      parts: ((check.parts ?? []) as string[]),
+      parts: (() => {
+        const stored = ((check.parts ?? []) as string[]).filter(Boolean);
+        return stored.length ? stored : questionParts(check.question as string);
+      })(),
       solvedParts,
       maxAttempts: (check.max_attempts ?? 0) as number,
       targetStudentId: (check.target_student_id ?? null) as string | null,
@@ -284,7 +288,11 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
       }
     }
 
-    const parts = ((check.parts ?? []) as string[]).filter(Boolean);
+    const storedParts = ((check.parts ?? []) as string[]).filter(Boolean);
+    // Older questions were saved before parts were worked out, so read them
+    // back from the question text — otherwise a two-part answer is graded as
+    // one lump and the student never gets credit for the part they got right.
+    const parts = storedParts.length ? storedParts : questionParts(check.question as string);
     const partAnswers = data.partAnswers ?? {};
     const multipart = parts.length >= 2;
 

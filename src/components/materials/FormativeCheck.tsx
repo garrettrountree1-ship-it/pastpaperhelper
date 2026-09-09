@@ -470,6 +470,7 @@ export function FormativeCheckPanel({
   const raw = active.data ?? null;
   const check = raw ? { ...raw, isTeacher: raw.isTeacher && !asStudent } : null;
   const countdown = useCountdown(check?.countUp ? undefined : check?.endsAt);
+  const stopwatch = useStopwatch(check?.startedAt, Boolean(check?.countUp));
   const [answer, setAnswer] = useState("");
   const [partAnswers, setPartAnswers] = useState<Record<string, string>>({});
   const [dismissed, setDismissed] = useState<string | null>(null);

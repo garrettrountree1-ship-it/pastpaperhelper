@@ -578,11 +578,20 @@ export const updateQuestionCrop = createServerFn({ method: "POST" })
       ? current?.answer_image_paths
       : current?.image_paths) as string[] | null | undefined;
     const allowedPages = new Set((existingPaths ?? []).map((path) => path.split("#")[0]));
+    // The teacher may move a cut onto another page of the same uploaded document
+    // (a question often runs over a page break), so allow any page in that folder.
+    const allowedFolders = new Set(
+      [...allowedPages].map((page) => page.slice(0, page.lastIndexOf("/"))).filter(Boolean),
+    );
     const cropPattern = /#crop=(0(?:\.\d+)?|1(?:\.0+)?),(0(?:\.\d+)?|1(?:\.0+)?);manual$/;
     for (const path of data.imagePaths) {
       const page = path.split("#")[0];
       const match = cropPattern.exec(path);
-      if (!page || !allowedPages.has(page) || !match) throw new Error("That crop is not valid.");
+      const folder = page ? page.slice(0, page.lastIndexOf("/")) : "";
+      const sameDocument = Boolean(folder) && allowedFolders.has(folder);
+      if (!page || !(allowedPages.has(page) || sameDocument) || !match) {
+        throw new Error("That crop is not valid.");
+      }
       const top = Number(match[1]);
       const bottom = Number(match[2]);
       if (bottom - top < 0.035) throw new Error("The crop is too small.");

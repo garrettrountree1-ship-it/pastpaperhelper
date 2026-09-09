@@ -10,9 +10,10 @@ import {
   Presentation,
   Trash2,
   Archive,
+  GripVertical,
   RotateCcw,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { OfficeDocView } from "@/components/materials/OfficeDocView";
@@ -65,6 +66,7 @@ import {
   updateUnit,
   listMaterialClasses,
   listUnits,
+  reorderUnits,
   type MaterialKind,
 } from "@/lib/materials.functions";
 
@@ -150,6 +152,9 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
   const [openTab, setOpenTab] = useState<"notes" | "summary">("notes");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [dragUnitId, setDragUnitId] = useState<string | null>(null);
+  const [orderedIds, setOrderedIds] = useState<string[] | null>(null);
+  const reorder = useServerFn(reorderUnits);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["class-units", classId] });
 
@@ -185,15 +190,49 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const reorderMutation = useMutation({
+    mutationFn: (unitIds: string[]) => reorder({ data: { classId, unitIds } }),
+    onSuccess: () => invalidate(),
+    onError: (error: Error) => {
+      toast.error(error.message);
+      setOrderedIds(null);
+      invalidate();
+    },
+  });
+
+  // Once the server list refreshes after a reorder, stop overriding the order.
+  useEffect(() => {
+    setOrderedIds(null);
+  }, [units.data]);
+
   if (units.isLoading) return <Skeleton className="h-40 w-full" />;
 
   const allUnits = units.data ?? [];
   const archivedUnits = allUnits.filter(
     (unit) => Boolean((unit as { archived_at?: string | null }).archived_at),
   );
-  const activeUnits = allUnits.filter(
+  const fetchedActive = allUnits.filter(
     (unit) => !(unit as { archived_at?: string | null }).archived_at,
   );
+  // While dragging, show the teacher's chosen order; otherwise follow the server order.
+  const activeUnits =
+    orderedIds && orderedIds.length === fetchedActive.length
+      ? orderedIds
+          .map((id) => fetchedActive.find((unit) => unit.id === id))
+          .filter((unit): unit is (typeof fetchedActive)[number] => Boolean(unit))
+      : fetchedActive;
+
+  const handleUnitDrop = (targetId: string) => {
+    if (!dragUnitId || dragUnitId === targetId) return;
+    const ids = activeUnits.map((unit) => unit.id);
+    const from = ids.indexOf(dragUnitId);
+    const to = ids.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    ids.splice(to, 0, ids.splice(from, 1)[0]!);
+    setOrderedIds(ids);
+    setDragUnitId(null);
+    reorderMutation.mutate(ids);
+  };
 
   const openUnit = allUnits.find((unit) => unit.id === openUnitId);
   if (openUnit) {
@@ -227,7 +266,8 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
       ) : null}
 
       {canManage ? (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <div className="flex flex-wrap items-center gap-3">
+          <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>New unit</Button>
           </DialogTrigger>
@@ -264,16 +304,14 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
-      ) : null}
-
-      {canManage ? (
-        <ArchivedUnitsDialog
-          units={archivedUnits}
-          onRestore={(unitId) => archiveMutation.mutate({ unitId, archived: false })}
-          onDelete={(unitId) => deleteMutation.mutate(unitId)}
-          busy={archiveMutation.isPending || deleteMutation.isPending}
-        />
+          </Dialog>
+          <ArchivedUnitsDialog
+            units={archivedUnits}
+            onRestore={(unitId) => archiveMutation.mutate({ unitId, archived: false })}
+            onDelete={(unitId) => deleteMutation.mutate(unitId)}
+            busy={archiveMutation.isPending || deleteMutation.isPending}
+          />
+        </div>
       ) : null}
 
       {activeUnits.length === 0 ? (
@@ -282,9 +320,38 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
         </div>
       ) : (
         activeUnits.map((unit) => (
-          <section key={unit.id} className="paper p-5">
+          <section
+            key={unit.id}
+            className={`paper p-5 ${dragUnitId && dragUnitId !== unit.id ? "ring-1 ring-dashed ring-muted-foreground/40" : ""} ${dragUnitId === unit.id ? "opacity-60" : ""}`}
+            draggable={canManage}
+            onDragStart={
+              canManage
+                ? (event) => {
+                    setDragUnitId(unit.id);
+                    event.dataTransfer.effectAllowed = "move";
+                  }
+                : undefined
+            }
+            onDragEnd={canManage ? () => setDragUnitId(null) : undefined}
+            onDragOver={canManage ? (event) => event.preventDefault() : undefined}
+            onDrop={
+              canManage
+                ? (event) => {
+                    event.preventDefault();
+                    handleUnitDrop(unit.id);
+                  }
+                : undefined
+            }
+          >
             <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-3">
-              <div>
+              <div className="flex items-start gap-2">
+                {canManage ? (
+                  <GripVertical
+                    className="mt-1.5 size-5 shrink-0 cursor-grab text-muted-foreground"
+                    aria-label="Drag to reorder unit"
+                  />
+                ) : null}
+                <div>
                 <h3 className="font-display text-2xl">{unit.title}</h3>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {[
@@ -301,6 +368,7 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
                     {unit.description}
                   </p>
                 ) : null}
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button

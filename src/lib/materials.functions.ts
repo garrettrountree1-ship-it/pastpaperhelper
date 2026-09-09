@@ -190,6 +190,33 @@ export const setUnitArchived = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Persist a teacher-chosen display order for a class's units. */
+export const reorderUnits = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        classId: z.string().uuid(),
+        unitIds: z.array(z.string().uuid()).min(1).max(200),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertClassTeacher(supabase, data.classId, userId);
+    for (let i = 0; i < data.unitIds.length; i += 1) {
+      const unitId = data.unitIds[i];
+      if (!unitId) continue;
+      const { error } = await supabase
+        .from("class_units")
+        .update({ position: i, updated_at: new Date().toISOString() })
+        .eq("id", unitId)
+        .eq("class_id", data.classId);
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
+  });
+
 export const deleteUnit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ unitId: z.string().uuid() }).parse(input))

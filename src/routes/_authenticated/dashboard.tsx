@@ -253,13 +253,7 @@ function ClassPicker({ role }: { role: "teacher" | "student" }) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="class-curriculum">Curriculum *</Label>
-              <Input
-                id="class-curriculum"
-                value={curriculum}
-                onChange={(event) => setCurriculum(event.target.value)}
-                placeholder="Add text here"
-                className="w-32"
-              />
+              <CurriculumSelect id="class-curriculum" value={curriculum} onChange={setCurriculum} />
             </div>
             <Button
               onClick={() => createMutation.mutate()}

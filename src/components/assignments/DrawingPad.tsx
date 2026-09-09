@@ -432,7 +432,10 @@ export function DrawingPad({
       redraw();
       return;
     }
-    if (!drawing.current) return;
+    if (!drawing.current) {
+      setHoverCorner(hitHandleCorner(positionOf(event)));
+      return;
+    }
     event.preventDefault();
     strokesRef.current[strokesRef.current.length - 1]?.points.push(positionOf(event));
     redraw();

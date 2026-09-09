@@ -58,7 +58,16 @@ export function DrawingPad({
   const strokesRef = useRef<Stroke[]>([]);
   const drawing = useRef(false);
   const panning = useRef<{ x: number; y: number } | null>(null);
-  const resizing = useRef<{ startX: number; startWidth: number; startScale: number } | null>(null);
+  const resizing = useRef<{
+    startX: number;
+    startY: number;
+    startWidth: number;
+    startHeight: number;
+    startScale: number;
+    corner: "nw" | "ne" | "sw" | "se";
+  } | null>(null);
+  /** Top-left of the picture when a resize starts, so the opposite corner stays put. */
+  const resizeOrigin = useRef({ x: 0, y: 0 });
   const dprRef = useRef(1);
   // Where the student has dragged the question picture to. Only the picture
   // moves — their writing stays exactly where they put it.
@@ -370,39 +379,52 @@ export function DrawingPad({
     event.currentTarget.setPointerCapture(event.pointerId);
     const point = positionOf(event);
     const rect = pictureRect();
+    const corner = hitHandleCorner(point);
+
+    // The picture is only picked up, dragged or resized with the Move picture
+    // tool (or the middle mouse button). In Write mode every touch draws.
+    const moveTool = modeRef.current === "move" || event.button === 1;
 
     // A corner grab square on the highlighted picture makes it bigger/smaller.
-    if (rect && hitHandle(point)) {
+    if (rect && corner && moveTool) {
       resizing.current = {
         startX: point.x,
+        startY: point.y,
         startWidth: rect.width,
+        startHeight: rect.height,
         startScale: photoScaleRef.current,
+        corner,
       };
+      resizeOrigin.current = { x: rect.x, y: rect.y };
       return;
     }
 
-    // Tapping the picture highlights it; while it is highlighted a drag moves it.
-    if (hitPicture(point)) {
-      if (!selectedRef.current) {
-        selectedRef.current = true;
-        setSelected(true);
+    if (moveTool) {
+      // Tapping the picture highlights it; a drag then moves it.
+      if (hitPicture(point)) {
+        if (!selectedRef.current) {
+          selectedRef.current = true;
+          setSelected(true);
+        }
+        panning.current = { x: event.clientX, y: event.clientY };
+        redraw();
+        return;
+      }
+      // Blank paper with the Move tool: put the picture down and pan it.
+      if (selectedRef.current) {
+        selectedRef.current = false;
+        setSelected(false);
       }
       panning.current = { x: event.clientX, y: event.clientY };
       redraw();
       return;
     }
 
-    // Anywhere else: put the picture down again and carry on writing.
+    // Write mode: drop any highlight and start inking.
     if (selectedRef.current) {
       selectedRef.current = false;
       setSelected(false);
       redraw();
-    }
-
-    // Middle button or the Move tool drags the picture and work around.
-    if (modeRef.current === "move" || event.button === 1) {
-      panning.current = { x: event.clientX, y: event.clientY };
-      return;
     }
     drawing.current = true;
     const width = event.pointerType === "pen" ? Math.max(1.2, event.pressure * 4 || 2) : 2.4;
@@ -413,11 +435,30 @@ export function DrawingPad({
   function move(event: React.PointerEvent<HTMLCanvasElement>) {
     if (resizing.current) {
       event.preventDefault();
+      const grab = resizing.current;
       const point = positionOf(event);
-      const grown = resizing.current.startWidth + (point.x - resizing.current.startX);
-      const factor = grown / Math.max(1, resizing.current.startWidth);
-      const next = Math.max(0.4, Math.min(2.5, resizing.current.startScale * factor));
+      // Dragging outwards from the corner grows the picture, inwards shrinks it,
+      // whichever corner is held.
+      const signX = grab.corner === "ne" || grab.corner === "se" ? 1 : -1;
+      const signY = grab.corner === "sw" || grab.corner === "se" ? 1 : -1;
+      const byWidth = (grab.startWidth + signX * (point.x - grab.startX)) / Math.max(1, grab.startWidth);
+      const byHeight =
+        (grab.startHeight + signY * (point.y - grab.startY)) / Math.max(1, grab.startHeight);
+      const factor = Math.max(0.05, (byWidth + byHeight) / 2);
+      const next = Math.max(0.4, Math.min(2.5, grab.startScale * factor));
+      const applied = next / grab.startScale;
       photoScaleRef.current = next;
+      // Keep the corner opposite the one being dragged exactly where it is.
+      offsetRef.current = {
+        x:
+          signX === 1
+            ? resizeOrigin.current.x
+            : resizeOrigin.current.x + grab.startWidth - grab.startWidth * applied,
+        y:
+          signY === 1
+            ? resizeOrigin.current.y
+            : resizeOrigin.current.y + grab.startHeight - grab.startHeight * applied,
+      };
       setPhotoScale(Number(next.toFixed(2)));
       redraw();
       return;
@@ -558,7 +599,7 @@ export function DrawingPad({
         </Button>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        {"The question is printed underneath — write straight over it. Tap the picture to highlight it, then drag it anywhere or pull a blue corner square to make it bigger or smaller. Tap the blank paper to put it down and carry on writing. Scroll down for as much space as you need. Minimise & save keeps your sheet, then press Check answer."}
+        {"The question is printed underneath. In Write mode every touch draws, even over the picture. Switch to Move picture to tap the picture, drag it anywhere, or pull a blue corner square to make it bigger or smaller — then switch back to Write. Scroll down for as much space as you need. Minimise & save keeps your sheet, then press Check answer."}
       </p>
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">

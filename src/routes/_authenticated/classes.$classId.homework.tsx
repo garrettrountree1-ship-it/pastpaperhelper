@@ -1085,7 +1085,21 @@ function AssignmentDialog({
                   </div>
                 </div>
               </div>
+              <div className="flex justify-center py-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-muted-foreground"
+                  onClick={() => insertQuestionAfter(index)}
+                >
+                  <Plus className="size-3" />
+                  Add a question here
+                </Button>
+              </div>
+              </div>
             ))}
+
             <Button
               variant="outline"
               onClick={() =>

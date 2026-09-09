@@ -479,7 +479,17 @@ function PreviewQuestion({
       showPhoto={showPhoto}
       onShowPhoto={() => setShowPhoto(true)}
       photoCount={photos.length}
-      photoUrls={photos}
+      photoUrls={[]}
+      photoFiles={photos
+        .filter((url) => url !== padPhoto.current)
+        .map((url, photoIndex) => ({ name: `Photo ${photoIndex + 1}`, url }))}
+      onRemovePhoto={(name) =>
+        setPhotos((prev) => {
+          const list = prev.filter((url) => url !== padPhoto.current);
+          const target = list[Number(name.replace("Photo ", "")) - 1];
+          return prev.filter((url) => url !== target);
+        })
+      }
       onPhotosChange={(files) => void addPhotos(files)}
       onAddDrawing={(file) => {
         const reader = new FileReader();

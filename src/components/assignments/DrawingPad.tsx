@@ -29,6 +29,8 @@ const PEN_COLORS = [
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 4;
 const MAX_SHEET = 6000;
+/** One fixed name so a new save replaces the last pad picture, never stacks. */
+export const PAD_FILE_NAME = "working-pad.png";
 
 
 /**
@@ -75,6 +77,8 @@ export function DrawingPad({
   const [photoScale, setPhotoScale] = useState(1);
   const photoScaleRef = useRef(photoScale);
   photoScaleRef.current = photoScale;
+  const [saved, setSaved] = useState(false);
+  const saveTimer = useRef(0);
   const [color, setColor] = useState(PEN_COLORS[0]!.value);
   const colorRef = useRef(color);
   colorRef.current = color;
@@ -300,12 +304,18 @@ export function DrawingPad({
   }
 
   function end() {
+    if (drawing.current) {
+      setSaved(false);
+      scheduleSave();
+    }
     drawing.current = false;
     panning.current = null;
     updateSheet();
   }
 
 
+  /** Saves the current sheet as the answer picture, keeping the ink on the pad
+   * so the student can carry on from their last working after a wrong answer. */
   function attach() {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -320,11 +330,18 @@ export function DrawingPad({
       offsetRef.current = savedOffset;
       redraw();
       if (!blob) return;
-      onAttach(new File([blob], `working-${Date.now()}.png`, { type: "image/png" }));
-      strokesRef.current = [];
-      setHasInk(false);
-      redraw();
+      onAttach(new File([blob], PAD_FILE_NAME, { type: "image/png" }));
+      setSaved(true);
     }, "image/png");
+  }
+
+  /** Keeps the saved picture in step with the pad without the student thinking
+   * about it, so pressing Check answer always marks their latest working. */
+  function scheduleSave() {
+    window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
+      if (strokesRef.current.length > 0) attach();
+    }, 700);
   }
 
   /** Minimising saves the sheet so the student can go straight to submitting. */
@@ -504,7 +521,7 @@ export function DrawingPad({
 
       <div className="mt-2 flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={attach} disabled={disabled || !hasInk}>
-          Attach this working
+          Save my working
         </Button>
         <Button
           type="button"
@@ -514,7 +531,9 @@ export function DrawingPad({
           onClick={() => {
             strokesRef.current.pop();
             setHasInk(strokesRef.current.length > 0);
+            setSaved(false);
             redraw();
+            scheduleSave();
           }}
         >
           <Undo2 className="size-4" />
@@ -528,6 +547,7 @@ export function DrawingPad({
           onClick={() => {
             strokesRef.current = [];
             setHasInk(false);
+            setSaved(false);
             redraw();
           }}
         >

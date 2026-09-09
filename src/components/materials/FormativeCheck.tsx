@@ -590,8 +590,12 @@ export function FormativeCheckPanel({
     onSuccess: async () => {
       setAnswer("");
       setPartAnswers({});
-      await queryClient.invalidateQueries({ queryKey: ["formative-active", classId] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["formative-active", classId] }),
+        queryClient.invalidateQueries({ queryKey: ["formative-leaderboard", classId] }),
+      ]);
     },
+
     onError: (error: Error) => toast.error(error.message),
   });
 

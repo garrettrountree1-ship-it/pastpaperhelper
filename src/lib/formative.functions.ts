@@ -258,20 +258,30 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     // Leaderboard points for class questions only — kept apart from game tokens.
+    // Anyone answering as a student in the class scores, including the demo
+    // account when it is switched into the student view.
     let awardedPoints = 0;
-    if (marked.verdict === "correct" && check.teacher_id !== userId) {
-      const elapsed = Math.max(
-        0,
-        Math.round((Date.now() - new Date(check.created_at as string).getTime()) / 1000),
-      );
-      awardedPoints = formativePointsFor({
-        attempt,
-        elapsedSeconds: elapsed,
-        limitSeconds: check.count_up ? null : (check.seconds as number),
-        answerLength: data.answer.trim().length,
-      });
-      await addFormativePoints(check.class_id as string, userId, awardedPoints);
+    if (marked.verdict === "correct") {
+      const { count: memberCount } = await supabase
+        .from("class_members")
+        .select("id", { count: "exact", head: true })
+        .eq("class_id", check.class_id as string)
+        .eq("student_id", userId);
+      if ((memberCount ?? 0) > 0) {
+        const elapsed = Math.max(
+          0,
+          Math.round((Date.now() - new Date(check.created_at as string).getTime()) / 1000),
+        );
+        awardedPoints = formativePointsFor({
+          attempt,
+          elapsedSeconds: elapsed,
+          limitSeconds: check.count_up ? null : (check.seconds as number),
+          answerLength: data.answer.trim().length,
+        });
+        await addFormativePoints(check.class_id as string, userId, awardedPoints);
+      }
     }
+
     return { ...marked, attempt, awardedPoints };
   });
 

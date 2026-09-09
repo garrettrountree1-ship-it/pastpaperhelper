@@ -4,6 +4,8 @@ import { cleanMathText } from "@/lib/math-text";
 import { TUTOR_MODEL } from "./ai-gateway.server";
 
 export type QuestionCrop = {
+  /** Which upload the page belongs to: the paper, or the mark scheme/answer file. */
+  sheet?: "paper" | "answer";
   /** 1-based page number the snip is taken from. */
   page: number;
   /** Top / bottom of the snip as a fraction (0-1) of that page's height. */
@@ -19,6 +21,8 @@ export type ExtractedQuestion = {
   pages: number[];
   /** Region(s) of the page(s) to show the student, in reading order. */
   crops?: QuestionCrop[] | null;
+  /** Region(s) showing the official answer / mark scheme, as printed. */
+  answerCrops?: QuestionCrop[] | null;
 };
 
 
@@ -98,10 +102,11 @@ const DETAIL_SYSTEM = [
   "Give ONE band per page. Never give two bands that cover the same print, and never repeat the same region of a page — a second band is only ever the continuation on the NEXT page.",
   "If an answer or mark scheme is printed on the same page below this part, the band MUST end above the first character of that answer text, even if that means the band is short.",
   "Only set crops to null if you truly cannot locate the part on any page.",
+  "answerCrops: the band(s) of page picture(s) showing the OFFICIAL ANSWER / mark scheme for this exact part, so the printed marking points, ticks, fractions and notation are kept as pictures instead of retyped. Paper pages are labelled PAGE N; mark scheme pages are labelled ANSWER PAGE N. Use {\"sheet\":\"answer\",\"page\":N,\"top\":T,\"bottom\":B} for a mark scheme page and {\"sheet\":\"paper\",...} when the answer is printed on a paper page. Start at this part's own answer row/label and stop before the next part's answer. Give at most two bands, and set answerCrops to null if you cannot locate the answer.",
 
   "Symbols and units MUST be reproduced as real Unicode characters exactly as printed: \u00b0C, \u00b0F, \u00b5, \u03a9, \u00b1, \u00d7, \u00f7, \u2264, \u2265, \u2248, \u2192, \u21cc, \u221a, \u03b1\u03b2\u03b3\u03bb\u03c0\u0394\u03b8, subscripts/superscripts (H\u2082O, cm\u00b3, m s\u207b\u00b2, 10\u2076).",
   "Never write symbols as words, ASCII stand-ins or escapes: no \"degrees C\", \"deg C\", \"oC\", \"^oC\", \"ohms\", \"micro\", \"+/-\", \"\\\\u00b0\", \"&deg;\", \"?C\". Write 25 \u00b0C, 4.7 k\u03a9, 3 \u00b5A.",
-  'Reply with JSON only: {"questions":[{"label":"1(a)","questionText":"...","markScheme":"...","marks":2,"pages":[3,4],"crops":[{"page":3,"top":0.62,"bottom":0.97},{"page":4,"top":0.05,"bottom":0.3}]}]}',
+  'Reply with JSON only: {"questions":[{"label":"1(a)","questionText":"...","markScheme":"...","marks":2,"pages":[3,4],"crops":[{"page":3,"top":0.62,"bottom":0.97},{"page":4,"top":0.05,"bottom":0.3}],"answerCrops":[{"sheet":"answer","page":2,"top":0.31,"bottom":0.4}]}]}',
 
 
 ].join(" ");
@@ -356,6 +361,7 @@ const DOCX_MIME =
 function buildDocumentContent(input: ExtractInput): Array<Record<string, unknown>> {
   const content: Array<Record<string, unknown>> = [];
   let paperPage = 0;
+  let schemePage = 0;
   const paperCount = input.paperFiles.length;
   let index = -1;
   for (const file of [...input.paperFiles, ...input.markSchemeFiles]) {
@@ -368,7 +374,8 @@ function buildDocumentContent(input: ExtractInput): Array<Record<string, unknown
         paperPage += 1;
         content.push({ type: "text", text: `--- PAGE ${paperPage} of the past paper ---` });
       } else {
-        content.push({ type: "text", text: `--- Mark scheme page: ${file.filename} ---` });
+        schemePage += 1;
+        content.push({ type: "text", text: `--- ANSWER PAGE ${schemePage} (mark scheme) ---` });
       }
       content.push({
         type: "image_url",
@@ -599,6 +606,7 @@ async function runDetail(
         marks: Math.max(1, Math.round(Number(item["marks"]) || match?.marks || 1)),
         pages,
         crops: parseCropList(item["crops"] ?? item["crop"], pages),
+        answerCrops: parseCropList(item["answerCrops"] ?? item["answerCrop"], []),
       };
 
 
@@ -656,11 +664,12 @@ async function runCropAudit(
 function parseCropValue(raw: unknown, pages: number[]): QuestionCrop | null {
   if (!raw || typeof raw !== "object") return null;
   const value = raw as Record<string, unknown>;
+  const sheet = String(value["sheet"] ?? "paper").toLowerCase() === "answer" ? "answer" : "paper";
   const page = Math.round(Number(value["page"]));
   let top = Number(value["top"]);
   let bottom = Number(value["bottom"]);
   if (!Number.isFinite(page) || page <= 0) return null;
-  if (pages.length > 0 && !pages.includes(page)) return null;
+  if (sheet === "paper" && pages.length > 0 && !pages.includes(page)) return null;
   if (!Number.isFinite(top) || !Number.isFinite(bottom)) return null;
   if (bottom <= top) return null;
   // A little breathing room at the top so nothing printed is clipped. The
@@ -669,7 +678,7 @@ function parseCropValue(raw: unknown, pages: number[]): QuestionCrop | null {
   top = Math.max(0, top - 0.012);
   bottom = Math.min(1, bottom + 0.003);
   if (bottom - top < 0.04) return null;
-  return { page, top, bottom };
+  return { sheet, page, top, bottom };
 
 }
 
@@ -686,7 +695,7 @@ function parseCropList(raw: unknown, pages: number[]): QuestionCrop[] | null {
     if (!band) continue;
     // There can only be one crop for a question part on one page. If the model
     // reports it twice, keep the shared/narrower region rather than expanding.
-    const same = out.find((b) => b.page === band.page);
+    const same = out.find((b) => b.page === band.page && (b.sheet ?? "paper") === (band.sheet ?? "paper"));
     if (same) {
       const overlaps = band.top < same.bottom + 0.02 && band.bottom > same.top - 0.02;
       const sharedTop = Math.max(same.top, band.top);
@@ -703,7 +712,15 @@ function parseCropList(raw: unknown, pages: number[]): QuestionCrop[] | null {
     out.push(band);
     if (out.length === 3) break;
   }
-  out.sort((a, b) => (a.page === b.page ? a.top - b.top : a.page - b.page));
+  out.sort((a, b) =>
+    (a.sheet ?? "paper") !== (b.sheet ?? "paper")
+      ? (a.sheet ?? "paper") === "paper"
+        ? -1
+        : 1
+      : a.page === b.page
+        ? a.top - b.top
+        : a.page - b.page,
+  );
   return out.length > 0 ? out : null;
 }
 
@@ -745,6 +762,7 @@ function dedupe(items: Array<ExtractedQuestion | DetailResult>): ExtractedQuesti
       marks: item.marks,
       pages: item.pages,
       crops: item.crops ?? null,
+      answerCrops: item.answerCrops ?? null,
     });
 
   }

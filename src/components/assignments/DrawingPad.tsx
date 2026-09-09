@@ -86,6 +86,7 @@ export function DrawingPad({
   const photoScaleRef = useRef(photoScale);
   photoScaleRef.current = photoScale;
   const [saved, setSaved] = useState(false);
+  const [hoverCorner, setHoverCorner] = useState<"nw" | "ne" | "sw" | "se" | null>(null);
   /** Small picture of the last saved sheet, shown under the closed pad. */
   const [thumbnail, setThumbnail] = useState<string | null>(null);
 

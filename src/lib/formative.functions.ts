@@ -210,7 +210,7 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
     const { data: check } = await supabase
       .from("formative_checks")
       .select(
-        "id, question, question_image, expected_answer, ends_at, closed_at, teacher_id, target_student_id, target_student_ids",
+        "id, class_id, question, question_image, expected_answer, seconds, count_up, created_at, ends_at, closed_at, teacher_id, target_student_id, target_student_ids",
       )
       .eq("id", data.checkId)
       .maybeSingle();

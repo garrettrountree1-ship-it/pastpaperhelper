@@ -1067,7 +1067,7 @@ function AssignmentDialog({
                             type="button"
                             aria-label="Mark this question as HL only"
                             aria-pressed={question.tagLabel.trim().toUpperCase() === "HL"}
-                            title="HL only"
+                            title="Click to mark this question as Higher Level only"
                             onClick={() =>
                               update_(index, {
                                 tagLabel:
@@ -1075,13 +1075,26 @@ function AssignmentDialog({
                                 tagImage: "",
                               })
                             }
-                            className={`flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                            className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium transition-colors ${
                               question.tagLabel.trim().toUpperCase() === "HL"
-                                ? "border-[hsl(215_75%_28%)] bg-[hsl(215_75%_28%)]"
-                                : "border-border bg-transparent hover:border-[hsl(215_75%_28%)]"
+                                ? "border-[hsl(215_75%_28%)] bg-[hsl(215_75%_28%)] text-white"
+                                : "border-border bg-transparent text-muted-foreground hover:border-[hsl(215_75%_28%)] hover:text-foreground"
                             }`}
                           >
-                            <span className="sr-only">HL</span>
+                            <span
+                              className={`flex size-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                                question.tagLabel.trim().toUpperCase() === "HL"
+                                  ? "border-white"
+                                  : "border-current"
+                              }`}
+                            >
+                              {question.tagLabel.trim().toUpperCase() === "HL" ? (
+                                <span className="size-2 rounded-full bg-white" />
+                              ) : null}
+                            </span>
+                            {question.tagLabel.trim().toUpperCase() === "HL"
+                              ? "HL only"
+                              : "Mark as HL"}
                           </button>
                         ) : null}
                         <Label htmlFor={`qnum-${index}`} className="font-display text-lg">

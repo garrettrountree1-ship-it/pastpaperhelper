@@ -312,6 +312,7 @@ function AddQuestionRow({
   return (
     <div>
       {children}
+      {editing ? (
       <div className="flex justify-center py-2">
         <Button
           type="button"
@@ -325,6 +326,7 @@ function AddQuestionRow({
           {add.isPending ? "Adding..." : "Add a question here"}
         </Button>
       </div>
+      ) : null}
     </div>
   );
 }

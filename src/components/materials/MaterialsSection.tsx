@@ -8,7 +8,6 @@ import {
   Link2,
   Pencil,
   Presentation,
-  Sparkles,
   Trash2,
   Archive,
   RotateCcw,
@@ -312,17 +311,6 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
                   }}
                 >
                   {canManage ? "Open lesson workspace" : "Open lesson notes"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setOpenTab("summary");
-                    setOpenUnitId(unit.id);
-                  }}
-                >
-                  <Sparkles className="size-4" />
-                  AI notes
                 </Button>
                 {canManage ? (
                   <>

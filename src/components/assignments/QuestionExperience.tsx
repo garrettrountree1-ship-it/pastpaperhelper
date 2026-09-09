@@ -304,10 +304,7 @@ export function QuestionExperience({
           write it on the pad. {requiresPhoto ? "For this one, working on paper usually earns the most method marks." : null}
         </p>
 
-        <details
-          open={!photoOnly}
-          className="rounded-lg border border-dashed border-border p-3"
-        >
+        <details className="rounded-lg border border-dashed border-border p-3">
           <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">
             Type your answer
           </summary>

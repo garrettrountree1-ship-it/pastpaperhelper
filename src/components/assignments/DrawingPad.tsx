@@ -377,39 +377,52 @@ export function DrawingPad({
     event.currentTarget.setPointerCapture(event.pointerId);
     const point = positionOf(event);
     const rect = pictureRect();
+    const corner = hitHandleCorner(point);
+
+    // The picture is only picked up, dragged or resized with the Move picture
+    // tool (or the middle mouse button). In Write mode every touch draws.
+    const moveTool = modeRef.current === "move" || event.button === 1;
 
     // A corner grab square on the highlighted picture makes it bigger/smaller.
-    if (rect && hitHandle(point)) {
+    if (rect && corner && moveTool) {
       resizing.current = {
         startX: point.x,
+        startY: point.y,
         startWidth: rect.width,
+        startHeight: rect.height,
         startScale: photoScaleRef.current,
+        corner,
       };
+      resizeOrigin.current = { x: rect.x, y: rect.y };
       return;
     }
 
-    // Tapping the picture highlights it; while it is highlighted a drag moves it.
-    if (hitPicture(point)) {
-      if (!selectedRef.current) {
-        selectedRef.current = true;
-        setSelected(true);
+    if (moveTool) {
+      // Tapping the picture highlights it; a drag then moves it.
+      if (hitPicture(point)) {
+        if (!selectedRef.current) {
+          selectedRef.current = true;
+          setSelected(true);
+        }
+        panning.current = { x: event.clientX, y: event.clientY };
+        redraw();
+        return;
+      }
+      // Blank paper with the Move tool: put the picture down and pan it.
+      if (selectedRef.current) {
+        selectedRef.current = false;
+        setSelected(false);
       }
       panning.current = { x: event.clientX, y: event.clientY };
       redraw();
       return;
     }
 
-    // Anywhere else: put the picture down again and carry on writing.
+    // Write mode: drop any highlight and start inking.
     if (selectedRef.current) {
       selectedRef.current = false;
       setSelected(false);
       redraw();
-    }
-
-    // Middle button or the Move tool drags the picture and work around.
-    if (modeRef.current === "move" || event.button === 1) {
-      panning.current = { x: event.clientX, y: event.clientY };
-      return;
     }
     drawing.current = true;
     const width = event.pointerType === "pen" ? Math.max(1.2, event.pressure * 4 || 2) : 2.4;

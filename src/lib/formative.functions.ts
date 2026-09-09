@@ -142,7 +142,7 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
     const { data: check } = await supabase
       .from("formative_checks")
       .select(
-        "id, question, question_image, seconds, ends_at, teacher_id, expected_answer, released_answer, answer_released_at, target_student_id, target_student_ids",
+        "id, question, question_image, seconds, count_up, created_at, ends_at, teacher_id, expected_answer, released_answer, answer_released_at, target_student_id, target_student_ids",
       )
       .eq("class_id", data.classId)
       .is("closed_at", null)

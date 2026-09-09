@@ -358,6 +358,16 @@ export function NotesCanvas({
   useEffect(() => {
     if (!canEdit || tab !== "notes") return;
     const onPaste = (event: ClipboardEvent) => {
+      // Never steal a paste that belongs to a text field, dialog or popover
+      // (for example the formative check question box).
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.closest?.(
+          'input, textarea, [contenteditable="true"], [role="dialog"], [data-radix-popper-content-wrapper]',
+        )
+      ) {
+        return;
+      }
       const item = Array.from(event.clipboardData?.items ?? []).find((i) =>
         i.type.startsWith("image/"),
       );
@@ -366,6 +376,7 @@ export function NotesCanvas({
       event.preventDefault();
       void uploadImage(file, pointerAt.current);
     };
+
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
     // eslint-disable-next-line react-hooks/exhaustive-deps

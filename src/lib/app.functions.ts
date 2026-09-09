@@ -1835,7 +1835,18 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
       .select("question_id")
       .eq("student_id", userId);
     const exemptIds = new Set((exemptions ?? []).map((e) => e.question_id));
-    const questions = (allQuestions ?? []).filter((q) => !exemptIds.has(q.id));
+    // Standard Level students never see questions the teacher marked HL.
+    const { data: levelRow } = await db
+      .from("class_student_settings")
+      .select("ib_level")
+      .eq("class_id", assignment.class_id)
+      .eq("student_id", userId)
+      .maybeSingle();
+    const isStandardLevel = (levelRow as { ib_level?: string | null } | null)?.ib_level === "SL";
+    const questions = (allQuestions ?? []).filter(
+      (q) =>
+        !exemptIds.has(q.id) && !(isStandardLevel && isHigherLevelTag(q.tag_label as string | null)),
+    );
 
     const submission = await ensureSubmission(db, data.assignmentId, userId);
     await recalcSubmission(db, submission.id);

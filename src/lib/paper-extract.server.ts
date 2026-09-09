@@ -129,6 +129,17 @@ const CROP_AUDIT_SYSTEM = [
   'Reply with JSON only: {"items":[{"label":"1(a)","crops":[{"page":2,"top":0.12,"bottom":0.34}]}]}',
 ].join(" ");
 
+const CROSSCHECK_SYSTEM = [
+  "You are a bookkeeper checking an uploaded question paper and its mark scheme. You do not transcribe questions.",
+  "Report two things only.",
+  "totals: for every printed main question number, the total marks printed for the WHOLE question (e.g. \"[Total: 9]\", \"(9 marks)\" or the sum shown in the mark scheme). Omit a question when no total is printed.",
+  "answerLabels: every question part label that the mark scheme / answer key lists an answer for, using the printed form, e.g. \"7(a)\", \"7(b)(ii)\", \"12\".",
+  "Never invent labels or totals. Only report what is printed.",
+  'Reply with JSON only: {"totals":[{"question":"7","printedTotal":9}],"answerLabels":["7(a)","7(b)(i)","7(b)(ii)"]}',
+].join(" ");
+
+
+
 
 export async function extractQuestionsFromPapers(
   input: ExtractInput,

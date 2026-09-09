@@ -8,6 +8,7 @@ import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { LOCKED_MESSAGE } from "@/lib/integrity";
 import { cleanMathText } from "@/lib/math-text";
 import { isDemoEmail } from "@/lib/demo";
+import { isHigherLevelTag } from "@/lib/ib-level.functions";
 import { isPhotoMode, resolvePhotoMode } from "@/lib/photo-mode";
 import { teachesClass, teachingClassIds } from "@/lib/teach-access";
 import { cropAfter } from "@/lib/next-crop";
@@ -1835,7 +1836,18 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
       .select("question_id")
       .eq("student_id", userId);
     const exemptIds = new Set((exemptions ?? []).map((e) => e.question_id));
-    const questions = (allQuestions ?? []).filter((q) => !exemptIds.has(q.id));
+    // Standard Level students never see questions the teacher marked HL.
+    const { data: levelRow } = await db
+      .from("class_student_settings")
+      .select("ib_level")
+      .eq("class_id", assignment.class_id)
+      .eq("student_id", userId)
+      .maybeSingle();
+    const isStandardLevel = (levelRow as { ib_level?: string | null } | null)?.ib_level === "SL";
+    const questions = (allQuestions ?? []).filter(
+      (q) =>
+        !exemptIds.has(q.id) && !(isStandardLevel && isHigherLevelTag(q.tag_label as string | null)),
+    );
 
     const submission = await ensureSubmission(db, data.assignmentId, userId);
     await recalcSubmission(db, submission.id);
@@ -2413,7 +2425,7 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
       .select("name")
       .eq("id", assignment.class_id)
       .maybeSingle();
-    const { data: questions } = await db
+    const { data: allPreviewQuestions } = await db
       .from("questions")
       .select(
         "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image",
@@ -2455,6 +2467,21 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
       : { data: null };
     const markSchemeRevealed = Boolean(
       assignment.mark_scheme_revealed || studentRelease?.mark_scheme_revealed,
+    );
+
+    // Previewing an SL student hides HL-only questions, exactly as they see it.
+    const { data: previewLevelRow } = studentId
+      ? await db
+          .from("class_student_settings")
+          .select("ib_level")
+          .eq("class_id", assignment.class_id)
+          .eq("student_id", studentId)
+          .maybeSingle()
+      : { data: null };
+    const previewIsStandardLevel =
+      (previewLevelRow as { ib_level?: string | null } | null)?.ib_level === "SL";
+    const questions = (allPreviewQuestions ?? []).filter(
+      (q) => !(previewIsStandardLevel && isHigherLevelTag(q.tag_label as string | null)),
     );
 
     return {

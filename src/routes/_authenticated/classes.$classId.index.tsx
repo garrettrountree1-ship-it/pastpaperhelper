@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getMe } from "@/lib/app.functions";
 import { useDemoView } from "@/lib/demo-view";
+import { isIbdp } from "@/lib/curricula";
+import { listIbLevels, setIbLevel, type IbLevel } from "@/lib/ib-level.functions";
 import { listClassRoster } from "@/lib/materials.functions";
 import { SECTIONS, type SectionKey } from "@/lib/sections";
 
@@ -114,7 +116,7 @@ function ClassHome() {
             {role === "teacher" ? (
               <>
                 <ClassBulletinPanel classId={classId} />
-                <ClassRoster classId={classId} />
+                <ClassRoster classId={classId} showIbLevels={isIbdp(klass.curriculum)} />
                 <CoteacherPanel classId={classId} />
               </>
             ) : (
@@ -137,7 +139,7 @@ function ClassHome() {
 }
 
 /** Teacher-only list of the students who have joined this class. */
-function ClassRoster({ classId }: { classId: string }) {
+function ClassRoster({ classId, showIbLevels }: { classId: string; showIbLevels?: boolean }) {
   const [open, setOpen] = useState(false);
   const fetchRoster = useServerFn(listClassRoster);
   const roster = useQuery({
@@ -145,6 +147,32 @@ function ClassRoster({ classId }: { classId: string }) {
     queryFn: () => fetchRoster({ data: { classId } }),
   });
   const students = roster.data ?? [];
+  const fetchLevels = useServerFn(listIbLevels);
+  const levels = useQuery({
+    queryKey: ["class-ib-levels", classId],
+    queryFn: () => fetchLevels({ data: { classId } }),
+    enabled: Boolean(showIbLevels) && open,
+  });
+  const saveLevel = useServerFn(setIbLevel);
+  const [pending, setPending] = useState<Record<string, IbLevel>>({});
+
+  async function chooseLevel(studentId: string, level: IbLevel) {
+    setPending((prev) => ({ ...prev, [studentId]: level }));
+    try {
+      await saveLevel({ data: { classId, studentId, level } });
+      await levels.refetch();
+    } finally {
+      setPending((prev) => {
+        const next = { ...prev };
+        delete next[studentId];
+        return next;
+      });
+    }
+  }
+
+  function levelOf(studentId: string): IbLevel {
+    return pending[studentId] ?? levels.data?.levels?.[studentId] ?? "HL";
+  }
 
   return (
     <section className="paper mt-6 p-6">
@@ -181,6 +209,7 @@ function ClassRoster({ classId }: { classId: string }) {
                   <tr>
                     <th className="py-2 pr-4 font-medium">Name</th>
                     <th className="py-2 pr-4 font-medium">Joined</th>
+                    {showIbLevels ? <th className="py-2 pr-4 font-medium">Level</th> : null}
                     <th className="py-2 font-medium" />
                   </tr>
                 </thead>
@@ -191,6 +220,27 @@ function ClassRoster({ classId }: { classId: string }) {
                       <td className="py-2 pr-4 text-muted-foreground">
                         {new Date(s.joinedAt).toLocaleDateString()}
                       </td>
+                      {showIbLevels ? (
+                        <td className="py-2 pr-4">
+                          <div className="flex items-center gap-4">
+                            {(["SL", "HL"] as IbLevel[]).map((option) => (
+                              <label
+                                key={option}
+                                className="flex cursor-pointer items-center gap-1.5 text-sm"
+                              >
+                                <input
+                                  type="radio"
+                                  name={`ib-level-${s.id}`}
+                                  className="size-4 accent-primary"
+                                  checked={levelOf(s.id) === option}
+                                  onChange={() => void chooseLevel(s.id, option)}
+                                />
+                                {option}
+                              </label>
+                            ))}
+                          </div>
+                        </td>
+                      ) : null}
                       <td className="py-2 text-right">
                         <RemoveStudentButton
                           classId={classId}

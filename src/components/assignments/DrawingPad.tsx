@@ -70,7 +70,11 @@ export function DrawingPad({
   // The sheet is as long as the student needs: it stretches while they scroll
   // down and shrinks back to the work when they come back up.
   const [sheetHeight, setSheetHeight] = useState(0);
-  const backgroundsRef = useRef<HTMLImageElement[]>([]);
+  // Each piece is the picture plus the exact band of the page shown in the
+  // question box, so the pad can never reveal print outside that question.
+  const backgroundsRef = useRef<
+    Array<{ image: HTMLImageElement; top: number; bottom: number }>
+  >([]);
   const [photoScale, setPhotoScale] = useState(1);
   const photoScaleRef = useRef(photoScale);
   photoScaleRef.current = photoScale;

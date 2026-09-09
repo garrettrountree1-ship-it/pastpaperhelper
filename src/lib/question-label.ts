@@ -15,6 +15,11 @@ const COMPACT_PART = new RegExp(
 
 type Parsed = { label: string; rest: string };
 
+/** Papers (and re-labelling) sometimes repeat a part: "13(g) (g) State ..." -> one (g). */
+function dropRepeats(parts: string[]): string[] {
+  return parts.filter((part, index) => index === 0 || part !== parts[index - 1]);
+}
+
 function parseOnce(text: string): Parsed | null {
   const head = HEAD.exec(text);
   if (!head || !head[1]) return null;
@@ -37,7 +42,7 @@ function parseOnce(text: string): Parsed | null {
       rest = rest.slice(compact[0].length);
     }
   }
-  const label = `${head[1]}${parts.map((p) => `(${p})`).join("")}`;
+  const label = `${head[1]}${dropRepeats(parts).map((p) => `(${p})`).join("")}`;
   return { label, rest: rest.replace(/^[\s.):-]+/, "") };
 }
 
@@ -100,7 +105,7 @@ export function parseLabelString(label: string): { main: number | null; parts: s
     }
     break;
   }
-  return { main, parts };
+  return { main, parts: dropRepeats(parts) };
 }
 
 export function formatLabel(main: number | null, parts: string[]): string {
@@ -111,9 +116,18 @@ export function formatLabel(main: number | null, parts: string[]): string {
 export function setQuestionLabel(questionText: string, label: string): string {
   const text = (questionText ?? "").trim();
   const parsed = parseOnce(text);
-  const body = parsed ? parsed.rest : text;
+  let body = parsed ? parsed.rest : text;
   const clean = (label ?? "").trim();
-  return clean ? `${clean} ${body}`.trim() : body;
+  if (!clean) return body;
+  // Never repeat the label's last part when the wording already starts with it.
+  const { parts } = parseLabelString(clean);
+  const last = parts[parts.length - 1];
+  if (last) {
+    const repeat = new RegExp(`^\\s*\\(?\\s*${last}\\s*\\)?\\s*[.:-]?\\s*`, "i");
+    const stripped = body.replace(repeat, "");
+    if (stripped !== body && stripped.trim()) body = stripped;
+  }
+  return `${clean} ${body}`.trim();
 }
 
 /** Shifts a single letter part ("b" -> "d"), leaving roman numerals alone. */

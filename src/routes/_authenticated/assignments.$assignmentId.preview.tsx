@@ -20,7 +20,15 @@ import { parseSnipBand } from "@/components/assignments/QuestionSnip";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import type { PhotoMode } from "@/lib/photo-mode";
 import { photoAvailability } from "@/lib/photo-mode";
@@ -106,20 +114,26 @@ function groupByPage(questions: Question[]) {
 function PreviewPage() {
   const { assignmentId } = Route.useParams();
   const [flags, setFlags] = useState(0);
+  const [studentId, setStudentId] = useState<string>("class");
   const preview = useQuery({
-    queryKey: ["assignment-preview", assignmentId],
-    queryFn: () => getAssignmentPreview({ data: { assignmentId } }),
+    queryKey: ["assignment-preview", assignmentId, studentId],
+    queryFn: () =>
+      getAssignmentPreview({
+        data: { assignmentId, studentId: studentId === "class" ? null : studentId },
+      }),
     retry: 2,
   });
 
 
   const data = preview.data;
+  const settings = data?.tutorSettings;
   // The student view must behave exactly like the student page, deterrents included.
   const protection = useContentProtection({
     blockCopy: Boolean(preview.data?.tutorSettings?.protectQuestions),
     blockCapture: true,
   });
   const totalMarks = data?.questions.reduce((sum, q) => sum + q.marks, 0) ?? 0;
+
 
   return (
     <div className="min-h-screen">
@@ -147,9 +161,47 @@ function PreviewPage() {
         ) : data ? (
           <>
             <div className="paper mt-4 p-5">
-              <Badge variant="secondary" className="mb-3">
-                Student view (preview — nothing is saved)
-              </Badge>
+              <div className="mb-3 flex flex-wrap items-center gap-3">
+                <Badge variant="secondary">Student view (preview — nothing is saved)</Badge>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Viewing as</span>
+                  <Select value={studentId} onValueChange={setStudentId}>
+                    <SelectTrigger className="h-8 w-56 text-xs">
+                      <SelectValue placeholder="Class default" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="class">Class default settings</SelectItem>
+                      {(data.students ?? []).map((student) => (
+                        <SelectItem key={student.id} value={student.id}>
+                          {student.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {settings ? (
+                <div className="mb-3 flex flex-wrap gap-2 text-xs">
+                  <Badge variant="outline">Tutor: {settings.level} · {settings.language}</Badge>
+                  <Badge variant="outline">Hint: {settings.allowHint ? "on" : "off"}</Badge>
+                  <Badge variant="outline">
+                    Step-by-step: {settings.allowSteps ? "on" : "off"}
+                  </Badge>
+                  <Badge variant="outline">
+                    Tries per question: {settings.maxAttempts > 0 ? settings.maxAttempts : "unlimited"}
+                  </Badge>
+                  {settings.examMode ? (
+                    <Badge variant="outline">
+                      Real paper · hand-ins:{" "}
+                      {settings.maxPaperSubmissions > 0 ? settings.maxPaperSubmissions : "unlimited"}
+                    </Badge>
+                  ) : null}
+                  {settings.keywordTranslation ? (
+                    <Badge variant="outline">Key-word translation on</Badge>
+                  ) : null}
+                </div>
+              ) : null}
+
               <div className="flex items-start justify-between gap-3">
                 <h1 className="text-3xl">{data.assignment.title}</h1>
                 <VocabSheet assignmentId={assignmentId} />
@@ -208,7 +260,11 @@ function PreviewPage() {
                       flags={flags}
                       keywordTranslation={Boolean(data.tutorSettings?.keywordTranslation)}
                       protectQuestions={Boolean(data.tutorSettings?.protectQuestions)}
+                      allowHint={settings?.allowHint !== false}
+                      allowSteps={settings?.allowSteps !== false}
+                      maxAttempts={settings?.maxAttempts ?? 0}
                       onFlag={() => setFlags((count) => count + 1)}
+
                     />
                     </AddQuestionRow>
                   ))}
@@ -273,6 +329,9 @@ function PreviewQuestion({
   flags,
   keywordTranslation,
   protectQuestions,
+  allowHint,
+  allowSteps,
+  maxAttempts,
   onFlag,
 }: {
   assignmentId: string;
@@ -280,7 +339,11 @@ function PreviewQuestion({
   flags: number;
   keywordTranslation: boolean;
   protectQuestions: boolean;
+  allowHint: boolean;
+  allowSteps: boolean;
+  maxAttempts: number;
   onFlag: () => void;
+
 }) {
   const [answer, setAnswer] = useState("");
   const { requiresPhoto, photoOnly } = photoAvailability(
@@ -407,8 +470,12 @@ function PreviewQuestion({
       markScheme={question.markScheme ?? null}
       markSchemeImageUrls={question.answerImageUrls ?? []}
       keywordTranslation={keywordTranslation}
+      allowHint={allowHint}
+      allowSteps={allowSteps}
+      maxAttempts={maxAttempts}
       assignmentId={assignmentId}
       protectQuestions={protectQuestions}
+
       snipAction={
         (question.image_paths ?? []).length > 0 && (question.imageUrls ?? []).length > 0 ? (
           <QuestionRecutDialog

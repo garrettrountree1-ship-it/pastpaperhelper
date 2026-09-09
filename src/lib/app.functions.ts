@@ -2367,7 +2367,14 @@ export const submitAssignment = createServerFn({ method: "POST" })
 /** Read-only student-eye view of an assignment, for the owning teacher. */
 export const getAssignmentPreview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ assignmentId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        assignmentId: z.string().uuid(),
+        studentId: z.string().uuid().nullish(),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: allowed } = await supabase.rpc("can_teach_assignment", {
@@ -2396,16 +2403,34 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
       .eq("assignment_id", data.assignmentId)
       .order("position");
 
+    // Roster, so the teacher can preview the exact settings each student sees.
+    const { data: memberRows } = await db
+      .from("class_members")
+      .select("student_id")
+      .eq("class_id", assignment.class_id);
+    const memberIds = (memberRows ?? []).map((row: { student_id: string }) => row.student_id);
+    const { data: profileRows } = memberIds.length
+      ? await db.from("profiles").select("id, full_name").in("id", memberIds)
+      : { data: [] as Array<{ id: string; full_name: string }> };
+    const students = (profileRows ?? [])
+      .map((row: { id: string; full_name: string }) => ({ id: row.id, name: row.full_name }))
+      .sort((a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name));
+
+    const studentId = data.studentId && memberIds.includes(data.studentId) ? data.studentId : null;
 
     const pastDue = Boolean(
       assignment.due_at && new Date(assignment.due_at).getTime() < Date.now(),
     );
 
-    const { effectiveTutorSettings } = await import("./tutor-settings.server");
-    const tutorSettings = await effectiveTutorSettings(db, assignment.class_id, null);
+    const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
+    const tutorSettings = await tutorSettingsForAssignment(db, data.assignmentId, studentId);
+
 
     return {
       tutorSettings,
+      students,
+      viewingStudentId: studentId,
+
       assignment: {
         id: assignment.id,
         classId: assignment.class_id,

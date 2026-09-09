@@ -616,7 +616,6 @@ function AssignmentDialog({
         ? existing.data.questions.map((q) => ({
             ...q,
             imagePaths: q.imagePaths ?? [],
-        answerImagePaths: q.answerImagePaths ?? [],
             imageUrls: q.imageUrls ?? [],
             answerImagePaths: q.answerImagePaths ?? [],
             answerImageUrls: q.answerImageUrls ?? [],
@@ -643,7 +642,6 @@ function AssignmentDialog({
           ...q,
           id: null,
           imagePaths: q.imagePaths ?? [],
-        answerImagePaths: q.answerImagePaths ?? [],
           imageUrls: q.imageUrls ?? [],
           answerImagePaths: q.answerImagePaths ?? [],
           answerImageUrls: q.answerImageUrls ?? [],

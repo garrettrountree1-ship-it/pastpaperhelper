@@ -10,6 +10,7 @@ import {
   Sparkles,
   Timer,
   TimerReset,
+  Trophy,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";

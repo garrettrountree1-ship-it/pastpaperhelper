@@ -2,7 +2,7 @@ import { formatDueDate } from "@/lib/datetime";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import {
   HELP_PILL,
@@ -374,6 +374,7 @@ function PreviewQuestion({
     question.question_text,
     question.photoMode ?? "auto",
   );
+  const padPhoto = useRef<string | null>(null);
   const [showPhoto, setShowPhoto] = useState(requiresPhoto);
   const [photos, setPhotos] = useState<string[]>([]);
   const [reply, setReply] = useState("");
@@ -482,8 +483,14 @@ function PreviewQuestion({
       onPhotosChange={(files) => void addPhotos(files)}
       onAddDrawing={(file) => {
         const reader = new FileReader();
+        // The pad keeps one picture, replaced each time the working is saved.
         reader.onload = () =>
-          setPhotos((prev) => [...prev, String(reader.result)].slice(0, 3));
+          setPhotos((prev) => {
+            const url = String(reader.result);
+            const kept = prev.filter((item) => item !== padPhoto.current);
+            padPhoto.current = url;
+            return [...kept, url].slice(0, 3);
+          });
         reader.readAsDataURL(file);
       }}
       result={result ?? null}

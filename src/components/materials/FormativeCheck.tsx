@@ -568,7 +568,26 @@ export function FormativeCheckPanel({
   const stopwatch = useStopwatch(check?.startedAt, Boolean(check?.countUp));
   const [answer, setAnswer] = useState("");
   const [partAnswers, setPartAnswers] = useState<Record<string, string>>({});
-  const [dismissed, setDismissed] = useState<string | null>(null);
+  // Remember the dismissed check across tab navigation so the popup only
+  // reappears when the teacher sends a brand-new formative assessment.
+  const dismissedKey = `formative-dismissed:${classId}`;
+  const [dismissed, setDismissedState] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return window.localStorage.getItem(dismissedKey);
+    } catch {
+      return null;
+    }
+  });
+  const setDismissed = (id: string | null) => {
+    setDismissedState(id);
+    try {
+      if (id) window.localStorage.setItem(dismissedKey, id);
+      else window.localStorage.removeItem(dismissedKey);
+    } catch {
+      /* storage unavailable */
+    }
+  };
   const parts = useMemo(() => (check ? questionParts(check.question) : []), [check?.question]);
   const combined = parts.length
     ? parts

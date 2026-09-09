@@ -601,7 +601,7 @@ export function DrawingPad({
             onPointerCancel={end}
             style={{ height: sheetHeight ? `${sheetHeight}px` : "150vh" }}
             className={`w-full touch-none rounded-md border border-border bg-white ${
-              mode === "move" ? "cursor-grab" : "cursor-crosshair"
+              selected || mode === "move" ? "cursor-grab" : "cursor-crosshair"
             }`}
           />
       </div>

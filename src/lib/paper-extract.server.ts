@@ -661,10 +661,17 @@ async function runCropAudit(
  * Reads the model's snip band for a question and keeps it only when it is a
  * sane region of a real page — a slightly padded band, never a sliver.
  */
-function parseCropValue(raw: unknown, pages: number[]): QuestionCrop | null {
+function parseCropValue(
+  raw: unknown,
+  pages: number[],
+  defaultSheet: "paper" | "answer" = "paper",
+): QuestionCrop | null {
   if (!raw || typeof raw !== "object") return null;
   const value = raw as Record<string, unknown>;
-  const sheet = String(value["sheet"] ?? "paper").toLowerCase() === "answer" ? "answer" : "paper";
+  // When the teacher uploaded a separate answer-key document, an answer crop
+  // without an explicit sheet belongs to that document, not the question paper.
+  const rawSheet = String(value["sheet"] ?? defaultSheet).toLowerCase();
+  const sheet = rawSheet === "answer" ? "answer" : "paper";
   const page = Math.round(Number(value["page"]));
   let top = Number(value["top"]);
   let bottom = Number(value["bottom"]);
@@ -687,11 +694,15 @@ function parseCropValue(raw: unknown, pages: number[]): QuestionCrop | null {
  * two bands (foot of one page, head of the next); they are kept in reading
  * order so the student sees the whole question joined together.
  */
-function parseCropList(raw: unknown, pages: number[]): QuestionCrop[] | null {
+function parseCropList(
+  raw: unknown,
+  pages: number[],
+  defaultSheet: "paper" | "answer" = "paper",
+): QuestionCrop[] | null {
   const list = Array.isArray(raw) ? raw : [raw];
   const out: QuestionCrop[] = [];
   for (const entry of list) {
-    const band = parseCropValue(entry, pages);
+    const band = parseCropValue(entry, pages, defaultSheet);
     if (!band) continue;
     // There can only be one crop for a question part on one page. If the model
     // reports it twice, keep the shared/narrower region rather than expanding.

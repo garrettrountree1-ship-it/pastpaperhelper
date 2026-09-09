@@ -265,16 +265,14 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
-      ) : null}
-
-      {canManage ? (
-        <ArchivedUnitsDialog
-          units={archivedUnits}
-          onRestore={(unitId) => archiveMutation.mutate({ unitId, archived: false })}
-          onDelete={(unitId) => deleteMutation.mutate(unitId)}
-          busy={archiveMutation.isPending || deleteMutation.isPending}
-        />
+          </Dialog>
+          <ArchivedUnitsDialog
+            units={archivedUnits}
+            onRestore={(unitId) => archiveMutation.mutate({ unitId, archived: false })}
+            onDelete={(unitId) => deleteMutation.mutate(unitId)}
+            busy={archiveMutation.isPending || deleteMutation.isPending}
+          />
+        </div>
       ) : null}
 
       {activeUnits.length === 0 ? (

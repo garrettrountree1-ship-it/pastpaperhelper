@@ -519,26 +519,7 @@ export function FormativeCheckButton({
  * Live panel shown to everyone in the lesson while a check is running: the
  * teacher watches results come in, students answer and get marked instantly.
  */
-/**
- * Finds the labels of a multi-part question — (a) (b) (c), a) b), or 1. 2. 3. —
- * so each part gets its own answer box. Returns [] for a single-part question.
- */
-export function questionParts(question: string): string[] {
-  const patterns = [
-    /(?:^|[\s(])\(?([a-h])[).]/g,
-    /(?:^|[\s(])\(?([ivx]{1,4})[).]/gi,
-    /(?:^|[\s(])\(?([1-9])[).]/g,
-  ];
-  for (const pattern of patterns) {
-    const found: string[] = [];
-    for (const match of question.matchAll(pattern)) {
-      const label = match[1]!.toLowerCase();
-      if (!found.includes(label)) found.push(label);
-    }
-    if (found.length >= 2) return found.slice(0, 8);
-  }
-  return [];
-}
+export { questionParts } from "@/lib/question-parts";
 
 export function FormativeCheckPanel({
 

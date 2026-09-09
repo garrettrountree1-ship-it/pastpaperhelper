@@ -678,26 +678,32 @@ function AssignmentDialog({
   });
 
   const extractPending = extractMutation.isPending;
+  const titleBeforeExtraction = useRef<string | null>(null);
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const previous = document.title;
 
     const onVisibility = () => {
       if (!document.hidden && (document.title.startsWith("⏳") || document.title.startsWith("✅"))) {
-        document.title = previous;
+        document.title = titleBeforeExtraction.current ?? "PastPaperHelper.AI";
+        titleBeforeExtraction.current = null;
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
 
-    if (extractPending) {
-      document.title = "⏳ Reading your paper… — PastPaperHelper.AI";
-    }
-
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
-      // Keep the "paper is ready" title set on success while the teacher was away.
-      if (document.title.startsWith("⏳")) document.title = previous;
+      if (document.title.startsWith("⏳") || document.title.startsWith("✅")) {
+        document.title = titleBeforeExtraction.current ?? "PastPaperHelper.AI";
+      }
     };
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === "undefined" || !extractPending) return;
+    if (!document.title.startsWith("⏳") && !document.title.startsWith("✅")) {
+      titleBeforeExtraction.current = document.title;
+    }
+    document.title = "⏳ Reading your paper… — PastPaperHelper.AI";
   }, [extractPending]);
 
 
@@ -982,8 +988,8 @@ function AssignmentDialog({
               <p className="mt-2 text-sm text-muted-foreground">
                 Carefully cutting out every question, diagram and symbol takes a few minutes for a
                 full paper — sit back and grab a coffee ☕ You can switch to another tab while you
-                wait: the tab title will update and you&apos;ll get a notification the moment
-                it&apos;s ready.
+                 wait: a ✅ will appear in the tab title when the paper is ready and disappear when
+                 you return. You&apos;ll also get a notification when extraction is complete.
               </p>
             ) : null}
             {editing ? (

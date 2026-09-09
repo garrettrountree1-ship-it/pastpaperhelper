@@ -367,6 +367,7 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
                     {unit.description}
                   </p>
                 ) : null}
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button

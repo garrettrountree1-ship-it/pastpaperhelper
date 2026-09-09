@@ -147,18 +147,18 @@ export async function extractQuestionsFromPapers(
 
   let inventory = await runInventory(key, header, documents);
 
-  if (inventory.length > 0) {
-    // Second sweep: messy compilations routinely lose questions in pass one.
+  // Repeat sweeps: messy compilations routinely lose sub-parts in pass one, and
+  // a sweep that finds something usually means more is still hiding.
+  for (let pass = 0; pass < 2 && inventory.length > 0; pass += 1) {
     const missed = await runSweep(key, header, documents, inventory);
-    if (missed.length > 0) {
-      const seen = new Set(inventory.map((i) => i.label.toLowerCase()));
-      for (const item of missed) {
-        if (seen.has(item.label.toLowerCase())) continue;
-        seen.add(item.label.toLowerCase());
-        inventory.push(item);
-      }
-      inventory = inventory.slice(0, MAX_ITEMS);
+    if (missed.length === 0) break;
+    const seen = new Set(inventory.map((i) => i.label.toLowerCase()));
+    for (const item of missed) {
+      if (seen.has(item.label.toLowerCase())) continue;
+      seen.add(item.label.toLowerCase());
+      inventory.push(item);
     }
+    inventory = inventory.slice(0, MAX_ITEMS);
   }
 
   const hasAnswerPages = input.markSchemeFiles.length > 0;

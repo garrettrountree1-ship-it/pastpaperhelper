@@ -46,6 +46,7 @@ import {
   revealFormativeAnswerForMe,
   setFormativeLeaderboard,
 } from "@/lib/formative.functions";
+import { questionParts } from "@/lib/question-parts";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { listClassRoster } from "@/lib/materials.functions";
 

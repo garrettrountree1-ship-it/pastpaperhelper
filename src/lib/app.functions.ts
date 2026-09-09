@@ -581,7 +581,9 @@ export const updateQuestionCrop = createServerFn({ method: "POST" })
     // The teacher may move a cut onto another page of the same uploaded document
     // (a question often runs over a page break), so allow any page in that folder.
     const allowedFolders = new Set(
-      [...allowedPages].map((page) => page.slice(0, page.lastIndexOf("/"))).filter(Boolean),
+      [...allowedPages]
+        .map((page) => (page ?? "").slice(0, (page ?? "").lastIndexOf("/")))
+        .filter(Boolean),
     );
     const cropPattern = /#crop=(0(?:\.\d+)?|1(?:\.0+)?),(0(?:\.\d+)?|1(?:\.0+)?);manual$/;
     for (const path of data.imagePaths) {

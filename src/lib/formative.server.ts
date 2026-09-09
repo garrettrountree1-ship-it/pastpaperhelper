@@ -1,6 +1,7 @@
 import { generateText } from "ai";
 
 import { gatewayModel } from "./ai-gateway.server";
+import { normalisePartLabels, questionParts } from "./question-parts";
 
 export type FormativeVerdict = "correct" | "close" | "incorrect";
 
@@ -124,4 +125,79 @@ export async function solveFormativeQuestion(input: {
     messages: [{ role: "user", content }],
   });
   return text.trim() || "The answer could not be worked out — please type it for the class.";
+}
+
+/**
+ * Works out whether a class question has separate parts — (a) (b), i) ii),
+ * a(i) a(ii) — reading the pasted picture too. Returns [] for one-part
+ * questions. Falls back to the text-only reader if the AI reply is unusable.
+ */
+export async function detectQuestionParts(input: {
+  question: string;
+  questionImage?: string | null;
+}): Promise<string[]> {
+  const fallback = questionParts(input.question ?? "");
+  try {
+    const content = [
+      {
+        type: "text" as const,
+        text: [
+          input.question ? `Question: ${input.question}` : "",
+          input.questionImage ? "A picture of the question is attached — read it." : "",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      },
+      ...(input.questionImage
+        ? [
+            {
+              type: "image" as const,
+              image: input.questionImage.startsWith("data:")
+                ? input.questionImage
+                : new URL(input.questionImage),
+            },
+          ]
+        : []),
+    ];
+    const { text } = await generateText({
+      model: gatewayModel(),
+      system: [
+        "You list the separate answerable parts of one exam question.",
+        "Look for labels such as a b c d, (a) (b), i ii iii, a(i) a(ii), b.i, or 1. 2.",
+        "Use the paper's own labels, lowercase. Compound labels are written as two words: \"a i\".",
+        "If the question has only one answer, return an empty list.",
+        'Reply as strict JSON only: {"parts":["a","b"]}',
+      ].join("\n"),
+      messages: [{ role: "user", content }],
+    });
+    const raw = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+    const parsed = JSON.parse(raw) as { parts?: unknown };
+    const labels = normalisePartLabels(parsed.parts);
+    return labels.length >= 2 ? labels : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/** Marks one part of a multi-part question on its own. */
+export async function markFormativePart(input: {
+  question: string;
+  questionImage?: string | null;
+  expectedAnswer?: string | null;
+  partLabel: string;
+  answer: string;
+  attempt: number;
+}) {
+  return markFormativeAnswer({
+    question: [
+      input.question,
+      `Mark ONLY part (${input.partLabel}) of this question. Ignore all other parts.`,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    expectedAnswer: input.expectedAnswer ?? null,
+    questionImage: input.questionImage ?? null,
+    answer: input.answer,
+    attempt: input.attempt,
+  });
 }

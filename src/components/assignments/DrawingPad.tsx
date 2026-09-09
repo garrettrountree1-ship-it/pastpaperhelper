@@ -86,6 +86,9 @@ export function DrawingPad({
   const photoScaleRef = useRef(photoScale);
   photoScaleRef.current = photoScale;
   const [saved, setSaved] = useState(false);
+  /** Small picture of the last saved sheet, shown under the closed pad. */
+  const [thumbnail, setThumbnail] = useState<string | null>(null);
+
   const saveTimer = useRef(0);
   const [color, setColor] = useState(PEN_COLORS[0]!.value);
   const colorRef = useRef(color);

@@ -10,6 +10,14 @@ import { cleanMathText } from "@/lib/math-text";
 import { isDemoEmail } from "@/lib/demo";
 import { isPhotoMode, resolvePhotoMode } from "@/lib/photo-mode";
 import { teachesClass, teachingClassIds } from "@/lib/teach-access";
+import { cropAfter } from "@/lib/next-crop";
+import {
+  formatLabel,
+  nextLabelAfter,
+  parseLabelString,
+  questionLabel,
+  setQuestionLabel,
+} from "@/lib/question-label";
 
 
 
@@ -589,6 +597,71 @@ export const updateQuestionCrop = createServerFn({ method: "POST" })
       .eq("id", question.id);
     if (error) throw new Error(error.message);
     return { ok: true, imagePaths: data.imagePaths };
+  });
+
+/**
+ * Inserts a blank question straight after an existing one — for a question the
+ * AI extraction missed. The number is suggested and the ones after it move
+ * down, and the picture starts where the previous question's cut ended.
+ */
+export const insertQuestionAfter = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ questionId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const db = await admin();
+    const question = await questionForTeacher(supabase, db, data.questionId, userId);
+    const { data: current } = await db
+      .from("questions")
+      .select("id, assignment_id, position, question_text, image_paths")
+      .eq("id", question.id)
+      .single();
+    if (!current) throw new Error("Question not found.");
+
+    const { data: later } = await db
+      .from("questions")
+      .select("id, position, question_text")
+      .eq("assignment_id", current.assignment_id)
+      .gt("position", current.position)
+      .order("position", { ascending: false });
+
+    const label = nextLabelAfter(questionLabel(current.question_text ?? "", current.position - 1));
+    const parsed = parseLabelString(label);
+
+    for (const row of later ?? []) {
+      const patch: { position: number; question_text?: string } = { position: row.position + 1 };
+      if (parsed.parts.length === 0 && parsed.main !== null) {
+        const rowLabel = parseLabelString(questionLabel(row.question_text ?? "", row.position - 1));
+        if (rowLabel.main !== null && rowLabel.main >= parsed.main) {
+          patch.question_text = setQuestionLabel(
+            row.question_text ?? "",
+            formatLabel(rowLabel.main + 1, rowLabel.parts),
+          );
+        }
+      }
+      const { error } = await db.from("questions").update(patch).eq("id", row.id);
+      if (error) throw new Error(error.message);
+    }
+
+    const paths = (current.image_paths ?? []) as string[];
+    const lastPath = paths[paths.length - 1];
+    const { data: inserted, error } = await db
+      .from("questions")
+      .insert({
+        assignment_id: current.assignment_id,
+        question_text: label,
+        mark_scheme: "To be added.",
+        marks: 1,
+        position: current.position + 1,
+        image_paths: lastPath ? [cropAfter(lastPath)] : [],
+        answer_image_paths: [],
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: inserted.id, label };
   });
 
 export const updateAssignment = createServerFn({ method: "POST" })

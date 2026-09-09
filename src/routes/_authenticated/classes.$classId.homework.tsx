@@ -101,12 +101,15 @@ import { PhotoModeControl } from "@/components/assignments/PhotoModeControl";
 import type { PhotoMode } from "@/lib/photo-mode";
 import {
   formatLabel,
+  nextLabelAfter,
   parseLabelString,
   questionBody,
   questionLabel,
   setQuestionLabel,
   shiftLetter,
 } from "@/lib/question-label";
+import { cropAfter } from "@/lib/next-crop";
+
 
 
 import { QuestionSnipStack } from "@/components/assignments/QuestionSnip";
@@ -763,6 +766,47 @@ function AssignmentDialog({
     });
   }
 
+  /**
+   * Adds a missed question right after the one above it: the number is suggested
+   * (and the ones after it move down), and its cut starts where the previous
+   * question's cut ended so the teacher only drags the bottom edge.
+   */
+  function insertQuestionAfter(index: number) {
+    setQuestions((prev) => {
+      const previous = prev[index];
+      const label = previous
+        ? nextLabelAfter(questionLabel(previous.questionText, index))
+        : String(prev.length + 1);
+      const lastPath = previous?.imagePaths[previous.imagePaths.length - 1];
+      const lastUrl = previous?.imageUrls[previous.imageUrls.length - 1];
+      const draft: QuestionDraft = {
+        ...emptyQuestion(),
+        questionText: label,
+        imagePaths: lastPath ? [cropAfter(lastPath)] : [],
+        imageUrls: lastUrl ? [cropAfter(lastUrl)] : [],
+      };
+      const next = [...prev];
+      next.splice(index + 1, 0, draft);
+      const parsed = parseLabelString(label);
+      if (parsed.parts.length === 0 && parsed.main !== null) {
+        for (let i = index + 2; i < next.length; i += 1) {
+          const q = next[i];
+          if (!q) continue;
+          const p = parseLabelString(questionLabel(q.questionText, i));
+          if (p.main === null || p.main < parsed.main) continue;
+          next[i] = {
+            ...q,
+            questionText: setQuestionLabel(q.questionText, formatLabel(p.main + 1, p.parts)),
+          };
+        }
+      }
+      return next;
+    });
+    setLabelDrafts({});
+  }
+
+
+
 
 
   const body = (
@@ -884,7 +928,9 @@ function AssignmentDialog({
 
           <div className="space-y-4">
             {questions.map((question, index) => (
-              <div key={question.id ?? `new-${index}`} className="rounded-xl border border-border p-4">
+              <div key={question.id ?? `new-${index}`}>
+              <div className="rounded-xl border border-border p-4">
+
                 <div className="flex items-center justify-between gap-2">
                   {(() => {
                     const label = questionLabel(question.questionText, index);
@@ -1039,7 +1085,21 @@ function AssignmentDialog({
                   </div>
                 </div>
               </div>
+              <div className="flex justify-center py-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-muted-foreground"
+                  onClick={() => insertQuestionAfter(index)}
+                >
+                  <Plus className="size-3" />
+                  Add a question here
+                </Button>
+              </div>
+              </div>
             ))}
+
             <Button
               variant="outline"
               onClick={() =>

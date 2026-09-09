@@ -86,6 +86,9 @@ export function DrawingPad({
   const photoScaleRef = useRef(photoScale);
   photoScaleRef.current = photoScale;
   const [saved, setSaved] = useState(false);
+  /** Small picture of the last saved sheet, shown under the closed pad. */
+  const [thumbnail, setThumbnail] = useState<string | null>(null);
+
   const saveTimer = useRef(0);
   const [color, setColor] = useState(PEN_COLORS[0]!.value);
   const colorRef = useRef(color);
@@ -446,6 +449,12 @@ export function DrawingPad({
     const wasSelected = selectedRef.current;
     selectedRef.current = false;
     redraw();
+    // A small picture of the sheet, so the student can see it is attached.
+    try {
+      setThumbnail(canvas.toDataURL("image/png"));
+    } catch {
+      /* ignore: the preview is a nicety, never a blocker */
+    }
     canvas.toBlob((blob) => {
       if (blob) {
         onAttach(new File([blob], PAD_FILE_NAME, { type: "image/png" }));
@@ -454,6 +463,7 @@ export function DrawingPad({
       selectedRef.current = wasSelected;
       redraw();
     }, "image/png");
+
   }
 
 
@@ -493,7 +503,23 @@ export function DrawingPad({
             ? "Your working is saved. Open the pad again to carry on from where you left off."
             : "Opens full screen with the question printed underneath, so you can write straight over it with a stylus, finger or mouse."}
         </p>
+        {thumbnail ? (
+          <div className="mt-2 flex items-center gap-3">
+            <img
+              src={thumbnail}
+              alt="Your saved working"
+              draggable={false}
+              onContextMenu={(event) => event.preventDefault()}
+              onDragStart={(event) => event.preventDefault()}
+              className="pointer-events-none h-24 w-auto max-w-[9rem] select-none rounded border border-border bg-white object-contain object-top"
+            />
+            <p className="text-xs text-muted-foreground">
+              This is attached to your answer. Open the writing pad to change it.
+            </p>
+          </div>
+        ) : null}
       </div>
+
     );
   }
 

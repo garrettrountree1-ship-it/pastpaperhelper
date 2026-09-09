@@ -45,13 +45,10 @@ export const PAD_FILE_NAME = "working-pad.png";
  */
 export function DrawingPad({
   disabled = false,
-  height = "h-[28rem]",
   backgroundUrls = [],
   onAttach,
 }: {
   disabled?: boolean;
-  /** Tailwind height class for the pad surface. */
-  height?: string;
   /** Question picture(s) shown faintly under the ink in full screen. */
   backgroundUrls?: string[];
   onAttach: (file: File) => void;
@@ -368,12 +365,34 @@ export function DrawingPad({
     setFull(false);
   }
 
+  // Away from full screen the pad is just an entry point — the confusing small
+  // sketch area is gone, so writing always happens on the big sheet.
+  if (!full) {
+    return (
+      <div className="rounded-lg border border-dashed border-border p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="flex items-center gap-2 text-sm font-medium">
+            <PenLine className="size-4" />
+            Write your working here
+          </p>
+          <Button type="button" size="sm" disabled={disabled} onClick={() => setFull(true)}>
+            <Expand className="size-4" />
+            Open the writing pad
+          </Button>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {hasInk
+            ? "Your working is saved. Open the pad again to carry on from where you left off."
+            : "Opens full screen with the question printed underneath, so you can write straight over it with a stylus, finger or mouse."}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div
       className={
-        full
-          ? "fixed inset-0 z-50 flex select-none flex-col overflow-hidden bg-background p-3 [-webkit-touch-callout:none] [-webkit-user-select:none]"
-          : "rounded-lg border border-dashed border-border p-3"
+        "fixed inset-0 z-50 flex select-none flex-col overflow-hidden bg-background p-3 [-webkit-touch-callout:none] [-webkit-user-select:none]"
       }
       onCopy={(event) => event.preventDefault()}
       onCut={(event) => event.preventDefault()}
@@ -385,22 +404,13 @@ export function DrawingPad({
           <PenLine className="size-4" />
           Write your working here
         </p>
-        {full ? (
-          <Button type="button" size="sm" variant="outline" onClick={minimise}>
-            <Minimize className="size-4" />
-            Minimise &amp; save
-          </Button>
-        ) : (
-          <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={() => setFull(true)}>
-            <Expand className="size-4" />
-            Full screen
-          </Button>
-        )}
+        <Button type="button" size="sm" variant="outline" onClick={minimise}>
+          <Minimize className="size-4" />
+          Minimise &amp; save
+        </Button>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        {full
-          ? "The question is printed underneath — write straight over it. Scroll down for as much space as you need, switch to Moving to drag the picture, and use the picture buttons to make it bigger or smaller. Minimise & save keeps your sheet, then press Check answer."
-          : "Use a stylus, finger or mouse. Open full screen to draw on top of the question picture."}
+        {"The question is printed underneath — write straight over it. Scroll down for as much space as you need, switch to Moving to drag the picture, and use the picture buttons to make it bigger or smaller. Minimise & save keeps your sheet, then press Check answer."}
       </p>
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -453,8 +463,7 @@ export function DrawingPad({
           <Maximize className="size-4" />
           Reset
         </Button>
-        {full ? (
-          <>
+        <>
             <span className="mx-1 h-5 w-px bg-border" aria-hidden />
             <Button
               type="button"
@@ -502,10 +511,8 @@ export function DrawingPad({
               <ImagePlus className="size-4" />
             </Button>
           </>
-        ) : null}
       </div>
-      {full ? (
-        <div
+      <div
           ref={scrollRef}
           onScroll={updateSheet}
           className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain"
@@ -522,18 +529,7 @@ export function DrawingPad({
               mode === "move" ? "cursor-grab" : "cursor-crosshair"
             }`}
           />
-        </div>
-      ) : (
-        <canvas
-          ref={canvasRef}
-          onPointerDown={start}
-          onPointerMove={move}
-          onPointerUp={end}
-          onPointerLeave={end}
-          onPointerCancel={end}
-          className={`mt-2 w-full touch-none rounded-md border border-border bg-white ${height}`}
-        />
-      )}
+      </div>
 
 
 

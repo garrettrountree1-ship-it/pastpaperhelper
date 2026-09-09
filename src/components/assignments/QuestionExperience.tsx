@@ -88,6 +88,7 @@ export function QuestionExperience({
   locked = false,
   markScheme = null,
   markSchemeImageUrls = [],
+  answerAction = null,
   headerAction = null,
   snipAction = null,
   keywordTranslation = false,
@@ -132,6 +133,8 @@ export function QuestionExperience({
   markScheme?: string | null;
   /** The official answer exactly as printed, shown only once released. */
   markSchemeImageUrls?: string[];
+  /** Teacher-only control beside the answer picture (recut). */
+  answerAction?: React.ReactNode;
   /** Optional action shown in the question header (e.g. message the teacher). */
   headerAction?: ReactNode;
   /** Teacher-only action displayed beside the printed question image. */
@@ -267,6 +270,7 @@ export function QuestionExperience({
           ) : (
             <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{cleanMathText(markScheme ?? "")}</p>
           )}
+          {answerAction ? <div className="mt-3 flex flex-wrap gap-2">{answerAction}</div> : null}
         </div>
       ) : null}
 

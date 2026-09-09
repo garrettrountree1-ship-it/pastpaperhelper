@@ -255,7 +255,8 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
 
   return (
     <div className="space-y-4">
-      <FormativeCheckPanel classId={classId} asStudent={!canManage} />
+      {/* The popup itself only lives inside the open lesson notes workspace. */}
+      <FormativeCheckPanel classId={classId} asStudent={!canManage} showPopup={false} />
       {canManage ? (
         <>
           <MyDrivePanel />

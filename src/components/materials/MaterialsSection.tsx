@@ -319,9 +319,38 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
         </div>
       ) : (
         activeUnits.map((unit) => (
-          <section key={unit.id} className="paper p-5">
+          <section
+            key={unit.id}
+            className={`paper p-5 ${dragUnitId && dragUnitId !== unit.id ? "ring-1 ring-dashed ring-muted-foreground/40" : ""} ${dragUnitId === unit.id ? "opacity-60" : ""}`}
+            draggable={canManage}
+            onDragStart={
+              canManage
+                ? (event) => {
+                    setDragUnitId(unit.id);
+                    event.dataTransfer.effectAllowed = "move";
+                  }
+                : undefined
+            }
+            onDragEnd={canManage ? () => setDragUnitId(null) : undefined}
+            onDragOver={canManage ? (event) => event.preventDefault() : undefined}
+            onDrop={
+              canManage
+                ? (event) => {
+                    event.preventDefault();
+                    handleUnitDrop(unit.id);
+                  }
+                : undefined
+            }
+          >
             <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-3">
-              <div>
+              <div className="flex items-start gap-2">
+                {canManage ? (
+                  <GripVertical
+                    className="mt-1.5 size-5 shrink-0 cursor-grab text-muted-foreground"
+                    aria-label="Drag to reorder unit"
+                  />
+                ) : null}
+                <div>
                 <h3 className="font-display text-2xl">{unit.title}</h3>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {[

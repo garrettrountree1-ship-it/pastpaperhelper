@@ -65,8 +65,18 @@ export function DrawingPad({
     ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
     ctx.translate(offsetRef.current.x, offsetRef.current.y);
     ctx.scale(zoomRef.current, zoomRef.current);
+    // The question picture sits under the ink so the work is marked in context.
+    const padWidth = canvas.width / dpr;
+    let y = 0;
+    for (const image of backgroundsRef.current) {
+      if (!image.complete || !image.naturalWidth) continue;
+      const h = (padWidth * image.naturalHeight) / image.naturalWidth;
+      ctx.drawImage(image, 0, y, padWidth, h);
+      y += h + 8;
+    }
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
+
     for (const stroke of strokesRef.current) {
       ctx.strokeStyle = stroke.color;
       ctx.lineWidth = stroke.width;

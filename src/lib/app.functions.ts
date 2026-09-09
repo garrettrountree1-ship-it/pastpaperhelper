@@ -421,6 +421,7 @@ export const createAssignment = createServerFn({ method: "POST" })
             markScheme: z.string().min(1),
             marks: z.number().int().positive(),
             imagePaths: z.array(z.string()).default([]),
+            answerImagePaths: z.array(z.string()).default([]),
           }),
         ),
       })
@@ -463,6 +464,7 @@ export const createAssignment = createServerFn({ method: "POST" })
         mark_scheme: cleanMathText(q.markScheme),
         marks: q.marks,
         image_paths: q.imagePaths ?? [],
+        answer_image_paths: q.answerImagePaths ?? [],
       })),
     );
     if (qError) throw new Error(qError.message);
@@ -490,7 +492,7 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
 
     const { data: questions, error: qError } = await supabase
       .from("questions")
-      .select("id, question_text, mark_scheme, marks, position, image_paths")
+      .select("id, question_text, mark_scheme, marks, position, image_paths, answer_image_paths")
       .eq("assignment_id", data.assignmentId)
       .order("position");
     if (qError) throw new Error(qError.message);
@@ -510,6 +512,8 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
           marks: q.marks,
           imagePaths: q.image_paths ?? [],
           imageUrls: await signPaperPages(await admin(), q.image_paths ?? []),
+          answerImagePaths: q.answer_image_paths ?? [],
+          answerImageUrls: await signPaperPages(await admin(), q.answer_image_paths ?? []),
         })),
       ),
     };
@@ -545,7 +549,13 @@ export const setQuestionProtection = createServerFn({ method: "POST" })
 export const updateQuestionCrop = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ questionId: z.string().uuid(), imagePaths: z.array(z.string().min(1)).min(1).max(3) }).parse(input),
+    z
+      .object({
+        questionId: z.string().uuid(),
+        imagePaths: z.array(z.string().min(1)).min(1).max(3),
+        target: z.enum(["question", "answer"]).default("question"),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -553,12 +563,13 @@ export const updateQuestionCrop = createServerFn({ method: "POST" })
     const question = await questionForTeacher(supabase, db, data.questionId, userId);
     const { data: current } = await db
       .from("questions")
-      .select("image_paths")
+      .select("image_paths, answer_image_paths")
       .eq("id", question.id)
       .single();
-    const allowedPages = new Set(
-      ((current?.image_paths ?? []) as string[]).map((path) => path.split("#")[0]),
-    );
+    const existingPaths = (data.target === "answer"
+      ? current?.answer_image_paths
+      : current?.image_paths) as string[] | null | undefined;
+    const allowedPages = new Set((existingPaths ?? []).map((path) => path.split("#")[0]));
     const cropPattern = /#crop=(0(?:\.\d+)?|1(?:\.0+)?),(0(?:\.\d+)?|1(?:\.0+)?);manual$/;
     for (const path of data.imagePaths) {
       const page = path.split("#")[0];
@@ -568,7 +579,14 @@ export const updateQuestionCrop = createServerFn({ method: "POST" })
       const bottom = Number(match[2]);
       if (bottom - top < 0.035) throw new Error("The crop is too small.");
     }
-    const { error } = await db.from("questions").update({ image_paths: data.imagePaths }).eq("id", question.id);
+    const { error } = await db
+      .from("questions")
+      .update(
+        data.target === "answer"
+          ? { answer_image_paths: data.imagePaths }
+          : { image_paths: data.imagePaths },
+      )
+      .eq("id", question.id);
     if (error) throw new Error(error.message);
     return { ok: true, imagePaths: data.imagePaths };
   });
@@ -591,6 +609,7 @@ export const updateAssignment = createServerFn({ method: "POST" })
             markScheme: z.string().min(1),
             marks: z.number().int().positive(),
             imagePaths: z.array(z.string()).default([]),
+            answerImagePaths: z.array(z.string()).default([]),
           }),
         ),
       })
@@ -634,6 +653,7 @@ export const updateAssignment = createServerFn({ method: "POST" })
         marks: q.marks,
         position: index + 1,
         image_paths: q.imagePaths ?? [],
+        answer_image_paths: q.answerImagePaths ?? [],
       };
       if (q.id && existingIds.has(q.id)) {
         const { error } = await supabase.from("questions").update(payload).eq("id", q.id);
@@ -1637,7 +1657,7 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     // Mark schemes are only sent once the teacher reveals them.
     const { data: allQuestions } = await db
       .from("questions")
-      .select("id, position, question_text, marks, image_paths, mark_scheme, photo_mode")
+      .select("id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode")
       .eq("assignment_id", data.assignmentId)
       .order("position");
 
@@ -1703,6 +1723,10 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
           marks: q.marks,
           image_paths: q.image_paths,
           markScheme: access.markSchemeRevealed ? q.mark_scheme : null,
+          answerImagePaths: access.markSchemeRevealed ? (q.answer_image_paths ?? []) : [],
+          answerImageUrls: access.markSchemeRevealed
+            ? await signPaperPages(db, q.answer_image_paths ?? [])
+            : [],
           photoMode: resolvePhotoMode({
             student: access.studentPhotoMode,
             question: q.photo_mode as string | null,
@@ -2001,6 +2025,20 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
       if (!upError) pagePaths[pageNumber] = path;
     }
 
+    const answerPagePaths: Record<number, string> = {};
+    for (const [index, file] of data.markSchemeFiles.entries()) {
+      if (!file.mimeType.startsWith("image/")) continue;
+      const pageNumber = index + 1;
+      // "ms-" keeps these pages recognisable as answer pages so they can never
+      // be shown in place of a question picture.
+      const path = `${folder}/ms-page-${pageNumber}.jpg`;
+      const bytes = decodeBase64(file.base64);
+      const { error: upError } = await db.storage
+        .from("paper-pages")
+        .upload(path, bytes, { contentType: file.mimeType, upsert: true });
+      if (!upError) answerPagePaths[pageNumber] = path;
+    }
+
     const withPages = await Promise.all(
       questions.map(async (q) => {
         // When the AI could locate the question on its page, keep only that
@@ -2015,12 +2053,27 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
           (crop) =>
             `${pagePaths[crop.page]}#crop=${crop.top.toFixed(4)},${crop.bottom.toFixed(4)}`,
         );
+        // The official answer is kept as a picture too, so ticks, fractions and
+        // marking notation stay exactly as printed. Answers are only ever shown
+        // to a student once the teacher releases the mark scheme.
+        const answerPaths = (q.answerCrops ?? [])
+          .map((crop) => {
+            const page =
+              (crop.sheet ?? "paper") === "answer"
+                ? answerPagePaths[crop.page]
+                : pagePaths[crop.page];
+            if (!page) return null;
+            return `${page}#crop=${crop.top.toFixed(4)},${crop.bottom.toFixed(4)}`;
+          })
+          .filter((path): path is string => Boolean(path));
         return {
           questionText: q.questionText,
           markScheme: q.markScheme,
           marks: q.marks,
           imagePaths: paths,
           imageUrls: await signPaperPages(db, paths),
+          answerImagePaths: answerPaths,
+          answerImageUrls: await signPaperPages(db, answerPaths),
         };
       }),
     );
@@ -2185,7 +2238,7 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
       .maybeSingle();
     const { data: questions } = await db
       .from("questions")
-      .select("id, position, question_text, marks, image_paths, mark_scheme, photo_mode")
+      .select("id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode")
       .eq("assignment_id", data.assignmentId)
       .order("position");
 
@@ -2219,6 +2272,8 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
           marks: q.marks,
           image_paths: q.image_paths,
           markScheme: assignment.mark_scheme_revealed ? q.mark_scheme : null,
+          answerImagePaths: q.answer_image_paths ?? [],
+          answerImageUrls: await signPaperPages(db, q.answer_image_paths ?? []),
           photoMode: resolvePhotoMode({
             question: q.photo_mode as string | null,
             assignment: assignment.photo_mode as string | null,

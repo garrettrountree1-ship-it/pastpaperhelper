@@ -75,12 +75,12 @@ function maskIdentifyingText(
   }
 }
 
-async function renderPdf(file: File): Promise<PageImage[]> {
+async function renderPdfBytes(data: ArrayBuffer, stem: string): Promise<PageImage[]> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const workerUrl = (await import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url")).default;
   pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
-  const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+  const doc = await pdfjs.getDocument({ data }).promise;
   const pages: PageImage[] = [];
   const count = Math.min(doc.numPages, MAX_PAGES);
   for (let n = 1; n <= count; n += 1) {
@@ -107,7 +107,7 @@ async function renderPdf(file: File): Promise<PageImage[]> {
       // No text layer (scanned page) — the render already has no extractable text.
     }
     pages.push({
-      filename: `${file.name.replace(/\.pdf$/i, "")}-page-${n}.jpg`,
+      filename: `${stem}-page-${n}.jpg`,
       mimeType: "image/jpeg",
       base64: dataUrlToBase64(canvas.toDataURL("image/jpeg", 0.85)),
     });
@@ -117,6 +117,25 @@ async function renderPdf(file: File): Promise<PageImage[]> {
   return pages;
 }
 
+async function renderPdf(file: File): Promise<PageImage[]> {
+  return renderPdfBytes(await file.arrayBuffer(), file.name.replace(/\.pdf$/i, ""));
+}
+
+/**
+ * Word files are converted to a PDF first (the same route the slide decks use),
+ * then the real PDF pages are drawn. Nothing is retyped, so symbols, fractions
+ * and boxed panels stay exactly as printed.
+ */
+async function renderDocx(file: File): Promise<PageImage[]> {
+  const { convertDocxToPdf } = await import("./docx-pdf.functions");
+  const { base64 } = await convertDocxToPdf({
+    data: { filename: file.name, base64: await fileToBase64(file) },
+  });
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return renderPdfBytes(bytes.buffer, file.name.replace(/\.docx$/i, ""));
+}
 
 /** PDFs and Word files become one image per page; photos pass through. */
 export async function filesToPages(files: File[]): Promise<PageImage[]> {
@@ -126,18 +145,7 @@ export async function filesToPages(files: File[]): Promise<PageImage[]> {
     if (file.type === "application/pdf" || name.endsWith(".pdf")) {
       out.push(...(await renderPdf(file)));
     } else if (name.endsWith(".docx")) {
-      try {
-        const { docxToPages } = await import("./docx-pages");
-        out.push(...(await docxToPages(file)));
-      } catch {
-        // Couldn't lay the Word file out — send the file itself so the
-        // questions can still be read from it.
-        out.push({
-          filename: file.name,
-          mimeType: file.type || "application/octet-stream",
-          base64: await fileToBase64(file),
-        });
-      }
+      out.push(...(await renderDocx(file)));
     } else {
       out.push({
         filename: file.name,
@@ -158,3 +166,4 @@ export async function filesToPages(files: File[]): Promise<PageImage[]> {
     })
     .slice(0, MAX_PAGES);
 }
+

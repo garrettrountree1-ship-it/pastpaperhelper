@@ -1,9 +1,7 @@
 import { formatDueDate } from "@/lib/datetime";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import type { ReactNode } from "react";
 import { useRef, useState } from "react";
-import { Plus } from "lucide-react";
 import {
   HELP_PILL,
   HELP_PILL_DOT,
@@ -15,7 +13,6 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { VocabSheet } from "@/components/assignments/VocabSheet";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
-import { QuestionRecutDialog } from "@/components/assignments/QuestionRecutDialog";
 import { parseSnipBand } from "@/components/assignments/QuestionSnip";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { Badge } from "@/components/ui/badge";
@@ -34,10 +31,8 @@ import type { PhotoMode } from "@/lib/photo-mode";
 import { photoAvailability } from "@/lib/photo-mode";
 import {
   getAssignmentPreview,
-  insertQuestionAfter,
   previewGradeAnswer,
   previewTutorMessage,
-  updateQuestionCrop,
 } from "@/lib/app.functions";
 
 

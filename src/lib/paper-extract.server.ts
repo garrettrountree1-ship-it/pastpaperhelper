@@ -335,19 +335,13 @@ async function runBatches(
   header: string,
   documents: Array<Record<string, unknown>>,
   items: InventoryItem[],
+  hasAnswerPages = false,
 ): Promise<DetailResult[]> {
-  const batches: InventoryItem[][] = [];
-  for (let i = 0; i < items.length; i += BATCH_SIZE) {
-    batches.push(items.slice(i, i + BATCH_SIZE));
-  }
-
-  const results: DetailResult[] = [];
-  const CONCURRENCY = 3;
-  for (let i = 0; i < batches.length; i += CONCURRENCY) {
-    const slice = batches.slice(i, i + CONCURRENCY);
-    const settled = await Promise.all(
+...
       slice.map((batch) =>
-        runDetail(key, header, documents, batch, false).catch(() => [] as DetailResult[]),
+        runDetail(key, header, documents, batch, false, hasAnswerPages).catch(
+          () => [] as DetailResult[],
+        ),
       ),
     );
     for (const part of settled) results.push(...part);
@@ -559,6 +553,7 @@ async function runDetail(
   documents: Array<Record<string, unknown>>,
   batch: InventoryItem[],
   everything: boolean,
+  hasAnswerPages = false,
 ): Promise<DetailResult[]> {
   const instruction = everything
     ? "Transcribe EVERY answerable question part in the upload with its mark scheme, including multiple-choice items. Do not stop early and do not sample."
@@ -606,7 +601,11 @@ async function runDetail(
         marks: Math.max(1, Math.round(Number(item["marks"]) || match?.marks || 1)),
         pages,
         crops: parseCropList(item["crops"] ?? item["crop"], pages),
-        answerCrops: parseCropList(item["answerCrops"] ?? item["answerCrop"], []),
+        answerCrops: parseCropList(
+          item["answerCrops"] ?? item["answerCrop"],
+          [],
+          hasAnswerPages ? "answer" : "paper",
+        ),
       };
 
 

@@ -260,7 +260,11 @@ function PreviewPage() {
                       flags={flags}
                       keywordTranslation={Boolean(data.tutorSettings?.keywordTranslation)}
                       protectQuestions={Boolean(data.tutorSettings?.protectQuestions)}
+                      allowHint={settings?.allowHint !== false}
+                      allowSteps={settings?.allowSteps !== false}
+                      maxAttempts={settings?.maxAttempts ?? 0}
                       onFlag={() => setFlags((count) => count + 1)}
+
                     />
                     </AddQuestionRow>
                   ))}

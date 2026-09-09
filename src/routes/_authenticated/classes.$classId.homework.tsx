@@ -766,6 +766,47 @@ function AssignmentDialog({
     });
   }
 
+  /**
+   * Adds a missed question right after the one above it: the number is suggested
+   * (and the ones after it move down), and its cut starts where the previous
+   * question's cut ended so the teacher only drags the bottom edge.
+   */
+  function insertQuestionAfter(index: number) {
+    setQuestions((prev) => {
+      const previous = prev[index];
+      const label = previous
+        ? nextLabelAfter(questionLabel(previous.questionText, index))
+        : String(prev.length + 1);
+      const lastPath = previous?.imagePaths[previous.imagePaths.length - 1];
+      const lastUrl = previous?.imageUrls[previous.imageUrls.length - 1];
+      const draft: QuestionDraft = {
+        ...emptyQuestion(),
+        questionText: label,
+        imagePaths: lastPath ? [cropAfter(lastPath)] : [],
+        imageUrls: lastUrl ? [cropAfter(lastUrl)] : [],
+      };
+      const next = [...prev];
+      next.splice(index + 1, 0, draft);
+      const parsed = parseLabelString(label);
+      if (parsed.parts.length === 0 && parsed.main !== null) {
+        for (let i = index + 2; i < next.length; i += 1) {
+          const q = next[i];
+          if (!q) continue;
+          const p = parseLabelString(questionLabel(q.questionText, i));
+          if (p.main === null || p.main < parsed.main) continue;
+          next[i] = {
+            ...q,
+            questionText: setQuestionLabel(q.questionText, formatLabel(p.main + 1, p.parts)),
+          };
+        }
+      }
+      return next;
+    });
+    setLabelDrafts({});
+  }
+
+
+
 
 
   const body = (

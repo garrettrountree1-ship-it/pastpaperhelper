@@ -693,7 +693,7 @@ export function FormativeCheckPanel({
     return () => window.clearTimeout(id);
   }, [check?.id, check?.isTeacher, check?.countUp, gotItRight]);
 
-  if (!check || dismissed === check.id) return null;
+  if (!showPopup || !check || dismissed === check.id) return null;
   const correct = gotItRight;
   const timeUp = !check.countUp && countdown?.left === 0;
   // Count-up mode: the clock runs until this student gets it right, then the

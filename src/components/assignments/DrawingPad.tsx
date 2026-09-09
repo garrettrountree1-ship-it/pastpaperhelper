@@ -264,6 +264,9 @@ export function DrawingPad({
     return () => canvas.removeEventListener("wheel", onWheel);
   }, [full]);
 
+  // Never leave a pending save behind when the pad closes.
+  useEffect(() => () => window.clearTimeout(saveTimer.current), []);
+
   function positionOf(event: React.PointerEvent<HTMLCanvasElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
     return {
@@ -554,6 +557,13 @@ export function DrawingPad({
           <Eraser className="size-4" />
           Clear
         </Button>
+        {hasInk ? (
+          <span className="self-center text-xs text-muted-foreground">
+            {saved
+              ? "Your working is saved on the pad — press Check answer when ready."
+              : "Saving your working…"}
+          </span>
+        ) : null}
       </div>
     </div>
   );

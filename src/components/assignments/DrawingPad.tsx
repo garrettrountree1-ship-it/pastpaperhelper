@@ -1,4 +1,4 @@
-import { Eraser, PenLine, Undo2 } from "lucide-react";
+import { Eraser, Maximize, PenLine, Undo2, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -14,15 +14,20 @@ const PEN_COLORS = [
   { name: "Purple", value: "#7c3aed" },
 ];
 
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 4;
 
 /**
  * Stylus / finger / mouse writing pad for working out calculations on screen
  * (e.g. an iPad with an Apple Pencil). The finished sheet is attached as an
  * image file exactly like an uploaded photo, so marking is unchanged.
+ * Supports zooming in for fine detail (buttons, trackpad pinch, or Ctrl/⌘ +
+ * scroll wheel); strokes are stored in pad coordinates so zooming never
+ * distorts the work.
  */
 export function DrawingPad({
   disabled = false,
-  height = "h-64",
+  height = "h-[28rem]",
   onAttach,
 }: {
   disabled?: boolean;
@@ -33,6 +38,10 @@ export function DrawingPad({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const strokesRef = useRef<Stroke[]>([]);
   const drawing = useRef(false);
+  const dprRef = useRef(1);
+  const zoomRef = useRef(1);
+  const offsetRef = useRef({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
   const [hasInk, setHasInk] = useState(false);
   const [color, setColor] = useState(PEN_COLORS[0]!.value);
   const colorRef = useRef(color);
@@ -42,8 +51,12 @@ export function DrawingPad({
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
+    const dpr = dprRef.current;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    ctx.translate(offsetRef.current.x, offsetRef.current.y);
+    ctx.scale(zoomRef.current, zoomRef.current);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     for (const stroke of strokesRef.current) {
@@ -59,6 +72,33 @@ export function DrawingPad({
     }
   }
 
+  /** Zoom keeping the given screen point (relative to the canvas) stationary. */
+  function zoomTo(next: number, px: number, py: number) {
+    const clamped = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
+    const k = clamped / zoomRef.current;
+    offsetRef.current = {
+      x: px - (px - offsetRef.current.x) * k,
+      y: py - (py - offsetRef.current.y) * k,
+    };
+    zoomRef.current = clamped;
+    setZoom(clamped);
+    redraw();
+  }
+
+  function zoomFromButton(factor: number) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    zoomTo(zoomRef.current * factor, rect.width / 2, rect.height / 2);
+  }
+
+  function resetZoom() {
+    zoomRef.current = 1;
+    offsetRef.current = { x: 0, y: 0 };
+    setZoom(1);
+    redraw();
+  }
+
   // Size the bitmap to the element so strokes land under the pen tip.
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -66,10 +106,9 @@ export function DrawingPad({
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
+      dprRef.current = dpr;
       canvas.width = Math.round(rect.width * dpr);
       canvas.height = Math.round(rect.height * dpr);
-      const ctx = canvas.getContext("2d");
-      ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
       redraw();
     };
     resize();
@@ -77,9 +116,33 @@ export function DrawingPad({
     return () => window.removeEventListener("resize", resize);
   }, []);
 
+  // Ctrl/⌘ + wheel or trackpad pinch zooms the pad, anchored at the cursor.
+  // React's onWheel is passive, so this needs a native non-passive listener.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      const dy =
+        event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
+      const rect = canvas.getBoundingClientRect();
+      zoomTo(
+        zoomRef.current * Math.exp(-dy * 0.002),
+        event.clientX - rect.left,
+        event.clientY - rect.top,
+      );
+    };
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+    return () => canvas.removeEventListener("wheel", onWheel);
+  }, []);
+
   function positionOf(event: React.PointerEvent<HTMLCanvasElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
-    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    return {
+      x: (event.clientX - rect.left - offsetRef.current.x) / zoomRef.current,
+      y: (event.clientY - rect.top - offsetRef.current.y) / zoomRef.current,
+    };
   }
 
   function start(event: React.PointerEvent<HTMLCanvasElement>) {
@@ -105,7 +168,16 @@ export function DrawingPad({
   function attach() {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    // Export the whole sheet at 100% zoom, whatever the student is viewing at.
+    const savedZoom = zoomRef.current;
+    const savedOffset = { ...offsetRef.current };
+    zoomRef.current = 1;
+    offsetRef.current = { x: 0, y: 0 };
+    redraw();
     canvas.toBlob((blob) => {
+      zoomRef.current = savedZoom;
+      offsetRef.current = savedOffset;
+      redraw();
       if (!blob) return;
       onAttach(new File([blob], `working-${Date.now()}.png`, { type: "image/png" }));
       strokesRef.current = [];
@@ -121,8 +193,8 @@ export function DrawingPad({
         Write your working here
       </p>
       <p className="mt-1 text-xs text-muted-foreground">
-        Use a stylus, finger or mouse. When you&apos;re done, attach it — it&apos;s marked step by
-        step like a photo of paper.
+        Use a stylus, finger or mouse. Pinch or Ctrl/⌘ + scroll to zoom in for detail. When
+        you&apos;re done, attach it — it&apos;s marked step by step like a photo of paper.
       </p>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {PEN_COLORS.map((pen) => (
@@ -140,6 +212,40 @@ export function DrawingPad({
             style={{ backgroundColor: pen.value }}
           />
         ))}
+        <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={disabled || zoom <= MIN_ZOOM}
+          onClick={() => zoomFromButton(1 / 1.25)}
+          aria-label="Zoom out"
+        >
+          <ZoomOut className="size-4" />
+        </Button>
+        <span className="w-12 text-center text-xs text-muted-foreground">
+          {Math.round(zoom * 100)}%
+        </span>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={disabled || zoom >= MAX_ZOOM}
+          onClick={() => zoomFromButton(1.25)}
+          aria-label="Zoom in"
+        >
+          <ZoomIn className="size-4" />
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          disabled={disabled || zoom === 1}
+          onClick={resetZoom}
+        >
+          <Maximize className="size-4" />
+          Reset
+        </Button>
       </div>
       <canvas
         ref={canvasRef}

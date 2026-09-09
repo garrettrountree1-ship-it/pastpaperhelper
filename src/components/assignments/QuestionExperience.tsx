@@ -13,7 +13,7 @@ import { getQuestionGlossary, getTutorGlossary } from "@/lib/tutor-settings.func
 import { CameraCapture } from "@/components/assignments/CameraCapture";
 import { QuestionHelpButtons } from "@/components/assignments/QuestionHelpDialog";
 
-import { DrawingPad } from "@/components/assignments/DrawingPad";
+import { DrawingPad, PAD_FILE_NAME } from "@/components/assignments/DrawingPad";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

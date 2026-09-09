@@ -504,7 +504,9 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
 
     const { data: questions, error: qError } = await supabase
       .from("questions")
-      .select("id, question_text, mark_scheme, marks, position, image_paths, answer_image_paths")
+      .select(
+        "id, question_text, mark_scheme, marks, position, image_paths, answer_image_paths, tag_label, tag_image",
+      )
       .eq("assignment_id", data.assignmentId)
       .order("position");
     if (qError) throw new Error(qError.message);

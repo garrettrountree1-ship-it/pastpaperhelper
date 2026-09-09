@@ -4,12 +4,9 @@ import {
   Hand,
   ImageMinus,
   ImagePlus,
-  Maximize,
   Minimize,
   PenLine,
   Undo2,
-  ZoomIn,
-  ZoomOut,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -30,11 +27,10 @@ const PEN_COLORS = [
   { name: "Purple", value: "#7c3aed" },
 ];
 
-const MIN_ZOOM = 0.5;
-const MAX_ZOOM = 4;
 const MAX_SHEET = 6000;
 /** One fixed name so a new save replaces the last pad picture, never stacks. */
 export const PAD_FILE_NAME = "working-pad.png";
+
 
 
 /**

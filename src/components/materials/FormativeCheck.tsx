@@ -137,6 +137,7 @@ export function FormativeCheckButton({
   const [questionImage, setQuestionImage] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(60);
   const [customTimer, setCustomTimer] = useState(false);
+  const [countUp, setCountUp] = useState(false);
   const [customMinutes, setCustomMinutes] = useState("1");
   const [customSeconds, setCustomSeconds] = useState("30");
   const [selected, setSelected] = useState<string[]>([]);
@@ -144,8 +145,8 @@ export function FormativeCheckButton({
   const customTotal =
     Math.max(0, Math.floor(Number(customMinutes) || 0)) * 60 +
     Math.max(0, Math.floor(Number(customSeconds) || 0));
-  const effectiveSeconds = customTimer ? customTotal : seconds;
-  const timerValid = effectiveSeconds >= 15 && effectiveSeconds <= 1800;
+  const effectiveSeconds = countUp ? 1800 : customTimer ? customTotal : seconds;
+  const timerValid = countUp || (effectiveSeconds >= 15 && effectiveSeconds <= 1800);
 
   const students = useQuery({
     queryKey: ["class-roster", classId],

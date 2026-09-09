@@ -52,22 +52,25 @@ function submissionLabel(value: number) {
   return value === 0 ? "Unlimited hand-ins" : `${value} hand-in${value === 1 ? "" : "s"}`;
 }
 
-/** How many times the whole paper may be handed in. */
+/** How many times the whole paper may be handed in. Only applies in real-paper mode. */
 function SubmissionsSelect({
   value,
   inheritLabel,
   onChange,
+  disabled,
 }: {
   value: number | null;
   inheritLabel: string | null;
   onChange: (value: number | null) => void;
+  disabled?: boolean;
 }) {
   return (
     <Select
       value={value === null ? INHERIT : String(value)}
       onValueChange={(next) => onChange(next === INHERIT ? null : Number(next))}
+      disabled={disabled}
     >
-      <SelectTrigger>
+      <SelectTrigger disabled={disabled}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -259,10 +262,13 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Hand-ins per paper</Label>
+                  <Label className={data.klass.examMode ? "" : "text-muted-foreground"}>
+                    Hand-ins per paper
+                  </Label>
                   <SubmissionsSelect
                     value={data.klass.maxPaperSubmissions}
                     inheritLabel={null}
+                    disabled={!data.klass.examMode}
                     onChange={(value) =>
                       classMutation.mutate({ maxPaperSubmissions: value ?? 0 })
                     }
@@ -270,7 +276,9 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                 </div>
               </div>
               <p className="mt-3 text-xs text-muted-foreground">
-                Exam conditions: hints and step-by-step help are switched off.
+                Real paper: the student works through the whole paper and can only hand it in once
+                every question is finished. Hints and step-by-step help are switched off. Hand-ins
+                per paper applies only when this is on.
               </p>
             </section>
 

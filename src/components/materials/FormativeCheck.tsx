@@ -712,6 +712,8 @@ export function FormativeCheckPanel({
   const student = !check.isTeacher;
   const boardOn = Boolean(board.data?.enabled);
   const boardRows = board.data?.rows ?? [];
+  const myAlias = boardRows.find((row) => row.isMe)?.alias ?? "Student";
+  const boardShift = boardOn ? "lg:translate-x-24" : "";
 
   return (
     // Students get a blocking screen; the teacher's card floats in the middle so
@@ -727,10 +729,19 @@ export function FormativeCheckPanel({
       <div
         className={
           student
-            ? "max-h-[92vh] w-[min(96vw,52rem)] overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-2xl"
-            : `pointer-events-auto max-h-[80vh] w-[min(96vw,34rem)] overflow-y-auto rounded-2xl border border-border bg-background p-5 shadow-2xl transition-transform duration-300 ${boardOn ? "lg:translate-x-12" : ""}`
+            ? `max-h-[92vh] w-[min(96vw,52rem)] overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-2xl transition-transform duration-300 ${boardShift}`
+            : `pointer-events-auto max-h-[80vh] w-[min(96vw,34rem)] overflow-y-auto rounded-2xl border border-border bg-background p-5 shadow-2xl transition-transform duration-300 ${boardShift}`
         }
       >
+        {student ? (
+          <div className="mb-5 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+            <AliasAvatar alias={myAlias} size={40} />
+            <div>
+              <p className="text-sm font-medium text-foreground">You are answering as</p>
+              <p className="font-display text-base text-primary">{myAlias}</p>
+            </div>
+          </div>
+        ) : null}
 
 
         <div className="flex items-start gap-3">

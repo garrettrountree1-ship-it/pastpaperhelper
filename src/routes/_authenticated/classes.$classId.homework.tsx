@@ -876,10 +876,16 @@ function AssignmentDialog({
                 <div className="flex items-center justify-between gap-2">
                   {(() => {
                     const label = questionLabel(question.questionText, index);
-                    const main = questionMainNumber(question.questionText) ?? index + 1;
-                    const parts = label.startsWith(String(main))
-                      ? label.slice(String(main).length)
-                      : "";
+                    const draft = labelDrafts[index];
+                    const commit = () => {
+                      const next = (draft ?? "").trim();
+                      setLabelDrafts((prev) => {
+                        const copy = { ...prev };
+                        delete copy[index];
+                        return copy;
+                      });
+                      if (next && next !== label) relabelFrom(index, next);
+                    };
                     return (
                       <div className="flex items-center gap-2">
                         <Label htmlFor={`qnum-${index}`} className="font-display text-lg">
@@ -887,19 +893,24 @@ function AssignmentDialog({
                         </Label>
                         <Input
                           id={`qnum-${index}`}
-                          type="number"
-                          min={1}
-                          value={main}
-                          onChange={(event) => {
-                            const next = Number(event.target.value);
-                            if (Number.isFinite(next) && next >= 1) renumberFrom(index, next);
+                          value={draft ?? label}
+                          onChange={(event) =>
+                            setLabelDrafts((prev) => ({ ...prev, [index]: event.target.value }))
+                          }
+                          onBlur={commit}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              commit();
+                            }
                           }}
-                          className="w-16"
+                          className="w-28"
+                          placeholder="1(a)(ii)"
                         />
-                        {parts ? <span className="font-display text-lg">{parts}</span> : null}
                       </div>
                     );
                   })()}
+
 
                   {questions.length > 1 ? (
                     <Button

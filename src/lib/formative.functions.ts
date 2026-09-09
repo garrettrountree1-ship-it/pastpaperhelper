@@ -154,7 +154,7 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
     const { data: check } = await supabase
       .from("formative_checks")
       .select(
-        "id, question, question_image, seconds, count_up, created_at, ends_at, teacher_id, expected_answer, released_answer, answer_released_at, target_student_id, target_student_ids",
+        "id, question, question_image, seconds, count_up, created_at, ends_at, teacher_id, expected_answer, released_answer, answer_released_at, parts, target_student_id, target_student_ids",
       )
       .eq("class_id", data.classId)
       .is("closed_at", null)
@@ -169,10 +169,19 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
 
     const { data: mine } = await supabase
       .from("formative_responses")
-      .select("id, answer, verdict, feedback, attempt, created_at")
+      .select("id, answer, verdict, feedback, attempt, created_at, part_verdicts")
       .eq("check_id", check.id)
       .eq("student_id", userId)
       .order("created_at", { ascending: true });
+
+    // Parts this student has already got right stay locked on their screen.
+    const solvedParts: string[] = [];
+    for (const row of mine ?? []) {
+      const verdicts = (row.part_verdicts ?? {}) as Record<string, string>;
+      for (const [label, verdict] of Object.entries(verdicts)) {
+        if (verdict === "correct" && !solvedParts.includes(label)) solvedParts.push(label);
+      }
+    }
 
     return {
       id: check.id as string,
@@ -187,6 +196,8 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
       releasedAnswer: (check.answer_released_at ? (check.released_answer ?? null) : null) as
         | string
         | null,
+      parts: ((check.parts ?? []) as string[]),
+      solvedParts,
       targetStudentId: (check.target_student_id ?? null) as string | null,
       targetStudentIds: ((check.target_student_ids ?? []) as string[]),
 
@@ -196,6 +207,7 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
         verdict: r.verdict as string,
         feedback: (r.feedback ?? "") as string,
         createdAt: r.created_at as string,
+        partVerdicts: ((r.part_verdicts ?? {}) as Record<string, string>),
       })),
     };
   });

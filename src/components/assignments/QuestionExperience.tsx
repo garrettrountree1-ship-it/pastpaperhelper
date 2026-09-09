@@ -73,6 +73,8 @@ export function QuestionExperience({
   onShowPhoto,
   photoCount,
   photoUrls = [],
+  photoFiles = [],
+  onRemovePhoto,
   onPhotosChange,
   onAddDrawing,
   result,

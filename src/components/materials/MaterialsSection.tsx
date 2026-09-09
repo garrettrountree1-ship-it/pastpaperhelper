@@ -10,9 +10,10 @@ import {
   Presentation,
   Trash2,
   Archive,
+  GripVertical,
   RotateCcw,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { OfficeDocView } from "@/components/materials/OfficeDocView";
@@ -65,6 +66,7 @@ import {
   updateUnit,
   listMaterialClasses,
   listUnits,
+  reorderUnits,
   type MaterialKind,
 } from "@/lib/materials.functions";
 

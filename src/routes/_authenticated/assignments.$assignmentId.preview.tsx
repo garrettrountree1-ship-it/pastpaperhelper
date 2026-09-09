@@ -24,6 +24,7 @@ import type { PhotoMode } from "@/lib/photo-mode";
 import { photoAvailability } from "@/lib/photo-mode";
 import {
   getAssignmentPreview,
+  insertQuestionAfter,
   previewGradeAnswer,
   previewTutorMessage,
   updateQuestionCrop,
@@ -194,8 +195,12 @@ function PreviewPage() {
               {groupByPage(data.questions).map((group) => (
                 <div key={group.key} className="space-y-4">
                   {group.questions.map((question) => (
-                    <PreviewQuestion
+                    <AddQuestionRow
                       key={question.id}
+                      assignmentId={assignmentId}
+                      questionId={question.id}
+                    >
+                    <PreviewQuestion
                       assignmentId={assignmentId}
                       question={question}
                       flags={flags}
@@ -203,6 +208,7 @@ function PreviewPage() {
                       protectQuestions={Boolean(data.tutorSettings?.protectQuestions)}
                       onFlag={() => setFlags((count) => count + 1)}
                     />
+                    </AddQuestionRow>
                   ))}
 
                 </div>
@@ -216,6 +222,45 @@ You can test any question here — the AI marks it exactly as it would for a stu
           </>
         ) : null}
       </main>
+    </div>
+  );
+}
+
+/** Wraps a question with a teacher-only "add a question here" control below it. */
+function AddQuestionRow({
+  assignmentId,
+  questionId,
+  children,
+}: {
+  assignmentId: string;
+  questionId: string;
+  children: React.ReactNode;
+}) {
+  const queryClient = useQueryClient();
+  const add = useMutation({
+    mutationFn: () => insertQuestionAfter({ data: { questionId } }),
+    onSuccess: async (result) => {
+      toast.success(`Added question ${result.label} — cut its picture next.`);
+      await queryClient.invalidateQueries({ queryKey: ["assignment-preview", assignmentId] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  return (
+    <div>
+      {children}
+      <div className="flex justify-center py-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-xs text-muted-foreground"
+          disabled={add.isPending}
+          onClick={() => add.mutate()}
+        >
+          <Plus className="size-3" />
+          {add.isPending ? "Adding..." : "Add a question here"}
+        </Button>
+      </div>
     </div>
   );
 }

@@ -418,18 +418,88 @@ export function DrawingPad({
           <Maximize className="size-4" />
           Reset
         </Button>
+        {full ? (
+          <>
+            <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+            <Button
+              type="button"
+              size="sm"
+              variant={mode === "move" ? "default" : "outline"}
+              disabled={disabled}
+              onClick={() => setMode(mode === "move" ? "draw" : "move")}
+            >
+              {mode === "move" ? <Hand className="size-4" /> : <PenLine className="size-4" />}
+              {mode === "move" ? "Moving" : "Drawing"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={disabled || photoScale <= 0.4}
+              aria-label="Make the question picture smaller"
+              onClick={() => {
+                setPhotoScale((s) => Math.max(0.4, Number((s - 0.1).toFixed(2))));
+                requestAnimationFrame(() => {
+                  redraw();
+                  updateSheet();
+                });
+              }}
+            >
+              <ImageMinus className="size-4" />
+            </Button>
+            <span className="w-12 text-center text-xs text-muted-foreground">
+              {Math.round(photoScale * 100)}%
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={disabled || photoScale >= 2.5}
+              aria-label="Make the question picture bigger"
+              onClick={() => {
+                setPhotoScale((s) => Math.min(2.5, Number((s + 0.1).toFixed(2))));
+                requestAnimationFrame(() => {
+                  redraw();
+                  updateSheet();
+                });
+              }}
+            >
+              <ImagePlus className="size-4" />
+            </Button>
+          </>
+        ) : null}
       </div>
-      <canvas
-        ref={canvasRef}
-        onPointerDown={start}
-        onPointerMove={move}
-        onPointerUp={end}
-        onPointerLeave={end}
-        onPointerCancel={end}
-        className={`mt-2 w-full touch-none rounded-md border border-border bg-white ${
-          full ? "min-h-0 flex-1" : height
-        }`}
-      />
+      {full ? (
+        <div
+          ref={scrollRef}
+          onScroll={updateSheet}
+          className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        >
+          <canvas
+            ref={canvasRef}
+            onPointerDown={start}
+            onPointerMove={move}
+            onPointerUp={end}
+            onPointerLeave={end}
+            onPointerCancel={end}
+            style={{ height: sheetHeight ? `${sheetHeight}px` : "150vh" }}
+            className={`w-full touch-none rounded-md border border-border bg-white ${
+              mode === "move" ? "cursor-grab" : "cursor-crosshair"
+            }`}
+          />
+        </div>
+      ) : (
+        <canvas
+          ref={canvasRef}
+          onPointerDown={start}
+          onPointerMove={move}
+          onPointerUp={end}
+          onPointerLeave={end}
+          onPointerCancel={end}
+          className={`mt-2 w-full touch-none rounded-md border border-border bg-white ${height}`}
+        />
+      )}
+
 
 
       <div className="mt-2 flex flex-wrap gap-2">

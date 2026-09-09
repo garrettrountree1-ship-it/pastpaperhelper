@@ -195,6 +195,16 @@ export function QuestionExperience({
   const hasWrittenAnswer = stripBullets(draft).trim().length > 0;
   const outOfTries = maxAttempts > 0 && attempts >= maxAttempts;
 
+  // The writing pad keeps its own picture inside the pad, so it never shows here.
+  const attachedPhotos = useMemo(
+    () =>
+      photoFiles
+        .filter((item) => item.name !== PAD_FILE_NAME)
+        .map((item, itemIndex) => ({ ...item, key: `${itemIndex}-${item.name}` })),
+    [photoFiles],
+  );
+  const submittedPhotoUrls = photoUrls.filter((url) => !url.includes(PAD_FILE_NAME));
+
   // Seed the marks checklist so the student sees how many points are expected.
   useEffect(() => {
     if (bulletTarget > 0 && !locked && draft.trim().length === 0) {

@@ -97,10 +97,12 @@ export function QuestionRecutDialog({
   }
 
   function addPiece() {
+    const active = pieces[piece];
+    if (!active) return;
     const nextPage = pages[pageIndex + 1] ?? pages[pageIndex];
     const source = nextPage ?? {
-      path: pageWithoutCrop(current.path),
-      url: pageWithoutCrop(current.url),
+      path: pageWithoutCrop(active.path),
+      url: pageWithoutCrop(active.url),
     };
     setPieces((list) => [
       ...list,

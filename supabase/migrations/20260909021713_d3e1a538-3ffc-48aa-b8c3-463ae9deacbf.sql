@@ -1,0 +1,1 @@
+ALTER TABLE public.formative_checks ADD COLUMN IF NOT EXISTS count_up boolean NOT NULL DEFAULT false;

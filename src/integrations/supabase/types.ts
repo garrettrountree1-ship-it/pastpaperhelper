@@ -696,6 +696,7 @@ export type Database = {
           answer_released_at: string | null
           class_id: string
           closed_at: string | null
+          count_up: boolean
           created_at: string
           ends_at: string
           expected_answer: string | null
@@ -713,6 +714,7 @@ export type Database = {
           answer_released_at?: string | null
           class_id: string
           closed_at?: string | null
+          count_up?: boolean
           created_at?: string
           ends_at: string
           expected_answer?: string | null
@@ -730,6 +732,7 @@ export type Database = {
           answer_released_at?: string | null
           class_id?: string
           closed_at?: string | null
+          count_up?: boolean
           created_at?: string
           ends_at?: string
           expected_answer?: string | null

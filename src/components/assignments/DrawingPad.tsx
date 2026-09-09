@@ -428,42 +428,9 @@ export function DrawingPad({
             style={{ backgroundColor: pen.value }}
           />
         ))}
-        <span className="mx-1 h-5 w-px bg-border" aria-hidden />
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={disabled || zoom <= MIN_ZOOM}
-          onClick={() => zoomFromButton(1 / 1.25)}
-          aria-label="Zoom out"
-        >
-          <ZoomOut className="size-4" />
-        </Button>
-        <span className="w-12 text-center text-xs text-muted-foreground">
-          {Math.round(zoom * 100)}%
-        </span>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={disabled || zoom >= MAX_ZOOM}
-          onClick={() => zoomFromButton(1.25)}
-          aria-label="Zoom in"
-        >
-          <ZoomIn className="size-4" />
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          disabled={disabled || zoom === 1}
-          onClick={resetZoom}
-        >
-          <Maximize className="size-4" />
-          Reset
-        </Button>
         <>
             <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+
             <Button
               type="button"
               size="sm"

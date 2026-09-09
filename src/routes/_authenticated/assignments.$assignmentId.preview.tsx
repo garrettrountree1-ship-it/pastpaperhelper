@@ -429,34 +429,6 @@ function PreviewQuestion({
       maxAttempts={maxAttempts}
       assignmentId={assignmentId}
       protectQuestions={protectQuestions}
-
-      snipAction={
-        editing &&
-        (question.image_paths ?? []).length > 0 && (question.imageUrls ?? []).length > 0 ? (
-          <QuestionRecutDialog
-            imagePaths={question.image_paths ?? []}
-            imageUrls={question.imageUrls ?? []}
-            saving={saveCrop.isPending}
-            onSave={async (imagePaths) => {
-              await saveCrop.mutateAsync({ imagePaths, imageUrls: [] });
-            }}
-          />
-        ) : null
-      }
-      answerAction={
-        editing &&
-        (question.answerImagePaths ?? []).length > 0 && (question.answerImageUrls ?? []).length > 0 ? (
-          <QuestionRecutDialog
-            label="Recut answer"
-            imagePaths={question.answerImagePaths ?? []}
-            imageUrls={question.answerImageUrls ?? []}
-            saving={saveCrop.isPending}
-            onSave={async (imagePaths) => {
-              await saveCrop.mutateAsync({ imagePaths, imageUrls: [], target: "answer" });
-            }}
-          />
-        ) : null
-      }
       headerAction={
         <div className="flex flex-wrap justify-end gap-2">
           <Button

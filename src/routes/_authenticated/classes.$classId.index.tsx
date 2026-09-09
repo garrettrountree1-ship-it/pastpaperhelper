@@ -139,7 +139,7 @@ function ClassHome() {
 }
 
 /** Teacher-only list of the students who have joined this class. */
-function ClassRoster({ classId }: { classId: string }) {
+function ClassRoster({ classId, showIbLevels }: { classId: string; showIbLevels?: boolean }) {
   const [open, setOpen] = useState(false);
   const fetchRoster = useServerFn(listClassRoster);
   const roster = useQuery({
@@ -147,6 +147,32 @@ function ClassRoster({ classId }: { classId: string }) {
     queryFn: () => fetchRoster({ data: { classId } }),
   });
   const students = roster.data ?? [];
+  const fetchLevels = useServerFn(listIbLevels);
+  const levels = useQuery({
+    queryKey: ["class-ib-levels", classId],
+    queryFn: () => fetchLevels({ data: { classId } }),
+    enabled: Boolean(showIbLevels) && open,
+  });
+  const saveLevel = useServerFn(setIbLevel);
+  const [pending, setPending] = useState<Record<string, IbLevel>>({});
+
+  async function chooseLevel(studentId: string, level: IbLevel) {
+    setPending((prev) => ({ ...prev, [studentId]: level }));
+    try {
+      await saveLevel({ data: { classId, studentId, level } });
+      await levels.refetch();
+    } finally {
+      setPending((prev) => {
+        const next = { ...prev };
+        delete next[studentId];
+        return next;
+      });
+    }
+  }
+
+  function levelOf(studentId: string): IbLevel {
+    return pending[studentId] ?? levels.data?.levels?.[studentId] ?? "HL";
+  }
 
   return (
     <section className="paper mt-6 p-6">

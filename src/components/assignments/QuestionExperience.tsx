@@ -289,39 +289,50 @@ export function QuestionExperience({
           write it on the pad. {requiresPhoto ? "For this one, working on paper usually earns the most method marks." : null}
         </p>
 
-        <Textarea
-          value={draft}
-          onChange={(event) => {
-            if (answerGuard.flagged) answerGuard.clearFlag();
-            onDraftChange(
-              bulletTarget > 0
-                ? normaliseBullets(event.target.value, bulletTarget)
-                : event.target.value,
-            );
-          }}
-          {...answerGuard.guardProps}
-          disabled={locked}
-          placeholder={
-            requiresPhoto
-              ? "Type your answer or describe your working (a photo or pad sketch can be added below)"
-              : "Write your answer in English"
-          }
-          rows={Math.max(4, bulletTarget + 1)}
-        />
-        {bulletTarget > 0 ? (
-          <p className="text-xs text-muted-foreground">
-            {bulletTarget} marks means {bulletTarget} separate points — write one point on each
-            bullet. The bullets stay put; add extra lines if you need them.
-          </p>
-        ) : null}
+        <details
+          open={!photoOnly}
+          className="rounded-lg border border-dashed border-border p-3"
+        >
+          <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+            Type your answer
+          </summary>
+          <div className="mt-2 space-y-3">
+            <Textarea
+              value={draft}
+              onChange={(event) => {
+                if (answerGuard.flagged) answerGuard.clearFlag();
+                onDraftChange(
+                  bulletTarget > 0
+                    ? normaliseBullets(event.target.value, bulletTarget)
+                    : event.target.value,
+                );
+              }}
+              {...answerGuard.guardProps}
+              disabled={locked}
+              placeholder={
+                requiresPhoto
+                  ? "Type your answer or describe your working (a photo or pad sketch can be added below)"
+                  : "Write your answer in English"
+              }
+              rows={Math.max(4, bulletTarget + 1)}
+            />
+            {bulletTarget > 0 ? (
+              <p className="text-xs text-muted-foreground">
+                {bulletTarget} marks means {bulletTarget} separate points — write one point on each
+                bullet. The bullets stay put; add extra lines if you need them.
+              </p>
+            ) : null}
 
-        {answerGuard.flagged ? (
-          <p className="text-sm text-destructive">{NO_PASTE_MESSAGE}</p>
-        ) : null}
+            {answerGuard.flagged ? (
+              <p className="text-sm text-destructive">{NO_PASTE_MESSAGE}</p>
+            ) : null}
 
-        {draft && !isEnglishOnly(draft) ? (
-          <p className="text-sm text-destructive">{ENGLISH_ONLY_MESSAGE}</p>
-        ) : null}
+            {draft && !isEnglishOnly(draft) ? (
+              <p className="text-sm text-destructive">{ENGLISH_ONLY_MESSAGE}</p>
+            ) : null}
+          </div>
+        </details>
+
 
         {/* Photo and pad sections stay folded away until they're needed. */}
         <details

@@ -66,6 +66,8 @@ export function DrawingPad({
     startScale: number;
     corner: "nw" | "ne" | "sw" | "se";
   } | null>(null);
+  /** Top-left of the picture when a resize starts, so the opposite corner stays put. */
+  const resizeOrigin = useRef({ x: 0, y: 0 });
   const dprRef = useRef(1);
   // Where the student has dragged the question picture to. Only the picture
   // moves — their writing stays exactly where they put it.

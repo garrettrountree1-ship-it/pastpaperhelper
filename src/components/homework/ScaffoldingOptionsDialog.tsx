@@ -357,6 +357,7 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                           <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">Hand-ins</Label>
                             <SubmissionsSelect
+                              disabled={!effective.examMode}
                               value={assignment.maxPaperSubmissions}
                               inheritLabel={`Class default (${submissionLabel(data.klass.maxPaperSubmissions)})`}
                               onChange={(value) =>
@@ -438,7 +439,8 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                                           })
                                         }
                                       />
-                                      <SubmissionsSelect
+                                       <SubmissionsSelect
+                                        disabled={!(override?.examMode ?? effective.examMode)}
                                         value={override?.maxPaperSubmissions ?? null}
                                         inheritLabel={`Hand-ins: same as homework (${submissionLabel(effective.maxPaperSubmissions)})`}
                                         onChange={(value) =>

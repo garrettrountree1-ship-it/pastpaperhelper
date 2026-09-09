@@ -617,10 +617,35 @@ export function FormativeCheckPanel({
   });
 
   const send = useMutation({
-    mutationFn: () => submit({ data: { checkId: check!.id, answer: combined.trim() } }),
-    onSuccess: async () => {
-      setAnswer("");
-      setPartAnswers({});
+    mutationFn: () =>
+      submit({
+        data: {
+          checkId: check!.id,
+          answer: combined.trim(),
+          ...(parts.length
+            ? {
+                partAnswers: Object.fromEntries(
+                  openParts.map((label) => [label, (partAnswers[label] ?? "").trim()]),
+                ),
+              }
+            : {}),
+        },
+      }),
+    onSuccess: async (result) => {
+      if (result.awardedPoints > 0) toast.success(`+${result.awardedPoints} points!`);
+      // Only clear the boxes that are now right; wrong ones stay for editing.
+      if (parts.length) {
+        const rights = Object.entries(result.partVerdicts ?? {})
+          .filter(([, verdict]) => verdict === "correct")
+          .map(([label]) => label);
+        setPartAnswers((prev) => {
+          const next = { ...prev };
+          for (const label of rights) delete next[label];
+          return next;
+        });
+      } else {
+        setAnswer("");
+      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["formative-active", classId] }),
         queryClient.invalidateQueries({ queryKey: ["formative-leaderboard", classId] }),

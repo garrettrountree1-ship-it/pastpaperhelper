@@ -561,7 +561,6 @@ export const updateQuestionCrop = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const db = await admin();
     const question = await questionForTeacher(supabase, db, data.questionId, userId);
-    const column = data.target === "answer" ? "answer_image_paths" : "image_paths";
     const { data: current } = await db
       .from("questions")
       .select("image_paths, answer_image_paths")
@@ -582,7 +581,11 @@ export const updateQuestionCrop = createServerFn({ method: "POST" })
     }
     const { error } = await db
       .from("questions")
-      .update({ [column]: data.imagePaths })
+      .update(
+        data.target === "answer"
+          ? { answer_image_paths: data.imagePaths }
+          : { image_paths: data.imagePaths },
+      )
       .eq("id", question.id);
     if (error) throw new Error(error.message);
     return { ok: true, imagePaths: data.imagePaths };

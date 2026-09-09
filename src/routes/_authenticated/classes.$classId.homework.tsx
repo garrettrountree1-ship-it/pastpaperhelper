@@ -136,6 +136,8 @@ type QuestionDraft = {
   marks: number;
   imagePaths: string[];
   imageUrls: string[];
+  answerImagePaths: string[];
+  answerImageUrls: string[];
 };
 
 const emptyQuestion = (): QuestionDraft => ({
@@ -145,6 +147,8 @@ const emptyQuestion = (): QuestionDraft => ({
   marks: 1,
   imagePaths: [],
   imageUrls: [],
+  answerImagePaths: [],
+  answerImageUrls: [],
 });
 
 function PendingClassPage() {
@@ -612,7 +616,10 @@ function AssignmentDialog({
         ? existing.data.questions.map((q) => ({
             ...q,
             imagePaths: q.imagePaths ?? [],
+        answerImagePaths: q.answerImagePaths ?? [],
             imageUrls: q.imageUrls ?? [],
+            answerImagePaths: q.answerImagePaths ?? [],
+            answerImageUrls: q.answerImageUrls ?? [],
           }))
         : [emptyQuestion()],
     );
@@ -636,7 +643,10 @@ function AssignmentDialog({
           ...q,
           id: null,
           imagePaths: q.imagePaths ?? [],
+        answerImagePaths: q.answerImagePaths ?? [],
           imageUrls: q.imageUrls ?? [],
+          answerImagePaths: q.answerImagePaths ?? [],
+          answerImageUrls: q.answerImageUrls ?? [],
         })),
       );
       toast.success(`${result.questions.length} questions read from your files`);
@@ -652,6 +662,7 @@ function AssignmentDialog({
         markScheme: q.markScheme.trim(),
         marks: q.marks,
         imagePaths: q.imagePaths ?? [],
+        answerImagePaths: q.answerImagePaths ?? [],
       }));
       if (editing) {
         return update({
@@ -974,12 +985,46 @@ function AssignmentDialog({
                       rows={3}
                     />
                   )}
-                  <Textarea
-                    value={question.markScheme}
-                    onChange={(event) => update_(index, { markScheme: event.target.value })}
-                    placeholder="Paste the mark scheme answer here (students never see this)"
-                    rows={3}
-                  />
+                  {question.answerImageUrls.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium">Answer as printed (students see this only once released)</p>
+                      <QuestionSnipStack urls={question.answerImageUrls} answers alt="Official answer as printed" />
+                      <div className="flex flex-wrap gap-2">
+                        <QuestionRecutDialog
+                          label="Recut answer"
+                          imagePaths={question.answerImagePaths}
+                          imageUrls={question.answerImageUrls}
+                          onSave={(answerImagePaths, answerImageUrls) =>
+                            update_(index, { answerImagePaths, answerImageUrls })
+                          }
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => update_(index, { answerImagePaths: [], answerImageUrls: [] })}
+                        >
+                          Remove answer picture
+                        </Button>
+                      </div>
+                      <details>
+                        <summary className="cursor-pointer text-xs text-muted-foreground">Answer text</summary>
+                        <Textarea
+                          className="mt-2"
+                          value={question.markScheme}
+                          onChange={(event) => update_(index, { markScheme: event.target.value })}
+                          rows={3}
+                        />
+                      </details>
+                    </div>
+                  ) : (
+                    <Textarea
+                      value={question.markScheme}
+                      onChange={(event) => update_(index, { markScheme: event.target.value })}
+                      placeholder="Paste the mark scheme answer here (students never see this)"
+                      rows={3}
+                    />
+                  )}
 
                   <div className="flex items-center gap-2">
                     <Label htmlFor={`marks-${index}`}>Marks</Label>

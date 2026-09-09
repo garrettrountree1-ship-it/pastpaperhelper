@@ -75,6 +75,8 @@ type Question = {
   question_text: string;
   marks: number;
   imageUrls?: string[];
+  answerImagePaths?: string[];
+  answerImageUrls?: string[];
   image_paths?: string[];
   markScheme?: string | null;
   photoMode?: PhotoMode;
@@ -245,8 +247,14 @@ function PreviewQuestion({
   const [attempts, setAttempts] = useState(0);
   const queryClient = useQueryClient();
   const saveCrop = useMutation({
-    mutationFn: ({ imagePaths }: { imagePaths: string[]; imageUrls: string[] }) =>
-      updateQuestionCrop({ data: { questionId: question.id, imagePaths } }),
+    mutationFn: ({
+      imagePaths,
+      target,
+    }: {
+      imagePaths: string[];
+      imageUrls: string[];
+      target?: "question" | "answer";
+    }) => updateQuestionCrop({ data: { questionId: question.id, imagePaths, target: target ?? "question" } }),
     onSuccess: async () => {
       toast.success("Question crop saved");
       await queryClient.invalidateQueries({ queryKey: ["assignment-preview", assignmentId] });
@@ -350,6 +358,7 @@ function PreviewQuestion({
       checkError={check.isError ? (check.error as Error).message : undefined}
       onCheck={() => check.mutate()}
       markScheme={question.markScheme ?? null}
+      markSchemeImageUrls={question.answerImageUrls ?? []}
       keywordTranslation={keywordTranslation}
       assignmentId={assignmentId}
       protectQuestions={protectQuestions}
@@ -361,6 +370,19 @@ function PreviewQuestion({
             saving={saveCrop.isPending}
             onSave={async (imagePaths) => {
               await saveCrop.mutateAsync({ imagePaths, imageUrls: [] });
+            }}
+          />
+        ) : null
+      }
+      answerAction={
+        (question.answerImagePaths ?? []).length > 0 && (question.answerImageUrls ?? []).length > 0 ? (
+          <QuestionRecutDialog
+            label="Recut answer"
+            imagePaths={question.answerImagePaths ?? []}
+            imageUrls={question.answerImageUrls ?? []}
+            saving={saveCrop.isPending}
+            onSave={async (imagePaths) => {
+              await saveCrop.mutateAsync({ imagePaths, imageUrls: [], target: "answer" });
             }}
           />
         ) : null

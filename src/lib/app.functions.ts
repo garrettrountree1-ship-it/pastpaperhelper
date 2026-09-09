@@ -2021,7 +2021,15 @@ export const gradeAnswer = createServerFn({ method: "POST" })
         marks: question.marks,
       }),
       findCopiedFromPeers(db, data.questionId, guardSubmission.id, data.answerText),
-      checkHandDrawnPhotos(await signWorkImages(db, imagePaths)),
+      // Work drawn on the app's own writing pad is the student's own hand — it
+      // is digital ink on a white sheet, so it never goes to the photo check.
+      checkHandDrawnPhotos(
+        await signWorkImages(
+          db,
+          imagePaths.filter((path) => !path.endsWith("working-pad.png")),
+        ),
+      ),
+
     ]);
     const violation = photoCheck.ok
       ? (peerCopy ?? (detection.isAi ? detection : null))

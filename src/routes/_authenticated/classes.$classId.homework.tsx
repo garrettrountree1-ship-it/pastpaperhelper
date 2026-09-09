@@ -631,6 +631,13 @@ function AssignmentDialog({
 
   const extractMutation = useMutation({
     mutationFn: async () => {
+      if (typeof Notification !== "undefined" && Notification.permission === "default") {
+        try {
+          await Notification.requestPermission();
+        } catch {
+          // notifications are optional — ignore
+        }
+      }
       const [paper, scheme] = await Promise.all([
         filesToPages(paperFiles),
         filesToPages(schemeFiles),
@@ -651,9 +658,31 @@ function AssignmentDialog({
         })),
       );
       toast.success(`${result.questions.length} questions read from your files`);
+      if (typeof document !== "undefined" && document.hidden) {
+        document.title = "✅ Your paper is ready — PastPaperHelper.AI";
+        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+          try {
+            new Notification("PastPaperHelper.AI", {
+              body: `Finished reading your paper — ${result.questions.length} questions found.`,
+            });
+          } catch {
+            // ignore
+          }
+        }
+      }
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
+  const extractPending = extractMutation.isPending;
+  useEffect(() => {
+    if (!extractPending || typeof document === "undefined") return;
+    const previous = document.title;
+    document.title = "⏳ Reading your paper… — PastPaperHelper.AI";
+    return () => {
+      document.title = previous;
+    };
+  }, [extractPending]);
 
   const mutation = useMutation({
     mutationFn: () => {

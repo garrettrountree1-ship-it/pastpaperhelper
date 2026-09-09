@@ -35,7 +35,12 @@ import { SlideDeckView } from "@/components/materials/SlideDeckView";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-...
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTutorThread } from "@/hooks/use-tutor-thread";

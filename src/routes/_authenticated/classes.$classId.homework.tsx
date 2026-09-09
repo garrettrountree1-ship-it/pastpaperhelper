@@ -680,7 +680,8 @@ function AssignmentDialog({
     const previous = document.title;
     document.title = "⏳ Reading your paper… — PastPaperHelper.AI";
     return () => {
-      document.title = previous;
+      // Keep the "paper is ready" title set on success while the teacher was away.
+      if (document.title.startsWith("⏳")) document.title = previous;
     };
   }, [extractPending]);
 

@@ -18,6 +18,8 @@ export const launchFormativeCheck = createServerFn({ method: "POST" })
         // A pasted picture of the question, held as a data URL.
         questionImage: z.string().max(6_000_000).nullable().optional(),
         seconds: z.number().int().min(15).max(1800),
+        /** Stopwatch mode: no time limit, just count the time taken. */
+        countUp: z.boolean().optional(),
         targetStudentId: z.string().uuid().nullable().optional(),
         targetStudentIds: z.array(z.string().uuid()).max(200).optional(),
       })

@@ -374,6 +374,7 @@ function PreviewQuestion({
     question.question_text,
     question.photoMode ?? "auto",
   );
+  const padPhoto = useRef<string | null>(null);
   const [showPhoto, setShowPhoto] = useState(requiresPhoto);
   const [photos, setPhotos] = useState<string[]>([]);
   const [reply, setReply] = useState("");
@@ -484,7 +485,12 @@ function PreviewQuestion({
         const reader = new FileReader();
         // The pad keeps one picture, replaced each time the working is saved.
         reader.onload = () =>
-          setPhotos((prev) => [...prev.slice(0, padIndex.current ?? prev.length), String(reader.result)].slice(0, 3));
+          setPhotos((prev) => {
+            const url = String(reader.result);
+            const kept = prev.filter((item) => item !== padPhoto.current);
+            padPhoto.current = url;
+            return [...kept, url].slice(0, 3);
+          });
         reader.readAsDataURL(file);
       }}
       result={result ?? null}

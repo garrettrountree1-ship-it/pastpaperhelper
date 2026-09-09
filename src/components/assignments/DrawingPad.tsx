@@ -334,8 +334,11 @@ export function DrawingPad({
         onPointerUp={end}
         onPointerLeave={end}
         onPointerCancel={end}
-        className={`mt-2 w-full touch-none rounded-md border border-border bg-white ${height}`}
+        className={`mt-2 w-full touch-none rounded-md border border-border bg-white ${
+          full ? "min-h-0 flex-1" : height
+        }`}
       />
+
 
       <div className="mt-2 flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={attach} disabled={disabled || !hasInk}>

@@ -2469,6 +2469,21 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
       assignment.mark_scheme_revealed || studentRelease?.mark_scheme_revealed,
     );
 
+    // Previewing an SL student hides HL-only questions, exactly as they see it.
+    const { data: previewLevelRow } = studentId
+      ? await db
+          .from("class_student_settings")
+          .select("ib_level")
+          .eq("class_id", assignment.class_id)
+          .eq("student_id", studentId)
+          .maybeSingle()
+      : { data: null };
+    const previewIsStandardLevel =
+      (previewLevelRow as { ib_level?: string | null } | null)?.ib_level === "SL";
+    const questions = (allPreviewQuestions ?? []).filter(
+      (q) => !(previewIsStandardLevel && isHigherLevelTag(q.tag_label as string | null)),
+    );
+
     return {
       tutorSettings,
       students,

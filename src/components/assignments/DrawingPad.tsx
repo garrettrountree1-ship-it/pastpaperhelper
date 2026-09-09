@@ -1,4 +1,16 @@
-import { Eraser, Expand, Maximize, Minimize, PenLine, Undo2, ZoomIn, ZoomOut } from "lucide-react";
+import {
+  Eraser,
+  Expand,
+  Hand,
+  ImageMinus,
+  ImagePlus,
+  Maximize,
+  Minimize,
+  PenLine,
+  Undo2,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +28,8 @@ const PEN_COLORS = [
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 4;
+const MAX_SHEET = 6000;
+
 
 /**
  * Stylus / finger / mouse writing pad for working out calculations on screen
@@ -41,15 +55,26 @@ export function DrawingPad({
   onAttach: (file: File) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const strokesRef = useRef<Stroke[]>([]);
   const drawing = useRef(false);
+  const panning = useRef<{ x: number; y: number } | null>(null);
   const dprRef = useRef(1);
   const zoomRef = useRef(1);
   const offsetRef = useRef({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [hasInk, setHasInk] = useState(false);
   const [full, setFull] = useState(false);
+  const [mode, setMode] = useState<"draw" | "move">("draw");
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  // The sheet is as long as the student needs: it stretches while they scroll
+  // down and shrinks back to the work when they come back up.
+  const [sheetHeight, setSheetHeight] = useState(0);
   const backgroundsRef = useRef<HTMLImageElement[]>([]);
+  const [photoScale, setPhotoScale] = useState(1);
+  const photoScaleRef = useRef(photoScale);
+  photoScaleRef.current = photoScale;
   const [color, setColor] = useState(PEN_COLORS[0]!.value);
   const colorRef = useRef(color);
   colorRef.current = color;
@@ -66,7 +91,7 @@ export function DrawingPad({
     ctx.translate(offsetRef.current.x, offsetRef.current.y);
     ctx.scale(zoomRef.current, zoomRef.current);
     // The question picture sits under the ink so the work is marked in context.
-    const padWidth = canvas.width / dpr;
+    const padWidth = (canvas.width / dpr) * photoScaleRef.current;
     let y = 0;
     for (const image of backgroundsRef.current) {
       if (!image.complete || !image.naturalWidth) continue;
@@ -74,6 +99,7 @@ export function DrawingPad({
       ctx.drawImage(image, 0, y, padWidth, h);
       y += h + 8;
     }
+
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
@@ -117,6 +143,40 @@ export function DrawingPad({
     redraw();
   }
 
+  /** Lowest point of the picture / ink, in on-screen pixels. */
+  function contentBottom() {
+    const canvas = canvasRef.current;
+    let bottom = 0;
+    if (canvas) {
+      const padWidth = (canvas.width / dprRef.current) * photoScaleRef.current;
+      let y = 0;
+      for (const image of backgroundsRef.current) {
+        if (!image.complete || !image.naturalWidth) continue;
+        y += (padWidth * image.naturalHeight) / image.naturalWidth + 8;
+      }
+      bottom = y;
+    }
+    for (const stroke of strokesRef.current) {
+      for (const point of stroke.points) bottom = Math.max(bottom, point.y);
+    }
+    return bottom * zoomRef.current + offsetRef.current.y;
+  }
+
+  /** Grows the sheet while the student scrolls down, shrinks back on the way up. */
+  function updateSheet() {
+    const box = scrollRef.current;
+    if (!full || !box) return;
+    const view = box.clientHeight || 600;
+    const wanted = Math.max(
+      view,
+      contentBottom() + view * 0.6,
+      box.scrollTop + view * 1.5,
+    );
+    setSheetHeight((current) =>
+      Math.abs(current - wanted) < 40 ? current : Math.min(MAX_SHEET, Math.round(wanted)),
+    );
+  }
+
   // Size the bitmap to the element so strokes land under the pen tip.
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -132,7 +192,21 @@ export function DrawingPad({
     resize();
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
+  }, [full, sheetHeight]);
+
+  // Start the long sheet as soon as full screen opens.
+  useEffect(() => {
+    if (!full) {
+      setSheetHeight(0);
+      return;
+    }
+    const id = window.setTimeout(() => {
+      const view = scrollRef.current?.clientHeight || 600;
+      setSheetHeight(Math.round(view * 1.5));
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [full]);
+
 
   // Load the question picture(s) for the full-screen pad.
   useEffect(() => {
@@ -184,7 +258,7 @@ export function DrawingPad({
     };
     canvas.addEventListener("wheel", onWheel, { passive: false });
     return () => canvas.removeEventListener("wheel", onWheel);
-  }, []);
+  }, [full]);
 
   function positionOf(event: React.PointerEvent<HTMLCanvasElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -197,6 +271,11 @@ export function DrawingPad({
   function start(event: React.PointerEvent<HTMLCanvasElement>) {
     if (disabled) return;
     event.currentTarget.setPointerCapture(event.pointerId);
+    // Middle button or the Move tool drags the picture and work around.
+    if (modeRef.current === "move" || event.button === 1) {
+      panning.current = { x: event.clientX, y: event.clientY };
+      return;
+    }
     drawing.current = true;
     const width = event.pointerType === "pen" ? Math.max(1.2, event.pressure * 4 || 2) : 2.4;
     strokesRef.current.push({ points: [positionOf(event)], width, color: colorRef.current });
@@ -204,6 +283,16 @@ export function DrawingPad({
   }
 
   function move(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (panning.current) {
+      event.preventDefault();
+      offsetRef.current = {
+        x: offsetRef.current.x + (event.clientX - panning.current.x),
+        y: offsetRef.current.y + (event.clientY - panning.current.y),
+      };
+      panning.current = { x: event.clientX, y: event.clientY };
+      redraw();
+      return;
+    }
     if (!drawing.current) return;
     event.preventDefault();
     strokesRef.current[strokesRef.current.length - 1]?.points.push(positionOf(event));
@@ -212,7 +301,10 @@ export function DrawingPad({
 
   function end() {
     drawing.current = false;
+    panning.current = null;
+    updateSheet();
   }
+
 
   function attach() {
     const canvas = canvasRef.current;
@@ -245,7 +337,7 @@ export function DrawingPad({
     <div
       className={
         full
-          ? "fixed inset-0 z-50 flex select-none flex-col overflow-auto bg-background p-3 [-webkit-touch-callout:none] [-webkit-user-select:none]"
+          ? "fixed inset-0 z-50 flex select-none flex-col overflow-hidden bg-background p-3 [-webkit-touch-callout:none] [-webkit-user-select:none]"
           : "rounded-lg border border-dashed border-border p-3"
       }
       onCopy={(event) => event.preventDefault()}
@@ -272,7 +364,7 @@ export function DrawingPad({
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
         {full
-          ? "The question is printed underneath — write straight over it. Minimise & save keeps your sheet, then press Check answer."
+          ? "The question is printed underneath — write straight over it. Scroll down for as much space as you need, switch to Moving to drag the picture, and use the picture buttons to make it bigger or smaller. Minimise & save keeps your sheet, then press Check answer."
           : "Use a stylus, finger or mouse. Open full screen to draw on top of the question picture."}
       </p>
 
@@ -326,18 +418,88 @@ export function DrawingPad({
           <Maximize className="size-4" />
           Reset
         </Button>
+        {full ? (
+          <>
+            <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+            <Button
+              type="button"
+              size="sm"
+              variant={mode === "move" ? "default" : "outline"}
+              disabled={disabled}
+              onClick={() => setMode(mode === "move" ? "draw" : "move")}
+            >
+              {mode === "move" ? <Hand className="size-4" /> : <PenLine className="size-4" />}
+              {mode === "move" ? "Moving" : "Drawing"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={disabled || photoScale <= 0.4}
+              aria-label="Make the question picture smaller"
+              onClick={() => {
+                setPhotoScale((s) => Math.max(0.4, Number((s - 0.1).toFixed(2))));
+                requestAnimationFrame(() => {
+                  redraw();
+                  updateSheet();
+                });
+              }}
+            >
+              <ImageMinus className="size-4" />
+            </Button>
+            <span className="w-12 text-center text-xs text-muted-foreground">
+              {Math.round(photoScale * 100)}%
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={disabled || photoScale >= 2.5}
+              aria-label="Make the question picture bigger"
+              onClick={() => {
+                setPhotoScale((s) => Math.min(2.5, Number((s + 0.1).toFixed(2))));
+                requestAnimationFrame(() => {
+                  redraw();
+                  updateSheet();
+                });
+              }}
+            >
+              <ImagePlus className="size-4" />
+            </Button>
+          </>
+        ) : null}
       </div>
-      <canvas
-        ref={canvasRef}
-        onPointerDown={start}
-        onPointerMove={move}
-        onPointerUp={end}
-        onPointerLeave={end}
-        onPointerCancel={end}
-        className={`mt-2 w-full touch-none rounded-md border border-border bg-white ${
-          full ? "min-h-0 flex-1" : height
-        }`}
-      />
+      {full ? (
+        <div
+          ref={scrollRef}
+          onScroll={updateSheet}
+          className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        >
+          <canvas
+            ref={canvasRef}
+            onPointerDown={start}
+            onPointerMove={move}
+            onPointerUp={end}
+            onPointerLeave={end}
+            onPointerCancel={end}
+            style={{ height: sheetHeight ? `${sheetHeight}px` : "150vh" }}
+            className={`w-full touch-none rounded-md border border-border bg-white ${
+              mode === "move" ? "cursor-grab" : "cursor-crosshair"
+            }`}
+          />
+        </div>
+      ) : (
+        <canvas
+          ref={canvasRef}
+          onPointerDown={start}
+          onPointerMove={move}
+          onPointerUp={end}
+          onPointerLeave={end}
+          onPointerCancel={end}
+          className={`mt-2 w-full touch-none rounded-md border border-border bg-white ${height}`}
+        />
+      )}
+
 
 
       <div className="mt-2 flex flex-wrap gap-2">

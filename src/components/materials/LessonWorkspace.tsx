@@ -536,7 +536,11 @@ export function LessonWorkspace({
           Close
         </Button>
         <div className="min-w-0">
-          <h2 className="truncate font-display text-lg leading-tight">{unit.title}</h2>
+          {canManage ? (
+            <UnitTitleEditor unit={unit} onSaved={onUnitChanged} />
+          ) : (
+            <h2 className="truncate font-display text-lg leading-tight">{unit.title}</h2>
+          )}
           <p className="flex items-center gap-1 text-xs text-muted-foreground">
             <CalendarDays className="size-3" />
             {planLine(unit)}
@@ -619,7 +623,7 @@ export function LessonWorkspace({
                   <Trash2 className="size-4" />
                 </Button>
               ) : null}
-              <UnitPlanDialog unit={unit} onSaved={onUnitChanged} />
+              
             </>
           ) : null}
           {canManage ? (

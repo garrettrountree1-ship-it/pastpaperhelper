@@ -1,4 +1,16 @@
-import { Eraser, Expand, Maximize, Minimize, PenLine, Undo2, ZoomIn, ZoomOut } from "lucide-react";
+import {
+  Eraser,
+  Expand,
+  Hand,
+  ImageMinus,
+  ImagePlus,
+  Maximize,
+  Minimize,
+  PenLine,
+  Undo2,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +28,8 @@ const PEN_COLORS = [
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 4;
+const MAX_SHEET = 12000;
+
 
 /**
  * Stylus / finger / mouse writing pad for working out calculations on screen

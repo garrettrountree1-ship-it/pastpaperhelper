@@ -541,7 +541,18 @@ export function FormativeCheckPanel({
 
   if (!check || dismissed === check.id) return null;
   const correct = gotItRight;
-  const timeUp = countdown?.left === 0;
+  const timeUp = !check.countUp && countdown?.left === 0;
+  // Count-up mode: the clock runs until this student gets it right, then the
+  // total time they took stays on screen.
+  const totalSeconds =
+    correct && latest?.createdAt && check.startedAt
+      ? Math.max(
+          0,
+          Math.round(
+            (new Date(latest.createdAt).getTime() - new Date(check.startedAt).getTime()) / 1000,
+          ),
+        )
+      : null;
 
 
   const student = !check.isTeacher;

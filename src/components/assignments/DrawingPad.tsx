@@ -327,21 +327,14 @@ export function DrawingPad({
   function attach() {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    // Export the whole sheet at 100% zoom, whatever the student is viewing at.
-    const savedZoom = zoomRef.current;
-    const savedOffset = { ...offsetRef.current };
-    zoomRef.current = 1;
-    offsetRef.current = { x: 0, y: 0 };
     redraw();
     canvas.toBlob((blob) => {
-      zoomRef.current = savedZoom;
-      offsetRef.current = savedOffset;
-      redraw();
       if (!blob) return;
       onAttach(new File([blob], PAD_FILE_NAME, { type: "image/png" }));
       setSaved(true);
     }, "image/png");
   }
+
 
   /** Keeps the saved picture in step with the pad without the student thinking
    * about it, so pressing Check answer always marks their latest working. */

@@ -153,9 +153,47 @@ function PreviewPage() {
         ) : data ? (
           <>
             <div className="paper mt-4 p-5">
-              <Badge variant="secondary" className="mb-3">
-                Student view (preview — nothing is saved)
-              </Badge>
+              <div className="mb-3 flex flex-wrap items-center gap-3">
+                <Badge variant="secondary">Student view (preview — nothing is saved)</Badge>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Viewing as</span>
+                  <Select value={studentId} onValueChange={setStudentId}>
+                    <SelectTrigger className="h-8 w-56 text-xs">
+                      <SelectValue placeholder="Class default" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="class">Class default settings</SelectItem>
+                      {(data.students ?? []).map((student) => (
+                        <SelectItem key={student.id} value={student.id}>
+                          {student.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {settings ? (
+                <div className="mb-3 flex flex-wrap gap-2 text-xs">
+                  <Badge variant="outline">Tutor: {settings.level} · {settings.language}</Badge>
+                  <Badge variant="outline">Hint: {settings.allowHint ? "on" : "off"}</Badge>
+                  <Badge variant="outline">
+                    Step-by-step: {settings.allowSteps ? "on" : "off"}
+                  </Badge>
+                  <Badge variant="outline">
+                    Tries per question: {settings.maxAttempts > 0 ? settings.maxAttempts : "unlimited"}
+                  </Badge>
+                  {settings.examMode ? (
+                    <Badge variant="outline">
+                      Real paper · hand-ins:{" "}
+                      {settings.maxPaperSubmissions > 0 ? settings.maxPaperSubmissions : "unlimited"}
+                    </Badge>
+                  ) : null}
+                  {settings.keywordTranslation ? (
+                    <Badge variant="outline">Key-word translation on</Badge>
+                  ) : null}
+                </div>
+              ) : null}
+
               <div className="flex items-start justify-between gap-3">
                 <h1 className="text-3xl">{data.assignment.title}</h1>
                 <VocabSheet assignmentId={assignmentId} />

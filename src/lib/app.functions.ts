@@ -2428,6 +2428,9 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
 
     return {
       tutorSettings,
+      students,
+      viewingStudentId: studentId,
+
       assignment: {
         id: assignment.id,
         classId: assignment.class_id,

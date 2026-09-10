@@ -2691,6 +2691,16 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
 
 
 
+    const { recoverAnswerCrops: recoverPreviewAnswerCrops } = await import("./answer-crop.server");
+    const previewMarkSchemePaths = await recoverPreviewAnswerCrops({
+      id: question.id,
+      position: question.position,
+      question_text: question.question_text,
+      mark_scheme: question.mark_scheme,
+      image_paths: (question.image_paths ?? []) as string[],
+      answer_image_paths: (question.answer_image_paths ?? []) as string[],
+    });
+
     const { markStudentAnswer } = await import("./marking.server");
     const result = await markStudentAnswer({
       curriculum: assignment.curriculum,
@@ -2701,7 +2711,9 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       answer: data.answerText,
       imageUrls: previewImages,
       questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
+      markSchemeImageUrls: await signPaperPages(db, previewMarkSchemePaths),
     });
+
 
     return {
       verdict: result.verdict,

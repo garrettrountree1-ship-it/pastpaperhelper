@@ -962,7 +962,7 @@ function parseCropList(
 
 export function scrubIdentifiers(input: string): string {
   return input
-    .replace(/©[^\n]*/g, "")
+    .replace(/^\s*(?:©|\(c\))\s*(?:19|20)\d{2}[^\n]*$/gim, "")
     .replace(/\b(UCLES|Cambridge Assessment|Cambridge International|CAIE|Edexcel|Pearson|AQA|OCR|WJEC|International Baccalaureate|IBO)\b[^\n]*/gi, "")
     .replace(/\b(?:May|June|October|November|January|February|March)\s*\/?\s*(?:19|20)\d{2}\b/gi, "")
     .replace(/\b\d{4}\/\d{2}\/[A-Z]\/[A-Z]\/[A-Z]{2}\b/g, "")

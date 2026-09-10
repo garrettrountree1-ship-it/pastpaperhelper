@@ -109,6 +109,46 @@ export function SlideAnnotations({
   // Text boxes only accept clicks when the pointer isn't being used to mark up.
   const textActive = tool === "none" || tool === "edit" || tool === "text";
   const { undo, redo } = useUndoHistory(value, onChange);
+  // Latest marks, so a drag started earlier still writes onto current state.
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const drag = useRef<{ index: number; startX: number; startY: number; x: number; y: number } | null>(
+    null,
+  );
+
+  /** Pick up a text box by its move grip and slide it around the page. */
+  function beginDrag(event: React.PointerEvent, index: number) {
+    const box = value.texts[index];
+    if (!box) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = hostRef.current?.getBoundingClientRect();
+    const scale = rect && rect.width > 0 ? rect.width / width : 1;
+    drag.current = { index, startX: event.clientX, startY: event.clientY, x: box.x, y: box.y };
+
+    const onMove = (moveEvent: PointerEvent) => {
+      const state = drag.current;
+      if (!state) return;
+      const nextX = state.x + (moveEvent.clientX - state.startX) / scale;
+      const nextY = state.y + (moveEvent.clientY - state.startY) / scale;
+      const current = valueRef.current;
+      onChange({
+        ...current,
+        texts: current.texts.map((t, i) =>
+          i === state.index ? { ...t, x: Math.round(nextX), y: Math.round(nextY) } : t,
+        ),
+      });
+    };
+    const onUp = () => {
+      drag.current = null;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  }
 
 
 

@@ -2482,13 +2482,18 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
     const { data: studentRelease } = studentId
       ? await db
           .from("student_assignment_settings")
-          .select("mark_scheme_revealed")
+          .select("mark_scheme_revealed, reveal_on_full_marks")
           .eq("assignment_id", data.assignmentId)
           .eq("student_id", studentId)
           .maybeSingle()
       : { data: null };
     const markSchemeRevealed = Boolean(
       assignment.mark_scheme_revealed || studentRelease?.mark_scheme_revealed,
+    );
+    // "Reveal on full marks" shows one question's answer the moment it is fully correct.
+    const revealOnFullMarks = Boolean(
+      (assignment as { reveal_on_full_marks?: boolean | null }).reveal_on_full_marks ||
+        (studentRelease as { reveal_on_full_marks?: boolean | null } | null)?.reveal_on_full_marks,
     );
 
     // Previewing an SL student hides HL-only questions, exactly as they see it.

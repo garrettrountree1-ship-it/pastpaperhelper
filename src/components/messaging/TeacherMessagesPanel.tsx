@@ -1,11 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ChevronDown, ChevronRight, MessageSquare } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listClassMessages, replyToStudent } from "@/lib/messaging.functions";
 
@@ -50,6 +49,45 @@ export function useUnreadClassMessages(classId: string, role: "teacher" | "stude
         : !isSystemMessage(m) && m.sender_role === "teacher") &&
       new Date(m.created_at).getTime() > seenAt,
   ).length;
+}
+
+/** Textarea that grows with its content so long replies never run off the end. */
+function AutoResizeTextarea({
+  value,
+  onChange,
+  placeholder,
+  onSubmit,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  onSubmit?: () => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(200, el.scrollHeight)}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" && !event.shiftKey && onSubmit) {
+          event.preventDefault();
+          onSubmit();
+        }
+      }}
+      rows={1}
+      placeholder={placeholder}
+      className="flex min-h-[40px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+    />
+  );
 }
 
 /** Private teacher ↔ student threads for one class, grouped by student. */
@@ -218,13 +256,16 @@ export function TeacherMessagesPanel({
                       ))}
                     </div>
                     {role === "teacher" ? (
-                      <div className="mt-3 flex gap-2">
-                        <Input
+                      <div className="mt-3 flex items-end gap-2">
+                        <AutoResizeTextarea
                           value={drafts[studentId] ?? ""}
-                          onChange={(event) =>
-                            setDrafts((prev) => ({ ...prev, [studentId]: event.target.value }))
+                          onChange={(value) =>
+                            setDrafts((prev) => ({ ...prev, [studentId]: value }))
                           }
                           placeholder="Reply to this student"
+                          onSubmit={() =>
+                            send.mutate({ studentId, body: (drafts[studentId] ?? "").trim() })
+                          }
                         />
                         <Button
                           onClick={() =>

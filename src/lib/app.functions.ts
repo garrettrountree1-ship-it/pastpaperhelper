@@ -2645,7 +2645,7 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: question, error: qError } = await db
       .from("questions")
-      .select("id, question_text, mark_scheme, marks, assignment_id, image_paths")
+      .select("id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position")
       .eq("id", data.questionId)
       .single();
     if (qError) throw new Error(qError.message);

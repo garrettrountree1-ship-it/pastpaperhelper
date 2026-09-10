@@ -223,8 +223,8 @@ function StudentRow({
     id: string;
     name: string;
     dueAt: string | null;
-    markSchemeRevealed: boolean;
-    revealOnFullMarks: boolean;
+    markSchemeRevealed: boolean | null;
+    revealOnFullMarks: boolean | null;
   };
   classDueAt: string | null;
   classRevealed: boolean;
@@ -271,27 +271,23 @@ function StudentRow({
       <div className="mt-2 flex items-center gap-2">
         <Checkbox
           id={`reveal-${student.id}`}
-          checked={classRevealed || student.markSchemeRevealed}
-          disabled={classRevealed || saving}
+          checked={student.markSchemeRevealed ?? classRevealed}
+          disabled={saving}
           onCheckedChange={(checked) => onSave({ markSchemeRevealed: checked === true })}
         />
         <Label htmlFor={`reveal-${student.id}`} className="text-sm font-normal">
-          {classRevealed
-            ? "Mark scheme already revealed to the whole class"
-            : "Reveal the mark scheme to this student"}
+          Reveal the mark scheme to this student
         </Label>
       </div>
       <div className="mt-2 flex items-center gap-2">
         <Checkbox
           id={`full-marks-${student.id}`}
-          checked={classFullMarks || student.revealOnFullMarks}
-          disabled={classFullMarks || saving}
+          checked={student.revealOnFullMarks ?? classFullMarks}
+          disabled={saving}
           onCheckedChange={(checked) => onSave({ revealOnFullMarks: checked === true })}
         />
         <Label htmlFor={`full-marks-${student.id}`} className="text-sm font-normal">
-          {classFullMarks
-            ? "Show the mark scheme for a question as soon as a student gets full marks on it — already set for the whole class"
-            : "Show the mark scheme for a question as soon as this student gets full marks on it"}
+          Show the mark scheme for a question as soon as this student gets full marks on it
         </Label>
       </div>
     </div>

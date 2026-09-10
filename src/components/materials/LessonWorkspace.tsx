@@ -316,29 +316,50 @@ export function LessonWorkspace({
     };
   }, [presenting]);
 
-  // A mirrored student screen is a passive display. Capture keyboard and
-  // clipboard interactions before canvas or document tools can react; Escape
-  // remains available so the student can always leave presentation mode.
+  // A mirrored student screen is a passive display. Capture every interaction
+  // before canvas, document, iframe or scrolling tools can react. Escape and
+  // the dedicated exit button remain available.
   useEffect(() => {
     if (!mirror.receiving) return;
+    const isExit = (target: EventTarget | null) =>
+      target instanceof Element && Boolean(target.closest("[data-mirror-exit]"));
     const blockKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") return;
       event.preventDefault();
       event.stopImmediatePropagation();
     };
-    const blockClipboard = (event: ClipboardEvent) => {
+    const blockInteraction = (event: Event) => {
+      if (isExit(event.target)) return;
       event.preventDefault();
       event.stopImmediatePropagation();
     };
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
     document.addEventListener("keydown", blockKey, true);
-    document.addEventListener("paste", blockClipboard, true);
-    document.addEventListener("cut", blockClipboard, true);
-    document.addEventListener("copy", blockClipboard, true);
+    document.addEventListener("pointerdown", blockInteraction, true);
+    document.addEventListener("click", blockInteraction, true);
+    document.addEventListener("dblclick", blockInteraction, true);
+    document.addEventListener("contextmenu", blockInteraction, true);
+    document.addEventListener("wheel", blockInteraction, { capture: true, passive: false });
+    document.addEventListener("touchmove", blockInteraction, { capture: true, passive: false });
+    document.addEventListener("paste", blockInteraction, true);
+    document.addEventListener("cut", blockInteraction, true);
+    document.addEventListener("copy", blockInteraction, true);
     return () => {
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.body.style.overflow = previousBodyOverflow;
       document.removeEventListener("keydown", blockKey, true);
-      document.removeEventListener("paste", blockClipboard, true);
-      document.removeEventListener("cut", blockClipboard, true);
-      document.removeEventListener("copy", blockClipboard, true);
+      document.removeEventListener("pointerdown", blockInteraction, true);
+      document.removeEventListener("click", blockInteraction, true);
+      document.removeEventListener("dblclick", blockInteraction, true);
+      document.removeEventListener("contextmenu", blockInteraction, true);
+      document.removeEventListener("wheel", blockInteraction, true);
+      document.removeEventListener("touchmove", blockInteraction, true);
+      document.removeEventListener("paste", blockInteraction, true);
+      document.removeEventListener("cut", blockInteraction, true);
+      document.removeEventListener("copy", blockInteraction, true);
     };
   }, [mirror.receiving]);
 
@@ -761,7 +782,7 @@ export function LessonWorkspace({
         </div>
       ) : (
         <div
-          className={`relative flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto lg:flex-row lg:overflow-hidden ${presenting ? "p-0" : "p-2"}`}
+          className={`relative flex min-h-0 flex-1 flex-col gap-2 lg:flex-row ${presenting ? "overflow-hidden p-0" : "overflow-y-auto p-2 lg:overflow-hidden"}`}
         >
           {presenting ? (
             <div className="absolute bottom-3 left-3 z-[80] flex items-center gap-1 rounded-md border bg-background/95 p-1 shadow">
@@ -824,7 +845,7 @@ export function LessonWorkspace({
               ) : null}
                 </>
               )}
-              <Button size="sm" variant="secondary" onClick={togglePresentation} title="Exit presentation (Esc)">
+              <Button data-mirror-exit size="sm" variant="secondary" onClick={togglePresentation} title="Exit presentation (Esc)">
 
 
                 <Minimize className="size-4" />
@@ -834,7 +855,7 @@ export function LessonWorkspace({
           ) : null}
           {mirror.receiving ? (
             <div
-              className="absolute inset-0 z-[75] cursor-default touch-none"
+              className="fixed inset-0 z-[75] cursor-default touch-none overscroll-none"
               aria-label="Teacher screen mirroring is active. Exit presentation to regain control."
               onContextMenu={(event) => event.preventDefault()}
               onPointerDown={(event) => event.preventDefault()}

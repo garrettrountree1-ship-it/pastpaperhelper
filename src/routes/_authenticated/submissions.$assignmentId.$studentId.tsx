@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { questionBody, questionLabel } from "@/lib/question-label";
 
 import { AppHeader } from "@/components/AppHeader";
+import { StudentWorkPhoto } from "@/components/StudentWorkPhoto";
 import { RejectReasonDialog } from "@/components/homework/RejectReasonDialog";
 import { StudentNotifiedDialog } from "@/components/homework/StudentNotifiedDialog";
 

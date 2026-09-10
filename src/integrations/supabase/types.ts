@@ -198,6 +198,7 @@ export type Database = {
           photo_mode: string
           protect_questions: boolean
           published: boolean
+          reveal_on_full_marks: boolean
           subject: string
           title: string
           vocab_language: string | null
@@ -222,6 +223,7 @@ export type Database = {
           photo_mode?: string
           protect_questions?: boolean
           published?: boolean
+          reveal_on_full_marks?: boolean
           subject?: string
           title: string
           vocab_language?: string | null
@@ -246,6 +248,7 @@ export type Database = {
           photo_mode?: string
           protect_questions?: boolean
           published?: boolean
+          reveal_on_full_marks?: boolean
           subject?: string
           title?: string
           vocab_language?: string | null
@@ -1453,6 +1456,7 @@ export type Database = {
           max_answer_attempts: number | null
           max_paper_submissions: number | null
           photo_mode: string | null
+          reveal_on_full_marks: boolean | null
           student_id: string
           updated_at: string
           updated_by: string | null
@@ -1470,6 +1474,7 @@ export type Database = {
           max_answer_attempts?: number | null
           max_paper_submissions?: number | null
           photo_mode?: string | null
+          reveal_on_full_marks?: boolean | null
           student_id: string
           updated_at?: string
           updated_by?: string | null
@@ -1487,6 +1492,7 @@ export type Database = {
           max_answer_attempts?: number | null
           max_paper_submissions?: number | null
           photo_mode?: string | null
+          reveal_on_full_marks?: boolean | null
           student_id?: string
           updated_at?: string
           updated_by?: string | null

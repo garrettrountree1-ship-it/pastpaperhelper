@@ -1878,6 +1878,20 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
     const tutorSettings = await tutorSettingsForAssignment(db, data.assignmentId, userId);
 
+    // Questions this student has already earned full marks on. When the teacher
+    // turns on "reveal on full marks", only these questions show their answer.
+    const fullMarkQuestionIds = new Set(
+      (answers ?? [])
+        .filter((a) => {
+          const q = (allQuestions ?? []).find((row) => row.id === a.question_id);
+          const marks = Number(q?.marks ?? 0);
+          return marks > 0 && Number(a.awarded_marks ?? 0) >= marks && !a.rejected_at;
+        })
+        .map((a) => a.question_id),
+    );
+    const revealsQuestion = (questionId: string) =>
+      access.markSchemeRevealed || (access.revealOnFullMarks && fullMarkQuestionIds.has(questionId));
+
     return {
       tutorSettings,
       assignment: {
@@ -1901,9 +1915,9 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
           question_text: q.question_text,
           marks: q.marks,
           image_paths: q.image_paths,
-          markScheme: access.markSchemeRevealed ? q.mark_scheme : null,
-          answerImagePaths: access.markSchemeRevealed ? (q.answer_image_paths ?? []) : [],
-          answerImageUrls: access.markSchemeRevealed
+          markScheme: revealsQuestion(q.id) ? q.mark_scheme : null,
+          answerImagePaths: revealsQuestion(q.id) ? (q.answer_image_paths ?? []) : [],
+          answerImageUrls: revealsQuestion(q.id)
             ? await signPaperPages(db, q.answer_image_paths ?? [])
             : [],
           photoMode: resolvePhotoMode({
@@ -3071,6 +3085,8 @@ type StudentAccess = {
   dueOverridden: boolean;
   pastDue: boolean;
   markSchemeRevealed: boolean;
+  /** Show one question's mark scheme as soon as that question earns full marks. */
+  revealOnFullMarks: boolean;
   /** Assignment-level photo setting and the per-student override (if any). */
   assignmentPhotoMode: string | null;
   studentPhotoMode: string | null;
@@ -3085,12 +3101,12 @@ async function studentAccess(
   const [{ data: assignment }, { data: override }] = await Promise.all([
     db
       .from("assignments")
-      .select("due_at, mark_scheme_revealed, photo_mode")
+      .select("due_at, mark_scheme_revealed, reveal_on_full_marks, photo_mode")
       .eq("id", assignmentId)
       .maybeSingle(),
     db
       .from("student_assignment_settings")
-      .select("due_at, mark_scheme_revealed, photo_mode")
+      .select("due_at, mark_scheme_revealed, reveal_on_full_marks, photo_mode")
       .eq("assignment_id", assignmentId)
       .eq("student_id", studentId)
       .maybeSingle(),
@@ -3102,6 +3118,10 @@ async function studentAccess(
     dueOverridden,
     pastDue: Boolean(dueAt && new Date(dueAt).getTime() < Date.now()),
     markSchemeRevealed: Boolean(assignment?.mark_scheme_revealed || override?.mark_scheme_revealed),
+    revealOnFullMarks: Boolean(
+      (assignment as { reveal_on_full_marks?: boolean | null } | null)?.reveal_on_full_marks ||
+        (override as { reveal_on_full_marks?: boolean | null } | null)?.reveal_on_full_marks,
+    ),
     assignmentPhotoMode: (assignment?.photo_mode as string | null) ?? "auto",
     studentPhotoMode: (override?.photo_mode as string | null) ?? null,
   };
@@ -3124,7 +3144,7 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
     const { data: assignment } = await db
       .from("assignments")
       .select(
-        "id, title, class_id, due_at, mark_scheme_revealed, photo_mode, keyword_translation, vocab_translation, vocab_language",
+        "id, title, class_id, due_at, mark_scheme_revealed, reveal_on_full_marks, photo_mode, keyword_translation, vocab_translation, vocab_language",
       )
       .eq("id", data.assignmentId)
       .single();
@@ -3141,7 +3161,7 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
         : Promise.resolve({ data: [] as Array<{ id: string; full_name: string; email: string | null }> }),
       db
         .from("student_assignment_settings")
-        .select("student_id, due_at, mark_scheme_revealed, photo_mode, keyword_translation")
+        .select("student_id, due_at, mark_scheme_revealed, reveal_on_full_marks, photo_mode, keyword_translation")
         .eq("assignment_id", data.assignmentId),
     ]);
 
@@ -3149,6 +3169,9 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
       assignmentTitle: assignment!.title,
       dueAt: assignment!.due_at as string | null,
       markSchemeRevealed: Boolean(assignment!.mark_scheme_revealed),
+      revealOnFullMarks: Boolean(
+        (assignment as { reveal_on_full_marks?: boolean | null }).reveal_on_full_marks,
+      ),
       photoMode: isPhotoMode(assignment!.photo_mode) ? assignment!.photo_mode : "auto",
       keywordTranslation: (assignment!.keyword_translation as boolean | null) ?? null,
       vocabTranslation: assignment!.vocab_translation !== false,
@@ -3161,6 +3184,9 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
           name: profile?.full_name || profile?.email || "Student",
           dueAt: (setting?.due_at as string | null) ?? null,
           markSchemeRevealed: Boolean(setting?.mark_scheme_revealed),
+          revealOnFullMarks: Boolean(
+            (setting as { reveal_on_full_marks?: boolean | null } | undefined)?.reveal_on_full_marks,
+          ),
           photoMode: isPhotoMode(setting?.photo_mode) ? setting!.photo_mode : null,
           keywordTranslation: (setting?.keyword_translation as boolean | null) ?? null,
         };
@@ -3178,6 +3204,7 @@ export const setAssignmentAccess = createServerFn({ method: "POST" })
         assignmentId: z.string().uuid(),
         dueAt: z.string().nullable().optional(),
         markSchemeRevealed: z.boolean().optional(),
+        revealOnFullMarks: z.boolean().optional(),
         photoMode: z.enum(["auto", "on", "off"]).optional(),
         keywordTranslation: z.boolean().nullable().optional(),
         vocabTranslation: z.boolean().optional(),
@@ -3196,6 +3223,7 @@ export const setAssignmentAccess = createServerFn({ method: "POST" })
     const patch: {
       due_at?: string | null;
       mark_scheme_revealed?: boolean;
+      reveal_on_full_marks?: boolean;
       photo_mode?: string;
       keyword_translation?: boolean | null;
       vocab_translation?: boolean;
@@ -3203,6 +3231,7 @@ export const setAssignmentAccess = createServerFn({ method: "POST" })
     } = {};
     if (data.dueAt !== undefined) patch.due_at = data.dueAt;
     if (data.markSchemeRevealed !== undefined) patch.mark_scheme_revealed = data.markSchemeRevealed;
+    if (data.revealOnFullMarks !== undefined) patch.reveal_on_full_marks = data.revealOnFullMarks;
     if (data.photoMode !== undefined) patch.photo_mode = data.photoMode;
     if (data.keywordTranslation !== undefined) patch.keyword_translation = data.keywordTranslation;
     if (data.vocabTranslation !== undefined) patch.vocab_translation = data.vocabTranslation;
@@ -3226,6 +3255,7 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
         studentId: z.string().uuid(),
         dueAt: z.string().nullable().optional(),
         markSchemeRevealed: z.boolean().optional(),
+        revealOnFullMarks: z.boolean().optional(),
         photoMode: z.enum(["auto", "on", "off"]).nullable().optional(),
         keywordTranslation: z.boolean().nullable().optional(),
       })
@@ -3247,6 +3277,7 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
       updated_at: string;
       due_at?: string | null;
       mark_scheme_revealed?: boolean;
+      reveal_on_full_marks?: boolean;
       photo_mode?: string | null;
       keyword_translation?: boolean | null;
     } = {
@@ -3257,6 +3288,7 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
     };
     if (data.dueAt !== undefined) patch.due_at = data.dueAt;
     if (data.markSchemeRevealed !== undefined) patch.mark_scheme_revealed = data.markSchemeRevealed;
+    if (data.revealOnFullMarks !== undefined) patch.reveal_on_full_marks = data.revealOnFullMarks;
     if (data.photoMode !== undefined) patch.photo_mode = data.photoMode;
     if (data.keywordTranslation !== undefined) patch.keyword_translation = data.keywordTranslation;
 

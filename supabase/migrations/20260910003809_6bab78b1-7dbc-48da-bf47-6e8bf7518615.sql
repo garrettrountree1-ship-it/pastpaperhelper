@@ -1,0 +1,2 @@
+ALTER TABLE public.assignments ADD COLUMN IF NOT EXISTS reveal_on_full_marks boolean NOT NULL DEFAULT false;
+ALTER TABLE public.student_assignment_settings ADD COLUMN IF NOT EXISTS reveal_on_full_marks boolean;

@@ -257,7 +257,6 @@ export function useMirrorFieldWith<T>(
   const applyRef = useRef(apply);
   applyRef.current = apply;
 
-  const send = scope === "content" ? liveSending : sending;
   const take = scope === "content" ? liveReceiving : receiving;
 
   useEffect(() => {

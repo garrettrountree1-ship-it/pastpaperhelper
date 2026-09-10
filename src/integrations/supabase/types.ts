@@ -1455,7 +1455,7 @@ export type Database = {
           exam_mode: boolean | null
           id: string
           keyword_translation: boolean | null
-          mark_scheme_revealed: boolean
+          mark_scheme_revealed: boolean | null
           max_answer_attempts: number | null
           max_paper_submissions: number | null
           photo_mode: string | null
@@ -1473,7 +1473,7 @@ export type Database = {
           exam_mode?: boolean | null
           id?: string
           keyword_translation?: boolean | null
-          mark_scheme_revealed?: boolean
+          mark_scheme_revealed?: boolean | null
           max_answer_attempts?: number | null
           max_paper_submissions?: number | null
           photo_mode?: string | null
@@ -1491,7 +1491,7 @@ export type Database = {
           exam_mode?: boolean | null
           id?: string
           keyword_translation?: boolean | null
-          mark_scheme_revealed?: boolean
+          mark_scheme_revealed?: boolean | null
           max_answer_attempts?: number | null
           max_paper_submissions?: number | null
           photo_mode?: string | null

@@ -9,12 +9,11 @@ import { supabase } from "@/integrations/supabase/client";
  * Two things travel from the teacher's lesson screen to the students:
  *
  * - "content" — the work itself: what is typed, drawn, highlighted or moved on
- *   the lesson canvas and on the document. This is always live for students, so
- *   they watch the teacher work without ever refreshing the page.
+ *   the lesson canvas and on the document.
  * - "view" — where the teacher is looking: which lesson page and resource,
- *   the window layout, zoom and scroll position. This only travels while the
- *   teacher has mirroring switched on and the student is in present mode, so
- *   students keep control of their own screen the rest of the time.
+ *   the window layout, zoom and scroll position.
+ * Both scopes travel only while the teacher is presenting with mirroring on,
+ * and students only apply them while they are also in present mode.
  */
 
 type Fields = Record<string, unknown>;
@@ -83,6 +82,7 @@ export function useLessonMirrorState({
   const allView = useRef<Fields>({});
   const pendingContent = useRef<Fields>({});
   const pendingView = useRef<Fields>({});
+  const activePresenter = useRef<string | null>(null);
 
   const topic = `lesson-mirror:${classId}`;
   const sending = isTeacher && presenting && mirrorOn;
@@ -112,6 +112,8 @@ export function useLessonMirrorState({
   // Kept in a ref so switching mirroring never rebuilds the connection.
   const sendingRef = useRef(sending);
   sendingRef.current = sending;
+  const presentingRef = useRef(presenting);
+  presentingRef.current = presenting;
 
   useEffect(() => {
     if (!isTeacher || !selfId) return;
@@ -139,19 +141,28 @@ export function useLessonMirrorState({
     });
 
     let lastView = sendingRef.current;
+    let lastSnapshot = 0;
     const timer = setInterval(() => {
       const content = pendingContent.current;
       const view = pendingView.current;
       const viewChanged = lastView !== sendingRef.current;
       const hasContent = Object.keys(content).length > 0;
       const hasView = sendingRef.current && Object.keys(view).length > 0;
-      if (!viewChanged && !hasContent && !hasView) return;
+      const now = Date.now();
+      const heartbeatDue = sendingRef.current && now - lastSnapshot >= 1000;
+      if (!viewChanged && !hasContent && !hasView && !heartbeatDue) return;
       pendingContent.current = {};
       pendingView.current = {};
       if (viewChanged) {
         lastView = sendingRef.current;
-        // Turning mirroring on hands the students the full picture at once.
+        lastSnapshot = now;
+        // Turning mirroring on hands students the complete current picture.
         sendAll();
+        return;
+      }
+      if (heartbeatDue) {
+        lastSnapshot = now;
+        send({ viewActive: true });
         return;
       }
       send({
@@ -182,8 +193,16 @@ export function useLessonMirrorState({
 
     channel.on("broadcast", { event: "lesson" }, ({ payload }) => {
       const message = payload as Payload;
-      if (trusted.length > 0 && (!message.from || !trusted.includes(message.from))) return;
+      if (!message.from || !trusted.includes(message.from)) return;
+      if (message.viewActive === true) {
+        activePresenter.current = message.from;
+      } else if (activePresenter.current && activePresenter.current !== message.from) {
+        return;
+      } else if (message.viewActive === false) {
+        activePresenter.current = null;
+      }
       setViewActive(message.viewActive === true);
+      if (!presentingRef.current || message.viewActive !== true) return;
       const patch = { ...(message.content ?? {}), ...(message.view ?? {}) };
       if (Object.keys(patch).length > 0) {
         setReceived((current) => ({ ...current, ...patch }));
@@ -196,22 +215,29 @@ export function useLessonMirrorState({
     });
     return () => {
       studentChannel.current = null;
+      activePresenter.current = null;
       setViewActive(false);
       void supabase.removeChannel(channel);
     };
   }, [isTeacher, topic, allowed]);
 
-  // Ask for the full picture again whenever the student enters present mode.
+  // Ask repeatedly until the active teacher answers. This covers students who
+  // enter while the teacher's channel is reconnecting or has not subscribed yet.
   useEffect(() => {
     if (isTeacher || !presenting) return;
-    void studentChannel.current?.send({ type: "broadcast", event: "hello", payload: {} });
-  }, [isTeacher, presenting]);
+    const ask = () =>
+      void studentChannel.current?.send({ type: "broadcast", event: "hello", payload: {} });
+    ask();
+    if (viewActive) return;
+    const timer = window.setInterval(ask, 1500);
+    return () => window.clearInterval(timer);
+  }, [isTeacher, presenting, viewActive]);
 
   return {
     sending,
     receiving,
-    liveSending: isTeacher,
-    liveReceiving: !isTeacher,
+    liveSending: sending,
+    liveReceiving: receiving,
     mirrorOn,
     setMirrorOn,
     publish,

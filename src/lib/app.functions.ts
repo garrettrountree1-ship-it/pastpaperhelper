@@ -1878,6 +1878,20 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
     const tutorSettings = await tutorSettingsForAssignment(db, data.assignmentId, userId);
 
+    // Questions this student has already earned full marks on. When the teacher
+    // turns on "reveal on full marks", only these questions show their answer.
+    const fullMarkQuestionIds = new Set(
+      (answers ?? [])
+        .filter((a) => {
+          const q = (allQuestions ?? []).find((row) => row.id === a.question_id);
+          const marks = Number(q?.marks ?? 0);
+          return marks > 0 && Number(a.awarded_marks ?? 0) >= marks && !a.rejected_at;
+        })
+        .map((a) => a.question_id),
+    );
+    const revealsQuestion = (questionId: string) =>
+      access.markSchemeRevealed || (access.revealOnFullMarks && fullMarkQuestionIds.has(questionId));
+
     return {
       tutorSettings,
       assignment: {

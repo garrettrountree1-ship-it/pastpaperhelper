@@ -313,14 +313,12 @@ function SubmissionPage() {
                       {answer?.imageUrls && answer.imageUrls.length > 0 ? (
                         <div className="mt-3 flex flex-wrap gap-2">
                           {answer.imageUrls.map((url) => (
-                            <a key={url} href={url} target="_blank" rel="noreferrer">
-                              <img
-                                src={url}
-                                alt="Student uploaded working"
-                                loading="lazy"
-                                className="size-24 rounded-lg border border-border object-cover"
-                              />
-                            </a>
+                            <StudentWorkPhoto
+                              key={url}
+                              url={url}
+                              alt="Student uploaded working"
+                              className="size-24 rounded-lg border border-border object-cover"
+                            />
                           ))}
                         </div>
                       ) : null}

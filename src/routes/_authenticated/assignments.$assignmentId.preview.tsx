@@ -285,6 +285,7 @@ function PreviewQuestion({
   allowSteps,
   maxAttempts,
   markSchemeRevealed,
+  revealOnFullMarks,
   onFlag,
 }: {
   assignmentId: string;
@@ -296,6 +297,7 @@ function PreviewQuestion({
   allowSteps: boolean;
   maxAttempts: number;
   markSchemeRevealed: boolean;
+  revealOnFullMarks: boolean;
   onFlag: () => void;
 }) {
   const [answer, setAnswer] = useState("");

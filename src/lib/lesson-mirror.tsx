@@ -299,6 +299,8 @@ export function useMirrorScroll(key: string, ref: React.RefObject<HTMLElement | 
           left: el.scrollLeft,
           height: el.scrollHeight,
           width: el.scrollWidth,
+          clientHeight: el.clientHeight,
+          clientWidth: el.clientWidth,
         }),
       );
     };
@@ -311,17 +313,53 @@ export function useMirrorScroll(key: string, ref: React.RefObject<HTMLElement | 
   }, [sending, publish, key, ref]);
 
   const incoming = received[key] as
-    | { top: number; left: number; height: number; width: number }
+    | {
+        top: number;
+        left: number;
+        height: number;
+        width: number;
+        clientHeight?: number;
+        clientWidth?: number;
+      }
     | undefined;
+
+  const incomingRef = useRef(incoming);
+  incomingRef.current = incoming;
 
   useEffect(() => {
     const el = ref.current;
-    if (!receiving || !el || !incoming) return;
-    const top =
-      incoming.height > 0 ? (incoming.top / incoming.height) * el.scrollHeight : incoming.top;
-    const left =
-      incoming.width > 0 ? (incoming.left / incoming.width) * el.scrollWidth : incoming.left;
-    el.scrollTop = top;
-    el.scrollLeft = left;
+    if (!receiving || !el) return;
+
+    const applyTeacherPosition = () => {
+      const position = incomingRef.current;
+      if (!position) return;
+      const teacherTopRange = Math.max(
+        0,
+        position.height - (position.clientHeight ?? 0),
+      );
+      const teacherLeftRange = Math.max(
+        0,
+        position.width - (position.clientWidth ?? 0),
+      );
+      const studentTopRange = Math.max(0, el.scrollHeight - el.clientHeight);
+      const studentLeftRange = Math.max(0, el.scrollWidth - el.clientWidth);
+      el.scrollTop =
+        teacherTopRange > 0
+          ? (position.top / teacherTopRange) * studentTopRange
+          : Math.min(position.top, studentTopRange);
+      el.scrollLeft =
+        teacherLeftRange > 0
+          ? (position.left / teacherLeftRange) * studentLeftRange
+          : Math.min(position.left, studentLeftRange);
+    };
+
+    applyTeacherPosition();
+    const hold = window.setInterval(applyTeacherPosition, 200);
+    const observer = new ResizeObserver(applyTeacherPosition);
+    observer.observe(el);
+    return () => {
+      window.clearInterval(hold);
+      observer.disconnect();
+    };
   }, [receiving, incoming, ref]);
 }

@@ -1159,19 +1159,6 @@ function AssignmentDialog({
                         imageUrls={question.imageUrls}
                         onSave={(imagePaths, imageUrls) => update_(index, { imagePaths, imageUrls })}
                       />
-                      <details>
-                        <summary className="cursor-pointer text-xs text-muted-foreground">
-                          Wording kept only for word help and marking (students see the picture)
-                        </summary>
-                        <Textarea
-                          className="mt-2"
-                          value={question.questionText}
-                          onChange={(event) =>
-                            update_(index, { questionText: event.target.value })
-                          }
-                          rows={3}
-                        />
-                      </details>
                     </div>
                   ) : (
                     <Textarea

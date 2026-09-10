@@ -634,7 +634,7 @@ async function gradeAttempt(db: AnyDb, attemptId: string) {
     .single();
   const { data: questions } = await db
     .from("quiz_questions")
-    .select("id, question_text, mark_scheme, marks, image_paths")
+    .select("id, question_text, mark_scheme, marks, image_paths, answer_image_paths")
     .eq("quiz_id", attempt.quiz_id)
     .order("position");
   const { data: answers } = await db

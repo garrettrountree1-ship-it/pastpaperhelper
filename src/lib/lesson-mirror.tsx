@@ -82,6 +82,7 @@ export function useLessonMirrorState({
   const allView = useRef<Fields>({});
   const pendingContent = useRef<Fields>({});
   const pendingView = useRef<Fields>({});
+  const activePresenter = useRef<string | null>(null);
 
   const topic = `lesson-mirror:${classId}`;
   const sending = isTeacher && presenting && mirrorOn;
@@ -193,6 +194,13 @@ export function useLessonMirrorState({
     channel.on("broadcast", { event: "lesson" }, ({ payload }) => {
       const message = payload as Payload;
       if (!message.from || !trusted.includes(message.from)) return;
+      if (message.viewActive === true) {
+        activePresenter.current = message.from;
+      } else if (activePresenter.current && activePresenter.current !== message.from) {
+        return;
+      } else if (message.viewActive === false) {
+        activePresenter.current = null;
+      }
       setViewActive(message.viewActive === true);
       if (!presentingRef.current || message.viewActive !== true) return;
       const patch = { ...(message.content ?? {}), ...(message.view ?? {}) };
@@ -207,6 +215,7 @@ export function useLessonMirrorState({
     });
     return () => {
       studentChannel.current = null;
+      activePresenter.current = null;
       setViewActive(false);
       void supabase.removeChannel(channel);
     };

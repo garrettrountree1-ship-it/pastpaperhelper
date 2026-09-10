@@ -2527,12 +2527,12 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
           .maybeSingle()
       : { data: null };
     const markSchemeRevealed = Boolean(
-      assignment.mark_scheme_revealed || studentRelease?.mark_scheme_revealed,
+      studentRelease?.mark_scheme_revealed ?? assignment.mark_scheme_revealed,
     );
     // "Reveal on full marks" shows one question's answer the moment it is fully correct.
     const revealOnFullMarks = Boolean(
-      (assignment as { reveal_on_full_marks?: boolean | null }).reveal_on_full_marks ||
-        (studentRelease as { reveal_on_full_marks?: boolean | null } | null)?.reveal_on_full_marks,
+      (studentRelease as { reveal_on_full_marks?: boolean | null } | null)?.reveal_on_full_marks ??
+        (assignment as { reveal_on_full_marks?: boolean | null }).reveal_on_full_marks,
     );
 
     // Previewing an SL student hides HL-only questions, exactly as they see it.
@@ -3175,10 +3175,12 @@ async function studentAccess(
     dueAt,
     dueOverridden,
     pastDue: Boolean(dueAt && new Date(dueAt).getTime() < Date.now()),
-    markSchemeRevealed: Boolean(assignment?.mark_scheme_revealed || override?.mark_scheme_revealed),
+    markSchemeRevealed: Boolean(
+      override?.mark_scheme_revealed ?? assignment?.mark_scheme_revealed,
+    ),
     revealOnFullMarks: Boolean(
-      (assignment as { reveal_on_full_marks?: boolean | null } | null)?.reveal_on_full_marks ||
-        (override as { reveal_on_full_marks?: boolean | null } | null)?.reveal_on_full_marks,
+      (override as { reveal_on_full_marks?: boolean | null } | null)?.reveal_on_full_marks ??
+        (assignment as { reveal_on_full_marks?: boolean | null } | null)?.reveal_on_full_marks,
     ),
     assignmentPhotoMode: (assignment?.photo_mode as string | null) ?? "auto",
     studentPhotoMode: (override?.photo_mode as string | null) ?? null,
@@ -3241,10 +3243,10 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
           id,
           name: profile?.full_name || profile?.email || "Student",
           dueAt: (setting?.due_at as string | null) ?? null,
-          markSchemeRevealed: Boolean(setting?.mark_scheme_revealed),
-          revealOnFullMarks: Boolean(
-            (setting as { reveal_on_full_marks?: boolean | null } | undefined)?.reveal_on_full_marks,
-          ),
+          markSchemeRevealed: (setting?.mark_scheme_revealed as boolean | null | undefined) ?? null,
+          revealOnFullMarks:
+            (setting as { reveal_on_full_marks?: boolean | null } | undefined)
+              ?.reveal_on_full_marks ?? null,
           photoMode: isPhotoMode(setting?.photo_mode) ? setting!.photo_mode : null,
           keywordTranslation: (setting?.keyword_translation as boolean | null) ?? null,
         };

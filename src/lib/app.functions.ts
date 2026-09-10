@@ -2526,6 +2526,7 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
         dueAt: assignment.due_at,
         pastDue,
         markSchemeRevealed,
+        revealOnFullMarks,
         className: klass?.name ?? "",
       },
       questions: await Promise.all(
@@ -2536,6 +2537,7 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
           marks: q.marks,
           image_paths: q.image_paths,
           markScheme: markSchemeRevealed ? q.mark_scheme : null,
+          fullMarksMarkScheme: revealOnFullMarks ? q.mark_scheme : null,
 
           answerImagePaths: q.answer_image_paths ?? [],
           answerImageUrls: await signPaperPages(db, q.answer_image_paths ?? []),

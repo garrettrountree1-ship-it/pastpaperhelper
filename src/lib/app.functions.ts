@@ -1915,9 +1915,9 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
           question_text: q.question_text,
           marks: q.marks,
           image_paths: q.image_paths,
-          markScheme: access.markSchemeRevealed ? q.mark_scheme : null,
-          answerImagePaths: access.markSchemeRevealed ? (q.answer_image_paths ?? []) : [],
-          answerImageUrls: access.markSchemeRevealed
+          markScheme: revealsQuestion(q.id) ? q.mark_scheme : null,
+          answerImagePaths: revealsQuestion(q.id) ? (q.answer_image_paths ?? []) : [],
+          answerImageUrls: revealsQuestion(q.id)
             ? await signPaperPages(db, q.answer_image_paths ?? [])
             : [],
           photoMode: resolvePhotoMode({

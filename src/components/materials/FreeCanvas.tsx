@@ -789,7 +789,7 @@ export function FreeCanvas({
               // Clicking a picture always selects it (so Delete removes it),
               // and only drags it while the pointer is in typing mode.
               setSelectedId(block.id);
-              if (mode === "type") startMove(block.id, event);
+              if (mode === "type" || mode === "select") startMove(block.id, event);
             }}
           >
             {url ? (
@@ -798,7 +798,7 @@ export function FreeCanvas({
                 alt={block.caption ?? "Lesson note image"}
                 draggable={false}
                 className={`w-full select-none rounded-md ${
-                  canEdit && mode === "type" ? "cursor-move" : ""
+                  canEdit && (mode === "type" || mode === "select") ? "cursor-move" : ""
                 } ${isSelected ? "ring-2 ring-primary" : ""}`}
                 style={{ height: block.h ?? "auto" }}
               />

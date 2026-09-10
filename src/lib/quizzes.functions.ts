@@ -148,7 +148,9 @@ export const createQuiz = createServerFn({ method: "POST" })
         mark_scheme: cleanMathText(q.markScheme),
         marks: q.marks,
         image_paths: q.imagePaths,
+        answer_image_paths: q.answerImagePaths,
       })),
+
     );
     if (qError) throw new Error(qError.message);
 

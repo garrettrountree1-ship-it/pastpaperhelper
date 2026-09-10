@@ -338,6 +338,11 @@ function PreviewQuestion({
   });
 
   const result = check.data;
+  // Full marks on this question releases this question's answer when the teacher
+  // turned that on, exactly as a student would see it.
+  const earnedFullMarks =
+    question.marks > 0 && Number(result?.awardedMarks ?? 0) >= question.marks;
+  const showAnswer = markSchemeRevealed || (revealOnFullMarks && earnedFullMarks);
 
   const tutor = useMutation({
     mutationFn: async () => {

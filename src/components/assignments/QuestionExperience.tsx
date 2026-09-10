@@ -512,7 +512,7 @@ export function QuestionExperience({
           {result.feedback ? (
             <TutorText className="mt-2 space-y-1 text-sm" text={result.feedback} />
           ) : null}
-          {verdict !== "correct" ? (
+          {verdict !== "correct" && !readOnly ? (
             <p className="mt-2 text-xs text-muted-foreground">
               Edit your answer above and press “Re-check answer” to try again.
             </p>
@@ -543,6 +543,7 @@ export function QuestionExperience({
             </div>
           ) : null}
 
+          {readOnly ? null : (
           <div className="mt-4 space-y-2">
             <Label htmlFor={`ask-${question.id}`} className="text-xs uppercase tracking-wide text-muted-foreground">
               Ask the AI tutor
@@ -580,18 +581,21 @@ export function QuestionExperience({
               The tutor never gives the answer, and your teacher can see these questions.
             </p>
           </div>
+          )}
         </div>
       ) : null}
         </div>
 
         <div className="flex flex-col items-center gap-2 pt-1">
           {headerAction}
-          <QuestionHelpButtons
-            questionId={question.id}
-            answerDraft={draft}
-            allowHint={allowHint}
-            allowSteps={allowSteps}
-          />
+          {readOnly ? null : (
+            <QuestionHelpButtons
+              questionId={question.id}
+              answerDraft={draft}
+              allowHint={allowHint}
+              allowSteps={allowSteps}
+            />
+          )}
         </div>
       </div>
     </section>

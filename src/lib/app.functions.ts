@@ -2187,24 +2187,8 @@ export const gradeAnswer = createServerFn({ method: "POST" })
 
     await recalcSubmission(db, submission.id);
 
-    // Older extracted assignments can have the printed mark-scheme page saved
-    // without a per-question answer crop. Recover that exact crop when it first
-    // becomes eligible for release, then persist it for every later view.
-    if (
-      access.revealOnFullMarks &&
-      Number(result.awardedMarks) >= Number(question.marks) &&
-      (question.answer_image_paths ?? []).length === 0
-    ) {
-      const { recoverAnswerCrops } = await import("./answer-crop.server");
-      await recoverAnswerCrops({
-        id: question.id,
-        position: question.position,
-        question_text: question.question_text,
-        mark_scheme: question.mark_scheme,
-        image_paths: (question.image_paths ?? []) as string[],
-        answer_image_paths: (question.answer_image_paths ?? []) as string[],
-      });
-    }
+
+
     return {
       answerId: answer.id,
       verdict: result.verdict,

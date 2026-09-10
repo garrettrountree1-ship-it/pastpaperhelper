@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { QuestionSnipStack } from "@/components/assignments/QuestionSnip";
+import { StudentWorkPhoto } from "@/components/StudentWorkPhoto";
 import { QuestionVocabBox } from "@/components/assignments/QuestionVocabBox";
 
 import { cleanMathText } from "@/lib/math-text";

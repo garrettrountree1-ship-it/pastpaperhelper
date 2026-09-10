@@ -406,6 +406,7 @@ export type Database = {
           created_at: string
           id: string
           question_id: string | null
+          reply_to_id: string | null
           sender_id: string
           sender_role: string
           student_id: string
@@ -418,6 +419,7 @@ export type Database = {
           created_at?: string
           id?: string
           question_id?: string | null
+          reply_to_id?: string | null
           sender_id: string
           sender_role?: string
           student_id: string
@@ -430,6 +432,7 @@ export type Database = {
           created_at?: string
           id?: string
           question_id?: string | null
+          reply_to_id?: string | null
           sender_id?: string
           sender_role?: string
           student_id?: string
@@ -455,6 +458,13 @@ export type Database = {
             columns: ["question_id"]
             isOneToOne: false
             referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "class_messages"
             referencedColumns: ["id"]
           },
         ]

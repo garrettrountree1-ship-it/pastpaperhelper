@@ -3071,6 +3071,8 @@ type StudentAccess = {
   dueOverridden: boolean;
   pastDue: boolean;
   markSchemeRevealed: boolean;
+  /** Show one question's mark scheme as soon as that question earns full marks. */
+  revealOnFullMarks: boolean;
   /** Assignment-level photo setting and the per-student override (if any). */
   assignmentPhotoMode: string | null;
   studentPhotoMode: string | null;
@@ -3085,12 +3087,12 @@ async function studentAccess(
   const [{ data: assignment }, { data: override }] = await Promise.all([
     db
       .from("assignments")
-      .select("due_at, mark_scheme_revealed, photo_mode")
+      .select("due_at, mark_scheme_revealed, reveal_on_full_marks, photo_mode")
       .eq("id", assignmentId)
       .maybeSingle(),
     db
       .from("student_assignment_settings")
-      .select("due_at, mark_scheme_revealed, photo_mode")
+      .select("due_at, mark_scheme_revealed, reveal_on_full_marks, photo_mode")
       .eq("assignment_id", assignmentId)
       .eq("student_id", studentId)
       .maybeSingle(),
@@ -3102,6 +3104,10 @@ async function studentAccess(
     dueOverridden,
     pastDue: Boolean(dueAt && new Date(dueAt).getTime() < Date.now()),
     markSchemeRevealed: Boolean(assignment?.mark_scheme_revealed || override?.mark_scheme_revealed),
+    revealOnFullMarks: Boolean(
+      (assignment as { reveal_on_full_marks?: boolean | null } | null)?.reveal_on_full_marks ||
+        (override as { reveal_on_full_marks?: boolean | null } | null)?.reveal_on_full_marks,
+    ),
     assignmentPhotoMode: (assignment?.photo_mode as string | null) ?? "auto",
     studentPhotoMode: (override?.photo_mode as string | null) ?? null,
   };

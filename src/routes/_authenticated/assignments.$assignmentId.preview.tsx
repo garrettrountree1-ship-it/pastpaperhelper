@@ -110,6 +110,7 @@ function PreviewPage() {
   const { assignmentId } = Route.useParams();
   const [flags, setFlags] = useState(0);
   const [studentId, setStudentId] = useState<string>("class");
+  const viewingStudent = studentId !== "class";
   const preview = useQuery({
     queryKey: ["assignment-preview", assignmentId, studentId],
     queryFn: () =>

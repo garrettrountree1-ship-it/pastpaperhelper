@@ -1129,6 +1129,7 @@ export function LessonWorkspace({
         </div>
       )}
     </div>
+    </LessonMirrorContext.Provider>
   );
 }
 

@@ -1915,7 +1915,8 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
           question_text: q.question_text,
           marks: q.marks,
           image_paths: q.image_paths,
-          markScheme: revealsQuestion(q.id) ? q.mark_scheme : null,
+          // Released answers are always the teacher-checked page cut, never AI-extracted text.
+          markScheme: null,
           answerImagePaths: revealsQuestion(q.id) ? (q.answer_image_paths ?? []) : [],
           answerImageUrls: revealsQuestion(q.id)
             ? await signPaperPages(db, q.answer_image_paths ?? [])
@@ -2536,8 +2537,8 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
           question_text: q.question_text,
           marks: q.marks,
           image_paths: q.image_paths,
-          markScheme: markSchemeRevealed ? q.mark_scheme : null,
-          fullMarksMarkScheme: revealOnFullMarks ? q.mark_scheme : null,
+          // Preview the exact mark-scheme crop just as students receive it.
+          markScheme: null,
 
           answerImagePaths: q.answer_image_paths ?? [],
           answerImageUrls: await signPaperPages(db, q.answer_image_paths ?? []),

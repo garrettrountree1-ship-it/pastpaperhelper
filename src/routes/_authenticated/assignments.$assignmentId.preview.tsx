@@ -85,7 +85,6 @@ type Question = {
   answerImageUrls?: string[];
   image_paths?: string[];
   markScheme?: string | null;
-  fullMarksMarkScheme?: string | null;
   photoMode?: PhotoMode;
 };
 
@@ -430,7 +429,7 @@ function PreviewQuestion({
       checking={check.isPending}
       checkError={check.isError ? (check.error as Error).message : undefined}
       onCheck={() => check.mutate()}
-      markScheme={showAnswer ? (question.markScheme ?? question.fullMarksMarkScheme ?? null) : null}
+      markScheme={null}
       markSchemeImageUrls={showAnswer ? (question.answerImageUrls ?? []) : []}
       keywordTranslation={keywordTranslation}
       allowHint={allowHint}

@@ -172,10 +172,13 @@ export function useLessonMirrorState({
 
   // Students always listen, so the teacher's work appears live. View updates are
   // only applied while they are in present mode and the teacher is mirroring.
+  const studentChannel = useRef<RealtimeChannel | null>(null);
+
   useEffect(() => {
     if (isTeacher) return;
     const trusted = allowed ? allowed.split(",") : [];
     const channel = supabase.channel(topic, { config: { broadcast: { self: false } } });
+    studentChannel.current = channel;
 
     channel.on("broadcast", { event: "lesson" }, ({ payload }) => {
       const message = payload as Payload;
@@ -192,6 +195,7 @@ export function useLessonMirrorState({
       }
     });
     return () => {
+      studentChannel.current = null;
       setViewActive(false);
       void supabase.removeChannel(channel);
     };
@@ -200,16 +204,8 @@ export function useLessonMirrorState({
   // Ask for the full picture again whenever the student enters present mode.
   useEffect(() => {
     if (isTeacher || !presenting) return;
-    const channel = supabase.channel(`${topic}:ping`);
-    channel.subscribe((status) => {
-      if (status === "SUBSCRIBED") {
-        void supabase.channel(topic).send({ type: "broadcast", event: "hello", payload: {} });
-      }
-    });
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [isTeacher, presenting, topic]);
+    void studentChannel.current?.send({ type: "broadcast", event: "hello", payload: {} });
+  }, [isTeacher, presenting]);
 
   return {
     sending,

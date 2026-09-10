@@ -1892,6 +1892,26 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     const revealsQuestion = (questionId: string) =>
       access.markSchemeRevealed || (access.revealOnFullMarks && fullMarkQuestionIds.has(questionId));
 
+    // Some questions were extracted without their mark-scheme cut saved. Find
+    // and store that exact cut now, so every released question shows a picture.
+    const { recoverAnswerCropsFor } = await import("./answer-crop.server");
+    const recovered = await recoverAnswerCropsFor(
+      (questions ?? [])
+        .filter((q) => revealsQuestion(q.id) && (q.answer_image_paths ?? []).length === 0)
+        .map((q) => ({
+          id: q.id,
+          position: q.position,
+          question_text: q.question_text,
+          mark_scheme: q.mark_scheme,
+          image_paths: q.image_paths as string[] | null,
+          answer_image_paths: q.answer_image_paths as string[] | null,
+        })),
+    );
+    const answerPathsFor = (q: { id: string; answer_image_paths?: string[] | null }) =>
+      (q.answer_image_paths ?? []).length > 0
+        ? (q.answer_image_paths ?? [])
+        : (recovered.get(q.id) ?? []);
+
     return {
       tutorSettings,
       assignment: {

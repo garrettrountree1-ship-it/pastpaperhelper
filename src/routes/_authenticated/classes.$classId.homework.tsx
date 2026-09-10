@@ -2232,14 +2232,7 @@ function StudentReport({
                           {attempt.imageUrls.length > 0 ? (
                             <div className="mt-2 flex flex-wrap gap-2">
                               {attempt.imageUrls.map((url) => (
-                                <a key={url} href={url} target="_blank" rel="noreferrer">
-                                  <img
-                                    src={url}
-                                    alt="Student working"
-                                    loading="lazy"
-                                    className="size-20 rounded border border-border object-cover"
-                                  />
-                                </a>
+                                <StudentWorkPhoto key={url} url={url} />
                               ))}
                             </div>
                           ) : null}

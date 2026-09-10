@@ -231,6 +231,39 @@ export async function extractQuestionsFromPapers(
   };
 }
 
+/** Locate one missing printed answer crop from the original saved page images. */
+export async function locateAnswerCrop(input: {
+  label: string;
+  questionText: string;
+  markScheme: string;
+  pages: UploadedFile[];
+}): Promise<QuestionCrop[] | null> {
+  const key = process.env["LOVABLE_API_KEY"];
+  if (!key || input.pages.length === 0) return null;
+  const documents: Array<Record<string, unknown>> = [];
+  input.pages.forEach((file, index) => {
+    documents.push({ type: "text", text: `--- ANSWER PAGE ${index + 1} ---` });
+    documents.push({
+      type: "image_url",
+      image_url: { url: `data:${file.mimeType};base64,${file.base64}` },
+    });
+  });
+  const text = await callGateway(key, [
+    "Locate the exact printed mark-scheme answer for the requested question.",
+    "Return only its horizontal crop band, starting at its own label and ending before the next answer.",
+    "Cut only through blank white space. Never include another answer.",
+    'Reply with JSON only: {"answerCrops":[{"page":1,"top":0.2,"bottom":0.3}]}.',
+  ].join(" "), [
+    {
+      type: "text",
+      text: `Question label: ${input.label}\nQuestion: ${input.questionText}\nExpected answer: ${input.markScheme}`,
+    },
+    ...documents,
+  ]);
+  const parsed = parseJson(text);
+  return parseCropList(parsed["answerCrops"] ?? parsed["answerCrop"], [], "answer");
+}
+
 /** Bookkeeping only: printed totals per question and the labels the answer key covers. */
 async function runCrossCheck(
   key: string,

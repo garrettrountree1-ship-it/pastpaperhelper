@@ -2437,7 +2437,7 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
     const { data: assignmentRow } = await db
       .from("assignments")
       .select(
-        "id, title, subject, curriculum, instructions, due_at, class_id, mark_scheme_revealed, photo_mode",
+        "id, title, subject, curriculum, instructions, due_at, class_id, mark_scheme_revealed, reveal_on_full_marks, photo_mode",
       )
       .eq("id", data.assignmentId)
       .single();

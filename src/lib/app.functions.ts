@@ -3144,7 +3144,7 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
     const { data: assignment } = await db
       .from("assignments")
       .select(
-        "id, title, class_id, due_at, mark_scheme_revealed, photo_mode, keyword_translation, vocab_translation, vocab_language",
+        "id, title, class_id, due_at, mark_scheme_revealed, reveal_on_full_marks, photo_mode, keyword_translation, vocab_translation, vocab_language",
       )
       .eq("id", data.assignmentId)
       .single();
@@ -3161,7 +3161,7 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
         : Promise.resolve({ data: [] as Array<{ id: string; full_name: string; email: string | null }> }),
       db
         .from("student_assignment_settings")
-        .select("student_id, due_at, mark_scheme_revealed, photo_mode, keyword_translation")
+        .select("student_id, due_at, mark_scheme_revealed, reveal_on_full_marks, photo_mode, keyword_translation")
         .eq("assignment_id", data.assignmentId),
     ]);
 
@@ -3169,6 +3169,9 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
       assignmentTitle: assignment!.title,
       dueAt: assignment!.due_at as string | null,
       markSchemeRevealed: Boolean(assignment!.mark_scheme_revealed),
+      revealOnFullMarks: Boolean(
+        (assignment as { reveal_on_full_marks?: boolean | null }).reveal_on_full_marks,
+      ),
       photoMode: isPhotoMode(assignment!.photo_mode) ? assignment!.photo_mode : "auto",
       keywordTranslation: (assignment!.keyword_translation as boolean | null) ?? null,
       vocabTranslation: assignment!.vocab_translation !== false,
@@ -3181,6 +3184,9 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
           name: profile?.full_name || profile?.email || "Student",
           dueAt: (setting?.due_at as string | null) ?? null,
           markSchemeRevealed: Boolean(setting?.mark_scheme_revealed),
+          revealOnFullMarks: Boolean(
+            (setting as { reveal_on_full_marks?: boolean | null } | undefined)?.reveal_on_full_marks,
+          ),
           photoMode: isPhotoMode(setting?.photo_mode) ? setting!.photo_mode : null,
           keywordTranslation: (setting?.keyword_translation as boolean | null) ?? null,
         };
@@ -3198,6 +3204,7 @@ export const setAssignmentAccess = createServerFn({ method: "POST" })
         assignmentId: z.string().uuid(),
         dueAt: z.string().nullable().optional(),
         markSchemeRevealed: z.boolean().optional(),
+        revealOnFullMarks: z.boolean().optional(),
         photoMode: z.enum(["auto", "on", "off"]).optional(),
         keywordTranslation: z.boolean().nullable().optional(),
         vocabTranslation: z.boolean().optional(),
@@ -3216,6 +3223,7 @@ export const setAssignmentAccess = createServerFn({ method: "POST" })
     const patch: {
       due_at?: string | null;
       mark_scheme_revealed?: boolean;
+      reveal_on_full_marks?: boolean;
       photo_mode?: string;
       keyword_translation?: boolean | null;
       vocab_translation?: boolean;
@@ -3223,6 +3231,7 @@ export const setAssignmentAccess = createServerFn({ method: "POST" })
     } = {};
     if (data.dueAt !== undefined) patch.due_at = data.dueAt;
     if (data.markSchemeRevealed !== undefined) patch.mark_scheme_revealed = data.markSchemeRevealed;
+    if (data.revealOnFullMarks !== undefined) patch.reveal_on_full_marks = data.revealOnFullMarks;
     if (data.photoMode !== undefined) patch.photo_mode = data.photoMode;
     if (data.keywordTranslation !== undefined) patch.keyword_translation = data.keywordTranslation;
     if (data.vocabTranslation !== undefined) patch.vocab_translation = data.vocabTranslation;
@@ -3246,6 +3255,7 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
         studentId: z.string().uuid(),
         dueAt: z.string().nullable().optional(),
         markSchemeRevealed: z.boolean().optional(),
+        revealOnFullMarks: z.boolean().optional(),
         photoMode: z.enum(["auto", "on", "off"]).nullable().optional(),
         keywordTranslation: z.boolean().nullable().optional(),
       })
@@ -3267,6 +3277,7 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
       updated_at: string;
       due_at?: string | null;
       mark_scheme_revealed?: boolean;
+      reveal_on_full_marks?: boolean;
       photo_mode?: string | null;
       keyword_translation?: boolean | null;
     } = {
@@ -3277,6 +3288,7 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
     };
     if (data.dueAt !== undefined) patch.due_at = data.dueAt;
     if (data.markSchemeRevealed !== undefined) patch.mark_scheme_revealed = data.markSchemeRevealed;
+    if (data.revealOnFullMarks !== undefined) patch.reveal_on_full_marks = data.revealOnFullMarks;
     if (data.photoMode !== undefined) patch.photo_mode = data.photoMode;
     if (data.keywordTranslation !== undefined) patch.keyword_translation = data.keywordTranslation;
 

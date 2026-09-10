@@ -158,15 +158,19 @@ function PreviewPage() {
           <>
             <div className="paper mt-4 p-5">
               <div className="mb-3 flex flex-wrap items-center gap-3">
-                <Badge variant="secondary">Student view (preview — nothing is saved)</Badge>
+                <Badge variant="secondary">
+                  {viewingStudent
+                    ? "Watching this student's work — read only"
+                    : "Test view (practise here — nothing is saved)"}
+                </Badge>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Viewing as</span>
+                  <span className="text-xs text-muted-foreground">Viewing</span>
                   <Select value={studentId} onValueChange={setStudentId}>
                     <SelectTrigger className="h-8 w-56 text-xs">
-                      <SelectValue placeholder="Class default" />
+                      <SelectValue placeholder="Test view" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="class">Class default settings</SelectItem>
+                      <SelectItem value="class">Test view (class default settings)</SelectItem>
                       {(data.students ?? []).map((student) => (
                         <SelectItem key={student.id} value={student.id}>
                           {student.name}

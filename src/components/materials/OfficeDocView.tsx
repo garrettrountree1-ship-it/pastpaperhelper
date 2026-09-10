@@ -31,6 +31,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { clearCachedDoc, readCachedJson, writeCachedJson } from "@/lib/doc-cache";
+import { useMirrorField, useMirrorScroll } from "@/lib/lesson-mirror";
 import { scopedKey, useMarkupScope } from "@/lib/markup-scope";
 
 import {
@@ -105,6 +106,13 @@ export function OfficeDocView({
   const [notes, setNotes] = useState<Record<number, SlideAnnotation>>({});
   const [edits, setEdits] = useState<Record<string, ShapeEdit>>({});
   const [currentSlide, setCurrentSlide] = useState(0);
+  // Present-mode mirroring: students following the teacher see the same place in
+  // the document, the same zoom, the same marks and the same retyped text.
+  const mirrorKey = `office:${format}:${cacheKey ?? title}`;
+  useMirrorField(`${mirrorKey}:zoom`, zoom, setZoom);
+  useMirrorField(`${mirrorKey}:notes`, notes, setNotes);
+  useMirrorField(`${mirrorKey}:edits`, edits, setEdits);
+  useMirrorScroll(`${mirrorKey}:scroll`, scrollRef);
   // Word documents are one long flow, so the markup layer covers the whole page.
   const docRef = useRef<HTMLDivElement | null>(null);
   const [docRatio, setDocRatio] = useState(1.414);

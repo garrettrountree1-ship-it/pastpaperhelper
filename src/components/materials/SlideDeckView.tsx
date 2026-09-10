@@ -3,6 +3,7 @@ import { useState } from "react";
 import { OfficeDocView } from "@/components/materials/OfficeDocView";
 import { PowerPointView } from "@/components/materials/PowerPointView";
 import { Button } from "@/components/ui/button";
+import { useMirrorField } from "@/lib/lesson-mirror";
 
 /**
  * Slide decks can be read two ways, and teachers and students both get the
@@ -26,6 +27,7 @@ export function SlideDeckView({
   canDownload?: boolean;
 }) {
   const [mode, setMode] = useState<"original" | "scroll">("original");
+  useMirrorField(`deck.mode:${cacheKey ?? title}`, mode, setMode);
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">

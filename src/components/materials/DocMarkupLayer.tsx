@@ -11,6 +11,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { readCachedJson, writeCachedJson } from "@/lib/doc-cache";
+import { useMirrorField } from "@/lib/lesson-mirror";
 import { scopedKey, useMarkupScope } from "@/lib/markup-scope";
 
 
@@ -49,6 +50,10 @@ export function useDocMarkup(baseKey: string) {
     };
   }, [storageKey, ready]);
 
+
+  // While the teacher mirrors their present-mode screen, the marks they make
+  // on the document appear live on every following student screen.
+  useMirrorField(`markup:${baseKey}`, notes, setNotes);
 
   function annotationOf(index: number) {
     return notes[index] ?? emptyAnnotation;

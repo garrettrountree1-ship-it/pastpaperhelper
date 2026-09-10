@@ -256,6 +256,7 @@ function PreviewPage() {
                       allowSteps={settings?.allowSteps !== false}
                       maxAttempts={settings?.maxAttempts ?? 0}
                       markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
+                      revealOnFullMarks={Boolean(data.assignment.revealOnFullMarks)}
                       onFlag={() => setFlags((count) => count + 1)}
                     />
                   ))}

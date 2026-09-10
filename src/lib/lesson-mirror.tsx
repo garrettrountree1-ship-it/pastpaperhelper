@@ -98,22 +98,22 @@ export function useLessonMirrorState({
     void supabase.auth.getUser().then(({ data }) => setSelfId(data.user?.id ?? null));
   }, []);
 
-  const publish = useCallback((key: string, value: unknown, scope: MirrorScope = "view") => {
-    if (scope === "content") {
-      allContent.current[key] = value;
-      pendingContent.current[key] = value;
-    } else {
-      allView.current[key] = value;
-      pendingView.current[key] = value;
-    }
-  }, []);
-
   // The teacher's work streams out continuously; the view only while mirroring.
   // Kept in a ref so switching mirroring never rebuilds the connection.
   const sendingRef = useRef(sending);
   sendingRef.current = sending;
   const presentingRef = useRef(presenting);
   presentingRef.current = presenting;
+
+  const publish = useCallback((key: string, value: unknown, scope: MirrorScope = "view") => {
+    if (scope === "content") {
+      allContent.current[key] = value;
+      if (sendingRef.current) pendingContent.current[key] = value;
+    } else {
+      allView.current[key] = value;
+      if (sendingRef.current) pendingView.current[key] = value;
+    }
+  }, []);
 
   useEffect(() => {
     if (!isTeacher || !selfId) return;
@@ -261,8 +261,8 @@ export function useMirrorFieldWith<T>(
   const take = scope === "content" ? liveReceiving : receiving;
 
   useEffect(() => {
-    if (send) publish(key, value, scope);
-  }, [send, publish, key, value, scope]);
+    publish(key, value, scope);
+  }, [publish, key, value, scope]);
 
   const incoming = received[key];
   useEffect(() => {
@@ -289,7 +289,7 @@ export function useMirrorScroll(key: string, ref: React.RefObject<HTMLElement | 
 
   useEffect(() => {
     const el = ref.current;
-    if (!el || !sending) return;
+    if (!el) return;
     let frame = 0;
     const report = () => {
       cancelAnimationFrame(frame);
@@ -310,7 +310,7 @@ export function useMirrorScroll(key: string, ref: React.RefObject<HTMLElement | 
       cancelAnimationFrame(frame);
       el.removeEventListener("scroll", report);
     };
-  }, [sending, publish, key, ref]);
+  }, [publish, key, ref]);
 
   const incoming = received[key] as
     | {

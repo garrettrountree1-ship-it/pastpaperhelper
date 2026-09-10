@@ -388,6 +388,8 @@ export function LessonWorkspace({
 
   const list = sections.data ?? [];
   const active = list.find((section) => section.id === activeId) ?? list[0] ?? null;
+  const currentDocId = docOverride ?? active?.material_id ?? null;
+  const material = unit.materials.find((m) => m.id === currentDocId) ?? null;
 
   useEffect(() => {
     if (!activeId && list.length > 0) setActiveId(list[0]!.id);
@@ -396,13 +398,14 @@ export function LessonWorkspace({
   // Which lesson page and which resource the teacher is showing, plus how the
   // two windows are arranged, all travel with the mirrored screen.
   useMirrorFieldWith(mirror, "workspace.section", activeId, setActiveId);
-  useMirrorFieldWith(mirror, "workspace.doc", docOverride, setDocOverride);
+  useMirrorFieldWith(mirror, "workspace.doc", currentDocId, setDocOverride);
   useMirrorFieldWith(mirror, "workspace.layout", layout, setLayout);
   useMirrorFieldWith(mirror, "workspace.pane", paneMode, setPaneMode);
   useMirrorFieldWith(mirror, "workspace.front", frontPane, setFrontPane);
   useMirrorFieldWith(mirror, "workspace.split", split, setSplit);
   useMirrorFieldWith(mirror, "workspace.float", floatState, setFloatState);
   useMirrorFieldWith(mirror, "workspace.floatRect", floatRect, setFloatRect);
+  useMirrorFieldWith(mirror, "workspace.tutorOpen", tutorOpen, setTutorOpen);
 
   const invalidateSections = () =>
     queryClient.invalidateQueries({ queryKey: ["unit-sections", unit.id] });
@@ -470,8 +473,6 @@ export function LessonWorkspace({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canManage, sections.isLoading, list.length]);
 
-  const currentDocId = docOverride ?? active?.material_id ?? null;
-  const material = unit.materials.find((m) => m.id === currentDocId) ?? null;
   const docUrl = useQuery({
     queryKey: ["material-url", material?.id],
     queryFn: () => getUrl({ data: { materialId: material!.id } }),

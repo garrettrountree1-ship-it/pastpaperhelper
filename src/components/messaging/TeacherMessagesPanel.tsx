@@ -244,7 +244,14 @@ export function TeacherMessagesPanel({
                     {threadOpen ? (
                       <>
                     <div className="mt-2 space-y-2">
-                      {thread.map((m) => (
+                      {thread.map((m) => {
+                        const quoted = m.reply_to_id
+                          ? thread.find((item) => item.id === m.reply_to_id)
+                          : null;
+                        // Teachers may delete either side; students only their own.
+                        const canDelete =
+                          role === "teacher" || m.sender_role === "student";
+                        return (
                         <div
                           key={m.id}
                           className={
@@ -253,6 +260,7 @@ export function TeacherMessagesPanel({
                               : "rounded-md bg-muted p-2 text-sm"
                           }
                         >
+                          <div className="flex items-start gap-2">
                           <p className="text-xs text-muted-foreground">
                             {m.sender_role === "teacher"
                               ? role === "teacher"
@@ -264,6 +272,55 @@ export function TeacherMessagesPanel({
                             {m.topic ? ` · ${m.topic}` : ""} ·{" "}
                             {new Date(m.created_at).toLocaleString()}
                           </p>
+                          <div className="ml-auto flex shrink-0 items-center gap-1">
+                            {role === "teacher" ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 gap-1 px-2 text-xs"
+                                title="Quote this message in your reply"
+                                onClick={() => {
+                                  setQuotes((prev) => ({ ...prev, [studentId]: m.id }));
+                                  setOpenThreads((prev) => ({ ...prev, [studentId]: true }));
+                                }}
+                              >
+                                <Quote className="size-3" />
+                                Quote
+                              </Button>
+                            ) : null}
+                            {canDelete ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs text-destructive hover:text-destructive"
+                                title="Delete this message for everyone"
+                                disabled={remove.isPending}
+                                onClick={() => remove.mutate(m.id)}
+                              >
+                                <Trash2 className="size-3" />
+                              </Button>
+                            ) : null}
+                          </div>
+                          </div>
+                          {quoted ? (
+                            <div className="mt-2 border-l-2 border-primary/40 pl-2">
+                              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                Quoting{" "}
+                                {quoted.sender_role === "teacher"
+                                  ? role === "teacher"
+                                    ? "you"
+                                    : "your teacher"
+                                  : role === "teacher"
+                                    ? name
+                                    : "you"}
+                              </p>
+                              <p className="line-clamp-3 whitespace-pre-wrap text-xs text-muted-foreground">
+                                {quoted.body}
+                              </p>
+                            </div>
+                          ) : null}
                           {m.questionText ? (
                             <div className="mt-2 rounded-md border border-border bg-background/70 p-2">
                               <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -278,9 +335,32 @@ export function TeacherMessagesPanel({
                           ) : null}
                           <p className="mt-2 whitespace-pre-wrap">{m.body}</p>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     {role === "teacher" ? (
+                      <>
+                      {quotes[studentId] ? (
+                        <div className="mt-3 flex items-start gap-2 rounded-md border border-border bg-muted/40 p-2">
+                          <div className="min-w-0 border-l-2 border-primary/40 pl-2">
+                            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                              Quoting
+                            </p>
+                            <p className="line-clamp-2 whitespace-pre-wrap text-xs text-muted-foreground">
+                              {thread.find((m) => m.id === quotes[studentId])?.body}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="ml-auto h-6 px-2 text-xs"
+                            onClick={() => setQuotes((prev) => ({ ...prev, [studentId]: null }))}
+                          >
+                            <X className="size-3" />
+                          </Button>
+                        </div>
+                      ) : null}
                       <div className="mt-3 flex items-end gap-2">
                         <AutoResizeTextarea
                           value={drafts[studentId] ?? ""}
@@ -289,12 +369,20 @@ export function TeacherMessagesPanel({
                           }
                           placeholder="Reply to this student"
                           onSubmit={() =>
-                            send.mutate({ studentId, body: (drafts[studentId] ?? "").trim() })
+                            send.mutate({
+                              studentId,
+                              body: (drafts[studentId] ?? "").trim(),
+                              replyToId: quotes[studentId] ?? null,
+                            })
                           }
                         />
                         <Button
                           onClick={() =>
-                            send.mutate({ studentId, body: (drafts[studentId] ?? "").trim() })
+                            send.mutate({
+                              studentId,
+                              body: (drafts[studentId] ?? "").trim(),
+                              replyToId: quotes[studentId] ?? null,
+                            })
                           }
                           disabled={
                             (drafts[studentId] ?? "").trim().length === 0 || send.isPending
@@ -303,6 +391,7 @@ export function TeacherMessagesPanel({
                           Reply
                         </Button>
                       </div>
+                      </>
                     ) : null}
                       </>
                     ) : null}

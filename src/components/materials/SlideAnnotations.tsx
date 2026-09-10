@@ -20,6 +20,8 @@ export type SlideTextBox = {
   html?: string;
   color: string;
   size: number;
+  /** Box width in document coordinates; teachers can drag the corner to change it. */
+  w?: number;
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
@@ -141,6 +143,43 @@ export function SlideAnnotations({
     };
     const onUp = () => {
       drag.current = null;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  }
+
+  /** Drag the corner: sideways changes the width, up/down changes the text size. */
+  function beginResize(event: React.PointerEvent, index: number) {
+    const box = value.texts[index];
+    if (!box) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = hostRef.current?.getBoundingClientRect();
+    const scale = rect && rect.width > 0 ? rect.width / width : 1;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startW = box.w ?? 420;
+    const startSize = box.size;
+
+    const onMove = (moveEvent: PointerEvent) => {
+      const nextW = Math.max(120, startW + (moveEvent.clientX - startX) / scale);
+      const nextSize = Math.max(
+        10,
+        Math.min(120, startSize + (moveEvent.clientY - startY) / scale / 4),
+      );
+      const current = valueRef.current;
+      onChange({
+        ...current,
+        texts: current.texts.map((t, i) =>
+          i === index ? { ...t, w: Math.round(nextW), size: Math.round(nextSize) } : t,
+        ),
+      });
+    };
+    const onUp = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);

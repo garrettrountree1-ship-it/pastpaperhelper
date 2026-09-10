@@ -217,13 +217,16 @@ export function TeacherMessagesPanel({
                       ))}
                     </div>
                     {role === "teacher" ? (
-                      <div className="mt-3 flex gap-2">
-                        <Input
+                      <div className="mt-3 flex items-end gap-2">
+                        <AutoResizeTextarea
                           value={drafts[studentId] ?? ""}
-                          onChange={(event) =>
-                            setDrafts((prev) => ({ ...prev, [studentId]: event.target.value }))
+                          onChange={(value) =>
+                            setDrafts((prev) => ({ ...prev, [studentId]: value }))
                           }
                           placeholder="Reply to this student"
+                          onSubmit={() =>
+                            send.mutate({ studentId, body: (drafts[studentId] ?? "").trim() })
+                          }
                         />
                         <Button
                           onClick={() =>

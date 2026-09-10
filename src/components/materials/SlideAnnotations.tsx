@@ -339,6 +339,18 @@ export function SlideAnnotations({
             />
 
 
+            {textActive ? (
+              <button
+                type="button"
+                aria-label="Move text box"
+                title="Drag to move this text box"
+                onPointerDown={(event) => beginDrag(event, index)}
+                className="absolute -left-3 -top-3 cursor-grab touch-none rounded-full border bg-white p-1 shadow active:cursor-grabbing"
+              >
+                <Move className="size-4 text-neutral-700" />
+              </button>
+            ) : null}
+
             <button
               type="button"
               aria-label="Delete text box"

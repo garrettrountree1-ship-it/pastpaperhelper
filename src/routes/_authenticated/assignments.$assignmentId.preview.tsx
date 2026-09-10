@@ -85,6 +85,7 @@ type Question = {
   answerImageUrls?: string[];
   image_paths?: string[];
   markScheme?: string | null;
+  fullMarksMarkScheme?: string | null;
   photoMode?: PhotoMode;
 };
 
@@ -255,6 +256,7 @@ function PreviewPage() {
                       allowSteps={settings?.allowSteps !== false}
                       maxAttempts={settings?.maxAttempts ?? 0}
                       markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
+                      revealOnFullMarks={Boolean(data.assignment.revealOnFullMarks)}
                       onFlag={() => setFlags((count) => count + 1)}
                     />
                   ))}
@@ -283,6 +285,7 @@ function PreviewQuestion({
   allowSteps,
   maxAttempts,
   markSchemeRevealed,
+  revealOnFullMarks,
   onFlag,
 }: {
   assignmentId: string;
@@ -294,6 +297,7 @@ function PreviewQuestion({
   allowSteps: boolean;
   maxAttempts: number;
   markSchemeRevealed: boolean;
+  revealOnFullMarks: boolean;
   onFlag: () => void;
 }) {
   const [answer, setAnswer] = useState("");
@@ -334,6 +338,11 @@ function PreviewQuestion({
   });
 
   const result = check.data;
+  // Full marks on this question releases this question's answer when the teacher
+  // turned that on, exactly as a student would see it.
+  const earnedFullMarks =
+    question.marks > 0 && Number(result?.awardedMarks ?? 0) >= question.marks;
+  const showAnswer = markSchemeRevealed || (revealOnFullMarks && earnedFullMarks);
 
   const tutor = useMutation({
     mutationFn: async () => {
@@ -421,8 +430,8 @@ function PreviewQuestion({
       checking={check.isPending}
       checkError={check.isError ? (check.error as Error).message : undefined}
       onCheck={() => check.mutate()}
-      markScheme={question.markScheme ?? null}
-      markSchemeImageUrls={markSchemeRevealed ? (question.answerImageUrls ?? []) : []}
+      markScheme={showAnswer ? (question.markScheme ?? question.fullMarksMarkScheme ?? null) : null}
+      markSchemeImageUrls={showAnswer ? (question.answerImageUrls ?? []) : []}
       keywordTranslation={keywordTranslation}
       allowHint={allowHint}
       allowSteps={allowSteps}

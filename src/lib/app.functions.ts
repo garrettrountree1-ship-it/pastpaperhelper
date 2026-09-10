@@ -2437,7 +2437,7 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
     const { data: assignmentRow } = await db
       .from("assignments")
       .select(
-        "id, title, subject, curriculum, instructions, due_at, class_id, mark_scheme_revealed, photo_mode",
+        "id, title, subject, curriculum, instructions, due_at, class_id, mark_scheme_revealed, reveal_on_full_marks, photo_mode",
       )
       .eq("id", data.assignmentId)
       .single();
@@ -2482,13 +2482,18 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
     const { data: studentRelease } = studentId
       ? await db
           .from("student_assignment_settings")
-          .select("mark_scheme_revealed")
+          .select("mark_scheme_revealed, reveal_on_full_marks")
           .eq("assignment_id", data.assignmentId)
           .eq("student_id", studentId)
           .maybeSingle()
       : { data: null };
     const markSchemeRevealed = Boolean(
       assignment.mark_scheme_revealed || studentRelease?.mark_scheme_revealed,
+    );
+    // "Reveal on full marks" shows one question's answer the moment it is fully correct.
+    const revealOnFullMarks = Boolean(
+      (assignment as { reveal_on_full_marks?: boolean | null }).reveal_on_full_marks ||
+        (studentRelease as { reveal_on_full_marks?: boolean | null } | null)?.reveal_on_full_marks,
     );
 
     // Previewing an SL student hides HL-only questions, exactly as they see it.
@@ -2521,6 +2526,7 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
         dueAt: assignment.due_at,
         pastDue,
         markSchemeRevealed,
+        revealOnFullMarks,
         className: klass?.name ?? "",
       },
       questions: await Promise.all(
@@ -2531,6 +2537,7 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
           marks: q.marks,
           image_paths: q.image_paths,
           markScheme: markSchemeRevealed ? q.mark_scheme : null,
+          fullMarksMarkScheme: revealOnFullMarks ? q.mark_scheme : null,
 
           answerImagePaths: q.answer_image_paths ?? [],
           answerImageUrls: await signPaperPages(db, q.answer_image_paths ?? []),

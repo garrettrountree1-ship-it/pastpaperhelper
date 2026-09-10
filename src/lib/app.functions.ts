@@ -1937,9 +1937,9 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
           image_paths: q.image_paths,
           // Released answers are always the teacher-checked page cut, never AI-extracted text.
           markScheme: null,
-          answerImagePaths: revealsQuestion(q.id) ? (q.answer_image_paths ?? []) : [],
+          answerImagePaths: revealsQuestion(q.id) ? answerPathsFor(q) : [],
           answerImageUrls: revealsQuestion(q.id)
-            ? await signPaperPages(db, q.answer_image_paths ?? [])
+            ? await signPaperPages(await admin(), answerPathsFor(q))
             : [],
           photoMode: resolvePhotoMode({
             student: access.studentPhotoMode,

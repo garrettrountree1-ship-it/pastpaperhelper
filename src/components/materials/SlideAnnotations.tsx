@@ -369,25 +369,34 @@ export function SlideAnnotations({
                 );
                 onChange({ ...value, texts });
               }}
-              className="min-h-[1.6em] w-[420px] overflow-auto rounded border border-dashed border-neutral-400 bg-white/85 p-1"
+              className="min-h-[1.6em] overflow-auto rounded border border-dashed border-neutral-400 bg-white/85 p-1"
               style={{
                 color: box.color,
                 fontSize: box.size,
                 lineHeight: 1.25,
+                width: box.w ?? 420,
               }}
             />
 
 
             {textActive ? (
-              <button
-                type="button"
-                aria-label="Move text box"
-                title="Drag to move this text box"
-                onPointerDown={(event) => beginDrag(event, index)}
-                className="absolute -left-3 -top-3 cursor-grab touch-none rounded-full border bg-white p-1 shadow active:cursor-grabbing"
-              >
-                <Move className="size-4 text-neutral-700" />
-              </button>
+              <>
+                <button
+                  type="button"
+                  aria-label="Move text box"
+                  title="Drag to move this text box"
+                  onPointerDown={(event) => beginDrag(event, index)}
+                  className="absolute -left-3 -top-3 cursor-grab touch-none rounded-full border bg-white p-1 shadow active:cursor-grabbing"
+                >
+                  <Move className="size-4 text-neutral-700" />
+                </button>
+                <span
+                  aria-label="Resize text box"
+                  title="Drag to make this box wider or the text bigger"
+                  onPointerDown={(event) => beginResize(event, index)}
+                  className="absolute -bottom-2 -right-2 size-4 cursor-nwse-resize touch-none rounded-sm border border-neutral-500 bg-white shadow"
+                />
+              </>
             ) : null}
 
             <button

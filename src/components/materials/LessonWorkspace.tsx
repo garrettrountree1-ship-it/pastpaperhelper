@@ -14,6 +14,8 @@ import {
   Maximize,
   Minimize,
   Move,
+  MonitorPlay,
+  MonitorOff,
   Pencil,
   PanelRightClose,
   PanelRightOpen,
@@ -45,6 +47,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTutorThread } from "@/hooks/use-tutor-thread";
 import { docFormat } from "@/lib/doc-kind";
+import {
+  LessonMirrorContext,
+  useLessonMirrorState,
+  useMirrorFieldWith,
+} from "@/lib/lesson-mirror";
+import { listClassPresenters } from "@/lib/mirror.functions";
 import { getMaterialUrl, updateUnit } from "@/lib/materials.functions";
 import { createSection, deleteSection, listSections, updateSection } from "@/lib/notes.functions";
 
@@ -115,6 +123,22 @@ export function LessonWorkspace({
     if (isPhone) setTutorOpen(false);
   }, [isPhone]);
   const [presenting, setPresenting] = useState(false);
+
+  // Live screen mirroring in present mode. Students only ever follow accounts
+  // that actually teach this class.
+  const fetchPresenters = useServerFn(listClassPresenters);
+  const presenters = useQuery({
+    queryKey: ["class-presenters", classId],
+    queryFn: () => fetchPresenters({ data: { classId } }),
+    enabled: !canManage,
+    staleTime: 10 * 60 * 1000,
+  });
+  const mirror = useLessonMirrorState({
+    classId,
+    isTeacher: canManage,
+    presenting,
+    presenterIds: presenters.data?.presenterIds ?? [],
+  });
   // The tutor thread belongs to the signed-in account only.
   const { turns: tutorTurns, setTurns: setTutorTurns } = useTutorThread(`class:${classId}`);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -322,6 +346,16 @@ export function LessonWorkspace({
     if (!activeId && list.length > 0) setActiveId(list[0]!.id);
   }, [activeId, list]);
 
+  // Which lesson page and which resource the teacher is showing, plus how the
+  // two windows are arranged, all travel with the mirrored screen.
+  useMirrorFieldWith(mirror, "workspace.section", activeId, setActiveId);
+  useMirrorFieldWith(mirror, "workspace.doc", docOverride, setDocOverride);
+  useMirrorFieldWith(mirror, "workspace.layout", layout, setLayout);
+  useMirrorFieldWith(mirror, "workspace.pane", paneMode, setPaneMode);
+  useMirrorFieldWith(mirror, "workspace.front", frontPane, setFrontPane);
+  useMirrorFieldWith(mirror, "workspace.split", split, setSplit);
+  useMirrorFieldWith(mirror, "workspace.float", floatState, setFloatState);
+
   const invalidateSections = () =>
     queryClient.invalidateQueries({ queryKey: ["unit-sections", unit.id] });
 
@@ -519,8 +553,16 @@ export function LessonWorkspace({
 
 
   return (
+    <LessonMirrorContext.Provider value={mirror}>
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
       <FormativeCheckPanel classId={classId} asStudent={!canManage} />
+      {mirror.sending || mirror.receiving ? (
+        <div className="pointer-events-none absolute left-1/2 top-2 z-[60] -translate-x-1/2 rounded-full border bg-background/95 px-3 py-1 text-xs font-medium shadow">
+          {mirror.sending
+            ? "Mirroring your presenting screen to students"
+            : "Following your teacher's board — live"}
+        </div>
+      ) : null}
       <header className={`flex flex-wrap items-center gap-3 border-b px-4 py-2 ${presenting ? "hidden" : ""}`}>
         <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2">
           <ArrowLeft className="size-4" />
@@ -730,6 +772,26 @@ export function LessonWorkspace({
               )}
               {canManage ? (
                 <FormativeCheckButton classId={classId} sectionId={active?.id ?? null} />
+              ) : null}
+              {canManage ? (
+                <Button
+                  size="sm"
+                  variant={mirror.mirrorOn ? "default" : "outline"}
+                  aria-pressed={mirror.mirrorOn}
+                  onClick={() => mirror.setMirrorOn(!mirror.mirrorOn)}
+                  title={
+                    mirror.mirrorOn
+                      ? "Stop mirroring — students get their screens back"
+                      : "Mirror this presenting screen live to students who are in present mode"
+                  }
+                >
+                  {mirror.mirrorOn ? (
+                    <MonitorOff className="size-4" />
+                  ) : (
+                    <MonitorPlay className="size-4" />
+                  )}
+                  {mirror.mirrorOn ? "Stop mirroring" : "Mirror to students"}
+                </Button>
               ) : null}
               <Button size="sm" variant="secondary" onClick={togglePresentation} title="Exit presentation (Esc)">
 
@@ -1067,6 +1129,7 @@ export function LessonWorkspace({
         </div>
       )}
     </div>
+    </LessonMirrorContext.Provider>
   );
 }
 

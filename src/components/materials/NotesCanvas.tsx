@@ -22,6 +22,7 @@ import { FreeCanvas, type CanvasMode } from "@/components/materials/FreeCanvas";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { readCachedJson, writeCachedJson } from "@/lib/doc-cache";
+import { useMirrorField, useMirrorScroll } from "@/lib/lesson-mirror";
 import {
   generateSectionSummary,
   saveSectionNotes,
@@ -143,6 +144,13 @@ export function NotesCanvas({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionId]);
+
+  // Present-mode mirroring: typing, drawing, zoom and scrolling on the teacher's
+  // canvas appear live on the screens of students following the board.
+  useMirrorField("canvas.blocks", blocks, setBlocks);
+  useMirrorField("canvas.zoom", zoom, setZoom);
+  useMirrorField("canvas.tab", tab, setTab);
+  useMirrorScroll("canvas.scroll", scrollRef);
 
   // Canvas pictures and voice notes both live in the class-materials bucket.
   const mediaPaths = useMemo(

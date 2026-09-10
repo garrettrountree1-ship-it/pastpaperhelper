@@ -15,6 +15,7 @@ import {
   writeCachedDoc,
   writeCachedJson,
 } from "@/lib/doc-cache";
+import { useMirrorField, useMirrorScroll } from "@/lib/lesson-mirror";
 
 /** One selectable word/run from the PDF, in rendered page pixels. */
 type TextRun = { x: number; y: number; w: number; h: number; s: string };
@@ -45,6 +46,8 @@ export function PdfDocView({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const key = cacheKey ?? title;
   const markup = useDocMarkup(`pdf-annotations:${key}`);
+  useMirrorField(`pdf.zoom:${key}`, zoom, setZoom);
+  useMirrorScroll(`pdf.scroll:${key}`, scrollRef);
   const [ratios, setRatios] = useState<Record<number, number>>({});
   // Invisible, selectable text sitting exactly over each page image, so the
   // document can be highlighted and copied like a normal PDF.

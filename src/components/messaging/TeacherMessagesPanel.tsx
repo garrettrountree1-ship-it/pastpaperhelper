@@ -110,7 +110,10 @@ export function TeacherMessagesPanel({
     queryFn: () => fetchMessages({ data: { classId } }),
   });
   const reply = useServerFn(replyToStudent);
+  const removeMessage = useServerFn(deleteClassMessage);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  // Which message each thread's reply is quoting.
+  const [quotes, setQuotes] = useState<Record<string, string | null>>({});
   const [open, setOpen] = useState(false);
   const [openThreads, setOpenThreads] = useState<Record<string, boolean>>({});
   const [seenAt, setSeenAt] = useState(0);

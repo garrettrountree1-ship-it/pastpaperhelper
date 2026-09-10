@@ -282,7 +282,7 @@ export function QuestionExperience({
 
       {markScheme || markSchemeImageUrls.length > 0 ? (
         <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
-          <p className="text-sm font-medium">Mark scheme (released by your teacher)</p>
+          <p className="text-sm font-medium">Mark scheme</p>
           {markSchemeImageUrls.length > 0 ? (
             <QuestionSnipStack
               urls={markSchemeImageUrls}

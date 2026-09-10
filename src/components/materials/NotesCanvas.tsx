@@ -6,6 +6,7 @@ import {
   ImagePlus,
   Mic,
   Minus,
+  MousePointer2,
   PenLine,
   Plus,
   RefreshCw,

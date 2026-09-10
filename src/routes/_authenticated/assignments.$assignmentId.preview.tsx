@@ -522,8 +522,20 @@ function StudentWorkView({
   const data = view.data;
   if (!data) return null;
 
+  const answers = data.answers as Array<{
+    id: string;
+    question_id: string;
+    answer_text: string;
+    imageUrls: string[];
+    verdict: string | null;
+    awarded_marks: number;
+    feedback: string | null;
+    attempts: number;
+    rejected_at: string | null;
+    rejection_note: string | null;
+  }>;
   const answered = data.questions.filter((question) =>
-    data.answers.some((answer) => answer.question_id === question.id),
+    answers.some((answer) => answer.question_id === question.id),
   ).length;
 
   return (
@@ -554,7 +566,7 @@ function StudentWorkView({
         }`}
       >
         {data.questions.map((question, index) => {
-          const answer = data.answers.find((row) => row.question_id === question.id) ?? null;
+          const answer = answers.find((row) => row.question_id === question.id) ?? null;
           const thread = answer
             ? data.messages.filter((message) => message.answer_id === answer.id)
             : [];

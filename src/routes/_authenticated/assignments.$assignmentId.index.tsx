@@ -422,10 +422,10 @@ function QuestionCard({
         },
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       resetActiveTime();
       setPhotos([]);
-      queryClient.invalidateQueries({ queryKey });
+      await queryClient.refetchQueries({ queryKey, type: "active" });
     },
     onError: (error: Error) => {
       toast.error(error.message);

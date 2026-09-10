@@ -91,7 +91,9 @@ export function DrawingPad({
   const backgroundsRef = useRef<
     Array<{ image: HTMLImageElement; top: number; bottom: number }>
   >([]);
-  const [photoScale, setPhotoScale] = useState(1);
+  // Open every homework and quiz question at the compact, fully visible size.
+  // Students can still enlarge it with the picture controls or corner handles.
+  const [photoScale, setPhotoScale] = useState(0.4);
   const photoScaleRef = useRef(photoScale);
   photoScaleRef.current = photoScale;
   const [saved, setSaved] = useState(false);

@@ -24,7 +24,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { listMyMessages, sendMessageToTeacher } from "@/lib/messaging.functions";
+import {
+  deleteClassMessage,
+  listMyMessages,
+  sendMessageToTeacher,
+} from "@/lib/messaging.functions";
 
 /**
  * Student → teacher messaging. Students can only ever message the teacher of a

@@ -174,6 +174,7 @@ export const replyToStudent = createServerFn({ method: "POST" })
         studentId: z.string().uuid(),
         topic: z.string().trim().max(200).default(""),
         body: z.string().trim().min(1).max(2000),
+        replyToId: z.string().uuid().nullish(),
       })
       .parse(input),
   )
@@ -186,7 +187,27 @@ export const replyToStudent = createServerFn({ method: "POST" })
       sender_role: "teacher",
       topic: data.topic,
       body: data.body,
+      reply_to_id: data.replyToId ?? null,
     });
     if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/**
+ * Remove one message. Row-level rules do the real gatekeeping: a teacher may
+ * remove any message in their own class, a student only their own message.
+ */
+export const deleteClassMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: removed, error } = await supabase
+      .from("class_messages")
+      .delete()
+      .eq("id", data.id)
+      .select("id");
+    if (error) throw new Error(error.message);
+    if (!removed || removed.length === 0) throw new Error("You can't delete this message.");
     return { ok: true };
   });

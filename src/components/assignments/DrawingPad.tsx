@@ -91,9 +91,10 @@ export function DrawingPad({
   const backgroundsRef = useRef<
     Array<{ image: HTMLImageElement; top: number; bottom: number }>
   >([]);
-  // Open every homework and quiz question at the compact, fully visible size.
-  // Students can still enlarge it with the picture controls or corner handles.
-  const [photoScale, setPhotoScale] = useState(0.4);
+  // Open every homework and quiz question at a compact size so the picture
+  // never fills the pad. Students can still enlarge it with the picture controls
+  // or corner handles.
+  const [photoScale, setPhotoScale] = useState(0.25);
   const photoScaleRef = useRef(photoScale);
   photoScaleRef.current = photoScale;
   const [saved, setSaved] = useState(false);
@@ -447,7 +448,7 @@ export function DrawingPad({
       const byHeight =
         (grab.startHeight + signY * (point.y - grab.startY)) / Math.max(1, grab.startHeight);
       const factor = Math.max(0.05, (byWidth + byHeight) / 2);
-      const next = Math.max(0.4, Math.min(2.5, grab.startScale * factor));
+      const next = Math.max(0.15, Math.min(2.5, grab.startScale * factor));
       const applied = next / grab.startScale;
       photoScaleRef.current = next;
       // Keep the corner opposite the one being dragged exactly where it is.
@@ -651,7 +652,7 @@ export function DrawingPad({
               type="button"
               size="sm"
               variant="outline"
-              disabled={disabled || photoScale <= 0.4}
+              disabled={disabled || photoScale <= 0.15}
               aria-label="Make the question picture smaller"
               onClick={() => {
                 setPhotoScale((s) => Math.max(0.4, Number((s - 0.1).toFixed(2))));

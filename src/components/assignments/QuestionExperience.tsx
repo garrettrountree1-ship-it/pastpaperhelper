@@ -101,6 +101,7 @@ export function QuestionExperience({
   assignmentId,
   sentBack = null,
   snipUrls = [],
+  readOnly = false,
 
 
 }: {
@@ -167,6 +168,8 @@ export function QuestionExperience({
   sentBack?: { at: string; note: string | null } | null;
   /** Snipped picture(s) of the question as printed — shown instead of typed wording. */
   snipUrls?: string[];
+  /** Teacher looking at a student's work: everything visible, nothing changeable. */
+  readOnly?: boolean;
 }) {
 
   const verdict = result?.verdict ?? null;
@@ -207,7 +210,7 @@ export function QuestionExperience({
 
   // Seed the marks checklist so the student sees how many points are expected.
   useEffect(() => {
-    if (bulletTarget > 0 && !locked && draft.trim().length === 0) {
+    if (bulletTarget > 0 && !locked && !readOnly && draft.trim().length === 0) {
       onDraftChange(normaliseBullets("", bulletTarget));
     }
   }, [bulletTarget, locked, draft, onDraftChange]);
@@ -299,19 +302,22 @@ export function QuestionExperience({
 
 
       <div className="mt-4 space-y-3">
-        <p className="text-xs text-muted-foreground">
-          Answer whichever way suits you: type it below, upload or take a photo of your paper, or
-          write it on the pad. {requiresPhoto ? "For this one, working on paper usually earns the most method marks." : null}
-        </p>
+        {readOnly ? null : (
+          <p className="text-xs text-muted-foreground">
+            Answer whichever way suits you: type it below, upload or take a photo of your paper, or
+            write it on the pad. {requiresPhoto ? "For this one, working on paper usually earns the most method marks." : null}
+          </p>
+        )}
 
         <details className="rounded-lg border border-dashed border-border p-3">
           <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">
-            Type your answer
+            {readOnly ? "Typed answer" : "Type your answer"}
           </summary>
           <div className="mt-2 space-y-3">
             <Textarea
               value={draft}
               onChange={(event) => {
+                if (readOnly) return;
                 if (answerGuard.flagged) answerGuard.clearFlag();
                 onDraftChange(
                   bulletTarget > 0
@@ -319,16 +325,19 @@ export function QuestionExperience({
                     : event.target.value,
                 );
               }}
-              {...answerGuard.guardProps}
-              disabled={locked}
+              {...(readOnly ? {} : answerGuard.guardProps)}
+              readOnly={readOnly}
+              disabled={locked && !readOnly}
               placeholder={
-                requiresPhoto
-                  ? "Type your answer or describe your working (a photo or pad sketch can be added below)"
-                  : "Write your answer in English"
+                readOnly
+                  ? "This student hasn't typed an answer here yet."
+                  : requiresPhoto
+                    ? "Type your answer or describe your working (a photo or pad sketch can be added below)"
+                    : "Write your answer in English"
               }
               rows={Math.max(4, bulletTarget + 1)}
             />
-            {bulletTarget > 0 ? (
+            {bulletTarget > 0 && !readOnly ? (
               <p className="text-xs text-muted-foreground">
                 {bulletTarget} marks means {bulletTarget} separate points — write one point on each
                 bullet. The bullets stay put; add extra lines if you need them.
@@ -353,24 +362,36 @@ export function QuestionExperience({
         >
           <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">
             <Camera className="size-4" />
-            Photo of your working or diagram
-            {requiresPhoto ? <Badge variant="secondary">recommended here</Badge> : null}
+            {readOnly ? "Photos and working handed in" : "Photo of your working or diagram"}
+            {requiresPhoto && !readOnly ? (
+              <Badge variant="secondary">recommended here</Badge>
+            ) : null}
           </summary>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Photograph your own hand-written or hand-drawn work, or take one with your device
-            camera. Diagrams or images copied from websites, textbooks, screenshots or apps are
-            rejected as plagiarism. This is optional if you typed your answer.
-          </p>
-          <Input
-            id={`photo-${question.id}`}
-            type="file"
-            accept="image/*"
-            multiple
-            className="mt-2"
-            disabled={locked}
-            onChange={(event) => onPhotosChange(event.target.files)}
-          />
-          {onAddDrawing ? (
+          {readOnly ? (
+            submittedPhotoUrls.length === 0 ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                No photos or drawings handed in for this question yet.
+              </p>
+            ) : null
+          ) : (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Photograph your own hand-written or hand-drawn work, or take one with your device
+              camera. Diagrams or images copied from websites, textbooks, screenshots or apps are
+              rejected as plagiarism. This is optional if you typed your answer.
+            </p>
+          )}
+          {readOnly ? null : (
+            <Input
+              id={`photo-${question.id}`}
+              type="file"
+              accept="image/*"
+              multiple
+              className="mt-2"
+              disabled={locked}
+              onChange={(event) => onPhotosChange(event.target.files)}
+            />
+          )}
+          {onAddDrawing && !readOnly ? (
             <div className="mt-2">
               <CameraCapture disabled={locked} onCapture={onAddDrawing} />
             </div>
@@ -419,7 +440,7 @@ export function QuestionExperience({
               ))}
             </div>
           ) : null}
-          {requiresPhoto ? (
+          {requiresPhoto && !readOnly ? (
             <p className="mt-2 text-xs text-muted-foreground">
               Show your full drawing or working — marks are given for the method as well as the
               final answer.
@@ -427,7 +448,7 @@ export function QuestionExperience({
           ) : null}
         </details>
 
-        {onAddDrawing ? (
+        {onAddDrawing && !readOnly ? (
           <details className="rounded-lg border border-dashed border-border p-3">
             <summary className="cursor-pointer text-sm font-medium">
               Draw your answer on the pad
@@ -447,26 +468,28 @@ export function QuestionExperience({
                 ? `${attempts} attempt${attempts === 1 ? "" : "s"}`
                 : ""}
           </span>
-          <Button
-            onClick={onCheck}
-            disabled={
-              locked ||
-              outOfTries ||
-              checking ||
-              (!hasWrittenAnswer && photoCount === 0) ||
-              !isEnglishOnly(draft)
-            }
-          >
-            {locked
-              ? "Locked"
-              : outOfTries
-                ? "No tries left"
-                : checking
-                  ? "Marking..."
-                  : result
-                    ? "Re-check answer"
-                    : "Check answer"}
-          </Button>
+          {readOnly ? null : (
+            <Button
+              onClick={onCheck}
+              disabled={
+                locked ||
+                outOfTries ||
+                checking ||
+                (!hasWrittenAnswer && photoCount === 0) ||
+                !isEnglishOnly(draft)
+              }
+            >
+              {locked
+                ? "Locked"
+                : outOfTries
+                  ? "No tries left"
+                  : checking
+                    ? "Marking..."
+                    : result
+                      ? "Re-check answer"
+                      : "Check answer"}
+            </Button>
+          )}
 
         </div>
         {checkError ? <p className="text-sm text-destructive">{checkError}</p> : null}
@@ -489,7 +512,7 @@ export function QuestionExperience({
           {result.feedback ? (
             <TutorText className="mt-2 space-y-1 text-sm" text={result.feedback} />
           ) : null}
-          {verdict !== "correct" ? (
+          {verdict !== "correct" && !readOnly ? (
             <p className="mt-2 text-xs text-muted-foreground">
               Edit your answer above and press “Re-check answer” to try again.
             </p>
@@ -520,6 +543,7 @@ export function QuestionExperience({
             </div>
           ) : null}
 
+          {readOnly ? null : (
           <div className="mt-4 space-y-2">
             <Label htmlFor={`ask-${question.id}`} className="text-xs uppercase tracking-wide text-muted-foreground">
               Ask the AI tutor
@@ -557,18 +581,21 @@ export function QuestionExperience({
               The tutor never gives the answer, and your teacher can see these questions.
             </p>
           </div>
+          )}
         </div>
       ) : null}
         </div>
 
         <div className="flex flex-col items-center gap-2 pt-1">
           {headerAction}
-          <QuestionHelpButtons
-            questionId={question.id}
-            answerDraft={draft}
-            allowHint={allowHint}
-            allowSteps={allowSteps}
-          />
+          {readOnly ? null : (
+            <QuestionHelpButtons
+              questionId={question.id}
+              answerDraft={draft}
+              allowHint={allowHint}
+              allowSteps={allowSteps}
+            />
+          )}
         </div>
       </div>
     </section>

@@ -33,6 +33,7 @@ import {
   getAssignmentPreview,
   previewGradeAnswer,
   previewTutorMessage,
+  getStudentHomeworkView,
 } from "@/lib/app.functions";
 
 
@@ -110,6 +111,7 @@ function PreviewPage() {
   const { assignmentId } = Route.useParams();
   const [flags, setFlags] = useState(0);
   const [studentId, setStudentId] = useState<string>("class");
+  const viewingStudent = studentId !== "class";
   const preview = useQuery({
     queryKey: ["assignment-preview", assignmentId, studentId],
     queryFn: () =>
@@ -157,15 +159,19 @@ function PreviewPage() {
           <>
             <div className="paper mt-4 p-5">
               <div className="mb-3 flex flex-wrap items-center gap-3">
-                <Badge variant="secondary">Student view (preview — nothing is saved)</Badge>
+                <Badge variant="secondary">
+                  {viewingStudent
+                    ? "Watching this student's work — read only"
+                    : "Test view (practise here — nothing is saved)"}
+                </Badge>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Viewing as</span>
+                  <span className="text-xs text-muted-foreground">Viewing</span>
                   <Select value={studentId} onValueChange={setStudentId}>
                     <SelectTrigger className="h-8 w-56 text-xs">
-                      <SelectValue placeholder="Class default" />
+                      <SelectValue placeholder="Test view" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="class">Class default settings</SelectItem>
+                      <SelectItem value="class">Test view (class default settings)</SelectItem>
                       {(data.students ?? []).map((student) => (
                         <SelectItem key={student.id} value={student.id}>
                           {student.name}
@@ -219,7 +225,7 @@ function PreviewPage() {
                   <Badge variant="destructive">Past due · closed for students</Badge>
                 ) : null}
               </div>
-              {flags > 0 ? (
+              {flags > 0 && !viewingStudent ? (
                 <p className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                   {flags >= 4
                     ? "Locked: too many AI-generated or copied answers were detected. A student would now need their teacher to unlock this homework."
@@ -229,7 +235,15 @@ function PreviewPage() {
             </div>
 
 
-
+            {viewingStudent ? (
+              <StudentWorkView
+                assignmentId={assignmentId}
+                studentId={studentId}
+                protectedClassName={protection.protectedClassName}
+                concealed={protection.concealed}
+              />
+            ) : (
+              <>
             <div
               className={`mt-8 space-y-6 ${protection.protectedClassName} ${
                 protection.concealed ? "pointer-events-none blur-lg" : ""
@@ -264,9 +278,11 @@ function PreviewPage() {
             </div>
 
             <p className="mt-8 text-center text-xs text-muted-foreground">
-You can test any question here — the AI marks it exactly as it would for a student, but
-              nothing is saved to grades.
+              This is your test view — try any question and the AI marks it exactly as it would for
+              a student, but nothing is saved to grades.
             </p>
+              </>
+            )}
           </>
         ) : null}
       </main>
@@ -469,3 +485,139 @@ function PreviewQuestion({
   );
 }
 
+
+/**
+ * Exactly what one student is looking at right now — their typed answers,
+ * photos, marks, feedback and tutor chat — with every control removed so the
+ * teacher can read and expand, but never change, the student's work.
+ */
+function StudentWorkView({
+  assignmentId,
+  studentId,
+  protectedClassName,
+  concealed,
+}: {
+  assignmentId: string;
+  studentId: string;
+  protectedClassName: string;
+  concealed: boolean;
+}) {
+  const view = useQuery({
+    queryKey: ["student-homework-view", assignmentId, studentId],
+    queryFn: () => getStudentHomeworkView({ data: { assignmentId, studentId } }),
+    retry: 2,
+  });
+
+  if (view.isPending) return <Skeleton className="mt-8 h-64 w-full" />;
+  if (view.isError) {
+    return (
+      <div className="mt-8 text-center">
+        <p className="mb-4 text-muted-foreground">
+          We couldn&apos;t load this student&apos;s work. {(view.error as Error).message}
+        </p>
+        <Button onClick={() => view.refetch()}>Retry</Button>
+      </div>
+    );
+  }
+  const data = view.data;
+  if (!data) return null;
+
+  const answers = data.answers as Array<{
+    id: string;
+    question_id: string;
+    answer_text: string;
+    imageUrls: string[];
+    verdict: string | null;
+    awarded_marks: number;
+    feedback: string | null;
+    attempts: number;
+    rejected_at: string | null;
+    rejection_note: string | null;
+  }>;
+  const answered = data.questions.filter((question) =>
+    answers.some((answer) => answer.question_id === question.id),
+  ).length;
+
+  return (
+    <>
+      <div className="paper mt-6 p-5">
+        <p className="font-display text-lg">{data.student.name}</p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Badge variant="secondary">
+            {answered}/{data.questions.length} answered
+          </Badge>
+          <Badge>
+            {Number(data.submission?.awarded_marks ?? 0)}/
+            {Number(data.submission?.total_marks ?? 0)} marks
+          </Badge>
+          {data.submission?.status === "submitted" ? <Badge>Handed in</Badge> : null}
+          {data.submission?.locked_at ? <Badge variant="destructive">Locked</Badge> : null}
+          {data.assignment.pastDue ? <Badge variant="destructive">Past due</Badge> : null}
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          You are watching this homework in progress. Open and close each part to read the work —
+          nothing here can be typed, marked or removed.
+        </p>
+      </div>
+
+      <div
+        className={`mt-6 space-y-6 ${protectedClassName} ${
+          concealed ? "pointer-events-none blur-lg" : ""
+        }`}
+      >
+        {data.questions.map((question, index) => {
+          const answer = answers.find((row) => row.question_id === question.id) ?? null;
+          const thread = answer
+            ? data.messages.filter((message) => message.answer_id === answer.id)
+            : [];
+          return (
+            <QuestionExperience
+              key={question.id}
+              readOnly
+              question={question}
+              index={index}
+              snipUrls={(question.imageUrls ?? []).filter((url) => parseSnipBand(url))}
+              draft={answer?.answer_text ?? ""}
+              onDraftChange={() => {}}
+              requiresPhoto={false}
+              showPhoto={false}
+              onShowPhoto={() => {}}
+              photoCount={0}
+              photoUrls={answer?.imageUrls ?? []}
+              photoFiles={[]}
+              onPhotosChange={() => {}}
+              sentBack={
+                answer?.rejected_at
+                  ? { at: answer.rejected_at, note: answer.rejection_note ?? null }
+                  : null
+              }
+              result={
+                answer && !answer.rejected_at
+                  ? {
+                      verdict: answer.verdict ?? "incorrect",
+                      awardedMarks: Number(answer.awarded_marks ?? 0),
+                      feedback: answer.feedback ?? "",
+                    }
+                  : null
+              }
+              attempts={Number(answer?.attempts ?? 0)}
+              checking={false}
+              checkError={undefined}
+              onCheck={() => {}}
+              thread={thread}
+              reply=""
+              onReplyChange={() => {}}
+              tutoring={false}
+              tutorError={undefined}
+              onSend={() => {}}
+              markScheme={null}
+              markSchemeImageUrls={question.answerImageUrls ?? []}
+              keywordTranslation={false}
+              assignmentId={assignmentId}
+            />
+          );
+        })}
+      </div>
+    </>
+  );
+}

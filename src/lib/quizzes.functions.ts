@@ -38,7 +38,10 @@ const questionInput = z.object({
   markScheme: z.string().min(1),
   marks: z.number().int().positive(),
   imagePaths: z.array(z.string()).default([]),
+  /** Exact cut of the printed answer key for this question, used for marking. */
+  answerImagePaths: z.array(z.string()).default([]),
 });
+
 
 const settingsInput = {
   title: z.string().min(1),

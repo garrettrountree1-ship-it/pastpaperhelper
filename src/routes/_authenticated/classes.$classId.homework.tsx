@@ -1203,15 +1203,6 @@ function AssignmentDialog({
                           Remove answer picture
                         </Button>
                       </div>
-                      <details>
-                        <summary className="cursor-pointer text-xs text-muted-foreground">Answer text</summary>
-                        <Textarea
-                          className="mt-2"
-                          value={question.markScheme}
-                          onChange={(event) => update_(index, { markScheme: event.target.value })}
-                          rows={3}
-                        />
-                      </details>
                     </div>
                   ) : (
                     <Textarea

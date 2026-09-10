@@ -152,12 +152,16 @@ export function useLessonMirrorState({
       if (!viewChanged && !hasContent && !hasView && !heartbeatDue) return;
       pendingContent.current = {};
       pendingView.current = {};
-      if (viewChanged || heartbeatDue) {
+      if (viewChanged) {
         lastView = sendingRef.current;
         lastSnapshot = now;
-        // Turning mirroring on, reconnecting, and the regular heartbeat all
-        // hand students a complete picture rather than relying on one event.
+        // Turning mirroring on hands students the complete current picture.
         sendAll();
+        return;
+      }
+      if (heartbeatDue) {
+        lastSnapshot = now;
+        send({ viewActive: true });
         return;
       }
       send({

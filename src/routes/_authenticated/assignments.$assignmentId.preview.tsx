@@ -224,7 +224,7 @@ function PreviewPage() {
                   <Badge variant="destructive">Past due · closed for students</Badge>
                 ) : null}
               </div>
-              {flags > 0 ? (
+              {flags > 0 && !viewingStudent ? (
                 <p className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                   {flags >= 4
                     ? "Locked: too many AI-generated or copied answers were detected. A student would now need their teacher to unlock this homework."
@@ -234,7 +234,15 @@ function PreviewPage() {
             </div>
 
 
-
+            {viewingStudent ? (
+              <StudentWorkView
+                assignmentId={assignmentId}
+                studentId={studentId}
+                protectedClassName={protection.protectedClassName}
+                concealed={protection.concealed}
+              />
+            ) : (
+              <>
             <div
               className={`mt-8 space-y-6 ${protection.protectedClassName} ${
                 protection.concealed ? "pointer-events-none blur-lg" : ""
@@ -269,9 +277,11 @@ function PreviewPage() {
             </div>
 
             <p className="mt-8 text-center text-xs text-muted-foreground">
-You can test any question here — the AI marks it exactly as it would for a student, but
-              nothing is saved to grades.
+              This is your test view — try any question and the AI marks it exactly as it would for
+              a student, but nothing is saved to grades.
             </p>
+              </>
+            )}
           </>
         ) : null}
       </main>

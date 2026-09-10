@@ -2180,52 +2180,15 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       Number(result.awardedMarks) >= Number(question.marks) &&
       (question.answer_image_paths ?? []).length === 0
     ) {
-      try {
-        const firstQuestionPath = (question.image_paths ?? [])[0]?.split("#")[0];
-        const folder = firstQuestionPath?.split("/").slice(0, -1).join("/");
-        if (folder) {
-          const { data: storedPages } = await db.storage.from("paper-pages").list(folder, {
-            limit: 100,
-            sortBy: { column: "name", order: "asc" },
-          });
-          const imageFiles = (storedPages ?? []).filter((file) => /\.(?:jpe?g|png)$/i.test(file.name));
-          const markSchemeFiles = imageFiles.some((file) => file.name.startsWith("ms-page-"))
-            ? imageFiles.filter((file) => file.name.startsWith("ms-page-"))
-            : imageFiles;
-          const pages = (
-            await Promise.all(
-              markSchemeFiles.map(async (file) => {
-                const path = `${folder}/${file.name}`;
-                const { data: blob } = await db.storage.from("paper-pages").download(path);
-                if (!blob) return null;
-                return {
-                  filename: file.name,
-                  mimeType: blob.type || "image/jpeg",
-                  base64: Buffer.from(await blob.arrayBuffer()).toString("base64"),
-                };
-              }),
-            )
-          ).filter((page): page is { filename: string; mimeType: string; base64: string } => Boolean(page));
-          const { locateAnswerCrop } = await import("./paper-extract.server");
-          const crops = await locateAnswerCrop({
-            label: String(question.position),
-            questionText: question.question_text,
-            markScheme: question.mark_scheme,
-            pages,
-          });
-          const recoveredPaths = (crops ?? []).map((crop) => {
-            const source = markSchemeFiles[crop.page - 1];
-            return source
-              ? `${folder}/${source.name}#crop=${crop.top.toFixed(4)},${crop.bottom.toFixed(4)}`
-              : "";
-          }).filter(Boolean);
-          if (recoveredPaths.length > 0) {
-            await db.from("questions").update({ answer_image_paths: recoveredPaths }).eq("id", question.id);
-          }
-        }
-      } catch {
-        // Fail closed: never substitute text or a whole page for an exact answer crop.
-      }
+      const { recoverAnswerCrops } = await import("./answer-crop.server");
+      await recoverAnswerCrops({
+        id: question.id,
+        position: question.position,
+        question_text: question.question_text,
+        mark_scheme: question.mark_scheme,
+        image_paths: (question.image_paths ?? []) as string[],
+        answer_image_paths: (question.answer_image_paths ?? []) as string[],
+      });
     }
     return {
       answerId: answer.id,

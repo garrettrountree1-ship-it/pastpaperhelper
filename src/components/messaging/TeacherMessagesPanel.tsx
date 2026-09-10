@@ -51,6 +51,45 @@ export function useUnreadClassMessages(classId: string, role: "teacher" | "stude
   ).length;
 }
 
+/** Textarea that grows with its content so long replies never run off the end. */
+function AutoResizeTextarea({
+  value,
+  onChange,
+  placeholder,
+  onSubmit,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  onSubmit?: () => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(200, el.scrollHeight)}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" && !event.shiftKey && onSubmit) {
+          event.preventDefault();
+          onSubmit();
+        }
+      }}
+      rows={1}
+      placeholder={placeholder}
+      className="flex min-h-[40px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+    />
+  );
+}
+
 /** Private teacher ↔ student threads for one class, grouped by student. */
 export function TeacherMessagesPanel({
   classId,

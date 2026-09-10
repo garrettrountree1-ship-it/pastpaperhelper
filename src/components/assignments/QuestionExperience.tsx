@@ -210,7 +210,7 @@ export function QuestionExperience({
 
   // Seed the marks checklist so the student sees how many points are expected.
   useEffect(() => {
-    if (bulletTarget > 0 && !locked && draft.trim().length === 0) {
+    if (bulletTarget > 0 && !locked && !readOnly && draft.trim().length === 0) {
       onDraftChange(normaliseBullets("", bulletTarget));
     }
   }, [bulletTarget, locked, draft, onDraftChange]);
@@ -302,19 +302,22 @@ export function QuestionExperience({
 
 
       <div className="mt-4 space-y-3">
-        <p className="text-xs text-muted-foreground">
-          Answer whichever way suits you: type it below, upload or take a photo of your paper, or
-          write it on the pad. {requiresPhoto ? "For this one, working on paper usually earns the most method marks." : null}
-        </p>
+        {readOnly ? null : (
+          <p className="text-xs text-muted-foreground">
+            Answer whichever way suits you: type it below, upload or take a photo of your paper, or
+            write it on the pad. {requiresPhoto ? "For this one, working on paper usually earns the most method marks." : null}
+          </p>
+        )}
 
         <details className="rounded-lg border border-dashed border-border p-3">
           <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">
-            Type your answer
+            {readOnly ? "Typed answer" : "Type your answer"}
           </summary>
           <div className="mt-2 space-y-3">
             <Textarea
               value={draft}
               onChange={(event) => {
+                if (readOnly) return;
                 if (answerGuard.flagged) answerGuard.clearFlag();
                 onDraftChange(
                   bulletTarget > 0
@@ -322,16 +325,19 @@ export function QuestionExperience({
                     : event.target.value,
                 );
               }}
-              {...answerGuard.guardProps}
-              disabled={locked}
+              {...(readOnly ? {} : answerGuard.guardProps)}
+              readOnly={readOnly}
+              disabled={locked && !readOnly}
               placeholder={
-                requiresPhoto
-                  ? "Type your answer or describe your working (a photo or pad sketch can be added below)"
-                  : "Write your answer in English"
+                readOnly
+                  ? "This student hasn't typed an answer here yet."
+                  : requiresPhoto
+                    ? "Type your answer or describe your working (a photo or pad sketch can be added below)"
+                    : "Write your answer in English"
               }
               rows={Math.max(4, bulletTarget + 1)}
             />
-            {bulletTarget > 0 ? (
+            {bulletTarget > 0 && !readOnly ? (
               <p className="text-xs text-muted-foreground">
                 {bulletTarget} marks means {bulletTarget} separate points — write one point on each
                 bullet. The bullets stay put; add extra lines if you need them.

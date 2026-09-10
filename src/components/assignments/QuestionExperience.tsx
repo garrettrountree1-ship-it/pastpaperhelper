@@ -362,24 +362,36 @@ export function QuestionExperience({
         >
           <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">
             <Camera className="size-4" />
-            Photo of your working or diagram
-            {requiresPhoto ? <Badge variant="secondary">recommended here</Badge> : null}
+            {readOnly ? "Photos and working handed in" : "Photo of your working or diagram"}
+            {requiresPhoto && !readOnly ? (
+              <Badge variant="secondary">recommended here</Badge>
+            ) : null}
           </summary>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Photograph your own hand-written or hand-drawn work, or take one with your device
-            camera. Diagrams or images copied from websites, textbooks, screenshots or apps are
-            rejected as plagiarism. This is optional if you typed your answer.
-          </p>
-          <Input
-            id={`photo-${question.id}`}
-            type="file"
-            accept="image/*"
-            multiple
-            className="mt-2"
-            disabled={locked}
-            onChange={(event) => onPhotosChange(event.target.files)}
-          />
-          {onAddDrawing ? (
+          {readOnly ? (
+            submittedPhotoUrls.length === 0 ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                No photos or drawings handed in for this question yet.
+              </p>
+            ) : null
+          ) : (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Photograph your own hand-written or hand-drawn work, or take one with your device
+              camera. Diagrams or images copied from websites, textbooks, screenshots or apps are
+              rejected as plagiarism. This is optional if you typed your answer.
+            </p>
+          )}
+          {readOnly ? null : (
+            <Input
+              id={`photo-${question.id}`}
+              type="file"
+              accept="image/*"
+              multiple
+              className="mt-2"
+              disabled={locked}
+              onChange={(event) => onPhotosChange(event.target.files)}
+            />
+          )}
+          {onAddDrawing && !readOnly ? (
             <div className="mt-2">
               <CameraCapture disabled={locked} onCapture={onAddDrawing} />
             </div>

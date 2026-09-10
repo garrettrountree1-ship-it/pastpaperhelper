@@ -101,6 +101,7 @@ export function QuestionExperience({
   assignmentId,
   sentBack = null,
   snipUrls = [],
+  readOnly = false,
 
 
 }: {
@@ -167,6 +168,8 @@ export function QuestionExperience({
   sentBack?: { at: string; note: string | null } | null;
   /** Snipped picture(s) of the question as printed — shown instead of typed wording. */
   snipUrls?: string[];
+  /** Teacher looking at a student's work: everything visible, nothing changeable. */
+  readOnly?: boolean;
 }) {
 
   const verdict = result?.verdict ?? null;

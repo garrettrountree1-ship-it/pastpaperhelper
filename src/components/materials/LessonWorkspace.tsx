@@ -355,6 +355,7 @@ export function LessonWorkspace({
   useMirrorFieldWith(mirror, "workspace.front", frontPane, setFrontPane);
   useMirrorFieldWith(mirror, "workspace.split", split, setSplit);
   useMirrorFieldWith(mirror, "workspace.float", floatState, setFloatState);
+  useMirrorFieldWith(mirror, "workspace.floatRect", floatRect, setFloatRect);
 
   const invalidateSections = () =>
     queryClient.invalidateQueries({ queryKey: ["unit-sections", unit.id] });
@@ -737,7 +738,9 @@ export function LessonWorkspace({
           className={`relative flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto lg:flex-row lg:overflow-hidden ${presenting ? "p-0" : "p-2"}`}
         >
           {presenting ? (
-            <div className="absolute bottom-3 left-3 z-50 flex items-center gap-1 rounded-md border bg-background/95 p-1 shadow">
+            <div className="absolute bottom-3 left-3 z-[80] flex items-center gap-1 rounded-md border bg-background/95 p-1 shadow">
+              {mirror.receiving ? null : (
+                <>
               {isPhone ? (
                 <Button
                   size="sm"
@@ -793,6 +796,8 @@ export function LessonWorkspace({
                   {mirror.mirrorOn ? "Stop mirroring" : "Mirror to students"}
                 </Button>
               ) : null}
+                </>
+              )}
               <Button size="sm" variant="secondary" onClick={togglePresentation} title="Exit presentation (Esc)">
 
 
@@ -800,6 +805,15 @@ export function LessonWorkspace({
                 Exit
               </Button>
             </div>
+          ) : null}
+          {mirror.receiving ? (
+            <div
+              className="absolute inset-0 z-[75] cursor-default touch-none"
+              aria-label="Teacher screen mirroring is active. Exit presentation to regain control."
+              onContextMenu={(event) => event.preventDefault()}
+              onPointerDown={(event) => event.preventDefault()}
+              onWheel={(event) => event.preventDefault()}
+            />
           ) : null}
           {effectiveLayout === "layered" ? (
             (() => {

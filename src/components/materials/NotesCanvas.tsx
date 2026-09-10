@@ -145,9 +145,9 @@ export function NotesCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionId]);
 
-  // Present-mode mirroring: typing, drawing, zoom and scrolling on the teacher's
-  // canvas appear live on the screens of students following the board.
-  useMirrorField("canvas.blocks", blocks, setBlocks);
+  // The teacher's typing, drawing and pictures always appear live on student
+  // screens; zoom, tab and scrolling only follow while mirroring is on.
+  useMirrorField("canvas.blocks", blocks, setBlocks, "content");
   useMirrorField("canvas.zoom", zoom, setZoom);
   useMirrorField("canvas.tab", tab, setTab);
   useMirrorScroll("canvas.scroll", scrollRef);

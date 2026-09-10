@@ -51,9 +51,9 @@ export function useDocMarkup(baseKey: string) {
   }, [storageKey, ready]);
 
 
-  // While the teacher mirrors their present-mode screen, the marks they make
-  // on the document appear live on every following student screen.
-  useMirrorField(`markup:${baseKey}`, notes, setNotes);
+  // Marks the teacher makes on the document appear live on student screens,
+  // whether or not the teacher is mirroring their whole view.
+  useMirrorField(`markup:${baseKey}`, notes, setNotes, "content");
 
   function annotationOf(index: number) {
     return notes[index] ?? emptyAnnotation;

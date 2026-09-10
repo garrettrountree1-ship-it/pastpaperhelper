@@ -4,33 +4,42 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Live screen mirroring for present mode.
+ * Live lesson sharing.
  *
- * While the teacher is presenting and has mirroring switched on, every part of
- * the lesson view they touch (which section, which document, the canvas work,
- * zoom, scrolling and marks made on the document) is broadcast to the students
- * who are also in present mode, so their screens follow the board live. Nothing
- * outside present mode is ever shared, and switching mirroring off hands
- * control straight back to each student.
+ * Two things travel from the teacher's lesson screen to the students:
+ *
+ * - "content" — the work itself: what is typed, drawn, highlighted or moved on
+ *   the lesson canvas and on the document. This is always live for students, so
+ *   they watch the teacher work without ever refreshing the page.
+ * - "view" — where the teacher is looking: which lesson page and resource,
+ *   the window layout, zoom and scroll position. This only travels while the
+ *   teacher has mirroring switched on and the student is in present mode, so
+ *   students keep control of their own screen the rest of the time.
  */
 
 type Fields = Record<string, unknown>;
+export type MirrorScope = "content" | "view";
 
 export type MirrorApi = {
-  /** This screen is the source being mirrored out. */
+  /** This screen is mirroring its view out (teacher, presenting, mirroring on). */
   sending: boolean;
-  /** This screen is following the teacher's board. */
+  /** This screen is following the teacher's view. */
   receiving: boolean;
+  /** This screen is broadcasting its live work. */
+  liveSending: boolean;
+  /** This screen shows the teacher's live work. */
+  liveReceiving: boolean;
   mirrorOn: boolean;
   setMirrorOn: (next: boolean) => void;
-  /** Number of screens currently following (teacher side, best effort). */
-  publish: (key: string, value: unknown) => void;
+  publish: (key: string, value: unknown, scope?: MirrorScope) => void;
   received: Fields;
 };
 
 const idleApi: MirrorApi = {
   sending: false,
   receiving: false,
+  liveSending: false,
+  liveReceiving: false,
   mirrorOn: false,
   setMirrorOn: () => {},
   publish: () => {},
@@ -45,7 +54,14 @@ export function useLessonMirror() {
   return useContext(MirrorContext);
 }
 
-/** Builds the mirror connection. Used once, by the lesson workspace. */
+type Payload = {
+  from?: string;
+  viewActive?: boolean;
+  content?: Fields;
+  view?: Fields;
+};
+
+/** Builds the live connection. Used once, by the lesson workspace. */
 export function useLessonMirrorState({
   classId,
   isTeacher,
@@ -55,90 +71,123 @@ export function useLessonMirrorState({
   classId: string;
   isTeacher: boolean;
   presenting: boolean;
-  /** Accounts a student will accept a mirrored screen from. */
+  /** Accounts a student will accept a shared screen from. */
   presenterIds: string[];
 }): MirrorApi {
   const [mirrorOn, setMirrorOn] = useState(false);
-  const [remoteActive, setRemoteActive] = useState(false);
+  const [viewActive, setViewActive] = useState(false);
   const [received, setReceived] = useState<Fields>({});
-  const all = useRef<Fields>({});
-  const pending = useRef<Fields>({});
-  const selfId = useRef<string | null>(null);
+  const [selfId, setSelfId] = useState<string | null>(null);
+
+  const allContent = useRef<Fields>({});
+  const allView = useRef<Fields>({});
+  const pendingContent = useRef<Fields>({});
+  const pendingView = useRef<Fields>({});
 
   const topic = `lesson-mirror:${classId}`;
   const sending = isTeacher && presenting && mirrorOn;
-  const receiving = !isTeacher && presenting && remoteActive;
+  const receiving = !isTeacher && presenting && viewActive;
   const allowed = presenterIds.join(",");
 
-  // Leaving present mode always stops mirroring.
+  // Leaving present mode always stops view mirroring.
   useEffect(() => {
     if (!presenting) setMirrorOn(false);
   }, [presenting]);
 
   useEffect(() => {
-    void supabase.auth.getUser().then(({ data }) => {
-      selfId.current = data.user?.id ?? null;
-    });
+    void supabase.auth.getUser().then(({ data }) => setSelfId(data.user?.id ?? null));
   }, []);
 
-  const publish = useCallback((key: string, value: unknown) => {
-    all.current[key] = value;
-    pending.current[key] = value;
+  const publish = useCallback((key: string, value: unknown, scope: MirrorScope = "view") => {
+    if (scope === "content") {
+      allContent.current[key] = value;
+      pendingContent.current[key] = value;
+    } else {
+      allView.current[key] = value;
+      pendingView.current[key] = value;
+    }
   }, []);
 
-  // Teacher: push changes out on a short heartbeat, and answer late joiners
-  // with the full picture so they catch up instantly.
+  // The teacher's work streams out continuously; the view only while mirroring.
+  // Kept in a ref so switching mirroring never rebuilds the connection.
+  const sendingRef = useRef(sending);
+  sendingRef.current = sending;
+
   useEffect(() => {
-    if (!sending) return;
+    if (!isTeacher || !selfId) return;
     let channel: RealtimeChannel | null = supabase.channel(topic, {
       config: { broadcast: { self: false } },
     });
-    const sendState = (fields: Fields) => {
+
+    const send = (payload: Payload) => {
       void channel?.send({
         type: "broadcast",
-        event: "state",
-        payload: { active: true, from: selfId.current, fields },
+        event: "lesson",
+        payload: { from: selfId, ...payload },
       });
     };
-    channel.on("broadcast", { event: "hello" }, () => sendState(all.current));
+    const sendAll = () =>
+      send({
+        viewActive: sendingRef.current,
+        content: allContent.current,
+        ...(sendingRef.current ? { view: allView.current } : {}),
+      });
+
+    channel.on("broadcast", { event: "hello" }, () => sendAll());
     channel.subscribe((status) => {
-      if (status === "SUBSCRIBED") sendState(all.current);
+      if (status === "SUBSCRIBED") sendAll();
     });
+
+    let lastView = sendingRef.current;
     const timer = setInterval(() => {
-      const patch = pending.current;
-      if (Object.keys(patch).length === 0) return;
-      pending.current = {};
-      sendState(patch);
-    }, 150);
+      const content = pendingContent.current;
+      const view = pendingView.current;
+      const viewChanged = lastView !== sendingRef.current;
+      const hasContent = Object.keys(content).length > 0;
+      const hasView = sendingRef.current && Object.keys(view).length > 0;
+      if (!viewChanged && !hasContent && !hasView) return;
+      pendingContent.current = {};
+      pendingView.current = {};
+      if (viewChanged) {
+        lastView = sendingRef.current;
+        // Turning mirroring on hands the students the full picture at once.
+        sendAll();
+        return;
+      }
+      send({
+        viewActive: sendingRef.current,
+        ...(hasContent ? { content } : {}),
+        ...(hasView ? { view } : {}),
+      });
+    }, 120);
 
     return () => {
       clearInterval(timer);
-      void channel?.send({
-        type: "broadcast",
-        event: "state",
-        payload: { active: false, from: selfId.current, fields: {} },
-      });
+      send({ viewActive: false });
       const closing = channel;
       channel = null;
       if (closing) void supabase.removeChannel(closing);
     };
-  }, [sending, topic]);
+  }, [isTeacher, selfId, topic]);
 
-  // Student: listen while presenting, and ask for the current picture on join.
+  // Students always listen, so the teacher's work appears live. View updates are
+  // only applied while they are in present mode and the teacher is mirroring.
+  const studentChannel = useRef<RealtimeChannel | null>(null);
+
   useEffect(() => {
-    if (isTeacher || !presenting) return;
+    if (isTeacher) return;
     const trusted = allowed ? allowed.split(",") : [];
     const channel = supabase.channel(topic, { config: { broadcast: { self: false } } });
-    channel.on("broadcast", { event: "state" }, ({ payload }) => {
-      const message = payload as { active?: boolean; from?: string; fields?: Fields };
+    studentChannel.current = channel;
+
+    channel.on("broadcast", { event: "lesson" }, ({ payload }) => {
+      const message = payload as Payload;
       if (trusted.length > 0 && (!message.from || !trusted.includes(message.from))) return;
-      if (!message.active) {
-        setRemoteActive(false);
-        setReceived({});
-        return;
+      setViewActive(message.viewActive === true);
+      const patch = { ...(message.content ?? {}), ...(message.view ?? {}) };
+      if (Object.keys(patch).length > 0) {
+        setReceived((current) => ({ ...current, ...patch }));
       }
-      setRemoteActive(true);
-      setReceived((current) => ({ ...current, ...(message.fields ?? {}) }));
     });
     channel.subscribe((status) => {
       if (status === "SUBSCRIBED") {
@@ -146,39 +195,63 @@ export function useLessonMirrorState({
       }
     });
     return () => {
-      setRemoteActive(false);
-      setReceived({});
+      studentChannel.current = null;
+      setViewActive(false);
       void supabase.removeChannel(channel);
     };
-  }, [isTeacher, presenting, topic, allowed]);
+  }, [isTeacher, topic, allowed]);
 
-  return { sending, receiving, mirrorOn, setMirrorOn, publish, received };
+  // Ask for the full picture again whenever the student enters present mode.
+  useEffect(() => {
+    if (isTeacher || !presenting) return;
+    void studentChannel.current?.send({ type: "broadcast", event: "hello", payload: {} });
+  }, [isTeacher, presenting]);
+
+  return {
+    sending,
+    receiving,
+    liveSending: isTeacher,
+    liveReceiving: !isTeacher,
+    mirrorOn,
+    setMirrorOn,
+    publish,
+    received,
+  };
 }
 
-/** Keeps one piece of view state in step with the mirrored screen. */
+/** Keeps one piece of lesson state in step with the teacher's screen. */
 export function useMirrorFieldWith<T>(
   api: MirrorApi,
   key: string,
   value: T,
   apply: (next: T) => void,
+  scope: MirrorScope = "view",
 ) {
-  const { sending, receiving, publish, received } = api;
+  const { sending, receiving, liveSending, liveReceiving, publish, received } = api;
   const applyRef = useRef(apply);
   applyRef.current = apply;
 
+  const send = scope === "content" ? liveSending : sending;
+  const take = scope === "content" ? liveReceiving : receiving;
+
   useEffect(() => {
-    if (sending) publish(key, value);
-  }, [sending, publish, key, value]);
+    if (send) publish(key, value, scope);
+  }, [send, publish, key, value, scope]);
 
   const incoming = received[key];
   useEffect(() => {
-    if (!receiving || incoming === undefined) return;
+    if (!take || incoming === undefined) return;
     applyRef.current(incoming as T);
-  }, [receiving, incoming]);
+  }, [take, incoming]);
 }
 
-export function useMirrorField<T>(key: string, value: T, apply: (next: T) => void) {
-  useMirrorFieldWith(useLessonMirror(), key, value, apply);
+export function useMirrorField<T>(
+  key: string,
+  value: T,
+  apply: (next: T) => void,
+  scope: MirrorScope = "view",
+) {
+  useMirrorFieldWith(useLessonMirror(), key, value, apply, scope);
 }
 
 /**

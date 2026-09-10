@@ -161,7 +161,13 @@ function AnimatedScore({ from, to }: { from: number; to: number }) {
 
 type FormativeBoardRow = { alias: string; points: number; isMe: boolean };
 
-function ClassroomLeaderboard({ rows }: { rows: FormativeBoardRow[] }) {
+function ClassroomLeaderboard({
+  rows,
+  className = "",
+}: {
+  rows: FormativeBoardRow[];
+  className?: string;
+}) {
   const previous = useRef(new Map<string, { points: number; rank: number }>());
   const previousSnapshot = previous.current;
 
@@ -172,17 +178,19 @@ function ClassroomLeaderboard({ rows }: { rows: FormativeBoardRow[] }) {
   }, [rows]);
 
   return (
-    <aside className="pointer-events-auto fixed bottom-3 left-3 right-3 z-[71] max-h-[34vh] overflow-hidden rounded-xl border-2 border-primary/30 bg-background shadow-2xl lg:bottom-auto lg:left-4 lg:right-auto lg:top-1/2 lg:max-h-[92vh] lg:w-[min(34vw,28rem)] lg:-translate-y-1/2">
-      <div className="border-b border-border bg-primary px-5 py-5 text-primary-foreground">
-        <p className="flex items-center gap-3 font-display text-2xl">
-          <span className="flex size-10 items-center justify-center rounded-full bg-primary-foreground/15">
-            <Trophy className="size-6" />
+    <aside
+      className={`pointer-events-auto min-h-0 min-w-0 overflow-hidden rounded-xl border-2 border-primary/30 bg-background shadow-2xl ${className}`}
+    >
+      <div className="border-b border-border bg-primary px-4 py-3 text-primary-foreground lg:px-5 lg:py-5">
+        <p className="flex items-center gap-3 font-display text-xl lg:text-2xl">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15 lg:size-10">
+            <Trophy className="size-5 lg:size-6" />
           </span>
           Live leaderboard
         </p>
         <p className="mt-1 text-sm text-primary-foreground/80">Every correct answer can change the race.</p>
       </div>
-      <div className="max-h-[calc(92vh-6.5rem)] space-y-3 overflow-y-auto p-4">
+      <div className="h-[calc(100%-5.5rem)] space-y-3 overflow-y-auto p-3 lg:h-[calc(100%-6.5rem)] lg:p-4">
         {rows.map((row, index) => {
           const rank = index + 1;
           const old = previousSnapshot.get(row.alias);
@@ -583,6 +591,9 @@ export function FormativeCheckPanel({
   const stopwatch = useStopwatch(check?.startedAt, Boolean(check?.countUp));
   const [answer, setAnswer] = useState("");
   const [partAnswers, setPartAnswers] = useState<Record<string, string>>({});
+  const [studentPhonePanel, setStudentPhonePanel] = useState<"question" | "leaderboard">(
+    "question",
+  );
   // Remember the dismissed check across tab navigation so the popup only
   // reappears when the teacher sends a brand-new formative assessment.
   const dismissedKey = `formative-dismissed:${classId}`;
@@ -726,6 +737,7 @@ export function FormativeCheckPanel({
     if (check?.id) {
       setAnswer("");
       setPartAnswers({});
+      setStudentPhonePanel("question");
     }
   }, [check?.id]);
 
@@ -765,7 +777,8 @@ export function FormativeCheckPanel({
   const boardOn = Boolean(board.data?.enabled);
   const boardRows = board.data?.rows ?? [];
   const myAlias = boardRows.find((row) => row.isMe)?.alias ?? "Student";
-  const boardShift = boardOn ? "lg:translate-x-24" : "";
+  const showPhoneQuestion = !boardOn || studentPhonePanel === "question";
+  const showPhoneLeaderboard = boardOn && studentPhonePanel === "leaderboard";
 
   return (
     // Students get a blocking screen; the teacher's card floats in the middle so
@@ -773,16 +786,66 @@ export function FormativeCheckPanel({
     <div
       className={
         student
-          ? "pointer-events-auto fixed inset-0 z-[70] flex items-center justify-center bg-foreground/40 p-4 pb-[36vh] backdrop-blur-sm lg:pb-4"
+          ? "pointer-events-auto fixed inset-0 z-[70] flex flex-col bg-foreground/40 p-3 backdrop-blur-sm sm:p-4"
           : "pointer-events-none fixed inset-0 z-[70] flex items-center justify-center p-4"
       }
     >
-      {boardOn ? <ClassroomLeaderboard rows={boardRows} /> : null}
+      {student && boardOn ? (
+        <div
+          className="mx-auto mb-3 grid w-full max-w-sm shrink-0 grid-cols-2 rounded-lg border border-border bg-background p-1 shadow-lg md:hidden"
+          role="tablist"
+          aria-label="Formative assessment view"
+        >
+          <Button
+            type="button"
+            size="sm"
+            variant={studentPhonePanel === "question" ? "default" : "ghost"}
+            role="tab"
+            aria-selected={studentPhonePanel === "question"}
+            onClick={() => setStudentPhonePanel("question")}
+          >
+            <NotebookPen className="size-4" />
+            Question
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={studentPhonePanel === "leaderboard" ? "default" : "ghost"}
+            role="tab"
+            aria-selected={studentPhonePanel === "leaderboard"}
+            onClick={() => setStudentPhonePanel("leaderboard")}
+          >
+            <Trophy className="size-4" />
+            Leaderboard
+          </Button>
+        </div>
+      ) : null}
       <div
         className={
           student
-            ? `max-h-[92vh] w-[min(96vw,52rem)] overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-2xl transition-transform duration-300 ${boardShift}`
-            : `pointer-events-auto max-h-[80vh] w-[min(96vw,34rem)] overflow-y-auto rounded-2xl border border-border bg-background p-5 shadow-2xl transition-transform duration-300 ${boardShift}`
+            ? `mx-auto grid min-h-0 w-full flex-1 items-stretch justify-center gap-4 ${
+                boardOn
+                  ? "md:grid-cols-[minmax(15rem,22rem)_minmax(0,52rem)] lg:grid-cols-[minmax(18rem,28rem)_minmax(0,52rem)]"
+                  : "max-w-[52rem] grid-cols-1"
+              }`
+            : "contents"
+        }
+      >
+      {boardOn ? (
+        <ClassroomLeaderboard
+          rows={boardRows}
+          className={
+            student
+              ? `${showPhoneLeaderboard ? "block" : "hidden"} h-full md:block`
+              : "fixed bottom-3 left-3 right-3 z-[71] max-h-[34vh] lg:bottom-auto lg:left-4 lg:right-auto lg:top-1/2 lg:max-h-[92vh] lg:w-[min(34vw,28rem)] lg:-translate-y-1/2"
+          }
+        />
+      ) : null}
+      <div
+        className={
+          student
+            ? `${showPhoneQuestion ? "block" : "hidden"} min-h-0 min-w-0 overflow-y-auto rounded-2xl border border-border bg-background p-4 shadow-2xl md:block sm:p-6`
+            : "pointer-events-auto max-h-[80vh] w-[min(96vw,34rem)] overflow-y-auto rounded-2xl border border-border bg-background p-5 shadow-2xl"
         }
       >
         {student ? (
@@ -1060,6 +1123,7 @@ export function FormativeCheckPanel({
             ) : null}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

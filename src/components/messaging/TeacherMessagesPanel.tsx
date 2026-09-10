@@ -125,10 +125,28 @@ export function TeacherMessagesPanel({
   }, [seenKey]);
 
   const send = useMutation({
-    mutationFn: (vars: { studentId: string; body: string }) =>
-      reply({ data: { classId, studentId: vars.studentId, topic: "", body: vars.body } }),
+    mutationFn: (vars: { studentId: string; body: string; replyToId: string | null }) =>
+      reply({
+        data: {
+          classId,
+          studentId: vars.studentId,
+          topic: "",
+          body: vars.body,
+          replyToId: vars.replyToId,
+        },
+      }),
     onSuccess: (_result, vars) => {
       setDrafts((prev) => ({ ...prev, [vars.studentId]: "" }));
+      setQuotes((prev) => ({ ...prev, [vars.studentId]: null }));
+      queryClient.invalidateQueries({ queryKey });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => removeMessage({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Message deleted");
       queryClient.invalidateQueries({ queryKey });
     },
     onError: (error: Error) => toast.error(error.message),

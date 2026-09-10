@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { Quote, Trash2, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 

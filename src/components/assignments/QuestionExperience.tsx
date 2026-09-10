@@ -440,7 +440,7 @@ export function QuestionExperience({
               ))}
             </div>
           ) : null}
-          {requiresPhoto ? (
+          {requiresPhoto && !readOnly ? (
             <p className="mt-2 text-xs text-muted-foreground">
               Show your full drawing or working — marks are given for the method as well as the
               final answer.
@@ -448,7 +448,7 @@ export function QuestionExperience({
           ) : null}
         </details>
 
-        {onAddDrawing ? (
+        {onAddDrawing && !readOnly ? (
           <details className="rounded-lg border border-dashed border-border p-3">
             <summary className="cursor-pointer text-sm font-medium">
               Draw your answer on the pad
@@ -468,26 +468,28 @@ export function QuestionExperience({
                 ? `${attempts} attempt${attempts === 1 ? "" : "s"}`
                 : ""}
           </span>
-          <Button
-            onClick={onCheck}
-            disabled={
-              locked ||
-              outOfTries ||
-              checking ||
-              (!hasWrittenAnswer && photoCount === 0) ||
-              !isEnglishOnly(draft)
-            }
-          >
-            {locked
-              ? "Locked"
-              : outOfTries
-                ? "No tries left"
-                : checking
-                  ? "Marking..."
-                  : result
-                    ? "Re-check answer"
-                    : "Check answer"}
-          </Button>
+          {readOnly ? null : (
+            <Button
+              onClick={onCheck}
+              disabled={
+                locked ||
+                outOfTries ||
+                checking ||
+                (!hasWrittenAnswer && photoCount === 0) ||
+                !isEnglishOnly(draft)
+              }
+            >
+              {locked
+                ? "Locked"
+                : outOfTries
+                  ? "No tries left"
+                  : checking
+                    ? "Marking..."
+                    : result
+                      ? "Re-check answer"
+                      : "Check answer"}
+            </Button>
+          )}
 
         </div>
         {checkError ? <p className="text-sm text-destructive">{checkError}</p> : null}

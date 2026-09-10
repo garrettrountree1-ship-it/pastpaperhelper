@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { Move, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useUndoHistory } from "@/hooks/use-undo-history";
 import { escapeHtml, formatSelection } from "@/lib/rich-text";

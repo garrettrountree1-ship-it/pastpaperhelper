@@ -506,6 +506,15 @@ export function NotesCanvas({
 
       {canEdit && tab === "notes" ? (
         <div className="flex flex-wrap items-center gap-2 border-b px-3 py-1.5">
+          <Button
+            size="sm"
+            variant={mode === "select" ? "default" : "outline"}
+            onClick={() => setMode("select")}
+            title="Click text or pictures to move, resize or delete them"
+          >
+            <MousePointer2 className="size-4" />
+            Arrow
+          </Button>
           <Button size="sm" variant={mode === "type" ? "default" : "outline"} onClick={() => setMode("type")}>
             <Type className="size-4" />
             Type
@@ -628,7 +637,9 @@ export function NotesCanvas({
               ? "Draw anywhere on the sheet."
               : mode === "erase"
                 ? "Click or drag across a stroke to erase it."
-                : "Click anywhere to type · paste images straight in"}
+                : mode === "select"
+                  ? "Click text or a picture to move it, drag a corner to resize, or use the bin to delete."
+                  : "Click anywhere to type · paste images straight in"}
           </span>
         </div>
       ) : null}

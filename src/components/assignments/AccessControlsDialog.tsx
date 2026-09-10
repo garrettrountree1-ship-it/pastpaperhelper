@@ -290,8 +290,8 @@ function StudentRow({
         />
         <Label htmlFor={`full-marks-${student.id}`} className="text-sm font-normal">
           {classFullMarks
-            ? "Full-marks answers already shown to the whole class"
-            : "Show a question's mark scheme to this student when they get full marks"}
+            ? "Show the mark scheme for a question as soon as a student gets full marks on it — already set for the whole class"
+            : "Show the mark scheme for a question as soon as this student gets full marks on it"}
         </Label>
       </div>
     </div>

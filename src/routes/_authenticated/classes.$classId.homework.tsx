@@ -39,6 +39,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { SectionShell, SectionTabsMobile } from "@/components/SectionShell";
+import { StudentWorkPhoto } from "@/components/StudentWorkPhoto";
 import { StudentClassHomework } from "@/components/homework/HomeworkSection";
 import { TeacherMessagesPanel } from "@/components/messaging/TeacherMessagesPanel";
 import { AccessControlsDialog } from "@/components/assignments/AccessControlsDialog";

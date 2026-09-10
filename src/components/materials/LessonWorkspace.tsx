@@ -316,6 +316,32 @@ export function LessonWorkspace({
     };
   }, [presenting]);
 
+  // A mirrored student screen is a passive display. Capture keyboard and
+  // clipboard interactions before canvas or document tools can react; Escape
+  // remains available so the student can always leave presentation mode.
+  useEffect(() => {
+    if (!mirror.receiving) return;
+    const blockKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+    const blockClipboard = (event: ClipboardEvent) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+    document.addEventListener("keydown", blockKey, true);
+    document.addEventListener("paste", blockClipboard, true);
+    document.addEventListener("cut", blockClipboard, true);
+    document.addEventListener("copy", blockClipboard, true);
+    return () => {
+      document.removeEventListener("keydown", blockKey, true);
+      document.removeEventListener("paste", blockClipboard, true);
+      document.removeEventListener("cut", blockClipboard, true);
+      document.removeEventListener("copy", blockClipboard, true);
+    };
+  }, [mirror.receiving]);
+
   async function togglePresentation() {
     const next = !presenting;
     setPresenting(next);

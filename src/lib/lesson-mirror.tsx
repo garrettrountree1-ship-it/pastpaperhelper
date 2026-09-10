@@ -188,7 +188,7 @@ export function useLessonMirrorState({
 
     channel.on("broadcast", { event: "lesson" }, ({ payload }) => {
       const message = payload as Payload;
-      if (trusted.length > 0 && (!message.from || !trusted.includes(message.from))) return;
+      if (!message.from || !trusted.includes(message.from)) return;
       setViewActive(message.viewActive === true);
       if (!presentingRef.current || message.viewActive !== true) return;
       const patch = { ...(message.content ?? {}), ...(message.view ?? {}) };

@@ -33,6 +33,7 @@ import {
   getAssignmentPreview,
   previewGradeAnswer,
   previewTutorMessage,
+  getStudentHomeworkView,
 } from "@/lib/app.functions";
 
 
@@ -484,3 +485,127 @@ function PreviewQuestion({
   );
 }
 
+
+/**
+ * Exactly what one student is looking at right now — their typed answers,
+ * photos, marks, feedback and tutor chat — with every control removed so the
+ * teacher can read and expand, but never change, the student's work.
+ */
+function StudentWorkView({
+  assignmentId,
+  studentId,
+  protectedClassName,
+  concealed,
+}: {
+  assignmentId: string;
+  studentId: string;
+  protectedClassName: string;
+  concealed: boolean;
+}) {
+  const view = useQuery({
+    queryKey: ["student-homework-view", assignmentId, studentId],
+    queryFn: () => getStudentHomeworkView({ data: { assignmentId, studentId } }),
+    retry: 2,
+  });
+
+  if (view.isPending) return <Skeleton className="mt-8 h-64 w-full" />;
+  if (view.isError) {
+    return (
+      <div className="mt-8 text-center">
+        <p className="mb-4 text-muted-foreground">
+          We couldn&apos;t load this student&apos;s work. {(view.error as Error).message}
+        </p>
+        <Button onClick={() => view.refetch()}>Retry</Button>
+      </div>
+    );
+  }
+  const data = view.data;
+  if (!data) return null;
+
+  const answered = data.questions.filter((question) =>
+    data.answers.some((answer) => answer.question_id === question.id),
+  ).length;
+
+  return (
+    <>
+      <div className="paper mt-6 p-5">
+        <p className="font-display text-lg">{data.student.name}</p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Badge variant="secondary">
+            {answered}/{data.questions.length} answered
+          </Badge>
+          <Badge>
+            {Number(data.submission?.awarded_marks ?? 0)}/
+            {Number(data.submission?.total_marks ?? 0)} marks
+          </Badge>
+          {data.submission?.status === "submitted" ? <Badge>Handed in</Badge> : null}
+          {data.submission?.locked_at ? <Badge variant="destructive">Locked</Badge> : null}
+          {data.assignment.pastDue ? <Badge variant="destructive">Past due</Badge> : null}
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          You are watching this homework in progress. Open and close each part to read the work —
+          nothing here can be typed, marked or removed.
+        </p>
+      </div>
+
+      <div
+        className={`mt-6 space-y-6 ${protectedClassName} ${
+          concealed ? "pointer-events-none blur-lg" : ""
+        }`}
+      >
+        {data.questions.map((question, index) => {
+          const answer = data.answers.find((row) => row.question_id === question.id) ?? null;
+          const thread = answer
+            ? data.messages.filter((message) => message.answer_id === answer.id)
+            : [];
+          return (
+            <QuestionExperience
+              key={question.id}
+              readOnly
+              question={question}
+              index={index}
+              snipUrls={(question.imageUrls ?? []).filter((url) => parseSnipBand(url))}
+              draft={answer?.answer_text ?? ""}
+              onDraftChange={() => {}}
+              requiresPhoto={false}
+              showPhoto={false}
+              onShowPhoto={() => {}}
+              photoCount={0}
+              photoUrls={answer?.imageUrls ?? []}
+              photoFiles={[]}
+              onPhotosChange={() => {}}
+              sentBack={
+                answer?.rejected_at
+                  ? { at: answer.rejected_at, note: answer.rejection_note ?? null }
+                  : null
+              }
+              result={
+                answer && !answer.rejected_at
+                  ? {
+                      verdict: answer.verdict ?? "incorrect",
+                      awardedMarks: Number(answer.awarded_marks ?? 0),
+                      feedback: answer.feedback ?? "",
+                    }
+                  : null
+              }
+              attempts={Number(answer?.attempts ?? 0)}
+              checking={false}
+              checkError={undefined}
+              onCheck={() => {}}
+              thread={thread}
+              reply=""
+              onReplyChange={() => {}}
+              tutoring={false}
+              tutorError={undefined}
+              onSend={() => {}}
+              markScheme={null}
+              markSchemeImageUrls={question.answerImageUrls ?? []}
+              keywordTranslation={false}
+              assignmentId={assignmentId}
+            />
+          );
+        })}
+      </div>
+    </>
+  );
+}

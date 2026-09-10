@@ -1,3 +1,4 @@
+import { normalisePhotoFile } from "@/lib/heic";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cleanMathText } from "@/lib/math-text";
 import { Link, createFileRoute } from "@tanstack/react-router";
@@ -208,8 +209,10 @@ function QuizPage() {
                           type="file"
                           accept="image/*"
                           onChange={async (event) => {
-                            const file = event.target.files?.[0];
-                            if (!file) return;
+                            const picked = event.target.files?.[0];
+                            if (!picked) return;
+                            // iPhone HEIC photos become JPEGs so they can be shown and marked.
+                            const file = await normalisePhotoFile(picked);
                             const base64 = await fileToBase64(file);
                             saveMutation.mutate({
                               questionId: question.id,

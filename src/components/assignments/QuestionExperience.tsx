@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { QuestionSnipStack } from "@/components/assignments/QuestionSnip";
+import { StudentWorkPhoto } from "@/components/StudentWorkPhoto";
 import { QuestionVocabBox } from "@/components/assignments/QuestionVocabBox";
 
 import { cleanMathText } from "@/lib/math-text";
@@ -430,11 +431,10 @@ export function QuestionExperience({
           {submittedPhotoUrls.length > 0 ? (
             <div className="mt-3 flex flex-wrap gap-2">
               {submittedPhotoUrls.map((url, photoIndex) => (
-                <img
+                <StudentWorkPhoto
                   key={`${photoIndex}-${url.slice(-12)}`}
-                  src={url}
+                  url={url}
                   alt="Uploaded working"
-                  loading="lazy"
                   className="size-20 rounded-lg border border-border object-cover"
                 />
               ))}

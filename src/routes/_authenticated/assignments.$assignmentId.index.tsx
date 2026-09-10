@@ -1,3 +1,4 @@
+import { normalisePhotoFiles } from "@/lib/heic";
 import { formatDueDate } from "@/lib/datetime";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
@@ -464,9 +465,12 @@ function QuestionCard({
       photoUrls={answer?.imageUrls ?? []}
       photoFiles={photoPreviews}
       onRemovePhoto={(name) => setPhotos((prev) => prev.filter((item) => item.name !== name))}
-      onPhotosChange={(files) =>
-        setPhotos((prev) => [...prev, ...Array.from(files ?? [])].slice(0, 6))
-      }
+      onPhotosChange={(files) => {
+        // iPhone photos arrive as HEIC, which browsers can't show — turn them into JPEGs.
+        void normalisePhotoFiles(Array.from(files ?? [])).then((ready) =>
+          setPhotos((prev) => [...prev, ...ready].slice(0, 6)),
+        );
+      }}
       onAddDrawing={(file) =>
         // The pad keeps one picture that is replaced each time it is saved.
         setPhotos((prev) => [...prev.filter((item) => item.name !== file.name), file].slice(0, 6))

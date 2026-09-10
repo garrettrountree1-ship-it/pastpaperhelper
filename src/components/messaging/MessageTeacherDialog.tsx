@@ -61,6 +61,7 @@ export function MessageTeacherDialog({
     enabled: open,
   });
   const send = useServerFn(sendMessageToTeacher);
+  const removeMessage = useServerFn(deleteClassMessage);
   const mutation = useMutation({
     mutationFn: () =>
       send({
@@ -70,11 +71,24 @@ export function MessageTeacherDialog({
           questionId: preset?.questionId ?? null,
           topic: topic.trim(),
           body: body.trim(),
+          replyToId: quoteId,
         },
       }),
     onSuccess: () => {
       setBody("");
+      setQuoteId(null);
       toast.success("Message sent to your teacher");
+      queryClient.invalidateQueries({ queryKey: ["my-messages"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  /** Students may remove their own messages only, never the teacher's. */
+  const remove = useMutation({
+    mutationFn: (id: string) => removeMessage({ data: { id } }),
+    onSuccess: (_r, id) => {
+      if (quoteId === id) setQuoteId(null);
+      toast.success("Message deleted");
       queryClient.invalidateQueries({ queryKey: ["my-messages"] });
     },
     onError: (error: Error) => toast.error(error.message),

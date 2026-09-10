@@ -448,7 +448,7 @@ export function DrawingPad({
       const byHeight =
         (grab.startHeight + signY * (point.y - grab.startY)) / Math.max(1, grab.startHeight);
       const factor = Math.max(0.05, (byWidth + byHeight) / 2);
-      const next = Math.max(0.4, Math.min(2.5, grab.startScale * factor));
+      const next = Math.max(0.15, Math.min(2.5, grab.startScale * factor));
       const applied = next / grab.startScale;
       photoScaleRef.current = next;
       // Keep the corner opposite the one being dragged exactly where it is.

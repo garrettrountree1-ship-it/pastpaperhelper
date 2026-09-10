@@ -6,7 +6,11 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { listClassMessages, replyToStudent } from "@/lib/messaging.functions";
+import {
+  deleteClassMessage,
+  listClassMessages,
+  replyToStudent,
+} from "@/lib/messaging.functions";
 
 /** System notices (e.g. "Redo question 8 — …") never count as new messages. */
 function isSystemMessage(m: { sender_role: string; topic: string | null }) {

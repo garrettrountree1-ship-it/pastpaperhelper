@@ -2104,6 +2104,19 @@ export const gradeAnswer = createServerFn({ method: "POST" })
 
     const imageUrls = await signWorkImages(db, imagePaths);
 
+    // Mark against the exact printed answer-key cut for this question. Recover
+    // the cut when extraction never saved one, so every question is marked from
+    // the picture rather than only the transcribed text.
+    const { recoverAnswerCrops } = await import("./answer-crop.server");
+    const markSchemePaths = await recoverAnswerCrops({
+      id: question.id,
+      position: question.position,
+      question_text: question.question_text,
+      mark_scheme: question.mark_scheme,
+      image_paths: (question.image_paths ?? []) as string[],
+      answer_image_paths: (question.answer_image_paths ?? []) as string[],
+    });
+
     const { markStudentAnswer } = await import("./marking.server");
     const result = await markStudentAnswer({
       curriculum: assignment.curriculum,
@@ -2114,7 +2127,9 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       answer: data.answerText,
       imageUrls,
       questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
+      markSchemeImageUrls: await signPaperPages(db, markSchemePaths),
     });
+
 
 
     const submission = await ensureSubmission(db, data.assignmentId, userId);
@@ -2172,24 +2187,8 @@ export const gradeAnswer = createServerFn({ method: "POST" })
 
     await recalcSubmission(db, submission.id);
 
-    // Older extracted assignments can have the printed mark-scheme page saved
-    // without a per-question answer crop. Recover that exact crop when it first
-    // becomes eligible for release, then persist it for every later view.
-    if (
-      access.revealOnFullMarks &&
-      Number(result.awardedMarks) >= Number(question.marks) &&
-      (question.answer_image_paths ?? []).length === 0
-    ) {
-      const { recoverAnswerCrops } = await import("./answer-crop.server");
-      await recoverAnswerCrops({
-        id: question.id,
-        position: question.position,
-        question_text: question.question_text,
-        mark_scheme: question.mark_scheme,
-        image_paths: (question.image_paths ?? []) as string[],
-        answer_image_paths: (question.answer_image_paths ?? []) as string[],
-      });
-    }
+
+
     return {
       answerId: answer.id,
       verdict: result.verdict,
@@ -2630,7 +2629,7 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: question, error: qError } = await db
       .from("questions")
-      .select("id, question_text, mark_scheme, marks, assignment_id, image_paths")
+      .select("id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position")
       .eq("id", data.questionId)
       .single();
     if (qError) throw new Error(qError.message);
@@ -2676,6 +2675,16 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
 
 
 
+    const { recoverAnswerCrops: recoverPreviewAnswerCrops } = await import("./answer-crop.server");
+    const previewMarkSchemePaths = await recoverPreviewAnswerCrops({
+      id: question.id,
+      position: question.position,
+      question_text: question.question_text,
+      mark_scheme: question.mark_scheme,
+      image_paths: (question.image_paths ?? []) as string[],
+      answer_image_paths: (question.answer_image_paths ?? []) as string[],
+    });
+
     const { markStudentAnswer } = await import("./marking.server");
     const result = await markStudentAnswer({
       curriculum: assignment.curriculum,
@@ -2686,7 +2695,9 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       answer: data.answerText,
       imageUrls: previewImages,
       questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
+      markSchemeImageUrls: await signPaperPages(db, previewMarkSchemePaths),
     });
+
 
     return {
       verdict: result.verdict,

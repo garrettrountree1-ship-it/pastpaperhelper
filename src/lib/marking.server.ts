@@ -41,20 +41,29 @@ type MarkInput = {
   imageUrls?: string[];
   /** Original past-paper page images holding the question's figures/equations. */
   questionImageUrls?: string[];
+  /** Exact cut picture(s) of the printed official answer / mark scheme for this question. */
+  markSchemeImageUrls?: string[];
 };
+
 
 export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
   const images = input.imageUrls ?? [];
   const questionImages = input.questionImageUrls ?? [];
+  const schemeImages = input.markSchemeImageUrls ?? [];
   const prompt = [
     `Curriculum: ${input.curriculum}`,
     `Subject: ${input.subject || "General"}`,
     `Marks available: ${input.marks}`,
     `Question:\n${input.question}`,
-    `Official mark scheme:\n${input.markScheme}`,
+    schemeImages.length > 0
+      ? `Transcribed mark scheme (may contain OCR errors — the attached official answer picture is authoritative):\n${input.markScheme}`
+      : `Official mark scheme:\n${input.markScheme}`,
     `Student typed answer:\n${input.answer || "(none typed)"}`,
     questionImages.length > 0
-      ? "The first attached image(s) are the original past-paper page(s) for this question, including any figure, diagram, graph or equation the student is working from."
+      ? `The first ${questionImages.length} attached image(s) are the original past-paper page cut(s) for this question, including any figure, diagram, graph or equation the student is working from.`
+      : "",
+    schemeImages.length > 0
+      ? `The next ${schemeImages.length} attached image(s) are the EXACT cut of the printed official answer key / mark scheme for THIS question. Mark strictly against that picture: read every marking point, its stated mark value and notation (M1, A1, B1, ecf, owtte, accept/reject lists, units, significant figures, tables, diagrams). It is the authoritative source and overrides the transcribed text wherever they disagree. The student's answer does NOT have to match it word for word — award the mark when the meaning is the same, while requiring any key term, value, unit or symbol the printed scheme insists on.`
       : "",
     images.length > 0
       ? `The student also attached ${images.length} photo(s) of handwritten working or a diagram. Read them carefully — that working is part of the answer.`
@@ -67,6 +76,7 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
 
   const system = [
     "You are an experienced examiner marking IGCSE, A-Level and IB work strictly against the official mark scheme.",
+    "When a picture of the printed official answer key is attached, that picture is the authoritative mark scheme: derive the marking points and their mark values from it, not from any transcription, and mark the student's response against it by meaning rather than exact wording.",
     "Be generous with equivalent wording: a short answer such as a single letter, number, formula or option that matches the mark scheme earns full marks.",
     "Answers may include photos of handwritten maths working, graphs or diagrams; read the images and credit correct working shown there.",
     "When the answer is a photo of handwritten calculation working, mark it step by step: award each method/substitution mark that is correct even if the final answer is wrong, so partial credit is normal. If a diagram or drawing is photographed, judge the drawing itself against the mark scheme (labels, lines, shading, plotted points) rather than expecting typed words.",
@@ -88,8 +98,11 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
   const content = [
     { type: "text" as const, text: prompt },
     ...questionImages.map(asImage),
+    ...schemeImages.map(asImage),
     ...images.map(asImage),
   ];
+
+
 
 
   let lastError: unknown = null;

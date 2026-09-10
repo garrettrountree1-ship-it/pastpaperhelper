@@ -38,7 +38,10 @@ const questionInput = z.object({
   markScheme: z.string().min(1),
   marks: z.number().int().positive(),
   imagePaths: z.array(z.string()).default([]),
+  /** Exact cut of the printed answer key for this question, used for marking. */
+  answerImagePaths: z.array(z.string()).default([]),
 });
+
 
 const settingsInput = {
   title: z.string().min(1),
@@ -145,7 +148,9 @@ export const createQuiz = createServerFn({ method: "POST" })
         mark_scheme: cleanMathText(q.markScheme),
         marks: q.marks,
         image_paths: q.imagePaths,
+        answer_image_paths: q.answerImagePaths,
       })),
+
     );
     if (qError) throw new Error(qError.message);
 
@@ -629,7 +634,7 @@ async function gradeAttempt(db: AnyDb, attemptId: string) {
     .single();
   const { data: questions } = await db
     .from("quiz_questions")
-    .select("id, question_text, mark_scheme, marks, image_paths")
+    .select("id, question_text, mark_scheme, marks, image_paths, answer_image_paths")
     .eq("quiz_id", attempt.quiz_id)
     .order("position");
   const { data: answers } = await db
@@ -663,6 +668,11 @@ async function gradeAttempt(db: AnyDb, attemptId: string) {
         answer: answer.answer_text,
         imageUrls: await signWorkImages(db, answer.image_paths ?? []),
         questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
+        markSchemeImageUrls: await signPaperPages(
+          db,
+          ((question as { answer_image_paths?: string[] | null }).answer_image_paths ?? []),
+        ),
+
       });
       awardedTotal += result.awardedMarks;
       await db

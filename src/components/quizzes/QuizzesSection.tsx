@@ -267,6 +267,7 @@ type QuestionDraft = {
   marks: number;
   imagePaths: string[];
   imageUrls: string[];
+  answerImagePaths: string[];
 };
 
 function QuizDialog({ classId, onSaved }: { classId: string; onSaved: () => void }) {
@@ -300,6 +301,7 @@ function QuizDialog({ classId, onSaved }: { classId: string; onSaved: () => void
           marks: q.marks,
           imagePaths: q.imagePaths ?? [],
           imageUrls: q.imageUrls ?? [],
+          answerImagePaths: q.answerImagePaths ?? [],
         })),
       );
       toast.success(`${result.questions.length} questions read from your files`);
@@ -323,6 +325,7 @@ function QuizDialog({ classId, onSaved }: { classId: string; onSaved: () => void
             markScheme: q.markScheme,
             marks: q.marks,
             imagePaths: q.imagePaths,
+            answerImagePaths: q.answerImagePaths,
           })),
         },
       }),

@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { OfficeDocView } from "@/components/materials/OfficeDocView";
 import { PowerPointView } from "@/components/materials/PowerPointView";
 import { Button } from "@/components/ui/button";
-import { useMirrorField } from "@/lib/lesson-mirror";
+import { useLessonMirror, useMirrorField } from "@/lib/lesson-mirror";
 
 /**
  * Slide decks can be read two ways, and teachers and students both get the
@@ -27,6 +27,13 @@ export function SlideDeckView({
   canDownload?: boolean;
 }) {
   const [mode, setMode] = useState<"original" | "scroll">("original");
+  const mirror = useLessonMirror();
+  const mirrorActive = mirror.sending || mirror.receiving;
+
+  useEffect(() => {
+    if (mirrorActive && mode === "original") setMode("scroll");
+  }, [mirrorActive, mode]);
+
   useMirrorField(`deck.mode:${cacheKey ?? title}`, mode, setMode);
 
   return (
@@ -44,6 +51,7 @@ export function SlideDeckView({
             variant={mode === value ? "default" : "outline"}
             className="h-7 px-2 text-xs"
             aria-pressed={mode === value}
+            disabled={mirrorActive && value === "original"}
             onClick={() => setMode(value)}
           >
             {label}

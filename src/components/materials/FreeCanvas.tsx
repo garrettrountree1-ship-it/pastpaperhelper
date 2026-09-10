@@ -8,7 +8,11 @@ import { RichTextEditable } from "@/components/materials/RichTextEditable";
 import type { NoteBlock } from "@/lib/notes.functions";
 
 
-export type CanvasMode = "type" | "draw" | "highlight" | "erase";
+/**
+ * "select" is the arrow: click things to pick them up, move them, resize them or
+ * delete them, without ever starting a new text box by accident.
+ */
+export type CanvasMode = "select" | "type" | "draw" | "highlight" | "erase";
 
 /** Highlighter stroke thickness on the canvas. */
 export const CANVAS_HIGHLIGHT_WIDTH = 20;
@@ -451,9 +455,10 @@ export function FreeCanvas({
 
   /** Click any blank spot to start a text box right there, like a Word text cursor. */
   function surfaceClick(event: React.MouseEvent) {
-    if (!canEdit || mode !== "type") return;
+    if (!canEdit || (mode !== "type" && mode !== "select")) return;
     if (event.target !== surfaceRef.current) return;
-    if (selectedId) {
+    // With the arrow, blank space simply lets go of whatever was picked up.
+    if (mode === "select" || selectedId) {
       setSelectedId(null);
       return;
     }
@@ -784,7 +789,7 @@ export function FreeCanvas({
               // Clicking a picture always selects it (so Delete removes it),
               // and only drags it while the pointer is in typing mode.
               setSelectedId(block.id);
-              if (mode === "type") startMove(block.id, event);
+              if (mode === "type" || mode === "select") startMove(block.id, event);
             }}
           >
             {url ? (
@@ -793,7 +798,7 @@ export function FreeCanvas({
                 alt={block.caption ?? "Lesson note image"}
                 draggable={false}
                 className={`w-full select-none rounded-md ${
-                  canEdit && mode === "type" ? "cursor-move" : ""
+                  canEdit && (mode === "type" || mode === "select") ? "cursor-move" : ""
                 } ${isSelected ? "ring-2 ring-primary" : ""}`}
                 style={{ height: block.h ?? "auto" }}
               />

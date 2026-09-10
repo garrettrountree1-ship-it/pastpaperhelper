@@ -20,6 +20,8 @@ export type SlideTextBox = {
   html?: string;
   color: string;
   size: number;
+  /** Box width in document coordinates; teachers can drag the corner to change it. */
+  w?: number;
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
@@ -141,6 +143,43 @@ export function SlideAnnotations({
     };
     const onUp = () => {
       drag.current = null;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  }
+
+  /** Drag the corner: sideways changes the width, up/down changes the text size. */
+  function beginResize(event: React.PointerEvent, index: number) {
+    const box = value.texts[index];
+    if (!box) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = hostRef.current?.getBoundingClientRect();
+    const scale = rect && rect.width > 0 ? rect.width / width : 1;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startW = box.w ?? 420;
+    const startSize = box.size;
+
+    const onMove = (moveEvent: PointerEvent) => {
+      const nextW = Math.max(120, startW + (moveEvent.clientX - startX) / scale);
+      const nextSize = Math.max(
+        10,
+        Math.min(120, startSize + (moveEvent.clientY - startY) / scale / 4),
+      );
+      const current = valueRef.current;
+      onChange({
+        ...current,
+        texts: current.texts.map((t, i) =>
+          i === index ? { ...t, w: Math.round(nextW), size: Math.round(nextSize) } : t,
+        ),
+      });
+    };
+    const onUp = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
@@ -330,25 +369,34 @@ export function SlideAnnotations({
                 );
                 onChange({ ...value, texts });
               }}
-              className="min-h-[1.6em] w-[420px] overflow-auto rounded border border-dashed border-neutral-400 bg-white/85 p-1"
+              className="min-h-[1.6em] overflow-auto rounded border border-dashed border-neutral-400 bg-white/85 p-1"
               style={{
                 color: box.color,
                 fontSize: box.size,
                 lineHeight: 1.25,
+                width: box.w ?? 420,
               }}
             />
 
 
             {textActive ? (
-              <button
-                type="button"
-                aria-label="Move text box"
-                title="Drag to move this text box"
-                onPointerDown={(event) => beginDrag(event, index)}
-                className="absolute -left-3 -top-3 cursor-grab touch-none rounded-full border bg-white p-1 shadow active:cursor-grabbing"
-              >
-                <Move className="size-4 text-neutral-700" />
-              </button>
+              <>
+                <button
+                  type="button"
+                  aria-label="Move text box"
+                  title="Drag to move this text box"
+                  onPointerDown={(event) => beginDrag(event, index)}
+                  className="absolute -left-3 -top-3 cursor-grab touch-none rounded-full border bg-white p-1 shadow active:cursor-grabbing"
+                >
+                  <Move className="size-4 text-neutral-700" />
+                </button>
+                <span
+                  aria-label="Resize text box"
+                  title="Drag to make this box wider or the text bigger"
+                  onPointerDown={(event) => beginResize(event, index)}
+                  className="absolute -bottom-2 -right-2 size-4 cursor-nwse-resize touch-none rounded-sm border border-neutral-500 bg-white shadow"
+                />
+              </>
             ) : null}
 
             <button

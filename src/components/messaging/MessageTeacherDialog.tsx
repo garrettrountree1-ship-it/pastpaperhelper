@@ -53,6 +53,7 @@ export function MessageTeacherDialog({
   const [assignmentId, setAssignmentId] = useState(preset?.assignmentId ?? "");
   const [topic, setTopic] = useState(preset?.topic ?? "");
   const [body, setBody] = useState("");
+  const [quoteId, setQuoteId] = useState<string | null>(null);
 
   const messages = useQuery({
     queryKey: ["my-messages"],

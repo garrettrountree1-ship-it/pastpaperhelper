@@ -60,6 +60,7 @@ export function AccessControlsDialog({
     mutationFn: (input: {
       dueAt?: string | null;
       markSchemeRevealed?: boolean;
+      revealOnFullMarks?: boolean;
     }) =>
       saveClass({ data: { assignmentId, ...input } }),
     onSuccess: () => {
@@ -74,6 +75,7 @@ export function AccessControlsDialog({
       studentId: string;
       dueAt?: string | null;
       markSchemeRevealed?: boolean;
+      revealOnFullMarks?: boolean;
     }) => saveStudent({ data: { assignmentId, ...input } }),
     onSuccess: () => {
       toast.success("Saved for that student");
@@ -156,6 +158,25 @@ export function AccessControlsDialog({
                   Reveal the mark scheme answers to the whole class
                 </Label>
               </div>
+              <div className="mt-3 flex items-start gap-2">
+                <Checkbox
+                  id="class-full-marks"
+                  className="mt-0.5"
+                  checked={data.revealOnFullMarks}
+                  onCheckedChange={(checked) =>
+                    classMutation.mutate({ revealOnFullMarks: checked === true })
+                  }
+                />
+                <div>
+                  <Label htmlFor="class-full-marks" className="text-sm font-normal">
+                    Show the mark scheme for a question as soon as a student gets full marks on it
+                  </Label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    The answer picture appears in a box under that question only — the rest of the
+                    homework stays hidden until you release it.
+                  </p>
+                </div>
+              </div>
             </section>
 
 
@@ -175,6 +196,7 @@ export function AccessControlsDialog({
                       student={student}
                       classDueAt={data.dueAt}
                       classRevealed={data.markSchemeRevealed}
+                      classFullMarks={data.revealOnFullMarks}
                       saving={studentMutation.isPending}
                       onSave={(input) => studentMutation.mutate({ studentId: student.id, ...input })}
                     />
@@ -193,6 +215,7 @@ function StudentRow({
   student,
   classDueAt,
   classRevealed,
+  classFullMarks,
   saving,
   onSave,
 }: {
@@ -201,13 +224,16 @@ function StudentRow({
     name: string;
     dueAt: string | null;
     markSchemeRevealed: boolean;
+    revealOnFullMarks: boolean;
   };
   classDueAt: string | null;
   classRevealed: boolean;
+  classFullMarks: boolean;
   saving: boolean;
   onSave: (input: {
     dueAt?: string | null;
     markSchemeRevealed?: boolean;
+    revealOnFullMarks?: boolean;
   }) => void;
 }) {
   const [due, setDue] = useState<string | null>(null);
@@ -253,6 +279,19 @@ function StudentRow({
           {classRevealed
             ? "Mark scheme already revealed to the whole class"
             : "Reveal the mark scheme to this student"}
+        </Label>
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <Checkbox
+          id={`full-marks-${student.id}`}
+          checked={classFullMarks || student.revealOnFullMarks}
+          disabled={classFullMarks || saving}
+          onCheckedChange={(checked) => onSave({ revealOnFullMarks: checked === true })}
+        />
+        <Label htmlFor={`full-marks-${student.id}`} className="text-sm font-normal">
+          {classFullMarks
+            ? "Full-marks answers already shown to the whole class"
+            : "Show a question's mark scheme to this student when they get full marks"}
         </Label>
       </div>
     </div>

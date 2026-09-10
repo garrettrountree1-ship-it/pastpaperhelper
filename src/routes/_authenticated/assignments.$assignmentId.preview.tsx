@@ -430,8 +430,8 @@ function PreviewQuestion({
       checking={check.isPending}
       checkError={check.isError ? (check.error as Error).message : undefined}
       onCheck={() => check.mutate()}
-      markScheme={question.markScheme ?? null}
-      markSchemeImageUrls={markSchemeRevealed ? (question.answerImageUrls ?? []) : []}
+      markScheme={showAnswer ? (question.markScheme ?? question.fullMarksMarkScheme ?? null) : null}
+      markSchemeImageUrls={showAnswer ? (question.answerImageUrls ?? []) : []}
       keywordTranslation={keywordTranslation}
       allowHint={allowHint}
       allowSteps={allowSteps}

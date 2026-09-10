@@ -652,7 +652,7 @@ export function DrawingPad({
               type="button"
               size="sm"
               variant="outline"
-              disabled={disabled || photoScale <= 0.4}
+              disabled={disabled || photoScale <= 0.15}
               aria-label="Make the question picture smaller"
               onClick={() => {
                 setPhotoScale((s) => Math.max(0.4, Number((s - 0.1).toFixed(2))));

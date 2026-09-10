@@ -85,6 +85,7 @@ type Question = {
   answerImageUrls?: string[];
   image_paths?: string[];
   markScheme?: string | null;
+  fullMarksMarkScheme?: string | null;
   photoMode?: PhotoMode;
 };
 

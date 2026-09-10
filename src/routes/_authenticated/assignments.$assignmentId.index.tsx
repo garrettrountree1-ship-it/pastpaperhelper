@@ -1,3 +1,4 @@
+import { normalisePhotoFiles } from "@/lib/heic";
 import { formatDueDate } from "@/lib/datetime";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";

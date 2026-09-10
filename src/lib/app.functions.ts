@@ -2104,6 +2104,19 @@ export const gradeAnswer = createServerFn({ method: "POST" })
 
     const imageUrls = await signWorkImages(db, imagePaths);
 
+    // Mark against the exact printed answer-key cut for this question. Recover
+    // the cut when extraction never saved one, so every question is marked from
+    // the picture rather than only the transcribed text.
+    const { recoverAnswerCrops } = await import("./answer-crop.server");
+    const markSchemePaths = await recoverAnswerCrops({
+      id: question.id,
+      position: question.position,
+      question_text: question.question_text,
+      mark_scheme: question.mark_scheme,
+      image_paths: (question.image_paths ?? []) as string[],
+      answer_image_paths: (question.answer_image_paths ?? []) as string[],
+    });
+
     const { markStudentAnswer } = await import("./marking.server");
     const result = await markStudentAnswer({
       curriculum: assignment.curriculum,
@@ -2114,7 +2127,9 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       answer: data.answerText,
       imageUrls,
       questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
+      markSchemeImageUrls: await signPaperPages(db, markSchemePaths),
     });
+
 
 
     const submission = await ensureSubmission(db, data.assignmentId, userId);

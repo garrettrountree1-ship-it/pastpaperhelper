@@ -41,7 +41,10 @@ type MarkInput = {
   imageUrls?: string[];
   /** Original past-paper page images holding the question's figures/equations. */
   questionImageUrls?: string[];
+  /** Exact cut picture(s) of the printed official answer / mark scheme for this question. */
+  markSchemeImageUrls?: string[];
 };
+
 
 export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
   const images = input.imageUrls ?? [];

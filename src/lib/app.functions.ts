@@ -3410,3 +3410,159 @@ export const setGradebookDetail = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/**
+ * Teacher-only, read-only mirror of one student's homework page: exactly the
+ * questions, answers, photos, marks, feedback and tutor chat that student sees
+ * right now. Nothing here can be edited by the teacher.
+ */
+export const getStudentHomeworkView = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ assignmentId: z.string().uuid(), studentId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: allowed } = await supabase.rpc("can_teach_assignment", {
+      _assignment_id: data.assignmentId,
+      _user_id: userId,
+    });
+    if (!allowed) throw new Error("You don't teach this assignment.");
+
+    const db = await admin();
+    const { data: assignmentRow } = await db
+      .from("assignments")
+      .select("id, title, subject, curriculum, instructions, due_at, class_id")
+      .eq("id", data.assignmentId)
+      .single();
+    const assignment = assignmentRow!;
+    const { data: klass } = await db
+      .from("classes")
+      .select("name")
+      .eq("id", assignment.class_id)
+      .maybeSingle();
+
+    const access = await studentAccess(db, data.assignmentId, data.studentId);
+
+    const { data: allQuestions } = await db
+      .from("questions")
+      .select(
+        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image",
+      )
+      .eq("assignment_id", data.assignmentId)
+      .order("position");
+
+    const { data: exemptions } = await db
+      .from("question_exclusions")
+      .select("question_id")
+      .eq("student_id", data.studentId);
+    const exemptIds = new Set((exemptions ?? []).map((e) => e.question_id));
+    const { data: levelRow } = await db
+      .from("class_student_settings")
+      .select("ib_level")
+      .eq("class_id", assignment.class_id)
+      .eq("student_id", data.studentId)
+      .maybeSingle();
+    const isStandardLevel = (levelRow as { ib_level?: string | null } | null)?.ib_level === "SL";
+    const questions = (allQuestions ?? []).filter(
+      (q) =>
+        !exemptIds.has(q.id) &&
+        !(isStandardLevel && isHigherLevelTag(q.tag_label as string | null)),
+    );
+
+    const { data: submission } = await db
+      .from("submissions")
+      .select(
+        "id, status, awarded_marks, total_marks, submitted_at, ai_flag_count, locked_at, locked_reason, penalty_percent",
+      )
+      .eq("assignment_id", data.assignmentId)
+      .eq("student_id", data.studentId)
+      .maybeSingle();
+
+    const { data: answers } = submission
+      ? await db
+          .from("answers")
+          .select(
+            "id, question_id, answer_text, image_paths, verdict, awarded_marks, feedback, attempts, resolved, rejected_at, rejection_note",
+          )
+          .eq("submission_id", submission.id)
+      : { data: [] as Array<Record<string, unknown>> };
+
+    const answersWithImages = await Promise.all(
+      (answers ?? []).map(async (a) => ({
+        ...a,
+        imageUrls: await signWorkImages(db, (a as { image_paths?: string[] }).image_paths ?? []),
+      })),
+    );
+
+    const answerIds = (answers ?? []).map((a) => (a as { id: string }).id);
+    const { data: messages } = answerIds.length
+      ? await db
+          .from("tutor_messages")
+          .select("id, answer_id, role, content, created_at")
+          .in("answer_id", answerIds)
+          .order("created_at")
+      : { data: [] };
+
+    const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
+    const tutorSettings = await tutorSettingsForAssignment(db, data.assignmentId, data.studentId);
+
+    const fullMarkQuestionIds = new Set(
+      (answers ?? [])
+        .filter((a) => {
+          const row = a as { question_id: string; awarded_marks?: number; rejected_at?: string | null };
+          const q = (allQuestions ?? []).find((item) => item.id === row.question_id);
+          const marks = Number(q?.marks ?? 0);
+          return marks > 0 && Number(row.awarded_marks ?? 0) >= marks && !row.rejected_at;
+        })
+        .map((a) => (a as { question_id: string }).question_id),
+    );
+    const revealsQuestion = (questionId: string) =>
+      access.markSchemeRevealed || (access.revealOnFullMarks && fullMarkQuestionIds.has(questionId));
+
+    const { data: profile } = await db
+      .from("profiles")
+      .select("full_name")
+      .eq("id", data.studentId)
+      .maybeSingle();
+
+    return {
+      tutorSettings,
+      student: { id: data.studentId, name: profile?.full_name ?? "Student" },
+      assignment: {
+        id: assignment.id,
+        classId: assignment.class_id,
+        title: assignment.title,
+        subject: assignment.subject,
+        curriculum: assignment.curriculum,
+        instructions: assignment.instructions,
+        dueAt: access.dueAt,
+        pastDue: access.pastDue,
+        markSchemeRevealed: access.markSchemeRevealed,
+        className: klass?.name ?? "",
+      },
+      questions: await Promise.all(
+        questions.map(async (q) => ({
+          id: q.id,
+          position: q.position,
+          question_text: q.question_text,
+          marks: q.marks,
+          markScheme: null,
+          answerImageUrls: revealsQuestion(q.id)
+            ? await signPaperPages(db, (q.answer_image_paths ?? []) as string[])
+            : [],
+          photoMode: resolvePhotoMode({
+            student: access.studentPhotoMode,
+            question: q.photo_mode as string | null,
+            assignment: access.assignmentPhotoMode,
+          }),
+          imageUrls: await signPaperPages(db, (q.image_paths ?? []) as string[]),
+          tagLabel: q.tag_label ?? "",
+          tagImage: q.tag_image ?? "",
+        })),
+      ),
+      submission,
+      answers: answersWithImages,
+      messages: messages ?? [],
+    };
+  });

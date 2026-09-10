@@ -1350,6 +1350,7 @@ export type Database = {
       }
       quiz_questions: {
         Row: {
+          answer_image_paths: string[]
           created_at: string
           id: string
           image_paths: string[]
@@ -1360,6 +1361,7 @@ export type Database = {
           quiz_id: string
         }
         Insert: {
+          answer_image_paths?: string[]
           created_at?: string
           id?: string
           image_paths?: string[]
@@ -1370,6 +1372,7 @@ export type Database = {
           quiz_id: string
         }
         Update: {
+          answer_image_paths?: string[]
           created_at?: string
           id?: string
           image_paths?: string[]

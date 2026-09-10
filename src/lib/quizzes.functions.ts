@@ -668,6 +668,11 @@ async function gradeAttempt(db: AnyDb, attemptId: string) {
         answer: answer.answer_text,
         imageUrls: await signWorkImages(db, answer.image_paths ?? []),
         questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
+        markSchemeImageUrls: await signPaperPages(
+          db,
+          ((question as { answer_image_paths?: string[] | null }).answer_image_paths ?? []),
+        ),
+
       });
       awardedTotal += result.awardedMarks;
       await db

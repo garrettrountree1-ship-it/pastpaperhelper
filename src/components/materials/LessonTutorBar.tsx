@@ -142,7 +142,7 @@ export function LessonTutorBar({
             )}
           </div>
         ))}
-        {send.isPending ? (
+        {waiting ? (
           <p className="text-xs text-muted-foreground">Thinking about your next step…</p>
         ) : null}
       </div>
@@ -153,8 +153,9 @@ export function LessonTutorBar({
             <button
               key={starter}
               type="button"
+              disabled={readOnly}
               onClick={() => submit(starter)}
-              className="rounded-full border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:text-primary"
+              className="rounded-full border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:text-primary disabled:opacity-60"
             >
               {starter}
             </button>
@@ -162,6 +163,7 @@ export function LessonTutorBar({
         </div>
         <Textarea
           value={draft}
+          readOnly={readOnly}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
@@ -169,19 +171,20 @@ export function LessonTutorBar({
               submit(draft);
             }
           }}
-          placeholder="Ask about anything in this lesson…"
+          placeholder={readOnly ? "" : "Ask about anything in this lesson…"}
           className="min-h-[64px] text-sm"
         />
         <Button
           size="sm"
           className="w-full"
           onClick={() => submit(draft)}
-          disabled={!draft.trim() || send.isPending}
+          disabled={readOnly || !draft.trim() || waiting}
         >
           <Send className="size-4" />
           Ask the tutor
         </Button>
       </div>
+
     </aside>
   );
 }

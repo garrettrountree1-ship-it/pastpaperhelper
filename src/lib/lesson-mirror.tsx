@@ -370,8 +370,22 @@ export function useMirrorScroll(
   const exact = options?.exact ?? false;
   const { sending, receiving, publish, received } = useLessonMirror();
 
+  // Document panes mount their scroller only after the file has finished
+  // rendering, so wait for the element to appear instead of giving up once.
+  const [el, setEl] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    const el = ref.current;
+    setEl(ref.current);
+    if (ref.current) return;
+    const timer = window.setInterval(() => {
+      if (ref.current) {
+        setEl(ref.current);
+        window.clearInterval(timer);
+      }
+    }, 200);
+    return () => window.clearInterval(timer);
+  }, [ref, receiving, sending]);
+
+  useEffect(() => {
     if (!el) return;
     let frame = 0;
     const report = () => {

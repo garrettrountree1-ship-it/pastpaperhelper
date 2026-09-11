@@ -1205,11 +1205,21 @@ export function LessonWorkspace({
                   <LessonTutorBar
                     classId={classId}
                     sectionId={active.id}
-                    concept={concept}
+                    concept={mirror.liveReceiving ? null : concept}
                     onConceptHandled={() => setConcept(null)}
-                    turns={tutorTurns}
+                    turns={
+                      mirror.liveReceiving && mirroredTutorTurns
+                        ? mirroredTutorTurns
+                        : tutorTurns
+                    }
                     onTurnsChange={setTutorTurns}
+                    draft={tutorDraft}
+                    onDraftChange={setTutorDraft}
+                    pending={mirror.liveReceiving ? tutorPending : undefined}
+                    onPendingChange={setTutorPending}
+                    readOnly={mirror.liveReceiving}
                   />
+
                   <Button
                     size="icon"
                     variant="ghost"

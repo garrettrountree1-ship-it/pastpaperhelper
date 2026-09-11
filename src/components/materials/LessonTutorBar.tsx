@@ -41,7 +41,9 @@ export function LessonTutorBar({
   draft: draftProp,
   onDraftChange,
   pending: pendingProp,
+  onPendingChange,
   readOnly = false,
+
 }: {
   classId: string;
   sectionId: string | null;

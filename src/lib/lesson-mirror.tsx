@@ -12,8 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
  *   the lesson canvas and on the document.
  * - "view" — where the teacher is looking: which lesson page and resource,
  *   the window layout, zoom and scroll position.
- * Both scopes travel only while the teacher is presenting with mirroring on,
- * and students only apply them while they are also in present mode.
+ * Both scopes travel while the teacher has mirroring on, in either the normal
+ * or full-screen lesson workspace.
  */
 
 type Fields = Record<string, unknown>;
@@ -64,7 +64,7 @@ type Payload = {
 export function useLessonMirrorState({
   classId,
   isTeacher,
-  presenting,
+  presenting: _presenting,
   presenterIds,
 }: {
   classId: string;
@@ -85,14 +85,9 @@ export function useLessonMirrorState({
   const activePresenter = useRef<string | null>(null);
 
   const topic = `lesson-mirror:${classId}`;
-  const sending = isTeacher && presenting && mirrorOn;
-  const receiving = !isTeacher && presenting && viewActive;
+  const sending = isTeacher && mirrorOn;
+  const receiving = !isTeacher && viewActive;
   const allowed = presenterIds.join(",");
-
-  // Leaving present mode always stops view mirroring.
-  useEffect(() => {
-    if (!presenting) setMirrorOn(false);
-  }, [presenting]);
 
   useEffect(() => {
     void supabase.auth.getUser().then(({ data }) => setSelfId(data.user?.id ?? null));
@@ -102,9 +97,6 @@ export function useLessonMirrorState({
   // Kept in a ref so switching mirroring never rebuilds the connection.
   const sendingRef = useRef(sending);
   sendingRef.current = sending;
-  const presentingRef = useRef(presenting);
-  presentingRef.current = presenting;
-
   const publish = useCallback((key: string, value: unknown, scope: MirrorScope = "view") => {
     if (scope === "content") {
       allContent.current[key] = value;
@@ -181,8 +173,8 @@ export function useLessonMirrorState({
     };
   }, [isTeacher, selfId, topic]);
 
-  // Students always listen, so the teacher's work appears live. View updates are
-  // only applied while they are in present mode and the teacher is mirroring.
+  // Students always listen, so the teacher's workspace appears live whether
+  // either person is using the normal or full-screen lesson view.
   const studentChannel = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
@@ -202,7 +194,7 @@ export function useLessonMirrorState({
         activePresenter.current = null;
       }
       setViewActive(message.viewActive === true);
-      if (!presentingRef.current || message.viewActive !== true) return;
+      if (message.viewActive !== true) return;
       const patch = { ...(message.content ?? {}), ...(message.view ?? {}) };
       if (Object.keys(patch).length > 0) {
         setReceived((current) => ({ ...current, ...patch }));
@@ -224,14 +216,14 @@ export function useLessonMirrorState({
   // Ask repeatedly until the active teacher answers. This covers students who
   // enter while the teacher's channel is reconnecting or has not subscribed yet.
   useEffect(() => {
-    if (isTeacher || !presenting) return;
+    if (isTeacher) return;
     const ask = () =>
       void studentChannel.current?.send({ type: "broadcast", event: "hello", payload: {} });
     ask();
     if (viewActive) return;
     const timer = window.setInterval(ask, 1500);
     return () => window.clearInterval(timer);
-  }, [isTeacher, presenting, viewActive]);
+  }, [isTeacher, viewActive]);
 
   return {
     sending,

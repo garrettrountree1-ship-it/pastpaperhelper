@@ -997,21 +997,31 @@ export function LessonWorkspace({
                     <div
                       onPointerDown={(event) => {
                         if (isPhone) return;
+                        if (floatState === "min") return;
                         if ((event.target as HTMLElement).closest("button")) return;
                         startFloatDrag(event, "move");
                       }}
+                      onClick={() => {
+                        if (isPhone) return;
+                        if (floatState === "min") setFloatState("window");
+                      }}
                       onDoubleClick={() => {
                         if (isPhone) return;
+                        if (floatState === "min") return;
                         setFloatState(floatState === "max" ? "window" : "max");
                       }}
                       style={{ height: BAR_H }}
-                      className={`pointer-events-auto flex touch-none select-none items-center gap-1 rounded-t-lg border-b bg-muted/80 px-2 ${
-                        isPhone ? "" : "cursor-grab active:cursor-grabbing"
+                      className={`pointer-events-auto flex touch-none select-none items-center gap-1 rounded-t-lg border-b px-2 ${
+                        !isPhone && floatState === "min"
+                          ? "cursor-pointer rounded-lg border-2 border-primary bg-primary/10 shadow-xl ring-2 ring-primary/30"
+                          : `bg-muted/80 ${isPhone ? "" : "cursor-grab active:cursor-grabbing"}`
                       }`}
                       title={
                         isPhone
                           ? undefined
-                          : "Drag anywhere on this bar to move the window; double-click to maximise"
+                          : floatState === "min"
+                            ? "Window minimised — click here to bring it back"
+                            : "Drag anywhere on this bar to move the window; double-click to maximise"
                       }
                     >
                       {isPhone ? null : <Move className="size-3.5 text-muted-foreground" />}

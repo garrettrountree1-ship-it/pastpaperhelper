@@ -1506,7 +1506,25 @@ function QuestionControlsDialog({
                             No students have joined this class yet.
                           </p>
                         ) : (
-                          controls.data.students.map((student) => (
+                          <>
+                            <label className="flex items-center gap-2 border-b border-border pb-2 text-sm font-medium">
+                              <Checkbox
+                                checked={controls.data.students.every((s) =>
+                                  isExcluded(question.id, s.id),
+                                )}
+                                disabled={
+                                  toggleExclusion.isPending || toggleExclusionForAll.isPending
+                                }
+                                onCheckedChange={(checked) =>
+                                  toggleExclusionForAll.mutate({
+                                    questionId: question.id,
+                                    excluded: checked === true,
+                                  })
+                                }
+                              />
+                              <span>All students</span>
+                            </label>
+                            {controls.data.students.map((student) => (
                             <label
                               key={student.id}
                               className="flex items-center gap-2 text-sm"

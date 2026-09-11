@@ -353,6 +353,25 @@ export function useMirrorField<T>(
 }
 
 /**
+ * On a narrow screen a pane grows to its content and the page around it does
+ * the scrolling instead, so follow the element that really scrolls.
+ */
+function scrollTargetOf(el: HTMLElement): HTMLElement {
+  if (el.scrollHeight - el.clientHeight > 4 || el.scrollWidth - el.clientWidth > 4) return el;
+  let parent: HTMLElement | null = el.parentElement;
+  while (parent) {
+    const style = window.getComputedStyle(parent);
+    const scrolls = /(auto|scroll|overlay)/.test(`${style.overflowY}${style.overflowX}`);
+    if (scrolls && (parent.scrollHeight - parent.clientHeight > 4 || parent.scrollWidth - parent.clientWidth > 4)) {
+      return parent;
+    }
+    parent = parent.parentElement;
+  }
+  return el;
+}
+
+
+/**
  * Mirrors scrolling of a pane. Positions travel as a fraction of the scrollable
  * length, so a student on a smaller screen still follows the same place.
  */
@@ -371,17 +390,13 @@ export function useMirrorScroll(
   const { sending, receiving, publish, received } = useLessonMirror();
 
   // Document panes mount their scroller only after the file has finished
-  // rendering, so wait for the element to appear instead of giving up once.
+  // rendering, and they remount it whenever the file is rebuilt, so keep
+  // checking instead of capturing the element once.
   const [el, setEl] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    setEl(ref.current);
-    if (ref.current) return;
-    const timer = window.setInterval(() => {
-      if (ref.current) {
-        setEl(ref.current);
-        window.clearInterval(timer);
-      }
-    }, 200);
+    const sync = () => setEl((current) => (current === ref.current ? current : ref.current));
+    sync();
+    const timer = window.setInterval(sync, 300);
     return () => window.clearInterval(timer);
   }, [ref, receiving, sending]);
 
@@ -390,24 +405,32 @@ export function useMirrorScroll(
     let frame = 0;
     const report = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() =>
+      frame = requestAnimationFrame(() => {
+        const target = scrollTargetOf(el);
         publish(key, {
-          top: el.scrollTop,
-          left: el.scrollLeft,
-          height: el.scrollHeight,
-          width: el.scrollWidth,
-          clientHeight: el.clientHeight,
-          clientWidth: el.clientWidth,
-        }),
-      );
+          top: target.scrollTop,
+          left: target.scrollLeft,
+          height: target.scrollHeight,
+          width: target.scrollWidth,
+          clientHeight: target.clientHeight,
+          clientWidth: target.clientWidth,
+        });
+      });
     };
     report();
+    // The pane's own scroller, or whichever ancestor actually scrolls on a
+    // narrower screen, both need watching.
+    const heartbeat = window.setInterval(report, 400);
     el.addEventListener("scroll", report, { passive: true });
+    document.addEventListener("scroll", report, { capture: true, passive: true });
     return () => {
       cancelAnimationFrame(frame);
+      window.clearInterval(heartbeat);
       el.removeEventListener("scroll", report);
+      document.removeEventListener("scroll", report, { capture: true } as never);
     };
   }, [publish, key, el]);
+
 
   const incoming = received[key] as
     | {
@@ -429,6 +452,7 @@ export function useMirrorScroll(
     const applyTeacherPosition = () => {
       const position = incomingRef.current;
       if (!position) return;
+      const target = scrollTargetOf(el);
       const teacherTopRange = Math.max(
         0,
         position.height - (position.clientHeight ?? 0),
@@ -437,8 +461,8 @@ export function useMirrorScroll(
         0,
         position.width - (position.clientWidth ?? 0),
       );
-      const studentTopRange = Math.max(0, el.scrollHeight - el.clientHeight);
-      const studentLeftRange = Math.max(0, el.scrollWidth - el.clientWidth);
+      const studentTopRange = Math.max(0, target.scrollHeight - target.clientHeight);
+      const studentLeftRange = Math.max(0, target.scrollWidth - target.clientWidth);
       const top = exact
         ? Math.min(position.top, studentTopRange)
         : teacherTopRange > 0
@@ -449,9 +473,10 @@ export function useMirrorScroll(
         : teacherLeftRange > 0
           ? (position.left / teacherLeftRange) * studentLeftRange
           : Math.min(position.left, studentLeftRange);
-      if (Math.abs(el.scrollTop - top) > 0.5) el.scrollTop = top;
-      if (Math.abs(el.scrollLeft - left) > 0.5) el.scrollLeft = left;
+      if (Math.abs(target.scrollTop - top) > 0.5) target.scrollTop = top;
+      if (Math.abs(target.scrollLeft - left) > 0.5) target.scrollLeft = left;
     };
+
 
     applyTeacherPosition();
     const hold = window.setInterval(applyTeacherPosition, 60);

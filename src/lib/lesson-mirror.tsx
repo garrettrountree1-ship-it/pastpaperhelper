@@ -114,9 +114,9 @@ export function useLessonMirrorState({
   useEffect(() => {
     if (!isTeacher || !selfId) return;
     if (sendingRef.current && !sessionId.current) sessionId.current = crypto.randomUUID();
-    let channel: RealtimeChannel | null = supabase.channel(topic, {
-      config: { broadcast: { self: false } },
-    });
+    let cancelled = false;
+    let channel: RealtimeChannel | null = null;
+    let timer: ReturnType<typeof setInterval> | null = null;
 
     const send = (payload: Payload) => {
       void channel?.send({
@@ -133,73 +133,79 @@ export function useLessonMirrorState({
         ...(sendingRef.current ? { view: allView.current } : {}),
       });
 
-    channel.on("broadcast", { event: "hello" }, () => sendAll());
-    channel.subscribe((status) => {
-      if (status === "SUBSCRIBED") sendAll();
-    });
+    void (async () => {
+      const stale = supabase
+        .getChannels()
+        .find((candidate) => candidate.topic === `realtime:${topic}`);
+      if (stale) await supabase.removeChannel(stale);
+      if (cancelled) return;
 
-    let lastView = sendingRef.current;
-    let lastSnapshot = 0;
-    let stopRepeats = 0;
-    const timer = setInterval(() => {
-      const content = pendingContent.current;
-      const view = pendingView.current;
-      const viewChanged = lastView !== sendingRef.current;
-      const hasContent = Object.keys(content).length > 0;
-      const hasView = sendingRef.current && Object.keys(view).length > 0;
-      const now = Date.now();
-      const heartbeatDue = sendingRef.current && now - lastSnapshot >= 1000;
-      if (!viewChanged && !hasContent && !hasView && !heartbeatDue && stopRepeats === 0) return;
-      pendingContent.current = {};
-      pendingView.current = {};
-      if (viewChanged) {
-        lastView = sendingRef.current;
-        lastSnapshot = now;
-        if (sendingRef.current) {
-          sessionId.current = crypto.randomUUID();
-          stopRepeats = 0;
-        } else {
-          stopRepeats = 8;
+      channel = supabase.channel(topic, { config: { broadcast: { self: false } } });
+      channel.on("broadcast", { event: "hello" }, () => sendAll());
+      channel.subscribe((status) => {
+        if (status === "SUBSCRIBED") sendAll();
+      });
+
+      let lastView = sendingRef.current;
+      let lastSnapshot = 0;
+      let stopRepeats = 0;
+      timer = setInterval(() => {
+        const content = pendingContent.current;
+        const view = pendingView.current;
+        const viewChanged = lastView !== sendingRef.current;
+        const hasContent = Object.keys(content).length > 0;
+        const hasView = sendingRef.current && Object.keys(view).length > 0;
+        const now = Date.now();
+        const heartbeatDue = sendingRef.current && now - lastSnapshot >= 1000;
+        if (!viewChanged && !hasContent && !hasView && !heartbeatDue && stopRepeats === 0) return;
+        pendingContent.current = {};
+        pendingView.current = {};
+        if (viewChanged) {
+          lastView = sendingRef.current;
+          lastSnapshot = now;
+          if (sendingRef.current) {
+            sessionId.current = crypto.randomUUID();
+            stopRepeats = 0;
+          } else {
+            stopRepeats = 8;
+          }
+          if (sendingRef.current) {
+            sendAll();
+          } else {
+            send({
+              ...(sessionId.current ? { sessionId: sessionId.current } : {}),
+              viewActive: false,
+              finalView: true,
+              view: allView.current,
+            });
+          }
+          return;
         }
-        // Turning mirroring on hands students the complete current picture.
-        if (sendingRef.current) {
+        if (heartbeatDue) {
+          lastSnapshot = now;
           sendAll();
-        } else {
-          // Include the last complete view before releasing student control.
+          return;
+        }
+        if (!sendingRef.current && stopRepeats > 0) {
+          stopRepeats -= 1;
           send({
             ...(sessionId.current ? { sessionId: sessionId.current } : {}),
             viewActive: false,
-            finalView: true,
-            view: allView.current,
           });
+          return;
         }
-        return;
-      }
-      if (heartbeatDue) {
-        lastSnapshot = now;
-        // A complete recurring snapshot makes every activation recover from a
-        // dropped initial broadcast and catches late document/render mounts.
-        sendAll();
-        return;
-      }
-      if (!sendingRef.current && stopRepeats > 0) {
-        stopRepeats -= 1;
         send({
           ...(sessionId.current ? { sessionId: sessionId.current } : {}),
-          viewActive: false,
+          viewActive: sendingRef.current,
+          ...(hasContent ? { content } : {}),
+          ...(hasView ? { view } : {}),
         });
-        return;
-      }
-      send({
-        ...(sessionId.current ? { sessionId: sessionId.current } : {}),
-        viewActive: sendingRef.current,
-        ...(hasContent ? { content } : {}),
-        ...(hasView ? { view } : {}),
-      });
-    }, 120);
+      }, 120);
+    })();
 
     return () => {
-      clearInterval(timer);
+      cancelled = true;
+      if (timer) clearInterval(timer);
       send({ viewActive: false });
       const closing = channel;
       channel = null;
@@ -214,10 +220,10 @@ export function useLessonMirrorState({
   useEffect(() => {
     if (isTeacher) return;
     const trusted = allowed ? allowed.split(",") : [];
-    const channel = supabase.channel(topic, { config: { broadcast: { self: false } } });
-    studentChannel.current = channel;
+    let cancelled = false;
+    let channel: RealtimeChannel | null = null;
 
-    channel.on("broadcast", { event: "lesson" }, ({ payload }) => {
+    const receive = ({ payload }: { payload: unknown }) => {
       const message = payload as Payload;
       if (!message.from || !trusted.includes(message.from)) return;
       if (
@@ -257,18 +263,31 @@ export function useLessonMirrorState({
       }
       if (message.viewActive === false) activeSession.current = null;
       setViewActive(message.viewActive === true);
-    });
-    channel.subscribe((status) => {
-      if (status === "SUBSCRIBED") {
-        void channel.send({ type: "broadcast", event: "hello", payload: {} });
-      }
-    });
+    };
+
+    void (async () => {
+      const stale = supabase
+        .getChannels()
+        .find((candidate) => candidate.topic === `realtime:${topic}`);
+      if (stale) await supabase.removeChannel(stale);
+      if (cancelled) return;
+
+      channel = supabase.channel(topic, { config: { broadcast: { self: false } } });
+      studentChannel.current = channel;
+      channel.on("broadcast", { event: "lesson" }, receive);
+      channel.subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          void channel?.send({ type: "broadcast", event: "hello", payload: {} });
+        }
+      });
+    })();
     return () => {
+      cancelled = true;
       studentChannel.current = null;
       activePresenter.current = null;
       activeSession.current = null;
       setViewActive(false);
-      void supabase.removeChannel(channel);
+      if (channel) void supabase.removeChannel(channel);
     };
   }, [isTeacher, topic, allowed]);
 

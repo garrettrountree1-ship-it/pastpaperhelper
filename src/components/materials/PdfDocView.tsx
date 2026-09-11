@@ -234,7 +234,7 @@ export function PdfDocView({
         </Button>
         {canAnnotate ? (
           <DocMarkupToolbar
-            tool={markup.tool}
+            tool={effTool}
             setTool={markup.setTool}
             penColor={markup.penColor}
             setPenColor={markup.setPenColor}
@@ -271,7 +271,7 @@ export function PdfDocView({
           <div key={index} style={{ width: `${zoom * 100}%` }}>
             <DocMarkupSurface
               ratio={ratios[index] ?? 1.414}
-              tool={markup.tool}
+              tool={effTool}
               penColor={markup.penColor}
               highlightColor={markup.highlightColor}
               value={markup.annotationOf(index)}
@@ -292,7 +292,7 @@ export function PdfDocView({
                 }}
               />
               {texts?.[index] ? (
-                <PdfTextLayer page={texts[index]!} selectable={markup.tool === "none"} />
+                <PdfTextLayer page={texts[index]!} selectable={effTool === "none"} />
               ) : null}
             </DocMarkupSurface>
           </div>

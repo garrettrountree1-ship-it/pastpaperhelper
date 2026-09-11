@@ -877,11 +877,15 @@ export function LessonWorkspace({
               ) : null}
                 </>
               )}
-              <Button data-mirror-exit size="sm" variant="secondary" onClick={togglePresentation} title="Exit full screen (Esc)">
-
-
+              <Button
+                data-mirror-exit
+                size="sm"
+                variant="secondary"
+                onClick={togglePresentation}
+                title="Exit full screen (Esc)"
+              >
                 <Minimize className="size-4" />
-                Exit
+                Exit full screen
               </Button>
             </div>
           ) : null}

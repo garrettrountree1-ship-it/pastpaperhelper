@@ -86,6 +86,7 @@ export function LessonTutorBar({
   });
 
   function submit(question: string, conceptText?: string) {
+    if (readOnly) return;
     const trimmed = question.trim();
     if (!trimmed || send.isPending) return;
     setTurns((prev) => [...prev, { role: "user", content: trimmed }]);
@@ -101,9 +102,17 @@ export function LessonTutorBar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [concept]);
 
+  // Lets the lesson screen share "the tutor is thinking" with anyone watching.
+  useEffect(() => {
+    onPendingChange?.(send.isPending);
+  }, [onPendingChange, send.isPending]);
+
+  const waiting = send.isPending || pendingProp === true;
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [turns, send.isPending]);
+  }, [turns, waiting]);
+
 
   return (
     <aside className="flex h-full min-h-0 flex-col rounded-lg border bg-card">

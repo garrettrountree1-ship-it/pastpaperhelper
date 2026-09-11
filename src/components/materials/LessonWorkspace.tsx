@@ -5,6 +5,7 @@ import {
   ArrowLeftRight,
   CalendarDays,
   ChevronDown,
+  ChevronUp,
   ChevronLeft,
   ChevronRight,
   Columns2,
@@ -922,8 +923,12 @@ export function LessonWorkspace({
                   ? { left: 0, top: 0, width: "100%", height: "100%" }
                   : floatState === "min"
                     ? {
-                        left: Math.max(0, Math.min(r.x, (areaSize.w || minW) - minW)),
-                        top: Math.max(0, (areaSize.h || BAR_H) - BAR_H),
+                        // Park the minimised window as a clearly visible pill
+                        // centred along the bottom edge of the screen so it is
+                        // never lost; clicking it restores the window.
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        top: Math.max(0, (areaSize.h || BAR_H) - BAR_H - 12),
                         width: minW,
                         height: BAR_H,
                       }
@@ -993,26 +998,41 @@ export function LessonWorkspace({
                     <div
                       onPointerDown={(event) => {
                         if (isPhone) return;
+                        if (floatState === "min") return;
                         if ((event.target as HTMLElement).closest("button")) return;
                         startFloatDrag(event, "move");
                       }}
+                      onClick={() => {
+                        if (isPhone) return;
+                        if (floatState === "min") setFloatState("window");
+                      }}
                       onDoubleClick={() => {
                         if (isPhone) return;
+                        if (floatState === "min") return;
                         setFloatState(floatState === "max" ? "window" : "max");
                       }}
                       style={{ height: BAR_H }}
-                      className={`pointer-events-auto flex touch-none select-none items-center gap-1 rounded-t-lg border-b bg-muted/80 px-2 ${
-                        isPhone ? "" : "cursor-grab active:cursor-grabbing"
+                      className={`pointer-events-auto flex touch-none select-none items-center gap-1 rounded-t-lg border-b px-2 ${
+                        !isPhone && floatState === "min"
+                          ? "cursor-pointer rounded-lg border-2 border-primary bg-primary/10 shadow-xl ring-2 ring-primary/30"
+                          : `bg-muted/80 ${isPhone ? "" : "cursor-grab active:cursor-grabbing"}`
                       }`}
                       title={
                         isPhone
                           ? undefined
-                          : "Drag anywhere on this bar to move the window; double-click to maximise"
+                          : floatState === "min"
+                            ? "Window minimised — click here to bring it back"
+                            : "Drag anywhere on this bar to move the window; double-click to maximise"
                       }
                     >
-                      {isPhone ? null : <Move className="size-3.5 text-muted-foreground" />}
+                      {isPhone ? null : floatState === "min" ? (
+                        <ChevronUp className="size-3.5 shrink-0 text-primary" />
+                      ) : (
+                        <Move className="size-3.5 text-muted-foreground" />
+                      )}
                       <span className="truncate text-xs font-medium">
                         {frontPane === "canvas" ? "Lesson canvas" : "Lesson Materials"}
+                        {!isPhone && floatState === "min" ? " — minimised, click to restore" : ""}
                       </span>
                       <div className="ml-auto flex items-center gap-1">
                         {isPhone ? (

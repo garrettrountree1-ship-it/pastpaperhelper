@@ -2,6 +2,7 @@ import { GripVertical, Pause, RotateCw, Trash2, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useUndoHistory } from "@/hooks/use-undo-history";
+import { useMirrorField } from "@/lib/lesson-mirror";
 import { escapeHtml, formatSelection } from "@/lib/rich-text";
 import { textShortcutOf } from "@/lib/text-shortcuts";
 import { RichTextEditable } from "@/components/materials/RichTextEditable";
@@ -148,6 +149,10 @@ export function FreeCanvas({
   useEffect(() => {
     setDocumentHeight((current) => Math.max(current, contentBottom + 700, 1800));
   }, [contentBottom]);
+
+  // The sheet must be exactly as long on the student screen as on the teacher's,
+  // otherwise the same scroll position lands somewhere else.
+  useMirrorField("canvas.height", documentHeight, setDocumentHeight);
 
   useEffect(() => {
     const surface = surfaceRef.current;
@@ -526,12 +531,12 @@ export function FreeCanvas({
                 strokeLinejoin="round"
               />
             ))}
-          {live && mode === "highlight" ? (
+          {shownLive?.highlight ? (
             <path
-              d={pathFrom(live)}
+              d={pathFrom(shownLive.points)}
               fill="none"
-              stroke={highlightColor}
-              strokeWidth={CANVAS_HIGHLIGHT_WIDTH}
+              stroke={shownLive.color}
+              strokeWidth={shownLive.width}
               strokeOpacity={0.4}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -551,12 +556,12 @@ export function FreeCanvas({
               strokeLinejoin="round"
             />
           ))}
-        {live && mode !== "highlight" ? (
+        {shownLive && !shownLive.highlight ? (
           <path
-            d={pathFrom(live)}
+            d={pathFrom(shownLive.points)}
             fill="none"
-            stroke={penColor}
-            strokeWidth={penWidth}
+            stroke={shownLive.color}
+            strokeWidth={shownLive.width}
             strokeLinecap="round"
             strokeLinejoin="round"
           />

@@ -56,6 +56,8 @@ export function LessonTutorBar({
   onDraftChange?: (next: string) => void;
   /** Shows the "thinking" line while another screen is waiting for a reply. */
   pending?: boolean;
+  onPendingChange?: (pending: boolean) => void;
+
   /** Watch-only: no typing, no asking. */
   readOnly?: boolean;
 }) {

@@ -452,6 +452,7 @@ export function useMirrorScroll(
     const applyTeacherPosition = () => {
       const position = incomingRef.current;
       if (!position) return;
+      const target = scrollTargetOf(el);
       const teacherTopRange = Math.max(
         0,
         position.height - (position.clientHeight ?? 0),
@@ -460,8 +461,8 @@ export function useMirrorScroll(
         0,
         position.width - (position.clientWidth ?? 0),
       );
-      const studentTopRange = Math.max(0, el.scrollHeight - el.clientHeight);
-      const studentLeftRange = Math.max(0, el.scrollWidth - el.clientWidth);
+      const studentTopRange = Math.max(0, target.scrollHeight - target.clientHeight);
+      const studentLeftRange = Math.max(0, target.scrollWidth - target.clientWidth);
       const top = exact
         ? Math.min(position.top, studentTopRange)
         : teacherTopRange > 0
@@ -472,9 +473,10 @@ export function useMirrorScroll(
         : teacherLeftRange > 0
           ? (position.left / teacherLeftRange) * studentLeftRange
           : Math.min(position.left, studentLeftRange);
-      if (Math.abs(el.scrollTop - top) > 0.5) el.scrollTop = top;
-      if (Math.abs(el.scrollLeft - left) > 0.5) el.scrollLeft = left;
+      if (Math.abs(target.scrollTop - top) > 0.5) target.scrollTop = top;
+      if (Math.abs(target.scrollLeft - left) > 0.5) target.scrollLeft = left;
     };
+
 
     applyTeacherPosition();
     const hold = window.setInterval(applyTeacherPosition, 60);

@@ -15,6 +15,14 @@ import type { NoteBlock } from "@/lib/notes.functions";
  */
 export type CanvasMode = "select" | "type" | "draw" | "highlight" | "erase";
 
+/** A pen line still being drawn, shared live with mirrored screens. */
+type LiveStroke = {
+  points: Array<{ x: number; y: number }>;
+  color: string;
+  width: number;
+  highlight: boolean;
+} | null;
+
 /** Highlighter stroke thickness on the canvas. */
 export const CANVAS_HIGHLIGHT_WIDTH = 20;
 
@@ -481,6 +489,20 @@ export function FreeCanvas({
 
 
   const inks = blocks.filter((b): b is Extract<NoteBlock, { type: "ink" }> => b.type === "ink");
+
+  // The stroke being drawn right now travels too, so students watch the pen
+  // move instead of waiting for the line to be finished.
+  const liveStroke: LiveStroke = live
+    ? {
+        points: live,
+        color: mode === "highlight" ? highlightColor : penColor,
+        width: mode === "highlight" ? CANVAS_HIGHLIGHT_WIDTH : penWidth,
+        highlight: mode === "highlight",
+      }
+    : null;
+  const [remoteLive, setRemoteLive] = useState<LiveStroke>(null);
+  useMirrorField("canvas.live", liveStroke, setRemoteLive, "content");
+  const shownLive = liveStroke ?? remoteLive;
 
   return (
     <div style={{ height: height * zoom, overflow: "hidden", overflowAnchor: "none" }}>

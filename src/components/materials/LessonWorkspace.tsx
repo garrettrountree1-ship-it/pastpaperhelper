@@ -618,7 +618,7 @@ export function LessonWorkspace({
           variant="ghost"
           size="sm"
           onClick={onBack}
-          className={mirror.receiving ? "fixed left-3 top-2 z-[80]" : "-ml-2"}
+          className={mirror.receiving ? "-ml-2 relative z-[80]" : "-ml-2"}
         >
           <ArrowLeft className="size-4" />
           Close

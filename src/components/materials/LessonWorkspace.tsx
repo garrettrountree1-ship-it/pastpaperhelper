@@ -570,6 +570,7 @@ export function LessonWorkspace({
             materialId={material.id}
             canPrepareShared={canManage}
             canDownload={canManage || material.allow_download !== false}
+            canAnnotate={canManage}
           />
         ) : docFormat(material.storage_path ?? material.title) === "docx" ? (
           <OfficeDocView
@@ -580,6 +581,7 @@ export function LessonWorkspace({
             materialId={material.id}
             canPrepareShared={canManage}
             canDownload={canManage || material.allow_download !== false}
+            canAnnotate={canManage}
             format="docx"
           />
         ) : (
@@ -588,6 +590,7 @@ export function LessonWorkspace({
             url={docUrl.data.url}
             title={material.title}
             canDownload={canManage || material.allow_download !== false}
+            canAnnotate={canManage}
             cacheKey={`material:${material.id}`}
           />
         )}

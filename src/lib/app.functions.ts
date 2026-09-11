@@ -2931,7 +2931,7 @@ export const getAssignmentQuestionControls = createServerFn({ method: "POST" })
     const [{ data: questions }, { data: members }] = await Promise.all([
       db
         .from("questions")
-        .select("id, position, question_text, marks, photo_mode, credited_all_at")
+        .select("id, position, question_text, marks, photo_mode, credited_all_at, image_paths")
         .eq("assignment_id", data.assignmentId)
         .order("position"),
       db.from("class_members").select("student_id").eq("class_id", assignment!.class_id),

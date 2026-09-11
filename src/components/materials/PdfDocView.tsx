@@ -232,14 +232,16 @@ export function PdfDocView({
         >
           <Plus className="size-3.5" />
         </Button>
-        <DocMarkupToolbar
-          tool={markup.tool}
-          setTool={markup.setTool}
-          penColor={markup.penColor}
-          setPenColor={markup.setPenColor}
-          highlightColor={markup.highlightColor}
-          setHighlightColor={markup.setHighlightColor}
-        />
+        {canAnnotate ? (
+          <DocMarkupToolbar
+            tool={markup.tool}
+            setTool={markup.setTool}
+            penColor={markup.penColor}
+            setPenColor={markup.setPenColor}
+            highlightColor={markup.highlightColor}
+            setHighlightColor={markup.setHighlightColor}
+          />
+        ) : null}
         <Button
           size="sm"
           variant="ghost"

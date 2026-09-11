@@ -407,7 +407,7 @@ export function useMirrorScroll(
       cancelAnimationFrame(frame);
       el.removeEventListener("scroll", report);
     };
-  }, [publish, key, ref]);
+  }, [publish, key, el]);
 
   const incoming = received[key] as
     | {

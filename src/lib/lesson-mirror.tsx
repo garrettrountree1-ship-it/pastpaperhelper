@@ -149,7 +149,7 @@ export function useLessonMirrorState({
       const hasView = sendingRef.current && Object.keys(view).length > 0;
       const now = Date.now();
       const heartbeatDue = sendingRef.current && now - lastSnapshot >= 1000;
-      if (!viewChanged && !hasContent && !hasView && !heartbeatDue) return;
+      if (!viewChanged && !hasContent && !hasView && !heartbeatDue && stopRepeats === 0) return;
       pendingContent.current = {};
       pendingView.current = {};
       if (viewChanged) {
@@ -220,13 +220,21 @@ export function useLessonMirrorState({
     channel.on("broadcast", { event: "lesson" }, ({ payload }) => {
       const message = payload as Payload;
       if (!message.from || !trusted.includes(message.from)) return;
+      if (
+        message.viewActive === false &&
+        message.sessionId &&
+        activeSession.current &&
+        message.sessionId !== activeSession.current
+      ) {
+        // A delayed stop from an older run must never cancel a newer mirror.
+        return;
+      }
       if (message.viewActive === true) {
         activePresenter.current = message.from;
       } else if (activePresenter.current && activePresenter.current !== message.from) {
         return;
       } else if (message.viewActive === false) {
         activePresenter.current = null;
-        activeSession.current = null;
       }
       const patch = { ...(message.content ?? {}), ...(message.view ?? {}) };
       if (Object.keys(patch).length > 0) {
@@ -239,9 +247,15 @@ export function useLessonMirrorState({
       if (message.finalView) {
         // Let mirrored fields consume the teacher's final document and scroll
         // position before unlocking the student's workspace at that location.
-        window.requestAnimationFrame(() => setViewActive(false));
+        const endingSession = message.sessionId ?? null;
+        window.requestAnimationFrame(() => {
+          if (activeSession.current !== endingSession) return;
+          activeSession.current = null;
+          setViewActive(false);
+        });
         return;
       }
+      if (message.viewActive === false) activeSession.current = null;
       setViewActive(message.viewActive === true);
     });
     channel.subscribe((status) => {

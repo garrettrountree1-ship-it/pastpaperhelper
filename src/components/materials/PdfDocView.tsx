@@ -32,11 +32,14 @@ export function PdfDocView({
   title,
   cacheKey,
   canDownload = true,
+  canAnnotate = true,
 }: {
   url: string;
   title: string;
   cacheKey?: string;
   canDownload?: boolean;
+  /** Only teachers draw or highlight; students get a clean viewer. */
+  canAnnotate?: boolean;
 }) {
   const [pages, setPages] = useState<string[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -46,6 +49,8 @@ export function PdfDocView({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const key = cacheKey ?? title;
   const markup = useDocMarkup(`pdf-annotations:${key}`);
+  // Students never get the markup tools — their viewer stays in select mode.
+  const effTool = canAnnotate ? markup.tool : "none";
   useMirrorField(`pdf.zoom:${key}`, zoom, setZoom);
   useMirrorScroll(`pdf.scroll:${key}`, scrollRef);
   const [ratios, setRatios] = useState<Record<number, number>>({});

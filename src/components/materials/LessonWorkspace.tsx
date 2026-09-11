@@ -412,6 +412,12 @@ export function LessonWorkspace({
   useMirrorFieldWith(mirror, "workspace.float", floatState, setFloatState);
   useMirrorFieldWith(mirror, "workspace.floatRect", floatRect, setFloatRect);
   useMirrorFieldWith(mirror, "workspace.tutorOpen", tutorOpen, setTutorOpen);
+  // Everything inside the tutor box travels too: the conversation, what the
+  // teacher is typing, and the moment the tutor is working on a reply.
+  useMirrorFieldWith(mirror, "tutor.turns", tutorTurns, setMirroredTutorTurns, "content");
+  useMirrorFieldWith(mirror, "tutor.draft", tutorDraft, setTutorDraft, "content");
+  useMirrorFieldWith(mirror, "tutor.pending", tutorPending, setTutorPending, "content");
+
 
   const invalidateSections = () =>
     queryClient.invalidateQueries({ queryKey: ["unit-sections", unit.id] });

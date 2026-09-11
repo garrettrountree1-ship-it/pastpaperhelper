@@ -66,14 +66,16 @@ export function PowerPointView({
       <div className="flex flex-wrap items-center gap-2 pb-1">
         <span className="truncate text-xs text-muted-foreground">Original PowerPoint view</span>
         <div className="ml-auto flex items-center gap-2">
-          <DocMarkupToolbar
-            tool={markup.tool}
-            setTool={markup.setTool}
-            penColor={markup.penColor}
-            setPenColor={markup.setPenColor}
-            highlightColor={markup.highlightColor}
-            setHighlightColor={markup.setHighlightColor}
-          />
+          {canAnnotate ? (
+            <DocMarkupToolbar
+              tool={markup.tool}
+              setTool={markup.setTool}
+              penColor={markup.penColor}
+              setPenColor={markup.setPenColor}
+              highlightColor={markup.highlightColor}
+              setHighlightColor={markup.setHighlightColor}
+            />
+          ) : null}
           <Button
             size="icon"
             variant="ghost"

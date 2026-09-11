@@ -1363,6 +1363,19 @@ function QuestionControlsDialog({
       (e) => e.questionId === questionId && e.studentId === studentId,
     );
 
+  // "All students" simply applies the same choice to every student in the class.
+  const toggleExclusionForAll = useMutation({
+    mutationFn: async (vars: { questionId: string; excluded: boolean }) => {
+      for (const student of controls.data?.students ?? []) {
+        await exclude({
+          data: { questionId: vars.questionId, studentId: student.id, excluded: vars.excluded },
+        });
+      }
+    },
+    onSuccess: () => refresh(),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const body = (
     <>
 
@@ -1443,7 +1456,7 @@ function QuestionControlsDialog({
                             setExpanded((current) => (current === question.id ? null : question.id))
                           }
                         >
-                          {expanded === question.id ? "Hide students" : "Unassign per student"}
+                          {expanded === question.id ? "Hide students" : "Unassign question"}
                         </Button>
                         <Button
                           variant="ghost"
@@ -1493,14 +1506,34 @@ function QuestionControlsDialog({
                             No students have joined this class yet.
                           </p>
                         ) : (
-                          controls.data.students.map((student) => (
+                          <>
+                            <label className="flex items-center gap-2 border-b border-border pb-2 text-sm font-medium">
+                              <Checkbox
+                                checked={controls.data.students.every((s) =>
+                                  isExcluded(question.id, s.id),
+                                )}
+                                disabled={
+                                  toggleExclusion.isPending || toggleExclusionForAll.isPending
+                                }
+                                onCheckedChange={(checked) =>
+                                  toggleExclusionForAll.mutate({
+                                    questionId: question.id,
+                                    excluded: checked === true,
+                                  })
+                                }
+                              />
+                              <span>All students</span>
+                            </label>
+                            {controls.data.students.map((student) => (
                             <label
                               key={student.id}
                               className="flex items-center gap-2 text-sm"
                             >
                               <Checkbox
                                 checked={isExcluded(question.id, student.id)}
-                                disabled={toggleExclusion.isPending}
+                                disabled={
+                                  toggleExclusion.isPending || toggleExclusionForAll.isPending
+                                }
                                 onCheckedChange={(checked) =>
                                   toggleExclusion.mutate({
                                     questionId: question.id,
@@ -1511,7 +1544,8 @@ function QuestionControlsDialog({
                               />
                               <span>{student.name}</span>
                             </label>
-                          ))
+                            ))}
+                          </>
                         )}
                         <p className="text-xs text-muted-foreground">
                           Ticked students skip this question entirely.

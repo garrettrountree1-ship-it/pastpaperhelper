@@ -453,7 +453,7 @@ export function OfficeDocView({
           <span className="ml-2 text-xs text-destructive">{pagesError}</span>
         ) : null}
 
-        {deck ? (
+        {deck && canAnnotate ? (
           <div className="ml-2 flex items-center gap-1">
             {(
               [
@@ -499,9 +499,9 @@ export function OfficeDocView({
             ))}
           </div>
         ) : null}
-        {!deck && status === "ready" ? (
+        {!deck && status === "ready" && canAnnotate ? (
           <DocMarkupToolbar
-            tool={effTool}
+            tool={tool}
             setTool={setTool}
             penColor={penColor}
             setPenColor={setPenColor}

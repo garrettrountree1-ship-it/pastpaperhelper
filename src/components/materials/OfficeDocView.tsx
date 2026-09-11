@@ -104,6 +104,8 @@ export function OfficeDocView({
   // Drawings and text boxes made on top of the slides, kept per slide index and
   // saved locally so they are still there next lesson.
   const [tool, setTool] = useState<SlideTool>("none");
+  // Students never get the markup tools — their viewer stays in select mode.
+  const effTool: SlideTool = canAnnotate ? tool : "none";
   const [penColor, setPenColor] = useState("#dc2626");
   const [highlightColor, setHighlightColor] = useState(HIGHLIGHT_SWATCHES[0]!);
   const [notes, setNotes] = useState<Record<number, SlideAnnotation>>({});

@@ -1415,9 +1415,18 @@ function QuestionControlsDialog({
                           Question {label} · {question.marks} mark
                           {question.marks === 1 ? "" : "s"}
                         </p>
-                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                          {questionBody(question.questionText)}
-                        </p>
+                        {question.imageUrls && question.imageUrls.length > 0 ? (
+                          <div className="mt-2 max-w-lg">
+                            <QuestionSnipStack
+                              urls={question.imageUrls}
+                              alt={`Question ${label} as printed on the paper`}
+                            />
+                          </div>
+                        ) : (
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {questionBody(question.questionText)}
+                          </p>
+                        )}
                         {excludedCount > 0 ? (
                           <Badge variant="secondary" className="mt-2">
                             Unassigned for {excludedCount} student

@@ -57,6 +57,7 @@ type Payload = {
   from?: string;
   sessionId?: string;
   viewActive?: boolean;
+  finalView?: boolean;
   content?: Fields;
   view?: Fields;
 };
@@ -112,6 +113,7 @@ export function useLessonMirrorState({
 
   useEffect(() => {
     if (!isTeacher || !selfId) return;
+    if (sendingRef.current && !sessionId.current) sessionId.current = crypto.randomUUID();
     let channel: RealtimeChannel | null = supabase.channel(topic, {
       config: { broadcast: { self: false } },
     });
@@ -160,7 +162,17 @@ export function useLessonMirrorState({
           stopRepeats = 8;
         }
         // Turning mirroring on hands students the complete current picture.
-        sendAll();
+        if (sendingRef.current) {
+          sendAll();
+        } else {
+          // Include the last complete view before releasing student control.
+          send({
+            ...(sessionId.current ? { sessionId: sessionId.current } : {}),
+            viewActive: false,
+            finalView: true,
+            view: allView.current,
+          });
+        }
         return;
       }
       if (heartbeatDue) {
@@ -216,8 +228,6 @@ export function useLessonMirrorState({
         activePresenter.current = null;
         activeSession.current = null;
       }
-      setViewActive(message.viewActive === true);
-      if (message.viewActive !== true) return;
       const patch = { ...(message.content ?? {}), ...(message.view ?? {}) };
       if (Object.keys(patch).length > 0) {
         const isNewSession = Boolean(
@@ -226,6 +236,13 @@ export function useLessonMirrorState({
         if (message.sessionId) activeSession.current = message.sessionId;
         setReceived((current) => (isNewSession ? patch : { ...current, ...patch }));
       }
+      if (message.finalView) {
+        // Let mirrored fields consume the teacher's final document and scroll
+        // position before unlocking the student's workspace at that location.
+        window.requestAnimationFrame(() => setViewActive(false));
+        return;
+      }
+      setViewActive(message.viewActive === true);
     });
     channel.subscribe((status) => {
       if (status === "SUBSCRIBED") {

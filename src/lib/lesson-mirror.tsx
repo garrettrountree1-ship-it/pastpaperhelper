@@ -424,7 +424,6 @@ export function useMirrorScroll(
   incomingRef.current = incoming;
 
   useEffect(() => {
-    const el = ref.current;
     if (!receiving || !el) return;
 
     const applyTeacherPosition = () => {

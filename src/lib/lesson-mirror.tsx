@@ -53,6 +53,15 @@ export function useLessonMirror() {
   return useContext(MirrorContext);
 }
 
+type Chunk = {
+  scope: MirrorScope;
+  key: string;
+  id: string;
+  index: number;
+  total: number;
+  data: string;
+};
+
 type Payload = {
   from?: string;
   sessionId?: string;
@@ -60,7 +69,17 @@ type Payload = {
   finalView?: boolean;
   content?: Fields;
   view?: Fields;
+  /** One slice of a single large piece of work (e.g. a pasted photo). */
+  chunk?: Chunk;
 };
+
+/**
+ * A live update has to fit in one message. Pasted photos, long pages of
+ * drawing and a whole marked-up document are far bigger than that, so updates
+ * are split across several messages and put back together on arrival.
+ * Without this the message is simply dropped and the students see nothing.
+ */
+const MAX_CHARS = 80_000;
 
 /** Builds the live connection. Used once, by the lesson workspace. */
 export function useLessonMirrorState({

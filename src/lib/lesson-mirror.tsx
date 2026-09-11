@@ -353,7 +353,18 @@ export function useMirrorField<T>(
  * Mirrors scrolling of a pane. Positions travel as a fraction of the scrollable
  * length, so a student on a smaller screen still follows the same place.
  */
-export function useMirrorScroll(key: string, ref: React.RefObject<HTMLElement | null>) {
+export function useMirrorScroll(
+  key: string,
+  ref: React.RefObject<HTMLElement | null>,
+  options?: {
+    /**
+     * The two screens share the same coordinate space (same sheet length and
+     * zoom), so the teacher's position is copied across pixel for pixel.
+     */
+    exact?: boolean;
+  },
+) {
+  const exact = options?.exact ?? false;
   const { sending, receiving, publish, received } = useLessonMirror();
 
   useEffect(() => {

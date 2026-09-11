@@ -141,6 +141,12 @@ export function LessonWorkspace({
   });
   // The tutor thread belongs to the signed-in account only.
   const { turns: tutorTurns, setTurns: setTutorTurns } = useTutorThread(`class:${classId}`);
+  // While a screen is mirrored, the tutor box on the student screen shows the
+  // teacher's conversation, typing and waiting state instead of their own.
+  const [tutorDraft, setTutorDraft] = useState("");
+  const [tutorPending, setTutorPending] = useState(false);
+  const [mirroredTutorTurns, setMirroredTutorTurns] = useState<typeof tutorTurns | null>(null);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
 
@@ -406,6 +412,12 @@ export function LessonWorkspace({
   useMirrorFieldWith(mirror, "workspace.float", floatState, setFloatState);
   useMirrorFieldWith(mirror, "workspace.floatRect", floatRect, setFloatRect);
   useMirrorFieldWith(mirror, "workspace.tutorOpen", tutorOpen, setTutorOpen);
+  // Everything inside the tutor box travels too: the conversation, what the
+  // teacher is typing, and the moment the tutor is working on a reply.
+  useMirrorFieldWith(mirror, "tutor.turns", tutorTurns, setMirroredTutorTurns, "content");
+  useMirrorFieldWith(mirror, "tutor.draft", tutorDraft, setTutorDraft, "content");
+  useMirrorFieldWith(mirror, "tutor.pending", tutorPending, setTutorPending, "content");
+
 
   const invalidateSections = () =>
     queryClient.invalidateQueries({ queryKey: ["unit-sections", unit.id] });
@@ -1193,11 +1205,21 @@ export function LessonWorkspace({
                   <LessonTutorBar
                     classId={classId}
                     sectionId={active.id}
-                    concept={concept}
+                    concept={mirror.liveReceiving ? null : concept}
                     onConceptHandled={() => setConcept(null)}
-                    turns={tutorTurns}
+                    turns={
+                      mirror.liveReceiving && mirroredTutorTurns
+                        ? mirroredTutorTurns
+                        : tutorTurns
+                    }
                     onTurnsChange={setTutorTurns}
+                    draft={tutorDraft}
+                    onDraftChange={setTutorDraft}
+                    pending={mirror.liveReceiving ? tutorPending : false}
+                    onPendingChange={setTutorPending}
+                    readOnly={mirror.liveReceiving}
                   />
+
                   <Button
                     size="icon"
                     variant="ghost"

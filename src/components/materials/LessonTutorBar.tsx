@@ -38,6 +38,12 @@ export function LessonTutorBar({
   onConceptHandled,
   turns: turnsProp,
   onTurnsChange,
+  draft: draftProp,
+  onDraftChange,
+  pending: pendingProp,
+  onPendingChange,
+  readOnly = false,
+
 }: {
   classId: string;
   sectionId: string | null;
@@ -45,13 +51,25 @@ export function LessonTutorBar({
   onConceptHandled: () => void;
   turns?: Turn[];
   onTurnsChange?: (updater: (prev: Turn[]) => Turn[]) => void;
+  /** Controlled question box, so the teacher's typing can be shown live. */
+  draft?: string;
+  onDraftChange?: (next: string) => void;
+  /** Shows the "thinking" line while another screen is waiting for a reply. */
+  pending?: boolean;
+  onPendingChange?: (pending: boolean) => void;
+
+  /** Watch-only: no typing, no asking. */
+  readOnly?: boolean;
 }) {
   const ask = useServerFn(askLessonTutor);
   const [localTurns, setLocalTurns] = useState<Turn[]>(INITIAL_TUTOR_TURNS);
   const turns = turnsProp ?? localTurns;
   const setTurns = onTurnsChange ?? setLocalTurns;
-  const [draft, setDraft] = useState("");
+  const [localDraft, setLocalDraft] = useState("");
+  const draft = draftProp ?? localDraft;
+  const setDraft = onDraftChange ?? setLocalDraft;
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
 
   const send = useMutation({
     mutationFn: async (input: { question: string; concept?: string }) => {
@@ -72,6 +90,7 @@ export function LessonTutorBar({
   });
 
   function submit(question: string, conceptText?: string) {
+    if (readOnly) return;
     const trimmed = question.trim();
     if (!trimmed || send.isPending) return;
     setTurns((prev) => [...prev, { role: "user", content: trimmed }]);
@@ -87,9 +106,17 @@ export function LessonTutorBar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [concept]);
 
+  // Lets the lesson screen share "the tutor is thinking" with anyone watching.
+  useEffect(() => {
+    onPendingChange?.(send.isPending);
+  }, [onPendingChange, send.isPending]);
+
+  const waiting = send.isPending || pendingProp === true;
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [turns, send.isPending]);
+  }, [turns, waiting]);
+
 
   return (
     <aside className="flex h-full min-h-0 flex-col rounded-lg border bg-card">
@@ -115,7 +142,7 @@ export function LessonTutorBar({
             )}
           </div>
         ))}
-        {send.isPending ? (
+        {waiting ? (
           <p className="text-xs text-muted-foreground">Thinking about your next step…</p>
         ) : null}
       </div>
@@ -126,8 +153,9 @@ export function LessonTutorBar({
             <button
               key={starter}
               type="button"
+              disabled={readOnly}
               onClick={() => submit(starter)}
-              className="rounded-full border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:text-primary"
+              className="rounded-full border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:text-primary disabled:opacity-60"
             >
               {starter}
             </button>
@@ -135,6 +163,7 @@ export function LessonTutorBar({
         </div>
         <Textarea
           value={draft}
+          readOnly={readOnly}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
@@ -142,19 +171,20 @@ export function LessonTutorBar({
               submit(draft);
             }
           }}
-          placeholder="Ask about anything in this lesson…"
+          placeholder={readOnly ? "" : "Ask about anything in this lesson…"}
           className="min-h-[64px] text-sm"
         />
         <Button
           size="sm"
           className="w-full"
           onClick={() => submit(draft)}
-          disabled={!draft.trim() || send.isPending}
+          disabled={readOnly || !draft.trim() || waiting}
         >
           <Send className="size-4" />
           Ask the tutor
         </Button>
       </div>
+
     </aside>
   );
 }

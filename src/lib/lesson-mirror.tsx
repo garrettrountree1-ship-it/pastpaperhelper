@@ -87,11 +87,12 @@ export function useLessonMirrorState({
   const activePresenter = useRef<string | null>(null);
   const activeSession = useRef<string | null>(null);
   const sessionId = useRef<string | null>(null);
+  const trustedPresenters = useRef<string[]>(presenterIds);
+  trustedPresenters.current = presenterIds;
 
   const topic = `lesson-mirror:${classId}`;
   const sending = isTeacher && mirrorOn;
   const receiving = !isTeacher && viewActive;
-  const allowed = presenterIds.join(",");
 
   useEffect(() => {
     void supabase.auth.getUser().then(({ data }) => setSelfId(data.user?.id ?? null));
@@ -134,10 +135,13 @@ export function useLessonMirrorState({
       });
 
     void (async () => {
-      const stale = supabase
-        .getChannels()
-        .find((candidate) => candidate.topic === `realtime:${topic}`);
-      if (stale) await supabase.removeChannel(stale);
+      // Realtime can retain an older token after a long-lived school session.
+      // Authenticate explicitly before every lesson channel is opened so the
+      // current signed-in account is used without requiring a logout/refresh.
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.access_token) {
+        await supabase.realtime.setAuth(data.session.access_token);
+      }
       if (cancelled) return;
 
       channel = supabase.channel(topic, { config: { broadcast: { self: false } } });
@@ -219,13 +223,12 @@ export function useLessonMirrorState({
 
   useEffect(() => {
     if (isTeacher) return;
-    const trusted = allowed ? allowed.split(",") : [];
     let cancelled = false;
     let channel: RealtimeChannel | null = null;
 
     const receive = ({ payload }: { payload: unknown }) => {
       const message = payload as Payload;
-      if (!message.from || !trusted.includes(message.from)) return;
+      if (!message.from || !trustedPresenters.current.includes(message.from)) return;
       if (
         message.viewActive === false &&
         message.sessionId &&
@@ -266,10 +269,10 @@ export function useLessonMirrorState({
     };
 
     void (async () => {
-      const stale = supabase
-        .getChannels()
-        .find((candidate) => candidate.topic === `realtime:${topic}`);
-      if (stale) await supabase.removeChannel(stale);
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.access_token) {
+        await supabase.realtime.setAuth(data.session.access_token);
+      }
       if (cancelled) return;
 
       channel = supabase.channel(topic, { config: { broadcast: { self: false } } });
@@ -289,7 +292,7 @@ export function useLessonMirrorState({
       setViewActive(false);
       if (channel) void supabase.removeChannel(channel);
     };
-  }, [isTeacher, topic, allowed]);
+  }, [isTeacher, topic]);
 
   // Ask repeatedly until the active teacher answers. This covers students who
   // enter while the teacher's channel is reconnecting or has not subscribed yet.

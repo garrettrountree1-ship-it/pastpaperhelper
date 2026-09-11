@@ -461,5 +461,5 @@ export function useMirrorScroll(
       window.clearInterval(hold);
       observer.disconnect();
     };
-  }, [receiving, incoming, ref, exact]);
+  }, [receiving, incoming, el, exact]);
 }

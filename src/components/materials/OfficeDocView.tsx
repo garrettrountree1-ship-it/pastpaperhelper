@@ -65,6 +65,7 @@ export function OfficeDocView({
   materialId,
   canPrepareShared = false,
   canDownload = true,
+  canAnnotate = true,
 }: {
   url: string;
   title: string;
@@ -75,6 +76,8 @@ export function OfficeDocView({
   /** Teachers may store the prepared render for everyone else. */
   canPrepareShared?: boolean;
   canDownload?: boolean;
+  /** Only teachers draw, highlight, add text boxes or edit slide text. */
+  canAnnotate?: boolean;
 }) {
   const [zoom, setZoom] = useState(1);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");

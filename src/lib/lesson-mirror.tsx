@@ -145,13 +145,69 @@ export function useLessonMirrorState({
         payload: { from: selfId, ...payload },
       });
     };
+    const meta = () => ({
+      ...(sessionId.current ? { sessionId: sessionId.current } : {}),
+      viewActive: sendingRef.current,
+    });
+
+    const sendChunked = (scope: MirrorScope, key: string, value: unknown) => {
+      const json = JSON.stringify(value ?? null);
+      const id = crypto.randomUUID();
+      const total = Math.ceil(json.length / MAX_CHARS) || 1;
+      for (let index = 0; index < total; index += 1) {
+        send({
+          ...meta(),
+          chunk: {
+            scope,
+            key,
+            id,
+            index,
+            total,
+            data: json.slice(index * MAX_CHARS, (index + 1) * MAX_CHARS),
+          },
+        });
+      }
+    };
+
+    /** Sends work and view together, in as many messages as their size needs. */
+    const sendFields = (content: Fields, view: Fields, extra: Payload = {}) => {
+      const entries: Array<[MirrorScope, string, unknown, number]> = [];
+      for (const [key, value] of Object.entries(content)) {
+        entries.push(["content", key, value, JSON.stringify(value ?? null).length]);
+      }
+      for (const [key, value] of Object.entries(view)) {
+        entries.push(["view", key, value, JSON.stringify(value ?? null).length]);
+      }
+      let bucketContent: Fields = {};
+      let bucketView: Fields = {};
+      let size = 0;
+      let sentAny = false;
+      const flush = () => {
+        if (Object.keys(bucketContent).length === 0 && Object.keys(bucketView).length === 0) return;
+        send({ ...meta(), content: bucketContent, view: bucketView });
+        sentAny = true;
+        bucketContent = {};
+        bucketView = {};
+        size = 0;
+      };
+      for (const [scope, key, value, len] of entries) {
+        if (len > MAX_CHARS) {
+          flush();
+          sendChunked(scope, key, value);
+          sentAny = true;
+          continue;
+        }
+        if (size + len > MAX_CHARS) flush();
+        if (scope === "content") bucketContent[key] = value;
+        else bucketView[key] = value;
+        size += len;
+      }
+      flush();
+      if (Object.keys(extra).length > 0 || !sentAny) send({ ...meta(), ...extra });
+    };
+
     const sendAll = () =>
-      send({
-        ...(sessionId.current ? { sessionId: sessionId.current } : {}),
-        viewActive: sendingRef.current,
-        content: allContent.current,
-        ...(sendingRef.current ? { view: allView.current } : {}),
-      });
+      sendFields(allContent.current, sendingRef.current ? allView.current : {});
 
     void (async () => {
       // Realtime can retain an older token after a long-lived school session.

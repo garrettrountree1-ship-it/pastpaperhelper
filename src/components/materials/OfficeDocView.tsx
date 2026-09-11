@@ -706,7 +706,7 @@ function SlidePage({
                   undefined,
                   slide.background ?? "#ffffff",
                 )}
-                editable={effTool === "edit"}
+                editable={tool === "edit"}
                 ghost={Boolean(pageSrc) && shapeEdit?.text == null}
                 slideBackground={slide.background ?? "#ffffff"}
                 overPicture={Boolean(pageSrc)}
@@ -724,7 +724,7 @@ function SlidePage({
           <SlideAnnotations
             width={deck.width}
             height={deck.height}
-            tool={effTool}
+            tool={tool}
             color={penColor}
             highlightColor={highlightColor}
             value={annotation}

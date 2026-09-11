@@ -12,8 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
  *   the lesson canvas and on the document.
  * - "view" — where the teacher is looking: which lesson page and resource,
  *   the window layout, zoom and scroll position.
- * Both scopes travel only while the teacher is presenting with mirroring on,
- * and students only apply them while they are also in present mode.
+ * Both scopes travel while the teacher has mirroring on, in either the normal
+ * or full-screen lesson workspace.
  */
 
 type Fields = Record<string, unknown>;
@@ -64,7 +64,7 @@ type Payload = {
 export function useLessonMirrorState({
   classId,
   isTeacher,
-  presenting,
+  presenting: _presenting,
   presenterIds,
 }: {
   classId: string;

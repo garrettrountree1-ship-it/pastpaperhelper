@@ -608,7 +608,7 @@ export function LessonWorkspace({
       {mirror.sending || mirror.receiving ? (
         <div className="pointer-events-none absolute left-1/2 top-2 z-[60] -translate-x-1/2 rounded-full border bg-background/95 px-3 py-1 text-xs font-medium shadow">
           {mirror.sending
-            ? "Mirroring your presenting screen to students"
+            ? "Mirroring your lesson workspace to students"
             : "Following your teacher's board — live"}
         </div>
       ) : null}

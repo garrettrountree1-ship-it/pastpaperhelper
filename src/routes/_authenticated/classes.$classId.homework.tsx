@@ -1531,7 +1531,9 @@ function QuestionControlsDialog({
                             >
                               <Checkbox
                                 checked={isExcluded(question.id, student.id)}
-                                disabled={toggleExclusion.isPending}
+                                disabled={
+                                  toggleExclusion.isPending || toggleExclusionForAll.isPending
+                                }
                                 onCheckedChange={(checked) =>
                                   toggleExclusion.mutate({
                                     questionId: question.id,
@@ -1542,7 +1544,8 @@ function QuestionControlsDialog({
                               />
                               <span>{student.name}</span>
                             </label>
-                          ))
+                            ))}
+                          </>
                         )}
                         <p className="text-xs text-muted-foreground">
                           Ticked students skip this question entirely.

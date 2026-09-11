@@ -1456,7 +1456,7 @@ function QuestionControlsDialog({
                             setExpanded((current) => (current === question.id ? null : question.id))
                           }
                         >
-                          {expanded === question.id ? "Hide students" : "Unassign per student"}
+                          {expanded === question.id ? "Hide students" : "Unassign question"}
                         </Button>
                         <Button
                           variant="ghost"

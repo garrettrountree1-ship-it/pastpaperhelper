@@ -1215,7 +1215,7 @@ export function LessonWorkspace({
                     onTurnsChange={setTutorTurns}
                     draft={tutorDraft}
                     onDraftChange={setTutorDraft}
-                    pending={mirror.liveReceiving ? tutorPending : undefined}
+                    pending={mirror.liveReceiving ? tutorPending : false}
                     onPendingChange={setTutorPending}
                     readOnly={mirror.liveReceiving}
                   />

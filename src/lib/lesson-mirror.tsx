@@ -353,6 +353,25 @@ export function useMirrorField<T>(
 }
 
 /**
+ * On a narrow screen a pane grows to its content and the page around it does
+ * the scrolling instead, so follow the element that really scrolls.
+ */
+function scrollTargetOf(el: HTMLElement): HTMLElement {
+  if (el.scrollHeight - el.clientHeight > 4 || el.scrollWidth - el.clientWidth > 4) return el;
+  let parent: HTMLElement | null = el.parentElement;
+  while (parent) {
+    const style = window.getComputedStyle(parent);
+    const scrolls = /(auto|scroll|overlay)/.test(`${style.overflowY}${style.overflowX}`);
+    if (scrolls && (parent.scrollHeight - parent.clientHeight > 4 || parent.scrollWidth - parent.clientWidth > 4)) {
+      return parent;
+    }
+    parent = parent.parentElement;
+  }
+  return el;
+}
+
+
+/**
  * Mirrors scrolling of a pane. Positions travel as a fraction of the scrollable
  * length, so a student on a smaller screen still follows the same place.
  */

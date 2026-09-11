@@ -501,7 +501,7 @@ export function OfficeDocView({
         ) : null}
         {!deck && status === "ready" ? (
           <DocMarkupToolbar
-            tool={tool}
+            tool={effTool}
             setTool={setTool}
             penColor={penColor}
             setPenColor={setPenColor}
@@ -581,7 +581,7 @@ export function OfficeDocView({
                   <SlidePage
                     deck={deck}
                     index={index}
-                    tool={tool}
+                    tool={effTool}
                     penColor={penColor}
                     highlightColor={highlightColor}
                     annotation={notes[index] ?? emptyAnnotation}
@@ -598,7 +598,7 @@ export function OfficeDocView({
             <div style={{ width: `${zoom * 100}%` }}>
               <DocMarkupSurface
                 ratio={docRatio}
-                tool={tool}
+                tool={effTool}
                 penColor={penColor}
                 highlightColor={highlightColor}
                 value={notes[0] ?? emptyAnnotation}
@@ -706,7 +706,7 @@ function SlidePage({
                   undefined,
                   slide.background ?? "#ffffff",
                 )}
-                editable={tool === "edit"}
+                editable={effTool === "edit"}
                 ghost={Boolean(pageSrc) && shapeEdit?.text == null}
                 slideBackground={slide.background ?? "#ffffff"}
                 overPicture={Boolean(pageSrc)}
@@ -724,7 +724,7 @@ function SlidePage({
           <SlideAnnotations
             width={deck.width}
             height={deck.height}
-            tool={tool}
+            tool={effTool}
             color={penColor}
             highlightColor={highlightColor}
             value={annotation}

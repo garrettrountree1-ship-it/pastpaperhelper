@@ -423,23 +423,27 @@ export function useMirrorScroll(
       );
       const studentTopRange = Math.max(0, el.scrollHeight - el.clientHeight);
       const studentLeftRange = Math.max(0, el.scrollWidth - el.clientWidth);
-      el.scrollTop =
-        teacherTopRange > 0
+      const top = exact
+        ? Math.min(position.top, studentTopRange)
+        : teacherTopRange > 0
           ? (position.top / teacherTopRange) * studentTopRange
           : Math.min(position.top, studentTopRange);
-      el.scrollLeft =
-        teacherLeftRange > 0
+      const left = exact
+        ? Math.min(position.left, studentLeftRange)
+        : teacherLeftRange > 0
           ? (position.left / teacherLeftRange) * studentLeftRange
           : Math.min(position.left, studentLeftRange);
+      if (Math.abs(el.scrollTop - top) > 0.5) el.scrollTop = top;
+      if (Math.abs(el.scrollLeft - left) > 0.5) el.scrollLeft = left;
     };
 
     applyTeacherPosition();
-    const hold = window.setInterval(applyTeacherPosition, 200);
+    const hold = window.setInterval(applyTeacherPosition, 60);
     const observer = new ResizeObserver(applyTeacherPosition);
     observer.observe(el);
     return () => {
       window.clearInterval(hold);
       observer.disconnect();
     };
-  }, [receiving, incoming, ref]);
+  }, [receiving, incoming, ref, exact]);
 }

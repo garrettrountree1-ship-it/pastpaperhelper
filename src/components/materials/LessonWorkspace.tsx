@@ -5,6 +5,7 @@ import {
   ArrowLeftRight,
   CalendarDays,
   ChevronDown,
+  ChevronUp,
   ChevronLeft,
   ChevronRight,
   Columns2,

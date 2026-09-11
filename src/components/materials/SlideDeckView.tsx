@@ -18,6 +18,7 @@ export function SlideDeckView({
   materialId,
   canPrepareShared = false,
   canDownload = true,
+  canAnnotate = true,
 }: {
   url: string;
   title: string;
@@ -25,6 +26,8 @@ export function SlideDeckView({
   materialId?: string;
   canPrepareShared?: boolean;
   canDownload?: boolean;
+  /** Only teachers draw, highlight or add text boxes on the slides. */
+  canAnnotate?: boolean;
 }) {
   const [mode, setMode] = useState<"original" | "scroll">("original");
   const mirror = useLessonMirror();
@@ -65,6 +68,7 @@ export function SlideDeckView({
             url={url}
             title={title}
             canDownload={canDownload}
+            canAnnotate={canAnnotate}
             {...(cacheKey ? { markupKey: cacheKey } : {})}
           />
         ) : (
@@ -74,6 +78,7 @@ export function SlideDeckView({
             format="pptx"
             canDownload={canDownload}
             canPrepareShared={canPrepareShared}
+            canAnnotate={canAnnotate}
             {...(cacheKey ? { cacheKey } : {})}
             {...(materialId ? { materialId } : {})}
           />

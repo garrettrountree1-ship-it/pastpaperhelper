@@ -55,6 +55,7 @@ export function useLessonMirror() {
 
 type Payload = {
   from?: string;
+  sessionId?: string;
   viewActive?: boolean;
   content?: Fields;
   view?: Fields;
@@ -83,6 +84,8 @@ export function useLessonMirrorState({
   const pendingContent = useRef<Fields>({});
   const pendingView = useRef<Fields>({});
   const activePresenter = useRef<string | null>(null);
+  const activeSession = useRef<string | null>(null);
+  const sessionId = useRef<string | null>(null);
 
   const topic = `lesson-mirror:${classId}`;
   const sending = isTeacher && mirrorOn;
@@ -122,6 +125,7 @@ export function useLessonMirrorState({
     };
     const sendAll = () =>
       send({
+        ...(sessionId.current ? { sessionId: sessionId.current } : {}),
         viewActive: sendingRef.current,
         content: allContent.current,
         ...(sendingRef.current ? { view: allView.current } : {}),
@@ -134,6 +138,7 @@ export function useLessonMirrorState({
 
     let lastView = sendingRef.current;
     let lastSnapshot = 0;
+    let stopRepeats = 0;
     const timer = setInterval(() => {
       const content = pendingContent.current;
       const view = pendingView.current;
@@ -148,16 +153,33 @@ export function useLessonMirrorState({
       if (viewChanged) {
         lastView = sendingRef.current;
         lastSnapshot = now;
+        if (sendingRef.current) {
+          sessionId.current = crypto.randomUUID();
+          stopRepeats = 0;
+        } else {
+          stopRepeats = 8;
+        }
         // Turning mirroring on hands students the complete current picture.
         sendAll();
         return;
       }
       if (heartbeatDue) {
         lastSnapshot = now;
-        send({ viewActive: true });
+        // A complete recurring snapshot makes every activation recover from a
+        // dropped initial broadcast and catches late document/render mounts.
+        sendAll();
+        return;
+      }
+      if (!sendingRef.current && stopRepeats > 0) {
+        stopRepeats -= 1;
+        send({
+          ...(sessionId.current ? { sessionId: sessionId.current } : {}),
+          viewActive: false,
+        });
         return;
       }
       send({
+        ...(sessionId.current ? { sessionId: sessionId.current } : {}),
         viewActive: sendingRef.current,
         ...(hasContent ? { content } : {}),
         ...(hasView ? { view } : {}),
@@ -192,12 +214,17 @@ export function useLessonMirrorState({
         return;
       } else if (message.viewActive === false) {
         activePresenter.current = null;
+        activeSession.current = null;
       }
       setViewActive(message.viewActive === true);
       if (message.viewActive !== true) return;
       const patch = { ...(message.content ?? {}), ...(message.view ?? {}) };
       if (Object.keys(patch).length > 0) {
-        setReceived((current) => ({ ...current, ...patch }));
+        const isNewSession = Boolean(
+          message.sessionId && activeSession.current !== message.sessionId,
+        );
+        if (message.sessionId) activeSession.current = message.sessionId;
+        setReceived((current) => (isNewSession ? patch : { ...current, ...patch }));
       }
     });
     channel.subscribe((status) => {
@@ -208,6 +235,7 @@ export function useLessonMirrorState({
     return () => {
       studentChannel.current = null;
       activePresenter.current = null;
+      activeSession.current = null;
       setViewActive(false);
       void supabase.removeChannel(channel);
     };

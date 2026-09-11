@@ -1824,7 +1824,7 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     const { data: allQuestions } = await db
       .from("questions")
       .select(
-        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image",
+        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image, credited_all_at",
       )
       .eq("assignment_id", data.assignmentId)
       .order("position");
@@ -1889,6 +1889,10 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
         })
         .map((a) => a.question_id),
     );
+    // A question credited to the whole class counts as full marks for everyone.
+    for (const q of allQuestions ?? []) {
+      if ((q as { credited_all_at?: string | null }).credited_all_at) fullMarkQuestionIds.add(q.id);
+    }
     const revealsQuestion = (questionId: string) =>
       access.markSchemeRevealed || (access.revealOnFullMarks && fullMarkQuestionIds.has(questionId));
 
@@ -1949,6 +1953,7 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
           imageUrls: await signPaperPages(db, q.image_paths ?? []),
           tagLabel: q.tag_label ?? "",
           tagImage: q.tag_image ?? "",
+          creditedAll: Boolean((q as { credited_all_at?: string | null }).credited_all_at),
         })),
       ),
 
@@ -2926,7 +2931,7 @@ export const getAssignmentQuestionControls = createServerFn({ method: "POST" })
     const [{ data: questions }, { data: members }] = await Promise.all([
       db
         .from("questions")
-        .select("id, position, question_text, marks, photo_mode")
+        .select("id, position, question_text, marks, photo_mode, credited_all_at")
         .eq("assignment_id", data.assignmentId)
         .order("position"),
       db.from("class_members").select("student_id").eq("class_id", assignment!.class_id),
@@ -2953,6 +2958,7 @@ export const getAssignmentQuestionControls = createServerFn({ method: "POST" })
         marks: q.marks,
         questionText: q.question_text,
         photoMode: isPhotoMode(q.photo_mode) ? q.photo_mode : "auto",
+        creditedAll: Boolean((q as { credited_all_at?: string | null }).credited_all_at),
       })),
       students: studentIds.map((id) => {
         const profile = (profiles ?? []).find((p) => p.id === id);
@@ -3026,18 +3032,53 @@ export const deleteQuestion = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Teacher-only: awards full marks on one question to every student in the class. */
+/** Wording students see when a question was credited to the whole class. */
+export const CREDIT_ALL_FEEDBACK =
+  "Your teacher gave the whole class full marks for this question.";
+/** Older wording, kept so previously credited answers are still recognised. */
+const LEGACY_CREDIT_FEEDBACK = "Full credit awarded by your teacher.";
+
+/**
+ * Teacher-only: awards full marks on one question to every student in the class,
+ * or takes that whole-class credit back again when `credited` is false.
+ */
 export const creditQuestionForAll = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z
-      .object({ questionId: z.string().uuid(), feedback: z.string().max(400).optional() })
+      .object({
+        questionId: z.string().uuid(),
+        credited: z.boolean().optional(),
+        feedback: z.string().max(400).optional(),
+      })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const db = await admin();
     const question = await questionForTeacher(supabase, db, data.questionId, userId);
+    const turnOn = data.credited !== false;
+
+    if (!turnOn) {
+      // Undo: only clear the marks this whole-class credit created.
+      const { data: credited } = await db
+        .from("answers")
+        .select("id, submission_id, feedback")
+        .eq("question_id", data.questionId);
+      let cleared = 0;
+      for (const row of credited ?? []) {
+        const note = (row.feedback as string | null) ?? "";
+        if (note !== CREDIT_ALL_FEEDBACK && note !== LEGACY_CREDIT_FEEDBACK) continue;
+        await db
+          .from("answers")
+          .update({ verdict: null, awarded_marks: 0, feedback: null, resolved: false })
+          .eq("id", row.id);
+        await recalcSubmission(db, row.submission_id as string);
+        cleared += 1;
+      }
+      await db.from("questions").update({ credited_all_at: null }).eq("id", data.questionId);
+      return { ok: true, credited: 0, cleared, creditedAll: false };
+    }
 
     const { data: assignment } = await db
       .from("assignments")
@@ -3054,7 +3095,7 @@ export const creditQuestionForAll = createServerFn({ method: "POST" })
       .eq("question_id", data.questionId);
     const excluded = new Set((exclusions ?? []).map((e) => e.student_id));
 
-    const feedback = data.feedback?.trim() || "Full credit awarded by your teacher.";
+    const feedback = data.feedback?.trim() || CREDIT_ALL_FEEDBACK;
     let credited = 0;
 
     for (const member of members ?? []) {
@@ -3084,7 +3125,12 @@ export const creditQuestionForAll = createServerFn({ method: "POST" })
       credited += 1;
     }
 
-    return { ok: true, credited };
+    await db
+      .from("questions")
+      .update({ credited_all_at: new Date().toISOString() })
+      .eq("id", data.questionId);
+
+    return { ok: true, credited, cleared: 0, creditedAll: true };
   });
 
 /** Teacher-only: unassigns (or re-assigns) a single question for one student. */
@@ -3447,7 +3493,7 @@ export const getStudentHomeworkView = createServerFn({ method: "POST" })
     const { data: allQuestions } = await db
       .from("questions")
       .select(
-        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image",
+        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image, credited_all_at",
       )
       .eq("assignment_id", data.assignmentId)
       .order("position");
@@ -3517,6 +3563,9 @@ export const getStudentHomeworkView = createServerFn({ method: "POST" })
         })
         .map((a) => (a as { question_id: string }).question_id),
     );
+    for (const q of allQuestions ?? []) {
+      if ((q as { credited_all_at?: string | null }).credited_all_at) fullMarkQuestionIds.add(q.id);
+    }
     const revealsQuestion = (questionId: string) =>
       access.markSchemeRevealed || (access.revealOnFullMarks && fullMarkQuestionIds.has(questionId));
 
@@ -3559,6 +3608,7 @@ export const getStudentHomeworkView = createServerFn({ method: "POST" })
           imageUrls: await signPaperPages(db, (q.image_paths ?? []) as string[]),
           tagLabel: q.tag_label ?? "",
           tagImage: q.tag_image ?? "",
+          creditedAll: Boolean((q as { credited_all_at?: string | null }).credited_all_at),
         })),
       ),
       submission,

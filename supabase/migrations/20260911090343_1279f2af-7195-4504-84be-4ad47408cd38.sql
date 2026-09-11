@@ -1,0 +1,1 @@
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS credited_all_at timestamptz;

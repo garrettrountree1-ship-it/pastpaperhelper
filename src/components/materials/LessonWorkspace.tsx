@@ -124,8 +124,8 @@ export function LessonWorkspace({
   }, [isPhone]);
   const [presenting, setPresenting] = useState(false);
 
-  // Live screen mirroring in present mode. Students only ever follow accounts
-  // that actually teach this class.
+  // Live screen mirroring works in both normal and full-screen lesson views.
+  // Students only ever follow accounts that actually teach this class.
   const fetchPresenters = useServerFn(listClassPresenters);
   const presenters = useQuery({
     queryKey: ["class-presenters", classId],
@@ -613,7 +613,13 @@ export function LessonWorkspace({
         </div>
       ) : null}
       <header className={`flex flex-wrap items-center gap-3 border-b px-4 py-2 ${presenting ? "hidden" : ""}`}>
-        <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2">
+        <Button
+          data-mirror-exit
+          variant="ghost"
+          size="sm"
+          onClick={onBack}
+          className={mirror.receiving ? "fixed left-3 top-2 z-[80]" : "-ml-2"}
+        >
           <ArrowLeft className="size-4" />
           Close
         </Button>
@@ -744,14 +750,35 @@ export function LessonWorkspace({
             </Button>
           )}
 
+          {canManage ? (
+            <Button
+              size="sm"
+              variant={mirror.mirrorOn ? "default" : "outline"}
+              aria-pressed={mirror.mirrorOn}
+              onClick={() => mirror.setMirrorOn(!mirror.mirrorOn)}
+              title={
+                mirror.mirrorOn
+                  ? "Stop mirroring — students get their screens back"
+                  : "Mirror this lesson workspace live to students"
+              }
+            >
+              {mirror.mirrorOn ? (
+                <MonitorOff className="size-4" />
+              ) : (
+                <MonitorPlay className="size-4" />
+              )}
+              {mirror.mirrorOn ? "Stop mirroring" : "Mirror to students"}
+            </Button>
+          ) : null}
+
           <Button
             size="sm"
             variant={presenting ? "default" : "outline"}
             onClick={togglePresentation}
-            title={presenting ? "Exit presentation" : "Present to students"}
+            title={presenting ? "Exit full screen" : "Open full screen"}
           >
             {presenting ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
-            <span className="hidden sm:inline">{presenting ? "Exit" : "Present"}</span>
+            <span className="hidden sm:inline">{presenting ? "Exit" : "Full screen"}</span>
           </Button>
         </div>
       </header>
@@ -833,7 +860,7 @@ export function LessonWorkspace({
                   title={
                     mirror.mirrorOn
                       ? "Stop mirroring — students get their screens back"
-                      : "Mirror this presenting screen live to students who are in present mode"
+                      : "Mirror this lesson workspace live to students"
                   }
                 >
                   {mirror.mirrorOn ? (
@@ -846,7 +873,7 @@ export function LessonWorkspace({
               ) : null}
                 </>
               )}
-              <Button data-mirror-exit size="sm" variant="secondary" onClick={togglePresentation} title="Exit presentation (Esc)">
+              <Button data-mirror-exit size="sm" variant="secondary" onClick={togglePresentation} title="Exit full screen (Esc)">
 
 
                 <Minimize className="size-4" />
@@ -857,7 +884,7 @@ export function LessonWorkspace({
           {mirror.receiving ? (
             <div
               className="fixed inset-0 z-[75] cursor-default touch-none overscroll-none"
-              aria-label="Teacher screen mirroring is active. Exit presentation to regain control."
+              aria-label="Teacher screen mirroring is active. Exit the lesson workspace to regain control."
               onContextMenu={(event) => event.preventDefault()}
               onPointerDown={(event) => event.preventDefault()}
               onWheel={(event) => event.preventDefault()}

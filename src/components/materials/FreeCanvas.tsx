@@ -205,7 +205,7 @@ export function FreeCanvas({
     return () => {
       pane.removeEventListener("scroll", grow);
     };
-  }, [zoom]);
+  }, [zoom, canEdit]);
 
   const height = Math.max(documentHeight, contentBottom + 700);
 

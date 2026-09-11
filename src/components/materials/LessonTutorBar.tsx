@@ -38,6 +38,10 @@ export function LessonTutorBar({
   onConceptHandled,
   turns: turnsProp,
   onTurnsChange,
+  draft: draftProp,
+  onDraftChange,
+  pending: pendingProp,
+  readOnly = false,
 }: {
   classId: string;
   sectionId: string | null;
@@ -45,13 +49,23 @@ export function LessonTutorBar({
   onConceptHandled: () => void;
   turns?: Turn[];
   onTurnsChange?: (updater: (prev: Turn[]) => Turn[]) => void;
+  /** Controlled question box, so the teacher's typing can be shown live. */
+  draft?: string;
+  onDraftChange?: (next: string) => void;
+  /** Shows the "thinking" line while another screen is waiting for a reply. */
+  pending?: boolean;
+  /** Watch-only: no typing, no asking. */
+  readOnly?: boolean;
 }) {
   const ask = useServerFn(askLessonTutor);
   const [localTurns, setLocalTurns] = useState<Turn[]>(INITIAL_TUTOR_TURNS);
   const turns = turnsProp ?? localTurns;
   const setTurns = onTurnsChange ?? setLocalTurns;
-  const [draft, setDraft] = useState("");
+  const [localDraft, setLocalDraft] = useState("");
+  const draft = draftProp ?? localDraft;
+  const setDraft = onDraftChange ?? setLocalDraft;
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
 
   const send = useMutation({
     mutationFn: async (input: { question: string; concept?: string }) => {

@@ -562,6 +562,7 @@ export function LessonWorkspace({
           />
         ) : docFormat(material.storage_path ?? material.title) === "pptx" ? (
           <SlideDeckView
+            key={`pptx:${material.id}`}
             url={docUrl.data.url}
             title={material.title}
             cacheKey={`material:${material.id}`}
@@ -571,6 +572,7 @@ export function LessonWorkspace({
           />
         ) : docFormat(material.storage_path ?? material.title) === "docx" ? (
           <OfficeDocView
+            key={`docx:${material.id}`}
             url={docUrl.data.url}
             title={material.title}
             cacheKey={`material:${material.id}`}
@@ -581,6 +583,7 @@ export function LessonWorkspace({
           />
         ) : (
           <PdfDocView
+            key={`pdf:${material.id}`}
             url={docUrl.data.url}
             title={material.title}
             canDownload={canManage || material.allow_download !== false}

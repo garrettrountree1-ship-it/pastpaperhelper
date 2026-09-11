@@ -23,12 +23,15 @@ export function PowerPointView({
   title,
   canDownload = true,
   markupKey,
+  canAnnotate = true,
 }: {
   url: string;
   title: string;
   canDownload?: boolean;
   /** Stable key so marks made on this deck are still there next lesson. */
   markupKey?: string;
+  /** Only teachers draw or add text boxes; students get a clean viewer. */
+  canAnnotate?: boolean;
 }) {
   const [loaded, setLoaded] = useState(false);
   const [viewerVersion, setViewerVersion] = useState(0);
@@ -38,6 +41,7 @@ export function PowerPointView({
   );
 
   const markup = useDocMarkup(`pptx-original-annotations:${markupKey ?? title}`);
+  const effTool = canAnnotate ? markup.tool : "none";
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [box, setBox] = useState({ width: 0, height: 0 });
 

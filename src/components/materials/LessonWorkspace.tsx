@@ -1024,9 +1024,14 @@ export function LessonWorkspace({
                             : "Drag anywhere on this bar to move the window; double-click to maximise"
                       }
                     >
-                      {isPhone ? null : <Move className="size-3.5 text-muted-foreground" />}
+                      {isPhone ? null : floatState === "min" ? (
+                        <ChevronUp className="size-3.5 shrink-0 text-primary" />
+                      ) : (
+                        <Move className="size-3.5 text-muted-foreground" />
+                      )}
                       <span className="truncate text-xs font-medium">
                         {frontPane === "canvas" ? "Lesson canvas" : "Lesson Materials"}
+                        {!isPhone && floatState === "min" ? " — minimised, click to restore" : ""}
                       </span>
                       <div className="ml-auto flex items-center gap-1">
                         {isPhone ? (

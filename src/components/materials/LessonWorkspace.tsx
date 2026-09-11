@@ -141,6 +141,12 @@ export function LessonWorkspace({
   });
   // The tutor thread belongs to the signed-in account only.
   const { turns: tutorTurns, setTurns: setTutorTurns } = useTutorThread(`class:${classId}`);
+  // While a screen is mirrored, the tutor box on the student screen shows the
+  // teacher's conversation, typing and waiting state instead of their own.
+  const [tutorDraft, setTutorDraft] = useState("");
+  const [tutorPending, setTutorPending] = useState(false);
+  const [mirroredTutorTurns, setMirroredTutorTurns] = useState<typeof tutorTurns | null>(null);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
 

@@ -164,7 +164,7 @@ export function FreeCanvas({
 
   useEffect(() => {
     const surface = surfaceRef.current;
-    if (!surface) return;
+    if (!surface || !canEdit) return;
 
     // Find the pane that actually scrolls (its own CSS overflow, not just its
     // current content height — an empty sheet would otherwise be skipped).

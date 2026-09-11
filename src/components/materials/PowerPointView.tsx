@@ -68,7 +68,7 @@ export function PowerPointView({
         <div className="ml-auto flex items-center gap-2">
           {canAnnotate ? (
             <DocMarkupToolbar
-              tool={markup.tool}
+              tool={effTool}
               setTool={markup.setTool}
               penColor={markup.penColor}
               setPenColor={markup.setPenColor}
@@ -135,13 +135,13 @@ export function PowerPointView({
           style={{
             transform: `scale(${scale})`,
             transformOrigin: "top left",
-            pointerEvents: markup.tool === "none" ? "none" : "auto",
+            pointerEvents: effTool === "none" ? "none" : "auto",
           }}
         >
           <SlideAnnotations
             width={MARKUP_WIDTH}
             height={markupHeight}
-            tool={markup.tool}
+            tool={effTool}
             color={markup.penColor}
             highlightColor={markup.highlightColor}
             value={markup.annotationOf(0)}

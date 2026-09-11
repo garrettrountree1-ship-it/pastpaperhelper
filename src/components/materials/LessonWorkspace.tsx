@@ -922,8 +922,12 @@ export function LessonWorkspace({
                   ? { left: 0, top: 0, width: "100%", height: "100%" }
                   : floatState === "min"
                     ? {
-                        left: Math.max(0, Math.min(r.x, (areaSize.w || minW) - minW)),
-                        top: Math.max(0, (areaSize.h || BAR_H) - BAR_H),
+                        // Park the minimised window as a clearly visible pill
+                        // centred along the bottom edge of the screen so it is
+                        // never lost; clicking it restores the window.
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        top: Math.max(0, (areaSize.h || BAR_H) - BAR_H - 12),
                         width: minW,
                         height: BAR_H,
                       }

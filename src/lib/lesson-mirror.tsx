@@ -318,7 +318,23 @@ export function useLessonMirrorState({
       } else if (message.viewActive === false) {
         activePresenter.current = null;
       }
-      const patch = { ...(message.content ?? {}), ...(message.view ?? {}) };
+      const patch: Fields = { ...(message.content ?? {}), ...(message.view ?? {}) };
+      // A big piece of work arrives in slices; hold them until the last one.
+      const slice = message.chunk;
+      if (slice) {
+        const parts = partials.get(slice.id) ?? new Array<string>(slice.total).fill("");
+        parts[slice.index] = slice.data;
+        partials.set(slice.id, parts);
+        if (parts.every((part) => part.length > 0) || slice.total === 1) {
+          partials.delete(slice.id);
+          try {
+            patch[slice.key] = JSON.parse(parts.join("")) as unknown;
+          } catch {
+            // An incomplete or damaged set is simply skipped; the next
+            // snapshot brings it again.
+          }
+        }
+      }
       if (Object.keys(patch).length > 0) {
         const isNewSession = Boolean(
           message.sessionId && activeSession.current !== message.sessionId,

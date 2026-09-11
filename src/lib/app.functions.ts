@@ -2931,7 +2931,7 @@ export const getAssignmentQuestionControls = createServerFn({ method: "POST" })
     const [{ data: questions }, { data: members }] = await Promise.all([
       db
         .from("questions")
-        .select("id, position, question_text, marks, photo_mode, credited_all_at")
+        .select("id, position, question_text, marks, photo_mode, credited_all_at, image_paths")
         .eq("assignment_id", data.assignmentId)
         .order("position"),
       db.from("class_members").select("student_id").eq("class_id", assignment!.class_id),
@@ -2952,14 +2952,21 @@ export const getAssignmentQuestionControls = createServerFn({ method: "POST" })
 
     return {
       assignmentTitle: assignment!.title,
-      questions: (questions ?? []).map((q) => ({
-        id: q.id,
-        position: q.position,
-        marks: q.marks,
-        questionText: q.question_text,
-        photoMode: isPhotoMode(q.photo_mode) ? q.photo_mode : "auto",
-        creditedAll: Boolean((q as { credited_all_at?: string | null }).credited_all_at),
-      })),
+      questions: await Promise.all(
+        (questions ?? []).map(async (q) => ({
+          id: q.id,
+          position: q.position,
+          marks: q.marks,
+          questionText: q.question_text,
+          // Same exact question picture the question editor shows.
+          imageUrls: await signPaperPages(
+            db,
+            ((q as { image_paths?: string[] }).image_paths ?? []) as string[],
+          ),
+          photoMode: isPhotoMode(q.photo_mode) ? q.photo_mode : "auto",
+          creditedAll: Boolean((q as { credited_all_at?: string | null }).credited_all_at),
+        })),
+      ),
       students: studentIds.map((id) => {
         const profile = (profiles ?? []).find((p) => p.id === id);
         return { id, name: profile?.full_name || profile?.email || "Student" };

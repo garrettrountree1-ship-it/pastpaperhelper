@@ -53,6 +53,15 @@ export function useLessonMirror() {
   return useContext(MirrorContext);
 }
 
+type Chunk = {
+  scope: MirrorScope;
+  key: string;
+  id: string;
+  index: number;
+  total: number;
+  data: string;
+};
+
 type Payload = {
   from?: string;
   sessionId?: string;
@@ -60,7 +69,17 @@ type Payload = {
   finalView?: boolean;
   content?: Fields;
   view?: Fields;
+  /** One slice of a single large piece of work (e.g. a pasted photo). */
+  chunk?: Chunk;
 };
+
+/**
+ * A live update has to fit in one message. Pasted photos, long pages of
+ * drawing and a whole marked-up document are far bigger than that, so updates
+ * are split across several messages and put back together on arrival.
+ * Without this the message is simply dropped and the students see nothing.
+ */
+const MAX_CHARS = 80_000;
 
 /** Builds the live connection. Used once, by the lesson workspace. */
 export function useLessonMirrorState({
@@ -126,13 +145,69 @@ export function useLessonMirrorState({
         payload: { from: selfId, ...payload },
       });
     };
+    const meta = () => ({
+      ...(sessionId.current ? { sessionId: sessionId.current } : {}),
+      viewActive: sendingRef.current,
+    });
+
+    const sendChunked = (scope: MirrorScope, key: string, value: unknown) => {
+      const json = JSON.stringify(value ?? null);
+      const id = crypto.randomUUID();
+      const total = Math.ceil(json.length / MAX_CHARS) || 1;
+      for (let index = 0; index < total; index += 1) {
+        send({
+          ...meta(),
+          chunk: {
+            scope,
+            key,
+            id,
+            index,
+            total,
+            data: json.slice(index * MAX_CHARS, (index + 1) * MAX_CHARS),
+          },
+        });
+      }
+    };
+
+    /** Sends work and view together, in as many messages as their size needs. */
+    const sendFields = (content: Fields, view: Fields, extra: Payload = {}) => {
+      const entries: Array<[MirrorScope, string, unknown, number]> = [];
+      for (const [key, value] of Object.entries(content)) {
+        entries.push(["content", key, value, JSON.stringify(value ?? null).length]);
+      }
+      for (const [key, value] of Object.entries(view)) {
+        entries.push(["view", key, value, JSON.stringify(value ?? null).length]);
+      }
+      let bucketContent: Fields = {};
+      let bucketView: Fields = {};
+      let size = 0;
+      let sentAny = false;
+      const flush = () => {
+        if (Object.keys(bucketContent).length === 0 && Object.keys(bucketView).length === 0) return;
+        send({ ...meta(), content: bucketContent, view: bucketView });
+        sentAny = true;
+        bucketContent = {};
+        bucketView = {};
+        size = 0;
+      };
+      for (const [scope, key, value, len] of entries) {
+        if (len > MAX_CHARS) {
+          flush();
+          sendChunked(scope, key, value);
+          sentAny = true;
+          continue;
+        }
+        if (size + len > MAX_CHARS) flush();
+        if (scope === "content") bucketContent[key] = value;
+        else bucketView[key] = value;
+        size += len;
+      }
+      flush();
+      if (Object.keys(extra).length > 0 || !sentAny) send({ ...meta(), ...extra });
+    };
+
     const sendAll = () =>
-      send({
-        ...(sessionId.current ? { sessionId: sessionId.current } : {}),
-        viewActive: sendingRef.current,
-        content: allContent.current,
-        ...(sendingRef.current ? { view: allView.current } : {}),
-      });
+      sendFields(allContent.current, sendingRef.current ? allView.current : {});
 
     void (async () => {
       // Realtime can retain an older token after a long-lived school session.
@@ -176,18 +251,21 @@ export function useLessonMirrorState({
           if (sendingRef.current) {
             sendAll();
           } else {
-            send({
-              ...(sessionId.current ? { sessionId: sessionId.current } : {}),
-              viewActive: false,
-              finalView: true,
-              view: allView.current,
-            });
+            sendFields({}, allView.current, { viewActive: false, finalView: true });
           }
           return;
         }
         if (heartbeatDue) {
           lastSnapshot = now;
-          sendAll();
+          // A keep-alive: only the small pieces, so a pasted photo is not
+          // re-sent every second.
+          const small = (fields: Fields) =>
+            Object.fromEntries(
+              Object.entries(fields).filter(
+                ([, value]) => JSON.stringify(value ?? null).length <= MAX_CHARS,
+              ),
+            );
+          sendFields(small(allContent.current), small(allView.current));
           return;
         }
         if (!sendingRef.current && stopRepeats > 0) {
@@ -198,12 +276,7 @@ export function useLessonMirrorState({
           });
           return;
         }
-        send({
-          ...(sessionId.current ? { sessionId: sessionId.current } : {}),
-          viewActive: sendingRef.current,
-          ...(hasContent ? { content } : {}),
-          ...(hasView ? { view } : {}),
-        });
+        sendFields(hasContent ? content : {}, hasView ? view : {});
       }, 120);
     })();
 
@@ -225,6 +298,7 @@ export function useLessonMirrorState({
     if (isTeacher) return;
     let cancelled = false;
     let channel: RealtimeChannel | null = null;
+    const partials = new Map<string, string[]>();
 
     const receive = ({ payload }: { payload: unknown }) => {
       const message = payload as Payload;
@@ -245,7 +319,23 @@ export function useLessonMirrorState({
       } else if (message.viewActive === false) {
         activePresenter.current = null;
       }
-      const patch = { ...(message.content ?? {}), ...(message.view ?? {}) };
+      const patch: Fields = { ...(message.content ?? {}), ...(message.view ?? {}) };
+      // A big piece of work arrives in slices; hold them until the last one.
+      const slice = message.chunk;
+      if (slice) {
+        const parts = partials.get(slice.id) ?? new Array<string>(slice.total).fill("");
+        parts[slice.index] = slice.data;
+        partials.set(slice.id, parts);
+        if (parts.every((part) => part.length > 0) || slice.total === 1) {
+          partials.delete(slice.id);
+          try {
+            patch[slice.key] = JSON.parse(parts.join("")) as unknown;
+          } catch {
+            // An incomplete or damaged set is simply skipped; the next
+            // snapshot brings it again.
+          }
+        }
+      }
       if (Object.keys(patch).length > 0) {
         const isNewSession = Boolean(
           message.sessionId && activeSession.current !== message.sessionId,

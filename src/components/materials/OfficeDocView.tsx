@@ -65,6 +65,7 @@ export function OfficeDocView({
   materialId,
   canPrepareShared = false,
   canDownload = true,
+  canAnnotate = true,
 }: {
   url: string;
   title: string;
@@ -75,6 +76,8 @@ export function OfficeDocView({
   /** Teachers may store the prepared render for everyone else. */
   canPrepareShared?: boolean;
   canDownload?: boolean;
+  /** Only teachers draw, highlight, add text boxes or edit slide text. */
+  canAnnotate?: boolean;
 }) {
   const [zoom, setZoom] = useState(1);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
@@ -101,6 +104,8 @@ export function OfficeDocView({
   // Drawings and text boxes made on top of the slides, kept per slide index and
   // saved locally so they are still there next lesson.
   const [tool, setTool] = useState<SlideTool>("none");
+  // Students never get the markup tools — their viewer stays in select mode.
+  const effTool: SlideTool = canAnnotate ? tool : "none";
   const [penColor, setPenColor] = useState("#dc2626");
   const [highlightColor, setHighlightColor] = useState(HIGHLIGHT_SWATCHES[0]!);
   const [notes, setNotes] = useState<Record<number, SlideAnnotation>>({});
@@ -448,7 +453,7 @@ export function OfficeDocView({
           <span className="ml-2 text-xs text-destructive">{pagesError}</span>
         ) : null}
 
-        {deck ? (
+        {deck && canAnnotate ? (
           <div className="ml-2 flex items-center gap-1">
             {(
               [
@@ -494,7 +499,7 @@ export function OfficeDocView({
             ))}
           </div>
         ) : null}
-        {!deck && status === "ready" ? (
+        {!deck && status === "ready" && canAnnotate ? (
           <DocMarkupToolbar
             tool={tool}
             setTool={setTool}
@@ -576,7 +581,7 @@ export function OfficeDocView({
                   <SlidePage
                     deck={deck}
                     index={index}
-                    tool={tool}
+                    tool={effTool}
                     penColor={penColor}
                     highlightColor={highlightColor}
                     annotation={notes[index] ?? emptyAnnotation}
@@ -593,7 +598,7 @@ export function OfficeDocView({
             <div style={{ width: `${zoom * 100}%` }}>
               <DocMarkupSurface
                 ratio={docRatio}
-                tool={tool}
+                tool={effTool}
                 penColor={penColor}
                 highlightColor={highlightColor}
                 value={notes[0] ?? emptyAnnotation}

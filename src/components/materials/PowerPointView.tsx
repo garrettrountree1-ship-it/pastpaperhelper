@@ -23,12 +23,15 @@ export function PowerPointView({
   title,
   canDownload = true,
   markupKey,
+  canAnnotate = true,
 }: {
   url: string;
   title: string;
   canDownload?: boolean;
   /** Stable key so marks made on this deck are still there next lesson. */
   markupKey?: string;
+  /** Only teachers draw or add text boxes; students get a clean viewer. */
+  canAnnotate?: boolean;
 }) {
   const [loaded, setLoaded] = useState(false);
   const [viewerVersion, setViewerVersion] = useState(0);
@@ -38,6 +41,7 @@ export function PowerPointView({
   );
 
   const markup = useDocMarkup(`pptx-original-annotations:${markupKey ?? title}`);
+  const effTool = canAnnotate ? markup.tool : "none";
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [box, setBox] = useState({ width: 0, height: 0 });
 
@@ -62,14 +66,16 @@ export function PowerPointView({
       <div className="flex flex-wrap items-center gap-2 pb-1">
         <span className="truncate text-xs text-muted-foreground">Original PowerPoint view</span>
         <div className="ml-auto flex items-center gap-2">
-          <DocMarkupToolbar
-            tool={markup.tool}
-            setTool={markup.setTool}
-            penColor={markup.penColor}
-            setPenColor={markup.setPenColor}
-            highlightColor={markup.highlightColor}
-            setHighlightColor={markup.setHighlightColor}
-          />
+          {canAnnotate ? (
+            <DocMarkupToolbar
+              tool={effTool}
+              setTool={markup.setTool}
+              penColor={markup.penColor}
+              setPenColor={markup.setPenColor}
+              highlightColor={markup.highlightColor}
+              setHighlightColor={markup.setHighlightColor}
+            />
+          ) : null}
           <Button
             size="icon"
             variant="ghost"
@@ -129,13 +135,13 @@ export function PowerPointView({
           style={{
             transform: `scale(${scale})`,
             transformOrigin: "top left",
-            pointerEvents: markup.tool === "none" ? "none" : "auto",
+            pointerEvents: effTool === "none" ? "none" : "auto",
           }}
         >
           <SlideAnnotations
             width={MARKUP_WIDTH}
             height={markupHeight}
-            tool={markup.tool}
+            tool={effTool}
             color={markup.penColor}
             highlightColor={markup.highlightColor}
             value={markup.annotationOf(0)}

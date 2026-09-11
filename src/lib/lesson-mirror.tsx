@@ -251,18 +251,21 @@ export function useLessonMirrorState({
           if (sendingRef.current) {
             sendAll();
           } else {
-            send({
-              ...(sessionId.current ? { sessionId: sessionId.current } : {}),
-              viewActive: false,
-              finalView: true,
-              view: allView.current,
-            });
+            sendFields({}, allView.current, { viewActive: false, finalView: true });
           }
           return;
         }
         if (heartbeatDue) {
           lastSnapshot = now;
-          sendAll();
+          // A keep-alive: only the small pieces, so a pasted photo is not
+          // re-sent every second.
+          const small = (fields: Fields) =>
+            Object.fromEntries(
+              Object.entries(fields).filter(
+                ([, value]) => JSON.stringify(value ?? null).length <= MAX_CHARS,
+              ),
+            );
+          sendFields(small(allContent.current), small(allView.current));
           return;
         }
         if (!sendingRef.current && stopRepeats > 0) {
@@ -273,12 +276,7 @@ export function useLessonMirrorState({
           });
           return;
         }
-        send({
-          ...(sessionId.current ? { sessionId: sessionId.current } : {}),
-          viewActive: sendingRef.current,
-          ...(hasContent ? { content } : {}),
-          ...(hasView ? { view } : {}),
-        });
+        sendFields(hasContent ? content : {}, hasView ? view : {});
       }, 120);
     })();
 

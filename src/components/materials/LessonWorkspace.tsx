@@ -618,7 +618,7 @@ export function LessonWorkspace({
           variant="ghost"
           size="sm"
           onClick={onBack}
-          className={mirror.receiving ? "fixed left-3 top-2 z-[80]" : "-ml-2"}
+          className={mirror.receiving ? "-ml-2 relative z-[80]" : "-ml-2"}
         >
           <ArrowLeft className="size-4" />
           Close
@@ -772,13 +772,17 @@ export function LessonWorkspace({
           ) : null}
 
           <Button
+            data-mirror-exit
             size="sm"
             variant={presenting ? "default" : "outline"}
             onClick={togglePresentation}
             title={presenting ? "Exit full screen" : "Open full screen"}
+            className={mirror.receiving ? "relative z-[80]" : undefined}
           >
             {presenting ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
-            <span className="hidden sm:inline">{presenting ? "Exit" : "Full screen"}</span>
+            <span className="hidden sm:inline">
+              {presenting ? "Exit full screen" : "Full screen"}
+            </span>
           </Button>
         </div>
       </header>
@@ -873,11 +877,15 @@ export function LessonWorkspace({
               ) : null}
                 </>
               )}
-              <Button data-mirror-exit size="sm" variant="secondary" onClick={togglePresentation} title="Exit full screen (Esc)">
-
-
+              <Button
+                data-mirror-exit
+                size="sm"
+                variant="secondary"
+                onClick={togglePresentation}
+                title="Exit full screen (Esc)"
+              >
                 <Minimize className="size-4" />
-                Exit
+                Exit full screen
               </Button>
             </div>
           ) : null}

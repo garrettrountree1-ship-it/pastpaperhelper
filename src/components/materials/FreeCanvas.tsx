@@ -2,6 +2,7 @@ import { GripVertical, Pause, RotateCw, Trash2, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useUndoHistory } from "@/hooks/use-undo-history";
+import { useMirrorField } from "@/lib/lesson-mirror";
 import { escapeHtml, formatSelection } from "@/lib/rich-text";
 import { textShortcutOf } from "@/lib/text-shortcuts";
 import { RichTextEditable } from "@/components/materials/RichTextEditable";
@@ -13,6 +14,14 @@ import type { NoteBlock } from "@/lib/notes.functions";
  * delete them, without ever starting a new text box by accident.
  */
 export type CanvasMode = "select" | "type" | "draw" | "highlight" | "erase";
+
+/** A pen line still being drawn, shared live with mirrored screens. */
+type LiveStroke = {
+  points: Array<{ x: number; y: number }>;
+  color: string;
+  width: number;
+  highlight: boolean;
+} | null;
 
 /** Highlighter stroke thickness on the canvas. */
 export const CANVAS_HIGHLIGHT_WIDTH = 20;
@@ -149,9 +158,13 @@ export function FreeCanvas({
     setDocumentHeight((current) => Math.max(current, contentBottom + 700, 1800));
   }, [contentBottom]);
 
+  // The sheet must be exactly as long on the student screen as on the teacher's,
+  // otherwise the same scroll position lands somewhere else.
+  useMirrorField("canvas.height", documentHeight, setDocumentHeight);
+
   useEffect(() => {
     const surface = surfaceRef.current;
-    if (!surface) return;
+    if (!surface || !canEdit) return;
 
     // Find the pane that actually scrolls (its own CSS overflow, not just its
     // current content height — an empty sheet would otherwise be skipped).
@@ -192,7 +205,7 @@ export function FreeCanvas({
     return () => {
       pane.removeEventListener("scroll", grow);
     };
-  }, [zoom]);
+  }, [zoom, canEdit]);
 
   const height = Math.max(documentHeight, contentBottom + 700);
 
@@ -477,6 +490,20 @@ export function FreeCanvas({
 
   const inks = blocks.filter((b): b is Extract<NoteBlock, { type: "ink" }> => b.type === "ink");
 
+  // The stroke being drawn right now travels too, so students watch the pen
+  // move instead of waiting for the line to be finished.
+  const liveStroke: LiveStroke = live
+    ? {
+        points: live,
+        color: mode === "highlight" ? highlightColor : penColor,
+        width: mode === "highlight" ? CANVAS_HIGHLIGHT_WIDTH : penWidth,
+        highlight: mode === "highlight",
+      }
+    : null;
+  const [remoteLive, setRemoteLive] = useState<LiveStroke>(null);
+  useMirrorField("canvas.live", liveStroke, setRemoteLive, "content");
+  const shownLive = liveStroke ?? remoteLive;
+
   return (
     <div style={{ height: height * zoom, overflow: "hidden", overflowAnchor: "none" }}>
     <div
@@ -526,12 +553,12 @@ export function FreeCanvas({
                 strokeLinejoin="round"
               />
             ))}
-          {live && mode === "highlight" ? (
+          {shownLive?.highlight ? (
             <path
-              d={pathFrom(live)}
+              d={pathFrom(shownLive.points)}
               fill="none"
-              stroke={highlightColor}
-              strokeWidth={CANVAS_HIGHLIGHT_WIDTH}
+              stroke={shownLive.color}
+              strokeWidth={shownLive.width}
               strokeOpacity={0.4}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -551,12 +578,12 @@ export function FreeCanvas({
               strokeLinejoin="round"
             />
           ))}
-        {live && mode !== "highlight" ? (
+        {shownLive && !shownLive.highlight ? (
           <path
-            d={pathFrom(live)}
+            d={pathFrom(shownLive.points)}
             fill="none"
-            stroke={penColor}
-            strokeWidth={penWidth}
+            stroke={shownLive.color}
+            strokeWidth={shownLive.width}
             strokeLinecap="round"
             strokeLinejoin="round"
           />

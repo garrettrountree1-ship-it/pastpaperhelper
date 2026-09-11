@@ -353,7 +353,18 @@ export function useMirrorField<T>(
  * Mirrors scrolling of a pane. Positions travel as a fraction of the scrollable
  * length, so a student on a smaller screen still follows the same place.
  */
-export function useMirrorScroll(key: string, ref: React.RefObject<HTMLElement | null>) {
+export function useMirrorScroll(
+  key: string,
+  ref: React.RefObject<HTMLElement | null>,
+  options?: {
+    /**
+     * The two screens share the same coordinate space (same sheet length and
+     * zoom), so the teacher's position is copied across pixel for pixel.
+     */
+    exact?: boolean;
+  },
+) {
+  const exact = options?.exact ?? false;
   const { sending, receiving, publish, received } = useLessonMirror();
 
   useEffect(() => {
@@ -412,23 +423,27 @@ export function useMirrorScroll(key: string, ref: React.RefObject<HTMLElement | 
       );
       const studentTopRange = Math.max(0, el.scrollHeight - el.clientHeight);
       const studentLeftRange = Math.max(0, el.scrollWidth - el.clientWidth);
-      el.scrollTop =
-        teacherTopRange > 0
+      const top = exact
+        ? Math.min(position.top, studentTopRange)
+        : teacherTopRange > 0
           ? (position.top / teacherTopRange) * studentTopRange
           : Math.min(position.top, studentTopRange);
-      el.scrollLeft =
-        teacherLeftRange > 0
+      const left = exact
+        ? Math.min(position.left, studentLeftRange)
+        : teacherLeftRange > 0
           ? (position.left / teacherLeftRange) * studentLeftRange
           : Math.min(position.left, studentLeftRange);
+      if (Math.abs(el.scrollTop - top) > 0.5) el.scrollTop = top;
+      if (Math.abs(el.scrollLeft - left) > 0.5) el.scrollLeft = left;
     };
 
     applyTeacherPosition();
-    const hold = window.setInterval(applyTeacherPosition, 200);
+    const hold = window.setInterval(applyTeacherPosition, 60);
     const observer = new ResizeObserver(applyTeacherPosition);
     observer.observe(el);
     return () => {
       window.clearInterval(hold);
       observer.disconnect();
     };
-  }, [receiving, incoming, ref]);
+  }, [receiving, incoming, ref, exact]);
 }

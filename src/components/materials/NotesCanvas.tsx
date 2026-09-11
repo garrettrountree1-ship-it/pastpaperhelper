@@ -151,7 +151,9 @@ export function NotesCanvas({
   useMirrorField("canvas.blocks", blocks, setBlocks, "content");
   useMirrorField("canvas.zoom", zoom, setZoom);
   useMirrorField("canvas.tab", tab, setTab);
-  useMirrorScroll("canvas.scroll", scrollRef);
+  // The sheet length and zoom both travel with the mirror, so the student sits
+  // at exactly the same place on the page as the teacher.
+  useMirrorScroll("canvas.scroll", scrollRef, { exact: true });
 
   // Canvas pictures and voice notes both live in the class-materials bucket.
   const mediaPaths = useMemo(

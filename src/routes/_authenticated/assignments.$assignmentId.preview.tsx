@@ -591,14 +591,23 @@ function StudentWorkView({
                   ? { at: answer.rejected_at, note: answer.rejection_note ?? null }
                   : null
               }
+              creditedAll={
+                (question as { creditedAll?: boolean }).creditedAll ?? false
+              }
               result={
-                answer && !answer.rejected_at
+                (question as { creditedAll?: boolean }).creditedAll
                   ? {
-                      verdict: answer.verdict ?? "incorrect",
-                      awardedMarks: Number(answer.awarded_marks ?? 0),
-                      feedback: answer.feedback ?? "",
+                      verdict: "correct",
+                      awardedMarks: Number(question.marks ?? 0),
+                      feedback: answer?.feedback ?? "",
                     }
-                  : null
+                  : answer && !answer.rejected_at
+                    ? {
+                        verdict: answer.verdict ?? "incorrect",
+                        awardedMarks: Number(answer.awarded_marks ?? 0),
+                        feedback: answer.feedback ?? "",
+                      }
+                    : null
               }
               attempts={Number(answer?.attempts ?? 0)}
               checking={false}

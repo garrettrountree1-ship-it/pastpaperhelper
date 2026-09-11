@@ -1330,9 +1330,13 @@ function QuestionControlsDialog({
   }
 
   const creditAll = useMutation({
-    mutationFn: (questionId: string) => credit({ data: { questionId } }),
+    mutationFn: (vars: { questionId: string; credited: boolean }) => credit({ data: vars }),
     onSuccess: (result) => {
-      toast.success(`Full credit given to ${result.credited} student(s)`);
+      toast.success(
+        result.creditedAll
+          ? `Full credit given to ${result.credited} student(s)`
+          : "Whole-class full marks removed for this question",
+      );
       refresh();
     },
     onError: (error: Error) => toast.error(error.message),
@@ -1407,22 +1411,29 @@ function QuestionControlsDialog({
                             {excludedCount === 1 ? "" : "s"}
                           </Badge>
                         ) : null}
+                        {question.creditedAll ? (
+                          <Badge className="mt-2">Everyone has full marks</Badge>
+                        ) : null}
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <Button
-                          variant="outline"
+                          variant={question.creditedAll ? "default" : "outline"}
                           size="sm"
+                          aria-pressed={question.creditedAll}
                           disabled={creditAll.isPending}
                           onClick={() => {
+                            const next = !question.creditedAll;
                             if (
                               window.confirm(
-                                `Give every student full marks (${question.marks}) for question ${label}?`,
+                                next
+                                  ? `Give every student full marks (${question.marks}) for question ${label}?`
+                                  : `Take back the full marks given to everyone for question ${label}?`,
                               )
                             )
-                              creditAll.mutate(question.id);
+                              creditAll.mutate({ questionId: question.id, credited: next });
                           }}
                         >
-                          Credit all students
+                          {question.creditedAll ? "Credited — click to undo" : "Credit all students"}
                         </Button>
                         <Button
 

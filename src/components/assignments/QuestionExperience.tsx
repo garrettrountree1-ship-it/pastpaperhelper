@@ -103,6 +103,7 @@ export function QuestionExperience({
   sentBack = null,
   snipUrls = [],
   readOnly = false,
+  creditedAll = false,
 
 
 }: {
@@ -171,6 +172,8 @@ export function QuestionExperience({
   snipUrls?: string[];
   /** Teacher looking at a student's work: everything visible, nothing changeable. */
   readOnly?: boolean;
+  /** The teacher gave the whole class full marks for this question. */
+  creditedAll?: boolean;
 }) {
 
   const verdict = result?.verdict ?? null;
@@ -283,6 +286,19 @@ export function QuestionExperience({
           </p>
         </div>
       ) : null}
+
+      {creditedAll ? (
+        <div className="mt-4 flex items-start gap-2 rounded-lg border border-primary/40 bg-primary/10 p-4">
+          <CheckCircle2 className="mt-0.5 size-5 text-primary" />
+          <div>
+            <p className="text-sm font-medium">Full marks given for this question</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Your teacher gave the whole class full marks here, so there is nothing left to answer.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
 
       {markScheme || markSchemeImageUrls.length > 0 ? (
         <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
@@ -473,21 +489,24 @@ export function QuestionExperience({
               onClick={onCheck}
               disabled={
                 locked ||
+                creditedAll ||
                 outOfTries ||
                 checking ||
                 (!hasWrittenAnswer && photoCount === 0) ||
                 !isEnglishOnly(draft)
               }
             >
-              {locked
-                ? "Locked"
-                : outOfTries
-                  ? "No tries left"
-                  : checking
-                    ? "Marking..."
-                    : result
-                      ? "Re-check answer"
-                      : "Check answer"}
+              {creditedAll
+                ? "Full marks given"
+                : locked
+                  ? "Locked"
+                  : outOfTries
+                    ? "No tries left"
+                    : checking
+                      ? "Marking..."
+                      : result
+                        ? "Re-check answer"
+                        : "Check answer"}
             </Button>
           )}
 

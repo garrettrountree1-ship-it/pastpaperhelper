@@ -282,6 +282,8 @@ type Question = {
   imageUrls?: string[];
   markScheme?: string | null;
   answerImageUrls?: string[];
+  /** The teacher gave the whole class full marks for this question. */
+  creditedAll?: boolean;
 
   photoMode?: PhotoMode;
 };
@@ -478,14 +480,21 @@ function QuestionCard({
       sentBack={
         answer?.rejected_at ? { at: answer.rejected_at, note: answer.rejection_note ?? null } : null
       }
+      creditedAll={question.creditedAll ?? false}
       result={
-        answer && !answer.rejected_at
+        question.creditedAll
           ? {
-              verdict: answer.verdict ?? "incorrect",
-              awardedMarks: answer.awarded_marks ?? 0,
-              feedback: answer.feedback ?? "",
+              verdict: "correct",
+              awardedMarks: question.marks,
+              feedback: answer?.feedback ?? "",
             }
-          : null
+          : answer && !answer.rejected_at
+            ? {
+                verdict: answer.verdict ?? "incorrect",
+                awardedMarks: answer.awarded_marks ?? 0,
+                feedback: answer.feedback ?? "",
+              }
+            : null
       }
       attempts={answer?.attempts ?? 0}
       checking={gradeMutation.isPending}

@@ -1363,6 +1363,19 @@ function QuestionControlsDialog({
       (e) => e.questionId === questionId && e.studentId === studentId,
     );
 
+  // "All students" simply applies the same choice to every student in the class.
+  const toggleExclusionForAll = useMutation({
+    mutationFn: async (vars: { questionId: string; excluded: boolean }) => {
+      for (const student of controls.data?.students ?? []) {
+        await exclude({
+          data: { questionId: vars.questionId, studentId: student.id, excluded: vars.excluded },
+        });
+      }
+    },
+    onSuccess: () => refresh(),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const body = (
     <>
 

@@ -596,15 +596,11 @@ export function DrawingPad({
       onContextMenu={(event) => event.preventDefault()}
       onDragStart={(event) => event.preventDefault()}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <p className="flex items-center gap-2 text-sm font-medium">
           <PenLine className="size-4" />
           Write your working here
         </p>
-        <Button type="button" size="sm" variant="outline" onClick={minimise}>
-          <Minimize className="size-4" />
-          Minimise &amp; save
-        </Button>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
         {"The question is printed underneath. In Write mode every touch draws, even over the picture. Switch to Move picture to tap the picture, drag it anywhere, or pull a blue corner square to make it bigger or smaller — then switch back to Write. Scroll down for as much space as you need. Minimise & save keeps your sheet, then press Check answer."}

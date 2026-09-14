@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 
 import { renumberQuestions, separateQuestionCrops } from "./paper-extract.server";
 
@@ -19,7 +20,7 @@ describe("paper extraction safeguards", () => {
       question("2 Third compiled question", 0.5, 0.6),
     ]);
 
-    expect(result.map((item) => item.questionText)).toEqual([
+    assert.deepEqual(result.map((item) => item.questionText), [
       "1 First compiled question",
       "2 Second compiled question",
       "3 Third compiled question",
@@ -32,7 +33,7 @@ describe("paper extraction safeguards", () => {
       question("2 Second", 0.108, 0.116),
     ]);
 
-    expect(result[0]?.crops).toHaveLength(1);
-    expect(result[1]?.crops).toHaveLength(1);
+    assert.equal(result[0]?.crops?.length, 1);
+    assert.equal(result[1]?.crops?.length, 1);
   });
 });

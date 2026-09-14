@@ -734,7 +734,6 @@ function AssignmentDialog({
         answerImagePaths: q.answerImagePaths ?? [],
         sourcePagePath: q.sourcePagePath ?? "",
         answerSourcePagePath: q.answerSourcePagePath ?? "",
-        multipleChoice: (q as { multipleChoice?: boolean | null }).multipleChoice ?? null,
         tagLabel: q.tagLabel ?? "",
         tagImage: q.tagImage ?? "",
         multipleChoice: q.multipleChoice ?? null,

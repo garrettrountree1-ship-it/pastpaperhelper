@@ -425,7 +425,9 @@ export const getQuizWorkspace = createServerFn({ method: "POST" })
 
     const { data: questions } = await db
       .from("quiz_questions")
-      .select("id, position, question_text, mark_scheme, marks, image_paths")
+      .select(
+        "id, position, question_text, mark_scheme, marks, image_paths, answer_image_paths",
+      )
       .eq("quiz_id", data.quizId)
       .order("position");
     const totalMarks = (questions ?? []).reduce((sum, q) => sum + q.marks, 0);

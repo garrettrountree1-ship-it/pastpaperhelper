@@ -45,7 +45,6 @@ type MarkInput = {
   markSchemeImageUrls?: string[];
 };
 
-
 export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
   const images = input.imageUrls ?? [];
   const questionImages = input.questionImageUrls ?? [];
@@ -94,8 +93,10 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     "Output raw JSON only.",
   ].join(" ");
 
-  const asImage = (url: string) =>
-    ({ type: "image" as const, image: url.startsWith("data:") ? url : new URL(url) });
+  const asImage = (url: string) => ({
+    type: "image" as const,
+    image: url.startsWith("data:") ? url : new URL(url),
+  });
 
   const content = [
     { type: "text" as const, text: prompt },
@@ -103,9 +104,6 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     ...schemeImages.map(asImage),
     ...images.map(asImage),
   ];
-
-
-
 
   let lastError: unknown = null;
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -173,9 +171,7 @@ function extractJson(text: string): string {
   return start >= 0 && end > start ? source.slice(start, end + 1) : source;
 }
 
-
 type TutorTurn = { role: "tutor" | "student"; content: string };
-
 
 type TutorInput = {
   curriculum: string;
@@ -252,4 +248,3 @@ export async function tutorStep(input: TutorInput): Promise<string> {
   const { text } = await generateText({ model: gatewayModel(), system, prompt });
   return text.trim();
 }
-

@@ -1162,12 +1162,24 @@ function AssignmentDialog({
                       />
                     </div>
                   ) : (
-                    <Textarea
-                      value={question.questionText}
-                      onChange={(event) => update_(index, { questionText: event.target.value })}
-                      placeholder="Paste the past-paper question here"
-                      rows={3}
-                    />
+                    <div className="space-y-2 rounded-md border border-dashed border-border p-3">
+                      <p className="text-xs text-muted-foreground">
+                        No question picture yet. Questions are always shown as the picture cut
+                        from the paper, never as retyped text — cut this one from the original page.
+                      </p>
+                      <QuestionRecutDialog
+                        label="Cut question"
+                        sheet="question"
+                        sourcePath={
+                          questions.find((q) => q.imagePaths.length > 0)?.imagePaths[0] ?? ""
+                        }
+                        imagePaths={[]}
+                        imageUrls={[]}
+                        onSave={(imagePaths, imageUrls) =>
+                          update_(index, { imagePaths, imageUrls })
+                        }
+                      />
+                    </div>
                   )}
                   {question.answerImageUrls.length > 0 ? (
                     <div className="space-y-2">

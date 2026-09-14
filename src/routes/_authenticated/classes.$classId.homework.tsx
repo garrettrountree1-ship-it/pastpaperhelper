@@ -80,7 +80,6 @@ import {
   deleteAssignment,
   setAssignmentArchived,
   removeStudentFromClass,
-
   deleteQuestion,
   getAssignmentQuestionControls,
   setQuestionPhotoMode,
@@ -110,8 +109,6 @@ import {
   shiftLetter,
 } from "@/lib/question-label";
 import { cropAfter } from "@/lib/next-crop";
-
-
 
 import { QuestionSnipStack } from "@/components/assignments/QuestionSnip";
 import { QuestionTagPicker } from "@/components/assignments/QuestionTagPicker";
@@ -258,7 +255,6 @@ function ClassPageContent({ classId }: { classId: string }) {
           <ScaffoldingOptionsDialog classId={classId} />
           <AssignmentDialog classId={classId} trigger={<Button>New assignment</Button>} />
         </div>
-
       </div>
 
       <Tabs defaultValue="assignments" className="mt-6">
@@ -267,7 +263,6 @@ function ClassPageContent({ classId }: { classId: string }) {
           <TabsTrigger value="gradebook">Gradebook</TabsTrigger>
           <StudentMessagesTab classId={classId} />
         </TabsList>
-
 
         <TabsContent value="assignments" className="mt-4 space-y-3">
           <AssignmentList
@@ -369,22 +364,18 @@ function ClassPageContent({ classId }: { classId: string }) {
                       }
                       onChanged={() => overview.refetch()}
                     />
-
                   ))}
                 </TableBody>
               </Table>
               <p className="p-3 text-xs text-muted-foreground">
                 Scores update live as students work. * still in progress; scores freeze at the due
-                date.
-
-                Click a score to review answers and adjust marks. Turn detail on — for the class
-                above or per student in the last column — to see time spent, tutor questions and
-                every attempt.
+                date. Click a score to review answers and adjust marks. Turn detail on — for the
+                class above or per student in the last column — to see time spent, tutor questions
+                and every attempt.
               </p>
             </div>
           )}
         </TabsContent>
-
       </Tabs>
     </div>
   );
@@ -422,7 +413,6 @@ function AssignmentList({
     const key: AssignmentStatusKey = !a.pastDue ? "active" : behindAll ? "past_due" : "closed";
     return { ...a, statusKey: key };
   });
-
 
   const counts = {
     all: tagged.length,
@@ -489,7 +479,6 @@ function AssignmentList({
           cannot be prevented by any website.
         </p>
       </div>
-
 
       {visible.length === 0 ? (
         <div className="paper p-8 text-center text-muted-foreground">
@@ -563,11 +552,6 @@ function AssignmentList({
     </div>
   );
 }
-
-
-
-
-
 
 function AssignmentDialog({
   classId,
@@ -698,7 +682,10 @@ function AssignmentDialog({
     if (typeof document === "undefined") return;
 
     const onVisibility = () => {
-      if (!document.hidden && (document.title.startsWith("⏳") || document.title.startsWith("✅"))) {
+      if (
+        !document.hidden &&
+        (document.title.startsWith("⏳") || document.title.startsWith("✅"))
+      ) {
         document.title = titleBeforeExtraction.current ?? "PastPaperHelper.AI";
         titleBeforeExtraction.current = null;
       }
@@ -720,7 +707,6 @@ function AssignmentDialog({
     }
     document.title = "⏳ Reading your paper… — PastPaperHelper.AI";
   }, [extractPending]);
-
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -798,7 +784,6 @@ function AssignmentDialog({
     setQuestions((prev) => prev.map((q, i) => (i === index ? { ...q, ...patch } : q)));
   }
 
-
   /**
    * Editing one question's printed label (number and/or letter) shifts the ones
    * after it by the same amount, while leaving the typed text exactly as typed.
@@ -860,7 +845,8 @@ function AssignmentDialog({
           break;
         }
       }
-      const lastAnswerPath = answerSource?.answerImagePaths[answerSource.answerImagePaths.length - 1];
+      const lastAnswerPath =
+        answerSource?.answerImagePaths[answerSource.answerImagePaths.length - 1];
       const lastAnswerUrl = answerSource?.answerImageUrls[answerSource.answerImageUrls.length - 1];
       const draft: QuestionDraft = {
         ...emptyQuestion(),
@@ -890,24 +876,18 @@ function AssignmentDialog({
     setLabelDrafts({});
   }
 
-
-
-
-
   const body = (
     <>
-
-
-        {loadingExisting && !existing.isError ? (
-          <Skeleton className="h-64 w-full" />
-        ) : editing && existing.isError ? (
-          <div className="py-6 text-center">
-            <p className="mb-4 text-muted-foreground">
-              We couldn&apos;t load this assignment. {(existing.error as Error).message}
-            </p>
-            <Button onClick={() => existing.refetch()}>Retry</Button>
-          </div>
-        ) : (
+      {loadingExisting && !existing.isError ? (
+        <Skeleton className="h-64 w-full" />
+      ) : editing && existing.isError ? (
+        <div className="py-6 text-center">
+          <p className="mb-4 text-muted-foreground">
+            We couldn&apos;t load this assignment. {(existing.error as Error).message}
+          </p>
+          <Button onClick={() => existing.refetch()}>Retry</Button>
+        </div>
+      ) : (
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -942,21 +922,18 @@ function AssignmentDialog({
               <Label htmlFor="due">Due date (optional, 24h clock)</Label>
               <DateTime24Input id="due" value={dueAt} onChange={setDueAt} />
             </div>
-
           </div>
 
           <div className="rounded-xl border border-border bg-secondary/30 p-4">
             <div className="space-y-1">
-              <p className="text-sm font-medium">
-                Copying the questions is blocked
-              </p>
+              <p className="text-sm font-medium">Copying the questions is blocked</p>
               <p className="text-sm text-muted-foreground">
                 Students can read the questions but cannot select, copy or right-click the wording
-                of this homework. Pasting into an answer box or the tutor chat is also fully blocked;
-                screenshot, snipping-tool and print shortcuts are intercepted and the questions blur
-                whenever the tab loses focus. Screenshots taken by the operating system itself (or
-                a phone camera) can&apos;t be stopped by any website, so this is a strong deterrent
-                rather than a guarantee.
+                of this homework. Pasting into an answer box or the tutor chat is also fully
+                blocked; screenshot, snipping-tool and print shortcuts are intercepted and the
+                questions blur whenever the tab loses focus. Screenshots taken by the operating
+                system itself (or a phone camera) can&apos;t be stopped by any website, so this is a
+                strong deterrent rather than a guarantee.
               </p>
             </div>
           </div>
@@ -967,8 +944,8 @@ function AssignmentDialog({
               PDF, Word (.docx) or photos. Combined in one file, or paper and mark scheme
               separately. Each question part (1a, 1b(i), 1b(ii)…) is cut out of the page as a
               picture, so students answer the question exactly as printed — every table, option,
-              graph, diagram and symbol included. Nothing is retyped or invented; the mark scheme
-              is matched to each part and stays hidden from students.
+              graph, diagram and symbol included. Nothing is retyped or invented; the mark scheme is
+              matched to each part and stays hidden from students.
             </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
@@ -1007,8 +984,8 @@ function AssignmentDialog({
               <p className="mt-2 text-sm text-muted-foreground">
                 Carefully cutting out every question, diagram and symbol takes a few minutes for a
                 full paper — sit back and grab a coffee ☕ You can switch to another tab while you
-                 wait: a ✅ will appear in the tab title when the paper is ready and disappear when
-                 you return. You&apos;ll also get a notification when extraction is complete.
+                wait: a ✅ will appear in the tab title when the paper is ready and disappear when
+                you return. You&apos;ll also get a notification when extraction is complete.
               </p>
             ) : null}
             {editing ? (
@@ -1038,244 +1015,248 @@ function AssignmentDialog({
                 ))}
               </ul>
               <p className="mt-2 text-xs text-muted-foreground">
-                Nothing was changed or removed — these are only checks against the printed totals and
-                the mark scheme.
+                Nothing was changed or removed — these are only checks against the printed totals
+                and the mark scheme.
               </p>
             </div>
           ) : null}
 
-
           <div className="space-y-4">
             {questions.map((question, index) => (
               <div key={question.id ?? `new-${index}`}>
-              <div className="rounded-xl border border-border p-4">
-
-                <div className="flex items-center justify-between gap-2">
-                  {(() => {
-                    const label = questionLabel(question.questionText, index);
-                    const draft = labelDrafts[index];
-                    const commit = () => {
-                      const next = (draft ?? "").trim();
-                      setLabelDrafts((prev) => {
-                        const copy = { ...prev };
-                        delete copy[index];
-                        return copy;
-                      });
-                      if (next && next !== label) relabelFrom(index, next);
-                    };
-                    return (
-                      <div className="flex items-center gap-2">
-                        {ibdp ? (
-                          <button
-                            type="button"
-                            aria-label="Mark this question as HL only"
-                            aria-pressed={question.tagLabel.trim().toUpperCase() === "HL"}
-                            title="Click to mark this question as Higher Level only"
-                            onClick={() =>
-                              update_(index, {
-                                tagLabel:
-                                  question.tagLabel.trim().toUpperCase() === "HL" ? "" : "HL",
-                                tagImage: "",
-                              })
-                            }
-                            className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium transition-colors ${
-                              question.tagLabel.trim().toUpperCase() === "HL"
-                                ? "border-[hsl(215_75%_28%)] bg-[hsl(215_75%_28%)] text-white"
-                                : "border-border bg-transparent text-muted-foreground hover:border-[hsl(215_75%_28%)] hover:text-foreground"
-                            }`}
-                          >
-                            <span
-                              className={`flex size-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                <div className="rounded-xl border border-border p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    {(() => {
+                      const label = questionLabel(question.questionText, index);
+                      const draft = labelDrafts[index];
+                      const commit = () => {
+                        const next = (draft ?? "").trim();
+                        setLabelDrafts((prev) => {
+                          const copy = { ...prev };
+                          delete copy[index];
+                          return copy;
+                        });
+                        if (next && next !== label) relabelFrom(index, next);
+                      };
+                      return (
+                        <div className="flex items-center gap-2">
+                          {ibdp ? (
+                            <button
+                              type="button"
+                              aria-label="Mark this question as HL only"
+                              aria-pressed={question.tagLabel.trim().toUpperCase() === "HL"}
+                              title="Click to mark this question as Higher Level only"
+                              onClick={() =>
+                                update_(index, {
+                                  tagLabel:
+                                    question.tagLabel.trim().toUpperCase() === "HL" ? "" : "HL",
+                                  tagImage: "",
+                                })
+                              }
+                              className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium transition-colors ${
                                 question.tagLabel.trim().toUpperCase() === "HL"
-                                  ? "border-white"
-                                  : "border-current"
+                                  ? "border-[hsl(215_75%_28%)] bg-[hsl(215_75%_28%)] text-white"
+                                  : "border-border bg-transparent text-muted-foreground hover:border-[hsl(215_75%_28%)] hover:text-foreground"
                               }`}
                             >
-                              {question.tagLabel.trim().toUpperCase() === "HL" ? (
-                                <span className="size-2 rounded-full bg-white" />
-                              ) : null}
-                            </span>
-                            {question.tagLabel.trim().toUpperCase() === "HL"
-                              ? "HL only"
-                              : "Mark as HL"}
-                          </button>
-                        ) : null}
-                        <Label htmlFor={`qnum-${index}`} className="font-display text-lg">
-                          Question
-                        </Label>
-                        <Input
-                          id={`qnum-${index}`}
-                          value={draft ?? label}
-                          onChange={(event) =>
-                            setLabelDrafts((prev) => ({ ...prev, [index]: event.target.value }))
-                          }
-                          onBlur={commit}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              event.preventDefault();
-                              commit();
+                              <span
+                                className={`flex size-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                                  question.tagLabel.trim().toUpperCase() === "HL"
+                                    ? "border-white"
+                                    : "border-current"
+                                }`}
+                              >
+                                {question.tagLabel.trim().toUpperCase() === "HL" ? (
+                                  <span className="size-2 rounded-full bg-white" />
+                                ) : null}
+                              </span>
+                              {question.tagLabel.trim().toUpperCase() === "HL"
+                                ? "HL only"
+                                : "Mark as HL"}
+                            </button>
+                          ) : null}
+                          <Label htmlFor={`qnum-${index}`} className="font-display text-lg">
+                            Question
+                          </Label>
+                          <Input
+                            id={`qnum-${index}`}
+                            value={draft ?? label}
+                            onChange={(event) =>
+                              setLabelDrafts((prev) => ({ ...prev, [index]: event.target.value }))
                             }
-                          }}
-                          className="w-28"
-                          placeholder="1(a)(ii)"
-                        />
-                        <QuestionTagBadge label={question.tagLabel} image={question.tagImage} />
-                      </div>
-                    );
-                  })()}
+                            onBlur={commit}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.preventDefault();
+                                commit();
+                              }
+                            }}
+                            className="w-28"
+                            placeholder="1(a)(ii)"
+                          />
+                          <QuestionTagBadge label={question.tagLabel} image={question.tagImage} />
+                        </div>
+                      );
+                    })()}
 
-
-                  {questions.length > 1 ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        setQuestions((prev) => prev.filter((_, i) => i !== index))
-                      }
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  ) : null}
-                </div>
-                <div className="mt-3 space-y-3">
-                  {question.imageUrls.length > 0 ? (
-                    <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground">
-                        This is what your students will see — the question exactly as printed.
-                      </p>
-                      <div className="relative max-w-lg">
-                        <QuestionSnipStack
-                          urls={question.imageUrls}
-                          alt={`Question ${index + 1} as printed on the paper`}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-1 top-1 bg-card/90"
-                          onClick={() => update_(index, { imageUrls: [], imagePaths: [] })}
-                        >
-                          <Trash2 className="size-3" />
-                        </Button>
-                      </div>
-                      <QuestionRecutDialog
-                        imagePaths={question.imagePaths}
-                        imageUrls={question.imageUrls}
-                        onSave={(imagePaths, imageUrls) => update_(index, { imagePaths, imageUrls })}
-                      />
-                    </div>
-                  ) : (
-                    <div className="space-y-2 rounded-md border border-dashed border-border p-3">
-                      <p className="text-xs text-muted-foreground">
-                        No question picture yet. Questions are always shown as the picture cut
-                        from the paper, never as retyped text — cut this one from the original page.
-                      </p>
-                      <QuestionRecutDialog
-                        label="Cut question"
-                        sheet="question"
-                        sourcePath={
-                          questions.find((q) => q.imagePaths.length > 0)?.imagePaths[0] ?? ""
-                        }
-                        imagePaths={[]}
-                        imageUrls={[]}
-                        onSave={(imagePaths, imageUrls) =>
-                          update_(index, { imagePaths, imageUrls })
-                        }
-                      />
-                    </div>
-                  )}
-                  {question.answerImageUrls.length > 0 ? (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium">Answer as printed (students see this only once released)</p>
-                      <QuestionSnipStack urls={question.answerImageUrls} answers alt="Official answer as printed" />
-                      <div className="flex flex-wrap gap-2">
+                    {questions.length > 1 ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setQuestions((prev) => prev.filter((_, i) => i !== index))}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    ) : null}
+                  </div>
+                  <div className="mt-3 space-y-3">
+                    {question.imageUrls.length > 0 ? (
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">
+                          This is what your students will see — the question exactly as printed.
+                        </p>
+                        <div className="relative max-w-lg">
+                          <QuestionSnipStack
+                            urls={question.imageUrls}
+                            alt={`Question ${index + 1} as printed on the paper`}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-1 top-1 bg-card/90"
+                            onClick={() => update_(index, { imageUrls: [], imagePaths: [] })}
+                          >
+                            <Trash2 className="size-3" />
+                          </Button>
+                        </div>
                         <QuestionRecutDialog
-                          label="Recut answer"
-                          imagePaths={question.answerImagePaths}
-                          imageUrls={question.answerImageUrls}
+                          imagePaths={question.imagePaths}
+                          imageUrls={question.imageUrls}
+                          onSave={(imagePaths, imageUrls) =>
+                            update_(index, { imagePaths, imageUrls })
+                          }
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-2 rounded-md border border-dashed border-border p-3">
+                        <p className="text-xs text-muted-foreground">
+                          No question picture yet. Questions are always shown as the picture cut
+                          from the paper, never as retyped text — cut this one from the original
+                          page.
+                        </p>
+                        <QuestionRecutDialog
+                          label="Cut question"
+                          sheet="question"
+                          sourcePath={
+                            questions.find((q) => q.imagePaths.length > 0)?.imagePaths[0] ?? ""
+                          }
+                          imagePaths={[]}
+                          imageUrls={[]}
+                          onSave={(imagePaths, imageUrls) =>
+                            update_(index, { imagePaths, imageUrls })
+                          }
+                        />
+                      </div>
+                    )}
+                    {question.answerImageUrls.length > 0 ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium">
+                          Answer as printed (students see this only once released)
+                        </p>
+                        <QuestionSnipStack
+                          urls={question.answerImageUrls}
+                          answers
+                          alt="Official answer as printed"
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <QuestionRecutDialog
+                            label="Recut answer"
+                            imagePaths={question.answerImagePaths}
+                            imageUrls={question.answerImageUrls}
+                            onSave={(answerImagePaths, answerImageUrls) =>
+                              update_(index, { answerImagePaths, answerImageUrls })
+                            }
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              update_(index, { answerImagePaths: [], answerImageUrls: [] })
+                            }
+                          >
+                            Remove answer picture
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 rounded-md border border-dashed border-border p-3">
+                        <p className="text-xs text-muted-foreground">
+                          No answer picture yet. Answers are only ever the picture cut from the
+                          printed mark scheme — cut this one from the mark-scheme page.
+                        </p>
+                        <QuestionRecutDialog
+                          label="Cut answer"
+                          sheet="answer"
+                          sourcePath={
+                            question.imagePaths[0] ??
+                            questions.find((q) => q.answerImagePaths.length > 0)
+                              ?.answerImagePaths[0] ??
+                            ""
+                          }
+                          imagePaths={[]}
+                          imageUrls={[]}
                           onSave={(answerImagePaths, answerImageUrls) =>
                             update_(index, { answerImagePaths, answerImageUrls })
                           }
                         />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => update_(index, { answerImagePaths: [], answerImageUrls: [] })}
-                        >
-                          Remove answer picture
-                        </Button>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 rounded-md border border-dashed border-border p-3">
+                    )}
+
+                    <div className="space-y-1">
                       <p className="text-xs text-muted-foreground">
-                        No answer picture yet. Answers are only ever the picture cut from the
-                        printed mark scheme — cut this one from the mark-scheme page.
+                        Label beside this question (e.g. HL only)
                       </p>
-                      <QuestionRecutDialog
-                        label="Cut answer"
-                        sheet="answer"
-                        sourcePath={
-                          question.imagePaths[0] ??
-                          questions.find((q) => q.answerImagePaths.length > 0)
-                            ?.answerImagePaths[0] ??
-                          ""
-                        }
-                        imagePaths={[]}
-                        imageUrls={[]}
-                        onSave={(answerImagePaths, answerImageUrls) =>
-                          update_(index, { answerImagePaths, answerImageUrls })
-                        }
+                      <QuestionTagPicker
+                        tagLabel={question.tagLabel}
+                        tagImage={question.tagImage}
+                        onChange={(patch) => update_(index, patch)}
                       />
                     </div>
-                  )}
 
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">
-                      Label beside this question (e.g. HL only)
-                    </p>
-                    <QuestionTagPicker
-                      tagLabel={question.tagLabel}
-                      tagImage={question.tagImage}
-                      onChange={(patch) => update_(index, patch)}
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor={`marks-${index}`}>Marks</Label>
-                    <Input
-                      id={`marks-${index}`}
-                      type="number"
-                      min={1}
-                      value={question.marks}
-                      onChange={(event) =>
-                        update_(index, { marks: Math.max(1, Number(event.target.value) || 1) })
-                      }
-                      className="w-20"
-                    />
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor={`marks-${index}`}>Marks</Label>
+                      <Input
+                        id={`marks-${index}`}
+                        type="number"
+                        min={1}
+                        value={question.marks}
+                        onChange={(event) =>
+                          update_(index, { marks: Math.max(1, Number(event.target.value) || 1) })
+                        }
+                        className="w-20"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex justify-center py-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs text-muted-foreground"
-                  onClick={() => insertQuestionAfter(index)}
-                >
-                  <Plus className="size-3" />
-                  Add a question here
-                </Button>
-              </div>
+                <div className="flex justify-center py-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-muted-foreground"
+                    onClick={() => insertQuestionAfter(index)}
+                  >
+                    <Plus className="size-3" />
+                    Add a question here
+                  </Button>
+                </div>
               </div>
             ))}
 
             <Button
               variant="outline"
-              onClick={() =>
-                setQuestions((prev) => [...prev, emptyQuestion()])
-              }
+              onClick={() => setQuestions((prev) => [...prev, emptyQuestion()])}
             >
               <Plus className="size-4" />
               Add question
@@ -1334,8 +1315,6 @@ function QuestionControlsDialog({
   const remove = useServerFn(deleteQuestion);
   const exclude = useServerFn(setQuestionExclusion);
   const savePhotoMode = useServerFn(setQuestionPhotoMode);
-
-
 
   const questionPhotoMode = useMutation({
     mutationFn: (vars: { questionId: string; photoMode: PhotoMode }) =>
@@ -1407,166 +1386,156 @@ function QuestionControlsDialog({
 
   const body = (
     <>
+      {controls.isLoading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+      ) : controls.error ? (
+        <div className="space-y-3 text-sm">
+          <p className="text-destructive">{(controls.error as Error).message}</p>
+          <Button size="sm" onClick={() => controls.refetch()}>
+            Retry
+          </Button>
+        </div>
+      ) : controls.data ? (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            If a question is faulty you can give every student full marks for it, or delete it from
+            the assignment. Unassigning is optional and only affects the student you pick — the
+            question disappears for them and no longer counts toward their total.
+          </p>
 
-        {controls.isLoading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
-          </div>
-        ) : controls.error ? (
-          <div className="space-y-3 text-sm">
-            <p className="text-destructive">{(controls.error as Error).message}</p>
-            <Button size="sm" onClick={() => controls.refetch()}>
-              Retry
-            </Button>
-          </div>
-        ) : controls.data ? (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              If a question is faulty you can give every student full marks for it, or delete it
-              from the assignment. Unassigning is optional and only affects the student you pick —
-              the question disappears for them and no longer counts toward their total.
-            </p>
-
-            {controls.data.questions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">This assignment has no questions.</p>
-            ) : (
-              controls.data.questions.map((question, index) => {
-                const label = questionLabel(question.questionText, index);
-                const excludedCount = (controls.data?.exclusions ?? []).filter(
-                  (e) => e.questionId === question.id,
-                ).length;
-                return (
-                  <div key={question.id} className="rounded-md border border-border p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-medium">
-                          Question {label} · {question.marks} mark
-                          {question.marks === 1 ? "" : "s"}
-                        </p>
-                        {question.imageUrls && question.imageUrls.length > 0 ? (
-                          <div className="mt-2 max-w-lg">
-                            <QuestionSnipStack
-                              urls={question.imageUrls}
-                              alt={`Question ${label} as printed on the paper`}
-                            />
-                          </div>
-                        ) : (
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {questionBody(question.questionText)}
-                          </p>
-                        )}
-                        {excludedCount > 0 ? (
-                          <Badge variant="secondary" className="mt-2">
-                            Unassigned for {excludedCount} student
-                            {excludedCount === 1 ? "" : "s"}
-                          </Badge>
-                        ) : null}
-                        {question.creditedAll ? (
-                          <Badge className="mt-2">Everyone has full marks</Badge>
-                        ) : null}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          variant={question.creditedAll ? "default" : "outline"}
-                          size="sm"
-                          aria-pressed={question.creditedAll}
-                          disabled={creditAll.isPending}
-                          onClick={() => {
-                            const next = !question.creditedAll;
-                            if (
-                              window.confirm(
-                                next
-                                  ? `Give every student full marks (${question.marks}) for question ${label}?`
-                                  : `Take back the full marks given to everyone for question ${label}?`,
-                              )
-                            )
-                              creditAll.mutate({ questionId: question.id, credited: next });
-                          }}
-                        >
-                          {question.creditedAll ? "Credited — click to undo" : "Credit all students"}
-                        </Button>
-                        <Button
-
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            setExpanded((current) => (current === question.id ? null : question.id))
-                          }
-                        >
-                          {expanded === question.id ? "Hide students" : "Unassign question"}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={deleteOne.isPending}
-                          onClick={() => {
-                            if (
-                              window.confirm(
-                                `Delete question ${label} and every student answer to it?`,
-                              )
-                            )
-                              deleteOne.mutate(question.id);
-                          }}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 border-t border-border pt-3">
-                      <p className="text-xs text-muted-foreground">
-                        Photo answers for this question
+          {controls.data.questions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">This assignment has no questions.</p>
+          ) : (
+            controls.data.questions.map((question, index) => {
+              const label = questionLabel(question.questionText, index);
+              const excludedCount = (controls.data?.exclusions ?? []).filter(
+                (e) => e.questionId === question.id,
+              ).length;
+              return (
+                <div key={question.id} className="rounded-md border border-border p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium">
+                        Question {label} · {question.marks} mark
+                        {question.marks === 1 ? "" : "s"}
                       </p>
-                      <div className="mt-1">
-                        <PhotoModeControl
-                          value={question.photoMode}
-                          disabled={questionPhotoMode.isPending}
-                          onChange={(next) =>
-                            next
-                              ? questionPhotoMode.mutate({
-                                  questionId: question.id,
-                                  photoMode: next,
-                                })
-                              : undefined
-                          }
-                        />
-                      </div>
+                      {question.imageUrls && question.imageUrls.length > 0 ? (
+                        <div className="mt-2 max-w-lg">
+                          <QuestionSnipStack
+                            urls={question.imageUrls}
+                            alt={`Question ${label} as printed on the paper`}
+                          />
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {questionBody(question.questionText)}
+                        </p>
+                      )}
+                      {excludedCount > 0 ? (
+                        <Badge variant="secondary" className="mt-2">
+                          Unassigned for {excludedCount} student
+                          {excludedCount === 1 ? "" : "s"}
+                        </Badge>
+                      ) : null}
+                      {question.creditedAll ? (
+                        <Badge className="mt-2">Everyone has full marks</Badge>
+                      ) : null}
                     </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant={question.creditedAll ? "default" : "outline"}
+                        size="sm"
+                        aria-pressed={question.creditedAll}
+                        disabled={creditAll.isPending}
+                        onClick={() => {
+                          const next = !question.creditedAll;
+                          if (
+                            window.confirm(
+                              next
+                                ? `Give every student full marks (${question.marks}) for question ${label}?`
+                                : `Take back the full marks given to everyone for question ${label}?`,
+                            )
+                          )
+                            creditAll.mutate({ questionId: question.id, credited: next });
+                        }}
+                      >
+                        {question.creditedAll ? "Credited — click to undo" : "Credit all students"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setExpanded((current) => (current === question.id ? null : question.id))
+                        }
+                      >
+                        {expanded === question.id ? "Hide students" : "Unassign question"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={deleteOne.isPending}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Delete question ${label} and every student answer to it?`,
+                            )
+                          )
+                            deleteOne.mutate(question.id);
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  </div>
 
+                  <div className="mt-3 border-t border-border pt-3">
+                    <p className="text-xs text-muted-foreground">Photo answers for this question</p>
+                    <div className="mt-1">
+                      <PhotoModeControl
+                        value={question.photoMode}
+                        disabled={questionPhotoMode.isPending}
+                        onChange={(next) =>
+                          next
+                            ? questionPhotoMode.mutate({
+                                questionId: question.id,
+                                photoMode: next,
+                              })
+                            : undefined
+                        }
+                      />
+                    </div>
+                  </div>
 
-
-
-                    {expanded === question.id ? (
-                      <div className="mt-4 space-y-2 border-t border-border pt-3">
-                        {controls.data.students.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">
-                            No students have joined this class yet.
-                          </p>
-                        ) : (
-                          <>
-                            <label className="flex items-center gap-2 border-b border-border pb-2 text-sm font-medium">
-                              <Checkbox
-                                checked={controls.data.students.every((s) =>
-                                  isExcluded(question.id, s.id),
-                                )}
-                                disabled={
-                                  toggleExclusion.isPending || toggleExclusionForAll.isPending
-                                }
-                                onCheckedChange={(checked) =>
-                                  toggleExclusionForAll.mutate({
-                                    questionId: question.id,
-                                    excluded: checked === true,
-                                  })
-                                }
-                              />
-                              <span>All students</span>
-                            </label>
-                            {controls.data.students.map((student) => (
-                            <label
-                              key={student.id}
-                              className="flex items-center gap-2 text-sm"
-                            >
+                  {expanded === question.id ? (
+                    <div className="mt-4 space-y-2 border-t border-border pt-3">
+                      {controls.data.students.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          No students have joined this class yet.
+                        </p>
+                      ) : (
+                        <>
+                          <label className="flex items-center gap-2 border-b border-border pb-2 text-sm font-medium">
+                            <Checkbox
+                              checked={controls.data.students.every((s) =>
+                                isExcluded(question.id, s.id),
+                              )}
+                              disabled={
+                                toggleExclusion.isPending || toggleExclusionForAll.isPending
+                              }
+                              onCheckedChange={(checked) =>
+                                toggleExclusionForAll.mutate({
+                                  questionId: question.id,
+                                  excluded: checked === true,
+                                })
+                              }
+                            />
+                            <span>All students</span>
+                          </label>
+                          {controls.data.students.map((student) => (
+                            <label key={student.id} className="flex items-center gap-2 text-sm">
                               <Checkbox
                                 checked={isExcluded(question.id, student.id)}
                                 disabled={
@@ -1582,19 +1551,19 @@ function QuestionControlsDialog({
                               />
                               <span>{student.name}</span>
                             </label>
-                            ))}
-                          </>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                          Ticked students skip this question entirely.
-                        </p>
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })
-            )}
-          </div>
+                          ))}
+                        </>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Ticked students skip this question entirely.
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })
+          )}
+        </div>
       ) : null}
     </>
   );
@@ -1710,8 +1679,7 @@ function ArchivedAssignmentsDialog({
   const queryClient = useQueryClient();
   const archive = useServerFn(setAssignmentArchived);
   const remove = useServerFn(deleteAssignment);
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["class-overview", classId] });
 
   const restore = useMutation({
     mutationFn: (assignmentId: string) => archive({ data: { assignmentId, archived: false } }),
@@ -1748,9 +1716,7 @@ function ArchivedAssignmentsDialog({
           delete it permanently along with all its submissions.
         </p>
         {assignments.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">
-            Nothing archived yet.
-          </p>
+          <p className="py-6 text-center text-sm text-muted-foreground">Nothing archived yet.</p>
         ) : (
           <ul className="divide-y">
             {assignments.map((assignment) => (
@@ -1802,7 +1768,6 @@ function ArchivedAssignmentsDialog({
   );
 }
 
-
 /** Demo account only: fill the roster with sample students to explore teacher views. */
 function DemoStudentSeeder({ classId, onSeeded }: { classId: string; onSeeded: () => void }) {
   const me = useQuery({ queryKey: ["me"], queryFn: () => getMe() });
@@ -1828,17 +1793,12 @@ function DemoStudentSeeder({ classId, onSeeded }: { classId: string; onSeeded: (
         Demo account only — add sample students so you can try the roster, gradebook and
         leaderboards without real sign-ups.
       </p>
-      <Button
-        variant="outline"
-        onClick={() => mutation.mutate()}
-        disabled={mutation.isPending}
-      >
+      <Button variant="outline" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
         {mutation.isPending ? "Adding…" : "Add sample students"}
       </Button>
     </div>
   );
 }
-
 
 function AiWarningLimitDialog({
   classId,
@@ -1929,7 +1889,6 @@ function AiWarningLimitDialog({
     </Dialog>
   );
 }
-
 
 type GradebookStudent = {
   id: string;
@@ -2033,7 +1992,6 @@ function GradebookRow({
                     −{grade.penaltyPercent}% total
                   </Badge>
                 ) : null}
-
               </span>
             )}
           </TableCell>
@@ -2130,8 +2088,7 @@ function QuestionRowActions({
   });
 
   const unassign = useMutation({
-    mutationFn: (next: boolean) =>
-      exclude({ data: { questionId, studentId, excluded: next } }),
+    mutationFn: (next: boolean) => exclude({ data: { questionId, studentId, excluded: next } }),
     onSuccess: (_result, next) => {
       setUnassigned(next);
       toast.success(next ? "Question unassigned for this student" : "Question reassigned");
@@ -2195,7 +2152,6 @@ function QuestionRowActions({
   );
 }
 
-
 function StudentReport({
   classId,
   studentId,
@@ -2238,8 +2194,8 @@ function StudentReport({
             <div>
               <h3 className="font-display text-lg">{assignment.title}</h3>
               <p className="text-xs text-muted-foreground">
-                {assignment.awardedMarks ?? 0}/{assignment.totalMarks} marks ·{" "}
-                {assignment.attempts} attempts · {formatDuration(assignment.timeSpentSeconds)} spent
+                {assignment.awardedMarks ?? 0}/{assignment.totalMarks} marks · {assignment.attempts}{" "}
+                attempts · {formatDuration(assignment.timeSpentSeconds)} spent
                 {assignment.penaltyPercent > 0 ? ` · −${assignment.penaltyPercent}% deduction` : ""}
                 {assignment.aiFlagCount > 0 ? ` · ${assignment.aiFlagCount} AI warning(s)` : ""}
               </p>
@@ -2247,7 +2203,6 @@ function StudentReport({
             {assignment.penaltyPercent > 0 ? (
               <Badge variant="secondary">−{assignment.penaltyPercent}% cheating deduction</Badge>
             ) : null}
-
           </div>
           {assignment.locked ? (
             <p className="mt-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
@@ -2258,7 +2213,10 @@ function StudentReport({
 
           <div className="mt-3 space-y-2">
             {assignment.questions.map((question) => (
-              <details key={question.id} className="rounded-md border border-border bg-background p-3">
+              <details
+                key={question.id}
+                className="rounded-md border border-border bg-background p-3"
+              >
                 <summary className="cursor-pointer text-sm">
                   <span className="inline-flex w-[calc(100%-1.5rem)] flex-wrap items-center justify-between gap-2 align-middle">
                     <span className="min-w-0">
@@ -2287,7 +2245,6 @@ function StudentReport({
                     />
                   </span>
                 </summary>
-
 
                 {question.history.length > 0 ? (
                   <div className="mt-3">
@@ -2392,7 +2349,6 @@ function StudentReport({
                       );
                     })
                   : null}
-
               </details>
             ))}
           </div>
@@ -2491,19 +2447,14 @@ function UnlockFlag({
           <span className="text-sm text-muted-foreground">%</span>
         </div>
         <DialogFooter>
-          <Button
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending}
-          >
+          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
             <Unlock className="size-4" /> Unlock homework
           </Button>
         </DialogFooter>
-
       </DialogContent>
     </Dialog>
   );
 }
-
 
 /** Exports every student's grade for every assignment in the class. */
 function downloadGradebook(
@@ -2511,11 +2462,7 @@ function downloadGradebook(
   assignments: Array<{ id: string; title: string; totalMarks: number; dueAt: string | null }>,
   students: GradebookStudent[],
 ) {
-  const header = [
-    "Student",
-    ...assignments.map((a) => `${a.title} (%)`),
-    "Average %",
-  ];
+  const header = ["Student", ...assignments.map((a) => `${a.title} (%)`), "Average %"];
   const rows = students.map((student) => [
     student.name,
     ...student.grades.map((grade) => {

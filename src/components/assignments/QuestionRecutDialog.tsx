@@ -89,9 +89,7 @@ export function QuestionRecutDialog({
   if (imagePaths.length === 0 && !sourcePath) return null;
 
   const current = pieces[piece];
-  const pageIndex = current
-    ? pages.findIndex((p) => p.path === pageWithoutCrop(current.path))
-    : -1;
+  const pageIndex = current ? pages.findIndex((p) => p.path === pageWithoutCrop(current.path)) : -1;
 
   function update(next: Partial<SnipCrop>) {
     setPieces((list) =>

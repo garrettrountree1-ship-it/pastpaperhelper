@@ -11,7 +11,6 @@ import type { PhotoMode } from "@/lib/photo-mode";
 import { photoAvailability } from "@/lib/photo-mode";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 
-
 import { AppHeader } from "@/components/AppHeader";
 import { VocabSheet } from "@/components/assignments/VocabSheet";
 import { StudentTutorControls } from "@/components/assignments/StudentTutorControls";
@@ -138,9 +137,7 @@ function AssignmentPage() {
               <p className="mt-1 text-sm text-muted-foreground">
                 {data.assignment.className} · {data.assignment.curriculum}
                 {data.assignment.subject ? ` · ${data.assignment.subject}` : ""}
-                {data.assignment.dueAt
-                  ? ` · due ${formatDueDate(data.assignment.dueAt)}`
-                  : ""}
+                {data.assignment.dueAt ? ` · due ${formatDueDate(data.assignment.dueAt)}` : ""}
               </p>
               {data.assignment.instructions ? (
                 <p className="mt-3 text-sm">{data.assignment.instructions}</p>
@@ -153,7 +150,9 @@ function AssignmentPage() {
                   {data.submission.awarded_marks ?? 0}/{data.submission.total_marks} marks
                 </Badge>
                 {data.submission.status === "submitted" ? <Badge>Submitted</Badge> : null}
-                {data.submission.locked_at ? <Badge variant="destructive">Locked · fail</Badge> : null}
+                {data.submission.locked_at ? (
+                  <Badge variant="destructive">Locked · fail</Badge>
+                ) : null}
               </div>
               {Number(data.submission.penalty_percent ?? 0) > 0 ? (
                 <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm">
@@ -197,12 +196,12 @@ function AssignmentPage() {
               ) : (data.submission.ai_flag_count ?? 0) > 0 ? (
                 <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm">
                   <p className="font-medium">
-                    Warning {data.submission.ai_flag_count}: AI-generated or copied answers
-                    were rejected.
+                    Warning {data.submission.ai_flag_count}: AI-generated or copied answers were
+                    rejected.
                   </p>
                   <p className="mt-1 text-muted-foreground">
-                    Answers must be your own words. Passing your class warning limit locks this homework and
-                    marks it as a fail until your teacher unlocks it.
+                    Answers must be your own words. Passing your class warning limit locks this
+                    homework and marks it as a fail until your teacher unlocks it.
                   </p>
                 </div>
               ) : null}
@@ -252,7 +251,6 @@ function AssignmentPage() {
                 </div>
               ))}
             </div>
-
 
             <div className="mt-8 flex justify-end">
               <Button
@@ -333,8 +331,6 @@ function groupByPage(questions: Question[]) {
   return groups;
 }
 
-
-
 function QuestionCard({
   assignmentId,
   classId,
@@ -389,13 +385,11 @@ function QuestionCard({
   const cardRef = useRef<HTMLDivElement | null>(null);
   const { secondsRef, reset: resetActiveTime } = useActiveTime(cardRef);
 
-
   const gradeMutation = useMutation({
     mutationFn: async () => {
       if (!isEnglishOnly(draft)) throw new Error(ENGLISH_ONLY_MESSAGE);
       let imagePaths = answer?.image_paths ?? [];
       if (photos.length > 0) {
-
         const { data: userData } = await supabase.auth.getUser();
         const userId = userData.user?.id;
         if (!userId) throw new Error("Please sign in again.");
@@ -453,96 +447,95 @@ function QuestionCard({
   const thread = answer ? messages.filter((m) => m.answer_id === answer.id) : [];
   return (
     <div ref={cardRef}>
-    <QuestionExperience
-      question={question}
-      index={index}
-      snipUrls={snipsFor(question)}
-      draft={draft}
-      onDraftChange={setDraft}
-      requiresPhoto={requiresPhoto}
-      photoOnly={photoOnly}
-      showPhoto={showPhoto}
-      onShowPhoto={() => setShowPhoto(true)}
-      photoCount={photos.length}
-      photoUrls={answer?.imageUrls ?? []}
-      photoFiles={photoPreviews}
-      onRemovePhoto={(name) => setPhotos((prev) => prev.filter((item) => item.name !== name))}
-      onPhotosChange={(files) => {
-        // iPhone photos arrive as HEIC, which browsers can't show — turn them into JPEGs.
-        void normalisePhotoFiles(Array.from(files ?? [])).then((ready) =>
-          setPhotos((prev) => [...prev, ...ready].slice(0, 6)),
-        );
-      }}
-      onAddDrawing={(file) =>
-        // The pad keeps one picture that is replaced each time it is saved.
-        setPhotos((prev) => [...prev.filter((item) => item.name !== file.name), file].slice(0, 6))
-      }
-      sentBack={
-        answer?.rejected_at ? { at: answer.rejected_at, note: answer.rejection_note ?? null } : null
-      }
-      creditedAll={question.creditedAll ?? false}
-      result={
-        question.creditedAll
-          ? {
-              verdict: "correct",
-              awardedMarks: question.marks,
-              feedback: answer?.feedback ?? "",
-            }
-          : answer && !answer.rejected_at
-            ? {
-                verdict: answer.verdict ?? "incorrect",
-                awardedMarks: answer.awarded_marks ?? 0,
-                feedback: answer.feedback ?? "",
-              }
+      <QuestionExperience
+        question={question}
+        index={index}
+        snipUrls={snipsFor(question)}
+        draft={draft}
+        onDraftChange={setDraft}
+        requiresPhoto={requiresPhoto}
+        photoOnly={photoOnly}
+        showPhoto={showPhoto}
+        onShowPhoto={() => setShowPhoto(true)}
+        photoCount={photos.length}
+        photoUrls={answer?.imageUrls ?? []}
+        photoFiles={photoPreviews}
+        onRemovePhoto={(name) => setPhotos((prev) => prev.filter((item) => item.name !== name))}
+        onPhotosChange={(files) => {
+          // iPhone photos arrive as HEIC, which browsers can't show — turn them into JPEGs.
+          void normalisePhotoFiles(Array.from(files ?? [])).then((ready) =>
+            setPhotos((prev) => [...prev, ...ready].slice(0, 6)),
+          );
+        }}
+        onAddDrawing={(file) =>
+          // The pad keeps one picture that is replaced each time it is saved.
+          setPhotos((prev) => [...prev.filter((item) => item.name !== file.name), file].slice(0, 6))
+        }
+        sentBack={
+          answer?.rejected_at
+            ? { at: answer.rejected_at, note: answer.rejection_note ?? null }
             : null
-      }
-      attempts={answer?.attempts ?? 0}
-      checking={gradeMutation.isPending}
-      checkError={gradeMutation.isError ? (gradeMutation.error as Error).message : undefined}
-      onCheck={() => gradeMutation.mutate()}
-      thread={thread}
-      reply={reply}
-      onReplyChange={setReply}
-      tutoring={tutorMutation.isPending}
-      tutorError={tutorMutation.isError ? (tutorMutation.error as Error).message : undefined}
-      onSend={() => tutorMutation.mutate()}
-      locked={locked}
-      keywordTranslation={keywordTranslation}
-      allowHint={allowHint}
-      allowSteps={allowSteps}
-      maxAttempts={maxAttempts}
-      assignmentId={assignmentId}
-      protectQuestions={protectQuestions}
-      markSchemeImageUrls={question.answerImageUrls ?? []}
+        }
+        creditedAll={question.creditedAll ?? false}
+        result={
+          question.creditedAll
+            ? {
+                verdict: "correct",
+                awardedMarks: question.marks,
+                feedback: answer?.feedback ?? "",
+              }
+            : answer && !answer.rejected_at
+              ? {
+                  verdict: answer.verdict ?? "incorrect",
+                  awardedMarks: answer.awarded_marks ?? 0,
+                  feedback: answer.feedback ?? "",
+                }
+              : null
+        }
+        attempts={answer?.attempts ?? 0}
+        checking={gradeMutation.isPending}
+        checkError={gradeMutation.isError ? (gradeMutation.error as Error).message : undefined}
+        onCheck={() => gradeMutation.mutate()}
+        thread={thread}
+        reply={reply}
+        onReplyChange={setReply}
+        tutoring={tutorMutation.isPending}
+        tutorError={tutorMutation.isError ? (tutorMutation.error as Error).message : undefined}
+        onSend={() => tutorMutation.mutate()}
+        locked={locked}
+        keywordTranslation={keywordTranslation}
+        allowHint={allowHint}
+        allowSteps={allowSteps}
+        maxAttempts={maxAttempts}
+        assignmentId={assignmentId}
+        protectQuestions={protectQuestions}
+        markSchemeImageUrls={question.answerImageUrls ?? []}
 
-      headerAction={
-        <MessageTeacherDialog
-          classId={classId}
-          className={className}
-          preset={{
-            assignmentId,
-            questionId: question.id,
-            topic: `${assignmentTitle} · Question ${questionLabel(question.question_text, index)}`,
-          }}
-          trigger={
-            <button
-              type="button"
-              title="Ask the teacher"
-              aria-label="Ask the teacher"
-              className={`${HELP_PILL} border-primary/50 bg-primary/10 hover:bg-primary/20`}
-            >
-              <span className={`${HELP_PILL_DOT} bg-primary text-primary-foreground`}>
-                <TeacherIcon className="size-3.5" />
-              </span>
-              <span className={`${HELP_PILL_LABEL} text-foreground`}>
-                Ask the teacher
-              </span>
-            </button>
-          }
-        />
-      }
-
-    />
+        headerAction={
+          <MessageTeacherDialog
+            classId={classId}
+            className={className}
+            preset={{
+              assignmentId,
+              questionId: question.id,
+              topic: `${assignmentTitle} · Question ${questionLabel(question.question_text, index)}`,
+            }}
+            trigger={
+              <button
+                type="button"
+                title="Ask the teacher"
+                aria-label="Ask the teacher"
+                className={`${HELP_PILL} border-primary/50 bg-primary/10 hover:bg-primary/20`}
+              >
+                <span className={`${HELP_PILL_DOT} bg-primary text-primary-foreground`}>
+                  <TeacherIcon className="size-3.5" />
+                </span>
+                <span className={`${HELP_PILL_LABEL} text-foreground`}>Ask the teacher</span>
+              </button>
+            }
+          />
+        }
+      />
     </div>
   );
 }

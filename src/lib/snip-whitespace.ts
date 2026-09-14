@@ -162,5 +162,3 @@ export async function snapBandToWhitespace(url: string, band: Band): Promise<Ban
     bottom: Math.min(1, (bottom + 1) / height),
   };
 }
-
-

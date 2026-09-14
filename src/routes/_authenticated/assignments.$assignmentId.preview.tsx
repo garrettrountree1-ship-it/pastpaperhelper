@@ -36,7 +36,6 @@ import {
   getStudentHomeworkView,
 } from "@/lib/app.functions";
 
-
 export const Route = createFileRoute("/_authenticated/assignments/$assignmentId/preview")({
   head: () => ({
     meta: [
@@ -89,7 +88,6 @@ type Question = {
   photoMode?: PhotoMode;
 };
 
-
 /** Each past-paper page appears once, above the questions it introduces. */
 function groupByPage(questions: Question[]) {
   const groups: Array<{ key: string; questions: Question[] }> = [];
@@ -121,7 +119,6 @@ function PreviewPage() {
     retry: 2,
   });
 
-
   const data = preview.data;
   const settings = data?.tutorSettings;
   // The student view must behave exactly like the student page, deterrents included.
@@ -130,7 +127,6 @@ function PreviewPage() {
     blockCapture: true,
   });
   const totalMarks = data?.questions.reduce((sum, q) => sum + q.marks, 0) ?? 0;
-
 
   return (
     <div className="min-h-screen">
@@ -183,18 +179,23 @@ function PreviewPage() {
               </div>
               {settings ? (
                 <div className="mb-3 flex flex-wrap gap-2 text-xs">
-                  <Badge variant="outline">Tutor: {settings.level} · {settings.language}</Badge>
+                  <Badge variant="outline">
+                    Tutor: {settings.level} · {settings.language}
+                  </Badge>
                   <Badge variant="outline">Hint: {settings.allowHint ? "on" : "off"}</Badge>
                   <Badge variant="outline">
                     Step-by-step: {settings.allowSteps ? "on" : "off"}
                   </Badge>
                   <Badge variant="outline">
-                    Tries per question: {settings.maxAttempts > 0 ? settings.maxAttempts : "unlimited"}
+                    Tries per question:{" "}
+                    {settings.maxAttempts > 0 ? settings.maxAttempts : "unlimited"}
                   </Badge>
                   {settings.examMode ? (
                     <Badge variant="outline">
                       Real paper · hand-ins:{" "}
-                      {settings.maxPaperSubmissions > 0 ? settings.maxPaperSubmissions : "unlimited"}
+                      {settings.maxPaperSubmissions > 0
+                        ? settings.maxPaperSubmissions
+                        : "unlimited"}
                     </Badge>
                   ) : null}
                   {settings.keywordTranslation ? (
@@ -210,9 +211,7 @@ function PreviewPage() {
               <p className="mt-1 text-sm text-muted-foreground">
                 {data.assignment.className} · {data.assignment.curriculum}
                 {data.assignment.subject ? ` · ${data.assignment.subject}` : ""}
-                {data.assignment.dueAt
-                  ? ` · due ${formatDueDate(data.assignment.dueAt)}`
-                  : ""}
+                {data.assignment.dueAt ? ` · due ${formatDueDate(data.assignment.dueAt)}` : ""}
               </p>
               {data.assignment.instructions ? (
                 <p className="mt-3 text-sm">{data.assignment.instructions}</p>
@@ -234,7 +233,6 @@ function PreviewPage() {
               ) : null}
             </div>
 
-
             {viewingStudent ? (
               <StudentWorkView
                 assignmentId={assignmentId}
@@ -244,43 +242,44 @@ function PreviewPage() {
               />
             ) : (
               <>
-            <div
-              className={`mt-8 space-y-6 ${protection.protectedClassName} ${
-                protection.concealed ? "pointer-events-none blur-lg" : ""
-              }`}
-            >
-              {protection.concealed ? (
-                <p className="paper p-4 text-sm text-muted-foreground">
-                  Questions are blurred while this tab is not in focus — students see exactly this.
-                  Screenshot and snipping-tool shortcuts, printing and pasting are blocked too.
-                </p>
-              ) : null}
-              {groupByPage(data.questions).map((group) => (
-                <div key={group.key} className="space-y-4">
-                  {group.questions.map((question) => (
-                    <PreviewQuestion
-                      key={question.id}
-                      assignmentId={assignmentId}
-                      question={question}
-                      flags={flags}
-                      keywordTranslation={Boolean(data.tutorSettings?.keywordTranslation)}
-                      protectQuestions={Boolean(data.tutorSettings?.protectQuestions)}
-                      allowHint={settings?.allowHint !== false}
-                      allowSteps={settings?.allowSteps !== false}
-                      maxAttempts={settings?.maxAttempts ?? 0}
-                      markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
-                      revealOnFullMarks={Boolean(data.assignment.revealOnFullMarks)}
-                      onFlag={() => setFlags((count) => count + 1)}
-                    />
+                <div
+                  className={`mt-8 space-y-6 ${protection.protectedClassName} ${
+                    protection.concealed ? "pointer-events-none blur-lg" : ""
+                  }`}
+                >
+                  {protection.concealed ? (
+                    <p className="paper p-4 text-sm text-muted-foreground">
+                      Questions are blurred while this tab is not in focus — students see exactly
+                      this. Screenshot and snipping-tool shortcuts, printing and pasting are blocked
+                      too.
+                    </p>
+                  ) : null}
+                  {groupByPage(data.questions).map((group) => (
+                    <div key={group.key} className="space-y-4">
+                      {group.questions.map((question) => (
+                        <PreviewQuestion
+                          key={question.id}
+                          assignmentId={assignmentId}
+                          question={question}
+                          flags={flags}
+                          keywordTranslation={Boolean(data.tutorSettings?.keywordTranslation)}
+                          protectQuestions={Boolean(data.tutorSettings?.protectQuestions)}
+                          allowHint={settings?.allowHint !== false}
+                          allowSteps={settings?.allowSteps !== false}
+                          maxAttempts={settings?.maxAttempts ?? 0}
+                          markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
+                          revealOnFullMarks={Boolean(data.assignment.revealOnFullMarks)}
+                          onFlag={() => setFlags((count) => count + 1)}
+                        />
+                      ))}
+                    </div>
                   ))}
                 </div>
-              ))}
-            </div>
 
-            <p className="mt-8 text-center text-xs text-muted-foreground">
-              This is your test view — try any question and the AI marks it exactly as it would for
-              a student, but nothing is saved to grades.
-            </p>
+                <p className="mt-8 text-center text-xs text-muted-foreground">
+                  This is your test view — try any question and the AI marks it exactly as it would
+                  for a student, but nothing is saved to grades.
+                </p>
               </>
             )}
           </>
@@ -355,8 +354,7 @@ function PreviewQuestion({
   const result = check.data;
   // Full marks on this question releases this question's answer when the teacher
   // turned that on, exactly as a student would see it.
-  const earnedFullMarks =
-    question.marks > 0 && Number(result?.awardedMarks ?? 0) >= question.marks;
+  const earnedFullMarks = question.marks > 0 && Number(result?.awardedMarks ?? 0) >= question.marks;
   const showAnswer = markSchemeRevealed || (revealOnFullMarks && earnedFullMarks);
 
   const tutor = useMutation({
@@ -484,7 +482,6 @@ function PreviewQuestion({
   );
 }
 
-
 /**
  * Exactly what one student is looking at right now — their typed answers,
  * photos, marks, feedback and tutor chat — with every control removed so the
@@ -590,9 +587,7 @@ function StudentWorkView({
                   ? { at: answer.rejected_at, note: answer.rejection_note ?? null }
                   : null
               }
-              creditedAll={
-                (question as { creditedAll?: boolean }).creditedAll ?? false
-              }
+              creditedAll={(question as { creditedAll?: boolean }).creditedAll ?? false}
               result={
                 (question as { creditedAll?: boolean }).creditedAll
                   ? {

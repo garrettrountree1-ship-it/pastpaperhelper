@@ -194,6 +194,7 @@ export type Database = {
           keyword_translation: boolean | null
           mark_scheme_revealed: boolean
           max_answer_attempts: number | null
+          max_choice_attempts: number | null
           max_paper_submissions: number | null
           photo_mode: string
           protect_questions: boolean
@@ -219,6 +220,7 @@ export type Database = {
           keyword_translation?: boolean | null
           mark_scheme_revealed?: boolean
           max_answer_attempts?: number | null
+          max_choice_attempts?: number | null
           max_paper_submissions?: number | null
           photo_mode?: string
           protect_questions?: boolean
@@ -244,6 +246,7 @@ export type Database = {
           keyword_translation?: boolean | null
           mark_scheme_revealed?: boolean
           max_answer_attempts?: number | null
+          max_choice_attempts?: number | null
           max_paper_submissions?: number | null
           photo_mode?: string
           protect_questions?: boolean
@@ -589,6 +592,7 @@ export type Database = {
           join_code: string
           keyword_translation: boolean
           max_answer_attempts: number
+          max_choice_attempts: number
           max_paper_submissions: number
           name: string
           protect_questions: boolean
@@ -613,6 +617,7 @@ export type Database = {
           join_code: string
           keyword_translation?: boolean
           max_answer_attempts?: number
+          max_choice_attempts?: number
           max_paper_submissions?: number
           name: string
           protect_questions?: boolean
@@ -637,6 +642,7 @@ export type Database = {
           join_code?: string
           keyword_translation?: boolean
           max_answer_attempts?: number
+          max_choice_attempts?: number
           max_paper_submissions?: number
           name?: string
           protect_questions?: boolean
@@ -1216,6 +1222,7 @@ export type Database = {
           keyword_glossary: Json
           mark_scheme: string
           marks: number
+          multiple_choice: boolean | null
           photo_mode: string
           position: number
           question_text: string
@@ -1234,6 +1241,7 @@ export type Database = {
           keyword_glossary?: Json
           mark_scheme: string
           marks?: number
+          multiple_choice?: boolean | null
           photo_mode?: string
           position?: number
           question_text: string
@@ -1252,6 +1260,7 @@ export type Database = {
           keyword_glossary?: Json
           mark_scheme?: string
           marks?: number
+          multiple_choice?: boolean | null
           photo_mode?: string
           position?: number
           question_text?: string
@@ -1476,6 +1485,7 @@ export type Database = {
           keyword_translation: boolean | null
           mark_scheme_revealed: boolean | null
           max_answer_attempts: number | null
+          max_choice_attempts: number | null
           max_paper_submissions: number | null
           photo_mode: string | null
           reveal_on_full_marks: boolean | null
@@ -1494,6 +1504,7 @@ export type Database = {
           keyword_translation?: boolean | null
           mark_scheme_revealed?: boolean | null
           max_answer_attempts?: number | null
+          max_choice_attempts?: number | null
           max_paper_submissions?: number | null
           photo_mode?: string | null
           reveal_on_full_marks?: boolean | null
@@ -1512,6 +1523,7 @@ export type Database = {
           keyword_translation?: boolean | null
           mark_scheme_revealed?: boolean | null
           max_answer_attempts?: number | null
+          max_choice_attempts?: number | null
           max_paper_submissions?: number | null
           photo_mode?: string | null
           reveal_on_full_marks?: boolean | null

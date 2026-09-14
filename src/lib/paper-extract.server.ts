@@ -271,7 +271,7 @@ export async function locateAnswerCrop(input: {
     ],
   );
   const parsed = parseJson(text);
-  return parseCropList(parsed["answerCrops"] ?? parsed["answerCrop"], [], "answer");
+  return parseCropList(parsed["answerCrops"] ?? parsed["answerCrop"], [], "answer", true);
 }
 
 /** Bookkeeping only: printed totals per question and the labels the answer key covers. */
@@ -438,7 +438,7 @@ export function separateQuestionCrops(items: ExtractedQuestion[]): ExtractedQues
         } else {
           candidate.bottom = Math.min(candidate.bottom, previous.crop.top);
         }
-        if (candidate.bottom - candidate.top < 0.04) candidate = null;
+        if (candidate.bottom - candidate.top < 0.006) candidate = null;
       }
       if (!candidate) continue;
       safe.push(candidate);
@@ -533,8 +533,12 @@ export function renumberQuestions(items: ExtractedQuestion[]): ExtractedQuestion
 
   return items.map((item) => {
     const parsed = readLeadingQuestionLabel(item.questionText);
-    const startsNewMain = Boolean(parsed?.main && parsed.main !== prevMain);
     const hasSubpart = Boolean(parsed?.letter || parsed?.roman);
+    // A repeated bare number is a new question in compilations where numbering
+    // restarts. A repeated number carrying (a)/(i) remains under its parent.
+    const startsNewMain = Boolean(
+      parsed?.main && (parsed.main !== prevMain || (!hasSubpart && parsed.main === prevMain)),
+    );
 
     if (startsNewMain || (!parsed && !hasSubpart) || counter === 0) {
       counter += 1;
@@ -765,8 +769,13 @@ async function runSweep(
         text: [
           header,
           "",
-          "Already indexed labels:",
-          found.map((f) => `- ${f.label}`).join("\n"),
+          "Already indexed items:",
+          found
+            .map(
+              (f) =>
+                `- ${f.key}: printed label ${f.label}${f.pages.length ? ` on PAGE ${f.pages.join(", ")}` : ""}`,
+            )
+            .join("\n"),
           "",
           "List every answerable question part that is missing from that list.",
         ].join("\n"),
@@ -838,11 +847,12 @@ async function runDetail(
         markScheme: normaliseSymbols(String(item["markScheme"] ?? "").trim()),
         marks: Math.max(1, Math.round(Number(item["marks"]) || match?.marks || 1)),
         pages,
-        crops: parseCropList(item["crops"] ?? item["crop"], pages),
+    crops: parseCropList(item["crops"] ?? item["crop"], pages),
         answerCrops: parseCropList(
           item["answerCrops"] ?? item["answerCrop"],
           [],
           hasAnswerPages ? "answer" : "paper",
+      true,
         ),
       };
     })
@@ -907,6 +917,7 @@ function parseCropValue(
   raw: unknown,
   pages: number[],
   defaultSheet: "paper" | "answer" = "paper",
+  answerMode = false,
 ): QuestionCrop | null {
   if (!raw || typeof raw !== "object") return null;
   const value = raw as Record<string, unknown>;
@@ -921,7 +932,7 @@ function parseCropValue(
   if (sheet === "paper" && pages.length > 0 && !pages.includes(page)) return null;
   if (!Number.isFinite(top) || !Number.isFinite(bottom)) return null;
   if (bottom <= top) return null;
-  const isAnswer = sheet === "answer" || defaultSheet === "answer";
+  const isAnswer = answerMode;
   // Question cuts keep a little breathing room. Answer rows can be only one
   // printed line tall, so preserve their exact bounds without adding padding.
   if (!isAnswer) {
@@ -941,11 +952,12 @@ function parseCropList(
   raw: unknown,
   pages: number[],
   defaultSheet: "paper" | "answer" = "paper",
+  answerMode = false,
 ): QuestionCrop[] | null {
   const list = Array.isArray(raw) ? raw : [raw];
   const out: QuestionCrop[] = [];
   for (const entry of list) {
-    const band = parseCropValue(entry, pages, defaultSheet);
+    const band = parseCropValue(entry, pages, defaultSheet, answerMode);
     if (!band) continue;
     // There can only be one crop for a question part on one page. If the model
     // reports it twice, keep the shared/narrower region rather than expanding.

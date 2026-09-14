@@ -1,0 +1,38 @@
+import { describe, expect, test } from "bun:test";
+
+import { renumberQuestions, separateQuestionCrops } from "./paper-extract.server";
+
+const question = (questionText: string, top: number, bottom: number) => ({
+  questionText,
+  markScheme: "printed answer",
+  marks: 1,
+  pages: [1],
+  crops: [{ page: 1, top, bottom }],
+  answerCrops: null,
+});
+
+describe("paper extraction safeguards", () => {
+  test("restarted bare question numbers become separate questions", () => {
+    const result = renumberQuestions([
+      question("1 First compiled question", 0.1, 0.2),
+      question("1 Second compiled question", 0.3, 0.4),
+      question("2 Third compiled question", 0.5, 0.6),
+    ]);
+
+    expect(result.map((item) => item.questionText)).toEqual([
+      "1 First compiled question",
+      "2 Second compiled question",
+      "3 Third compiled question",
+    ]);
+  });
+
+  test("closely spaced questions retain safe narrow crops", () => {
+    const result = separateQuestionCrops([
+      question("1 First", 0.1, 0.108),
+      question("2 Second", 0.108, 0.116),
+    ]);
+
+    expect(result[0]?.crops).toHaveLength(1);
+    expect(result[1]?.crops).toHaveLength(1);
+  });
+});

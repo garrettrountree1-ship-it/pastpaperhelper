@@ -716,9 +716,10 @@ export function DrawingPad({
 
 
 
-      <div className="mt-2 flex flex-wrap gap-2">
-        <Button type="button" size="sm" onClick={attach} disabled={disabled || !hasInk}>
-          Save my working
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <Button type="button" size="sm" onClick={minimise}>
+          <Minimize className="size-4" />
+          Minimise &amp; save
         </Button>
         <Button
           type="button"

@@ -718,7 +718,9 @@ export const insertQuestionAfter = createServerFn({ method: "POST" })
     const question = await questionForTeacher(supabase, db, data.questionId, userId);
     const { data: current } = await db
       .from("questions")
-      .select("id, assignment_id, position, question_text, image_paths, answer_image_paths")
+      .select(
+        "id, assignment_id, position, question_text, image_paths, answer_image_paths, source_page_path, answer_source_page_path",
+      )
       .eq("id", question.id)
       .single();
     if (!current) throw new Error("Question not found.");
@@ -780,6 +782,9 @@ export const insertQuestionAfter = createServerFn({ method: "POST" })
         position: current.position + 1,
         image_paths: lastPath ? [cropAfter(lastPath)] : [],
         answer_image_paths: lastAnswerPath ? [cropAfter(lastAnswerPath)] : [],
+        source_page_path: current.source_page_path || pageWithoutCrop(lastPath ?? ""),
+        answer_source_page_path:
+          current.answer_source_page_path || pageWithoutCrop(lastAnswerPath ?? lastPath ?? ""),
       })
       .select("id")
       .single();

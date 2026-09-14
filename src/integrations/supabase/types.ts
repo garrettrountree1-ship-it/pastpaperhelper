@@ -1207,6 +1207,7 @@ export type Database = {
       questions: {
         Row: {
           answer_image_paths: string[]
+          answer_source_page_path: string
           assignment_id: string
           created_at: string
           credited_all_at: string | null
@@ -1218,11 +1219,13 @@ export type Database = {
           photo_mode: string
           position: number
           question_text: string
+          source_page_path: string
           tag_image: string
           tag_label: string
         }
         Insert: {
           answer_image_paths?: string[]
+          answer_source_page_path?: string
           assignment_id: string
           created_at?: string
           credited_all_at?: string | null
@@ -1234,11 +1237,13 @@ export type Database = {
           photo_mode?: string
           position?: number
           question_text: string
+          source_page_path?: string
           tag_image?: string
           tag_label?: string
         }
         Update: {
           answer_image_paths?: string[]
+          answer_source_page_path?: string
           assignment_id?: string
           created_at?: string
           credited_all_at?: string | null
@@ -1250,6 +1255,7 @@ export type Database = {
           photo_mode?: string
           position?: number
           question_text?: string
+          source_page_path?: string
           tag_image?: string
           tag_label?: string
         }

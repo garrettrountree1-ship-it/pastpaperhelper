@@ -13,6 +13,7 @@ import { isHigherLevelTag } from "@/lib/ib-level.functions";
 import { isPhotoMode, resolvePhotoMode } from "@/lib/photo-mode";
 import { teachesClass, teachingClassIds } from "@/lib/teach-access";
 import { cropAfter } from "@/lib/next-crop";
+import { pageWithoutCrop } from "@/lib/snip-crop";
 import {
   formatLabel,
   nextLabelAfter,
@@ -435,6 +436,8 @@ export const createAssignment = createServerFn({ method: "POST" })
             marks: z.number().int().positive(),
             imagePaths: z.array(z.string()).default([]),
             answerImagePaths: z.array(z.string()).default([]),
+            sourcePagePath: z.string().default(""),
+            answerSourcePagePath: z.string().default(""),
             tagLabel: z.string().max(12).default(""),
             tagImage: z.string().max(200000).default(""),
           }),
@@ -480,6 +483,8 @@ export const createAssignment = createServerFn({ method: "POST" })
         marks: q.marks,
         image_paths: q.imagePaths ?? [],
         answer_image_paths: q.answerImagePaths ?? [],
+        source_page_path: q.sourcePagePath,
+        answer_source_page_path: q.answerSourcePagePath,
         tag_label: q.tagLabel ?? "",
         tag_image: q.tagImage ?? "",
       })),
@@ -510,7 +515,7 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
     const { data: questions, error: qError } = await supabase
       .from("questions")
       .select(
-        "id, question_text, mark_scheme, marks, position, image_paths, answer_image_paths, tag_label, tag_image",
+        "id, question_text, mark_scheme, marks, position, image_paths, answer_image_paths, source_page_path, answer_source_page_path, tag_label, tag_image",
       )
       .eq("assignment_id", data.assignmentId)
       .order("position");
@@ -533,6 +538,10 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
           imageUrls: await signPaperPages(await admin(), q.image_paths ?? []),
           answerImagePaths: q.answer_image_paths ?? [],
           answerImageUrls: await signPaperPages(await admin(), q.answer_image_paths ?? []),
+          sourcePagePath: q.source_page_path || pageWithoutCrop((q.image_paths ?? [])[0] ?? ""),
+          answerSourcePagePath:
+            q.answer_source_page_path ||
+            pageWithoutCrop((q.answer_image_paths ?? [])[0] ?? (q.image_paths ?? [])[0] ?? ""),
           tagLabel: q.tag_label ?? "",
           tagImage: q.tag_image ?? "",
         })),
@@ -584,13 +593,19 @@ export const updateQuestionCrop = createServerFn({ method: "POST" })
     const question = await questionForTeacher(supabase, db, data.questionId, userId);
     const { data: current } = await db
       .from("questions")
-      .select("image_paths, answer_image_paths")
+      .select("image_paths, answer_image_paths, source_page_path, answer_source_page_path")
       .eq("id", question.id)
       .single();
     const existingPaths = (
       data.target === "answer" ? current?.answer_image_paths : current?.image_paths
     ) as string[] | null | undefined;
-    const allowedPages = new Set((existingPaths ?? []).map((path) => path.split("#")[0]));
+    const retainedSource =
+      data.target === "answer" ? current?.answer_source_page_path : current?.source_page_path;
+    const allowedPages = new Set(
+      [...(existingPaths ?? []), retainedSource ?? ""]
+        .map((path) => path.split("#")[0])
+        .filter(Boolean),
+    );
     // The teacher may move a cut onto another page of the same uploaded document
     // (a question often runs over a page break), so allow any page in that folder.
     const allowedFolders = new Set(
@@ -609,7 +624,7 @@ export const updateQuestionCrop = createServerFn({ method: "POST" })
       }
       const top = Number(match[1]);
       const bottom = Number(match[2]);
-      if (bottom - top < 0.035) throw new Error("The crop is too small.");
+      if (bottom - top < 0.006) throw new Error("The crop is too small.");
     }
     const { error } = await db
       .from("questions")
@@ -658,15 +673,23 @@ export const listRecutPages = createServerFn({ method: "POST" })
     const isAnswerSheet = data.sheet
       ? data.sheet === "answer"
       : (page.split("/").pop() ?? "").startsWith("ms-page-");
-    const pages = (files ?? [])
+    const allPages = (files ?? [])
       .map((file) => {
         const name = file.name;
         const answerSheet = name.startsWith("ms-page-");
         const number = Number(/page-(\d+)/.exec(name)?.[1] ?? 0);
         return { path: `${folder}/${name}`, answerSheet, number };
       })
-      .filter((item) => item.number > 0 && item.answerSheet === isAnswerSheet)
+      .filter((item) => item.number > 0)
       .sort((a, b) => a.number - b.number);
+    const matchingPages = allPages.filter((item) => item.answerSheet === isAnswerSheet);
+    // Some teacher documents contain the paper and printed answers in one file.
+    // If there is no separately uploaded mark scheme, keep that full combined
+    // document available for answer cutting instead of showing an empty dialog.
+    const pages =
+      isAnswerSheet && matchingPages.length === 0
+        ? allPages.filter((item) => !item.answerSheet)
+        : matchingPages;
 
     const urls = await signPaperPages(
       db,
@@ -695,7 +718,9 @@ export const insertQuestionAfter = createServerFn({ method: "POST" })
     const question = await questionForTeacher(supabase, db, data.questionId, userId);
     const { data: current } = await db
       .from("questions")
-      .select("id, assignment_id, position, question_text, image_paths, answer_image_paths")
+      .select(
+        "id, assignment_id, position, question_text, image_paths, answer_image_paths, source_page_path, answer_source_page_path",
+      )
       .eq("id", question.id)
       .single();
     if (!current) throw new Error("Question not found.");
@@ -757,6 +782,9 @@ export const insertQuestionAfter = createServerFn({ method: "POST" })
         position: current.position + 1,
         image_paths: lastPath ? [cropAfter(lastPath)] : [],
         answer_image_paths: lastAnswerPath ? [cropAfter(lastAnswerPath)] : [],
+        source_page_path: current.source_page_path || pageWithoutCrop(lastPath ?? ""),
+        answer_source_page_path:
+          current.answer_source_page_path || pageWithoutCrop(lastAnswerPath ?? lastPath ?? ""),
       })
       .select("id")
       .single();
@@ -783,6 +811,8 @@ export const updateAssignment = createServerFn({ method: "POST" })
             marks: z.number().int().positive(),
             imagePaths: z.array(z.string()).default([]),
             answerImagePaths: z.array(z.string()).default([]),
+            sourcePagePath: z.string().default(""),
+            answerSourcePagePath: z.string().default(""),
             tagLabel: z.string().max(12).default(""),
             tagImage: z.string().max(200000).default(""),
           }),
@@ -829,6 +859,8 @@ export const updateAssignment = createServerFn({ method: "POST" })
         position: index + 1,
         image_paths: q.imagePaths ?? [],
         answer_image_paths: q.answerImagePaths ?? [],
+        source_page_path: q.sourcePagePath,
+        answer_source_page_path: q.answerSourcePagePath,
         tag_label: q.tagLabel ?? "",
         tag_image: q.tagImage ?? "",
       };
@@ -2308,6 +2340,13 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
             return `${page}#crop=${crop.top.toFixed(4)},${crop.bottom.toFixed(4)}`;
           })
           .filter((path): path is string => Boolean(path));
+        const sourcePagePath = pagePaths[crops[0]?.page ?? 1] ?? pagePaths[1] ?? "";
+        const firstAnswerCrop = q.answerCrops?.[0];
+        const answerSourcePagePath = firstAnswerCrop
+          ? (firstAnswerCrop.sheet ?? "paper") === "answer"
+            ? answerPagePaths[firstAnswerCrop.page]
+            : pagePaths[firstAnswerCrop.page]
+          : (answerPagePaths[1] ?? pagePaths[1] ?? "");
         return {
           questionText: q.questionText,
           markScheme: q.markScheme,
@@ -2316,6 +2355,8 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
           imageUrls: await signPaperPages(db, paths),
           answerImagePaths: answerPaths,
           answerImageUrls: await signPaperPages(db, answerPaths),
+          sourcePagePath,
+          answerSourcePagePath: answerSourcePagePath ?? sourcePagePath,
         };
       }),
     );
@@ -2549,14 +2590,15 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
     );
 
     // Previewing an SL student hides HL-only questions, exactly as they see it.
-    const { data: previewLevelRow } = studentId && previewClassIsIbdp
-      ? await db
-          .from("class_student_settings")
-          .select("ib_level")
-          .eq("class_id", assignment.class_id)
-          .eq("student_id", studentId)
-          .maybeSingle()
-      : { data: null };
+    const { data: previewLevelRow } =
+      studentId && previewClassIsIbdp
+        ? await db
+            .from("class_student_settings")
+            .select("ib_level")
+            .eq("class_id", assignment.class_id)
+            .eq("student_id", studentId)
+            .maybeSingle()
+        : { data: null };
     const previewIsStandardLevel =
       previewClassIsIbdp &&
       (previewLevelRow as { ib_level?: string | null } | null)?.ib_level === "SL";

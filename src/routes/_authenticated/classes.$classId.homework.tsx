@@ -727,7 +727,9 @@ function AssignmentDialog({
       const payloadQuestions = questions.map((q) => ({
         id: q.id ?? null,
         questionText: q.questionText.trim(),
-        markScheme: q.markScheme.trim(),
+        // The picture cut from the mark scheme is the answer; this text is only
+        // a placeholder for older records that still carry a typed answer.
+        markScheme: q.markScheme.trim() || "See the printed mark scheme picture.",
         marks: q.marks,
         imagePaths: q.imagePaths ?? [],
         answerImagePaths: q.answerImagePaths ?? [],
@@ -786,7 +788,7 @@ function AssignmentDialog({
     questions.every(
       (q) =>
         (q.questionText.trim() || q.imagePaths.length > 0) &&
-        q.markScheme.trim() &&
+        (q.markScheme.trim() || q.answerImagePaths.length > 0) &&
         q.marks > 0,
     );
 

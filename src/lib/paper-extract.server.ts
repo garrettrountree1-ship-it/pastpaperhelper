@@ -91,7 +91,7 @@ const SWEEP_SYSTEM = [
   "The same printed label can belong to several different questions. Compare the page and surrounding wording, not the label alone.",
   "Pay special attention to multiple-choice blocks, questions pasted mid-document, questions after a mark scheme section, and unnumbered questions.",
   'Above all, check for MISSING SUB-PARTS: for each question already indexed, read every page it touches and the pages after it and list any (a)/(b)/(c) or (i)/(ii)/(iii) part — including forms like (a.ii) or (b) alone on a line, and parts printed after a mark scheme block — that is not already in the list. Use the printed label for these, e.g. "1(a)(ii)", not an invented one.',
-  'Give each missed item a new unique extractionKey continuing the supplied sequence. Keep its printed label even when that label repeats.',
+  "Give each missed item a new unique extractionKey continuing the supplied sequence. Keep its printed label even when that label repeats.",
   "If nothing was missed, reply with an empty items array.",
   'Reply with JSON only: {"items":[{"extractionKey":"q017","label":"2","marks":1,"kind":"mcq","pages":[5]}]}',
 ].join(" ");
@@ -826,7 +826,9 @@ async function runDetail(
         String(item["extractionKey"] ?? item["key"] ?? "").trim() ||
         batch[rowIndex]?.key ||
         `result-${rowIndex + 1}`;
-      const match = batch.find((candidate) => candidate.key.toLowerCase() === key.toLowerCase()) ?? batch[rowIndex];
+      const match =
+        batch.find((candidate) => candidate.key.toLowerCase() === key.toLowerCase()) ??
+        batch[rowIndex];
       const label = String(item["label"] ?? "").trim() || match?.label || "";
       let questionText = String(item["questionText"] ?? "").trim();
       // Only printed numbering is echoed into the wording; invented keys (p3-Q1) are not.
@@ -847,12 +849,12 @@ async function runDetail(
         markScheme: normaliseSymbols(String(item["markScheme"] ?? "").trim()),
         marks: Math.max(1, Math.round(Number(item["marks"]) || match?.marks || 1)),
         pages,
-    crops: parseCropList(item["crops"] ?? item["crop"], pages),
+        crops: parseCropList(item["crops"] ?? item["crop"], pages),
         answerCrops: parseCropList(
           item["answerCrops"] ?? item["answerCrop"],
           [],
           hasAnswerPages ? "answer" : "paper",
-      true,
+          true,
         ),
       };
     })

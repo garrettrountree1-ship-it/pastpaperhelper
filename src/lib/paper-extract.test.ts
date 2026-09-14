@@ -20,11 +20,10 @@ describe("paper extraction safeguards", () => {
       question("2 Third compiled question", 0.5, 0.6),
     ]);
 
-    assert.deepEqual(result.map((item) => item.questionText), [
-      "1 First compiled question",
-      "2 Second compiled question",
-      "3 Third compiled question",
-    ]);
+    assert.deepEqual(
+      result.map((item) => item.questionText),
+      ["1 First compiled question", "2 Second compiled question", "3 Third compiled question"],
+    );
   });
 
   test("closely spaced questions retain safe narrow crops", () => {

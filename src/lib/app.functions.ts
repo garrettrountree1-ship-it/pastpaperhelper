@@ -8,6 +8,7 @@ import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { LOCKED_MESSAGE } from "@/lib/integrity";
 import { cleanMathText } from "@/lib/math-text";
 import { isDemoEmail } from "@/lib/demo";
+import { isIbdp } from "@/lib/curricula";
 import { isHigherLevelTag } from "@/lib/ib-level.functions";
 import { isPhotoMode, resolvePhotoMode } from "@/lib/photo-mode";
 import { teachesClass, teachingClassIds } from "@/lib/teach-access";
@@ -1807,7 +1808,7 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     }
     const { data: klass } = await db
       .from("classes")
-      .select("name")
+      .select("name, curriculum")
       .eq("id", assignment.class_id)
       .maybeSingle();
 
@@ -1827,14 +1828,18 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
       .select("question_id")
       .eq("student_id", userId);
     const exemptIds = new Set((exemptions ?? []).map((e) => e.question_id));
-    // Standard Level students never see questions the teacher marked HL.
-    const { data: levelRow } = await db
-      .from("class_student_settings")
-      .select("ib_level")
-      .eq("class_id", assignment.class_id)
-      .eq("student_id", userId)
-      .maybeSingle();
-    const isStandardLevel = (levelRow as { ib_level?: string | null } | null)?.ib_level === "SL";
+    // Standard Level filtering only applies to classes the teacher set to IBDP.
+    const classIsIbdp = isIbdp((klass as { curriculum?: string | null } | null)?.curriculum);
+    const { data: levelRow } = classIsIbdp
+      ? await db
+          .from("class_student_settings")
+          .select("ib_level")
+          .eq("class_id", assignment.class_id)
+          .eq("student_id", userId)
+          .maybeSingle()
+      : { data: null };
+    const isStandardLevel =
+      classIsIbdp && (levelRow as { ib_level?: string | null } | null)?.ib_level === "SL";
     const questions = (allQuestions ?? []).filter(
       (q) =>
         !exemptIds.has(q.id) &&
@@ -2490,9 +2495,10 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
     const assignment = assignmentRow!;
     const { data: klass } = await db
       .from("classes")
-      .select("name")
+      .select("name, curriculum")
       .eq("id", assignment.class_id)
       .maybeSingle();
+    const previewClassIsIbdp = isIbdp((klass as { curriculum?: string | null } | null)?.curriculum);
     const { data: allPreviewQuestions } = await db
       .from("questions")
       .select(
@@ -2543,7 +2549,7 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
     );
 
     // Previewing an SL student hides HL-only questions, exactly as they see it.
-    const { data: previewLevelRow } = studentId
+    const { data: previewLevelRow } = studentId && previewClassIsIbdp
       ? await db
           .from("class_student_settings")
           .select("ib_level")
@@ -2552,6 +2558,7 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
           .maybeSingle()
       : { data: null };
     const previewIsStandardLevel =
+      previewClassIsIbdp &&
       (previewLevelRow as { ib_level?: string | null } | null)?.ib_level === "SL";
     const questions = (allPreviewQuestions ?? []).filter(
       (q) => !(previewIsStandardLevel && isHigherLevelTag(q.tag_label as string | null)),
@@ -3481,9 +3488,10 @@ export const getStudentHomeworkView = createServerFn({ method: "POST" })
     const assignment = assignmentRow!;
     const { data: klass } = await db
       .from("classes")
-      .select("name")
+      .select("name, curriculum")
       .eq("id", assignment.class_id)
       .maybeSingle();
+    const classIsIbdp = isIbdp((klass as { curriculum?: string | null } | null)?.curriculum);
 
     const access = await studentAccess(db, data.assignmentId, data.studentId);
 
@@ -3500,13 +3508,16 @@ export const getStudentHomeworkView = createServerFn({ method: "POST" })
       .select("question_id")
       .eq("student_id", data.studentId);
     const exemptIds = new Set((exemptions ?? []).map((e) => e.question_id));
-    const { data: levelRow } = await db
-      .from("class_student_settings")
-      .select("ib_level")
-      .eq("class_id", assignment.class_id)
-      .eq("student_id", data.studentId)
-      .maybeSingle();
-    const isStandardLevel = (levelRow as { ib_level?: string | null } | null)?.ib_level === "SL";
+    const { data: levelRow } = classIsIbdp
+      ? await db
+          .from("class_student_settings")
+          .select("ib_level")
+          .eq("class_id", assignment.class_id)
+          .eq("student_id", data.studentId)
+          .maybeSingle()
+      : { data: null };
+    const isStandardLevel =
+      classIsIbdp && (levelRow as { ib_level?: string | null } | null)?.ib_level === "SL";
     const questions = (allQuestions ?? []).filter(
       (q) =>
         !exemptIds.has(q.id) &&

@@ -2,12 +2,24 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { isIbdp } from "@/lib/curricula";
 
 export type IbLevel = "SL" | "HL";
 
 /** True when a question tag marks it as Higher Level only. */
 export function isHigherLevelTag(tag: string | null | undefined): boolean {
   return (tag ?? "").trim().toUpperCase() === "HL";
+}
+
+/** SL/HL only exists for classes the teacher set to IBDP. */
+async function requireIbdpClass(classId: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: klass } = await supabaseAdmin
+    .from("classes")
+    .select("curriculum")
+    .eq("id", classId)
+    .maybeSingle();
+  return isIbdp((klass as { curriculum?: string | null } | null)?.curriculum);
 }
 
 async function admin() {
@@ -26,6 +38,7 @@ export const listIbLevels = createServerFn({ method: "POST" })
       _user_id: userId,
     });
     if (!allowed) throw new Error("You don't teach this class.");
+    if (!(await requireIbdpClass(data.classId))) return { levels: {} as Record<string, IbLevel> };
 
     const db = await admin();
     const { data: rows } = await db
@@ -60,6 +73,8 @@ export const setIbLevel = createServerFn({ method: "POST" })
       _user_id: userId,
     });
     if (!allowed) throw new Error("You don't teach this class.");
+    if (!(await requireIbdpClass(data.classId)))
+      throw new Error("SL and HL levels only apply to IBDP classes.");
 
     const db = await admin();
     const { data: existing } = await db

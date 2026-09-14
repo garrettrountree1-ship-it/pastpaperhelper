@@ -216,11 +216,19 @@ export async function extractQuestionsFromPapers(input: ExtractInput): Promise<E
 
   const results = await runBatches(key, header, documents, inventory, hasAnswerPages);
 
-  // Any label the detail pass dropped gets one focused retry.
+  // Any label the detail pass dropped gets one focused retry. The retry may hand
+  // back items already present, so only genuinely new keys are appended —
+  // otherwise the repeats pile up at the end of the question list.
   const done = new Set(results.map((r) => r.key.toLowerCase()));
   const missing = inventory.filter((i) => !done.has(i.key.toLowerCase()));
   if (missing.length > 0) {
-    results.push(...(await runBatches(key, header, documents, missing, hasAnswerPages)));
+    const retried = await runBatches(key, header, documents, missing, hasAnswerPages);
+    for (const item of retried) {
+      const itemKey = item.key.toLowerCase();
+      if (done.has(itemKey)) continue;
+      done.add(itemKey);
+      results.push(item);
+    }
   }
 
   const kept = new Set(results.map((r) => r.label.toLowerCase()));

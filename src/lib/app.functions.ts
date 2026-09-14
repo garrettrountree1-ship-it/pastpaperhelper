@@ -2082,19 +2082,18 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     if (guardSubmission.locked_at) throw new Error(LOCKED_MESSAGE);
 
     /* ---- academic integrity: reject copied AI / web / peer answers ---- */
-    const [{ detectAiAnswer }, { findCopiedFromPeers }, { checkHandDrawnPhotos }] =
-      await Promise.all([
-        import("./ai-detect.server"),
-        import("./originality.server"),
-        import("./photo-authenticity.server"),
-      ]);
-    const [detection, peerCopy, photoCheck] = await Promise.all([
+    // Student answers are never compared with each other — peer comparison
+    // false-flagged honest work, so only AI-text and photo checks run.
+    const [{ detectAiAnswer }, { checkHandDrawnPhotos }] = await Promise.all([
+      import("./ai-detect.server"),
+      import("./photo-authenticity.server"),
+    ]);
+    const [detection, photoCheck] = await Promise.all([
       detectAiAnswer({
         question: question.question_text,
         answer: data.answerText,
         marks: question.marks,
       }),
-      findCopiedFromPeers(db, data.questionId, guardSubmission.id, data.answerText),
       // Work drawn on the app's own writing pad is the student's own hand — it
       // is digital ink on a white sheet, so it never goes to the photo check.
       checkHandDrawnPhotos(

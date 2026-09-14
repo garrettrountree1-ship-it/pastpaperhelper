@@ -142,6 +142,8 @@ type QuestionDraft = {
   imageUrls: string[];
   answerImagePaths: string[];
   answerImageUrls: string[];
+  sourcePagePath: string;
+  answerSourcePagePath: string;
   tagLabel: string;
   tagImage: string;
 };
@@ -155,6 +157,8 @@ const emptyQuestion = (): QuestionDraft => ({
   imageUrls: [],
   answerImagePaths: [],
   answerImageUrls: [],
+  sourcePagePath: "",
+  answerSourcePagePath: "",
   tagLabel: "",
   tagImage: "",
 });
@@ -621,6 +625,8 @@ function AssignmentDialog({
             imageUrls: q.imageUrls ?? [],
             answerImagePaths: q.answerImagePaths ?? [],
             answerImageUrls: q.answerImageUrls ?? [],
+            sourcePagePath: q.sourcePagePath ?? "",
+            answerSourcePagePath: q.answerSourcePagePath ?? "",
           }))
         : [emptyQuestion()],
     );
@@ -655,6 +661,8 @@ function AssignmentDialog({
           imageUrls: q.imageUrls ?? [],
           answerImagePaths: q.answerImagePaths ?? [],
           answerImageUrls: q.answerImageUrls ?? [],
+          sourcePagePath: q.sourcePagePath ?? "",
+          answerSourcePagePath: q.answerSourcePagePath ?? "",
           tagLabel: "",
           tagImage: "",
         })),
@@ -719,6 +727,8 @@ function AssignmentDialog({
         marks: q.marks,
         imagePaths: q.imagePaths ?? [],
         answerImagePaths: q.answerImagePaths ?? [],
+        sourcePagePath: q.sourcePagePath ?? "",
+        answerSourcePagePath: q.answerSourcePagePath ?? "",
         tagLabel: q.tagLabel ?? "",
         tagImage: q.tagImage ?? "",
       }));
@@ -855,6 +865,9 @@ function AssignmentDialog({
         imageUrls: lastUrl ? [cropAfter(lastUrl)] : [],
         answerImagePaths: lastAnswerPath ? [cropAfter(lastAnswerPath)] : [],
         answerImageUrls: lastAnswerUrl ? [cropAfter(lastAnswerUrl)] : [],
+        sourcePagePath: previous?.sourcePagePath ?? pageWithoutCrop(lastPath ?? ""),
+        answerSourcePagePath:
+          answerSource?.answerSourcePagePath ?? pageWithoutCrop(lastAnswerPath ?? lastPath ?? ""),
       };
       const next = [...prev];
       next.splice(index + 1, 0, draft);
@@ -1132,6 +1145,8 @@ function AssignmentDialog({
                         <QuestionRecutDialog
                           imagePaths={question.imagePaths}
                           imageUrls={question.imageUrls}
+                          sourcePath={question.sourcePagePath}
+                          sheet="question"
                           onSave={(imagePaths, imageUrls) =>
                             update_(index, { imagePaths, imageUrls })
                           }
@@ -1148,7 +1163,10 @@ function AssignmentDialog({
                           label="Cut question"
                           sheet="question"
                           sourcePath={
-                            questions.find((q) => q.imagePaths.length > 0)?.imagePaths[0] ?? ""
+                            question.sourcePagePath ||
+                            questions.find((q) => q.sourcePagePath)?.sourcePagePath ||
+                            questions.find((q) => q.imagePaths.length > 0)?.imagePaths[0] ||
+                            ""
                           }
                           imagePaths={[]}
                           imageUrls={[]}
@@ -1173,6 +1191,8 @@ function AssignmentDialog({
                             label="Recut answer"
                             imagePaths={question.answerImagePaths}
                             imageUrls={question.answerImageUrls}
+                            sourcePath={question.answerSourcePagePath}
+                            sheet="answer"
                             onSave={(answerImagePaths, answerImageUrls) =>
                               update_(index, { answerImagePaths, answerImageUrls })
                             }
@@ -1199,9 +1219,12 @@ function AssignmentDialog({
                           label="Cut answer"
                           sheet="answer"
                           sourcePath={
-                            question.imagePaths[0] ??
+                            question.answerSourcePagePath ||
+                            questions.find((q) => q.answerSourcePagePath)?.answerSourcePagePath ||
+                            question.sourcePagePath ||
+                            question.imagePaths[0] ||
                             questions.find((q) => q.answerImagePaths.length > 0)
-                              ?.answerImagePaths[0] ??
+                              ?.answerImagePaths[0] ||
                             ""
                           }
                           imagePaths={[]}

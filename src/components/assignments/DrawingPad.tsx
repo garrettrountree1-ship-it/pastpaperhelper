@@ -31,8 +31,6 @@ const MAX_SHEET = 6000;
 /** One fixed name so a new save replaces the last pad picture, never stacks. */
 export const PAD_FILE_NAME = "working-pad.png";
 
-
-
 /**
  * Stylus / finger / mouse writing pad for working out calculations on screen
  * (e.g. an iPad with an Apple Pencil). The finished sheet is attached as an
@@ -88,13 +86,13 @@ export function DrawingPad({
   const [sheetHeight, setSheetHeight] = useState(0);
   // Each piece is the picture plus the exact band of the page shown in the
   // question box, so the pad can never reveal print outside that question.
-  const backgroundsRef = useRef<
-    Array<{ image: HTMLImageElement; top: number; bottom: number }>
-  >([]);
+  const backgroundsRef = useRef<Array<{ image: HTMLImageElement; top: number; bottom: number }>>(
+    [],
+  );
   // Open every homework and quiz question at a compact size so the picture
   // never fills the pad. Students can still enlarge it with the picture controls
   // or corner handles.
-  const [photoScale, setPhotoScale] = useState(0.25);
+  const [photoScale, setPhotoScale] = useState(0.5);
   const photoScaleRef = useRef(photoScale);
   photoScaleRef.current = photoScale;
   const [saved, setSaved] = useState(false);
@@ -151,10 +149,7 @@ export function DrawingPad({
       { key: "se", x: rect.x + rect.width, y: rect.y + rect.height },
     ];
     for (const corner of corners) {
-      if (
-        Math.abs(point.x - corner.x) <= HANDLE &&
-        Math.abs(point.y - corner.y) <= HANDLE
-      ) {
+      if (Math.abs(point.x - corner.x) <= HANDLE && Math.abs(point.y - corner.y) <= HANDLE) {
         return corner.key;
       }
     }
@@ -222,8 +217,6 @@ export function DrawingPad({
     }
   }
 
-
-
   /** Lowest point of the picture / ink, in on-screen pixels. */
   function contentBottom() {
     const canvas = canvasRef.current;
@@ -250,11 +243,7 @@ export function DrawingPad({
     const box = scrollRef.current;
     if (!full || !box) return;
     const view = box.clientHeight || 600;
-    const wanted = Math.max(
-      view,
-      contentBottom() + view * 0.6,
-      box.scrollTop + view * 1.5,
-    );
+    const wanted = Math.max(view, contentBottom() + view * 0.6, box.scrollTop + view * 1.5);
     setSheetHeight((current) =>
       Math.abs(current - wanted) < 40 ? current : Math.min(MAX_SHEET, Math.round(wanted)),
     );
@@ -289,7 +278,6 @@ export function DrawingPad({
     }, 0);
     return () => window.clearTimeout(id);
   }, [full]);
-
 
   // Load the question picture(s) for the full-screen pad.
   useEffect(() => {
@@ -335,7 +323,6 @@ export function DrawingPad({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [full, backgroundUrls.join("|")]);
 
-
   // A trackpad pinch or Ctrl/⌘ + wheel must not zoom the pad or the page:
   // the picture is resized with the picture buttons only.
   useEffect(() => {
@@ -374,7 +361,6 @@ export function DrawingPad({
       x: event.clientX - rect.left,
       y: event.clientY - rect.top,
     };
-
   }
 
   function start(event: React.PointerEvent<HTMLCanvasElement>) {
@@ -444,7 +430,8 @@ export function DrawingPad({
       // whichever corner is held.
       const signX = grab.corner === "ne" || grab.corner === "se" ? 1 : -1;
       const signY = grab.corner === "sw" || grab.corner === "se" ? 1 : -1;
-      const byWidth = (grab.startWidth + signX * (point.x - grab.startX)) / Math.max(1, grab.startWidth);
+      const byWidth =
+        (grab.startWidth + signX * (point.x - grab.startX)) / Math.max(1, grab.startWidth);
       const byHeight =
         (grab.startHeight + signY * (point.y - grab.startY)) / Math.max(1, grab.startHeight);
       const factor = Math.max(0.05, (byWidth + byHeight) / 2);
@@ -497,7 +484,6 @@ export function DrawingPad({
     updateSheet();
   }
 
-
   /** Saves the current sheet as the answer picture, keeping the ink on the pad
    * so the student can carry on from their last working after a wrong answer. */
   function attach() {
@@ -521,10 +507,7 @@ export function DrawingPad({
       selectedRef.current = wasSelected;
       redraw();
     }, "image/png");
-
   }
-
-
 
   /** Keeps the saved picture in step with the pad without the student thinking
    * about it, so pressing Check answer always marks their latest working. */
@@ -582,31 +565,32 @@ export function DrawingPad({
           </div>
         ) : null}
       </div>
-
     );
   }
 
   return (
     <div
       className={
-        "fixed inset-0 z-50 flex select-none flex-col overflow-hidden bg-background p-3 [-webkit-touch-callout:none] [-webkit-user-select:none]"
+        "fixed inset-0 z-50 flex h-[100dvh] max-h-[100dvh] w-screen select-none flex-col overflow-hidden bg-background p-2 sm:p-3 [-webkit-touch-callout:none] [-webkit-user-select:none]"
       }
       onCopy={(event) => event.preventDefault()}
       onCut={(event) => event.preventDefault()}
       onContextMenu={(event) => event.preventDefault()}
       onDragStart={(event) => event.preventDefault()}
     >
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
         <p className="flex items-center gap-2 text-sm font-medium">
           <PenLine className="size-4" />
           Write your working here
         </p>
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">
-        {"The question is printed underneath. In Write mode every touch draws, even over the picture. Switch to Move picture to tap the picture, drag it anywhere, or pull a blue corner square to make it bigger or smaller — then switch back to Write. Scroll down for as much space as you need. Minimise & save keeps your sheet, then press Check answer."}
+      <p className="mt-1 hidden shrink-0 text-xs text-muted-foreground sm:block">
+        {
+          "The question is printed underneath. In Write mode every touch draws, even over the picture. Switch to Move picture to tap the picture, drag it anywhere, or pull a blue corner square to make it bigger or smaller — then switch back to Write. Scroll down for as much space as you need. Minimise & save keeps your sheet, then press Check answer."
+        }
       </p>
 
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      <div className="mt-2 flex shrink-0 flex-wrap items-center gap-1.5">
         {PEN_COLORS.map((pen) => (
           <button
             key={pen.value}
@@ -623,100 +607,98 @@ export function DrawingPad({
           />
         ))}
         <>
-            <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+          <span className="mx-1 h-5 w-px bg-border" aria-hidden />
 
-            <div className="inline-flex items-center rounded-lg border border-border p-1">
-              <Button
-                type="button"
-                size="sm"
-                variant={mode === "draw" ? "default" : "ghost"}
-                disabled={disabled}
-                onClick={() => setMode("draw")}
-                className="rounded-md"
-              >
-                <PenLine className="size-4" />
-                Write
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={mode === "move" ? "default" : "ghost"}
-                disabled={disabled}
-                onClick={() => setMode("move")}
-                className="rounded-md"
-              >
-                <Hand className="size-4" />
-                Move picture
-              </Button>
-            </div>
+          <div className="inline-flex items-center rounded-lg border border-border p-1">
             <Button
               type="button"
               size="sm"
-              variant="outline"
-              disabled={disabled || photoScale <= 0.15}
-              aria-label="Make the question picture smaller"
-              onClick={() => {
-                setPhotoScale((s) => Math.max(0.4, Number((s - 0.1).toFixed(2))));
-                requestAnimationFrame(() => {
-                  redraw();
-                  updateSheet();
-                });
-              }}
+              variant={mode === "draw" ? "default" : "ghost"}
+              disabled={disabled}
+              onClick={() => setMode("draw")}
+              className="rounded-md"
             >
-              <ImageMinus className="size-4" />
+              <PenLine className="size-4" />
+              Write
             </Button>
-            <span className="w-12 text-center text-xs text-muted-foreground">
-              {Math.round(photoScale * 100)}%
-            </span>
             <Button
               type="button"
               size="sm"
-              variant="outline"
-              disabled={disabled || photoScale >= 2.5}
-              aria-label="Make the question picture bigger"
-              onClick={() => {
-                setPhotoScale((s) => Math.min(2.5, Number((s + 0.1).toFixed(2))));
-                requestAnimationFrame(() => {
-                  redraw();
-                  updateSheet();
-                });
-              }}
+              variant={mode === "move" ? "default" : "ghost"}
+              disabled={disabled}
+              onClick={() => setMode("move")}
+              className="rounded-md"
             >
-              <ImagePlus className="size-4" />
+              <Hand className="size-4" />
+              Move picture
             </Button>
-          </>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={disabled || photoScale <= 0.15}
+            aria-label="Make the question picture smaller"
+            onClick={() => {
+              setPhotoScale((s) => Math.max(0.4, Number((s - 0.1).toFixed(2))));
+              requestAnimationFrame(() => {
+                redraw();
+                updateSheet();
+              });
+            }}
+          >
+            <ImageMinus className="size-4" />
+          </Button>
+          <span className="w-12 text-center text-xs text-muted-foreground">
+            {Math.round(photoScale * 100)}%
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={disabled || photoScale >= 2.5}
+            aria-label="Make the question picture bigger"
+            onClick={() => {
+              setPhotoScale((s) => Math.min(2.5, Number((s + 0.1).toFixed(2))));
+              requestAnimationFrame(() => {
+                redraw();
+                updateSheet();
+              });
+            }}
+          >
+            <ImagePlus className="size-4" />
+          </Button>
+        </>
       </div>
       <div
-          ref={scrollRef}
-          onScroll={updateSheet}
-          className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain"
-        >
-          <canvas
-            ref={canvasRef}
-            onPointerDown={start}
-            onPointerMove={move}
-            onPointerUp={end}
-            onPointerLeave={end}
-            onPointerCancel={end}
-            style={{ height: sheetHeight ? `${sheetHeight}px` : "150vh" }}
-            className={`w-full touch-none rounded-md border border-border bg-white ${
-              hoverCorner
-                ? {
-                    nw: "cursor-nwse-resize",
-                    se: "cursor-nwse-resize",
-                    ne: "cursor-nesw-resize",
-                    sw: "cursor-nesw-resize",
-                  }[hoverCorner]
-                : selected || mode === "move"
-                  ? "cursor-grab"
-                  : "cursor-crosshair"
-            }`}
-          />
+        ref={scrollRef}
+        onScroll={updateSheet}
+        className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain"
+      >
+        <canvas
+          ref={canvasRef}
+          onPointerDown={start}
+          onPointerMove={move}
+          onPointerUp={end}
+          onPointerLeave={end}
+          onPointerCancel={end}
+          style={{ height: sheetHeight ? `${sheetHeight}px` : "100%" }}
+          className={`w-full touch-none rounded-md border border-border bg-white ${
+            hoverCorner
+              ? {
+                  nw: "cursor-nwse-resize",
+                  se: "cursor-nwse-resize",
+                  ne: "cursor-nesw-resize",
+                  sw: "cursor-nesw-resize",
+                }[hoverCorner]
+              : selected || mode === "move"
+                ? "cursor-grab"
+                : "cursor-crosshair"
+          }`}
+        />
       </div>
 
-
-
-      <div className="mt-2 flex flex-wrap items-center gap-2">
+      <div className="mt-2 flex shrink-0 flex-wrap items-center gap-2">
         <Button type="button" size="sm" onClick={minimise}>
           <Minimize className="size-4" />
           Minimise &amp; save

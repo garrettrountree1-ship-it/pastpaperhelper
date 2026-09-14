@@ -2315,7 +2315,23 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
       }),
     );
 
-    return { questions: withPages, warnings: extraction.warnings };
+    // Questions and answers are only ever used as pictures, so say plainly
+    // which ones still need cutting by hand instead of falling back to text.
+    const missingQuestion = withPages.filter((q) => q.imagePaths.length === 0).length;
+    const missingAnswer = withPages.filter((q) => q.answerImagePaths.length === 0).length;
+    const warnings = [...extraction.warnings];
+    if (missingQuestion > 0) {
+      warnings.push(
+        `${missingQuestion} question${missingQuestion === 1 ? "" : "s"} could not be cut safely from the paper. Use "Cut question" to pick the area yourself.`,
+      );
+    }
+    if (missingAnswer > 0) {
+      warnings.push(
+        `${missingAnswer} answer${missingAnswer === 1 ? "" : "s"} could not be cut safely from the mark scheme. Use "Cut answer" to pick the area yourself.`,
+      );
+    }
+
+    return { questions: withPages, warnings };
   });
 
 export const sendTutorMessage = createServerFn({ method: "POST" })

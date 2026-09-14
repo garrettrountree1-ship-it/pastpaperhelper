@@ -6,6 +6,7 @@ import type { Json } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { LOCKED_MESSAGE } from "@/lib/integrity";
+import { attemptsAllowed, isMultipleChoice } from "@/lib/multiple-choice";
 import { cleanMathText } from "@/lib/math-text";
 import { isDemoEmail } from "@/lib/demo";
 import { isIbdp } from "@/lib/curricula";
@@ -546,6 +547,12 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
             pageWithoutCrop((q.answer_image_paths ?? [])[0] ?? (q.image_paths ?? [])[0] ?? ""),
           tagLabel: q.tag_label ?? "",
           tagImage: q.tag_image ?? "",
+          multipleChoice: ((q as { multiple_choice?: boolean | null }).multiple_choice ??
+            null) as boolean | null,
+          autoMultipleChoice: isMultipleChoice(
+            (q as { multiple_choice?: boolean | null }).multiple_choice,
+            (q as { mark_scheme?: string | null }).mark_scheme,
+          ),
         })),
       ),
     };
@@ -1986,6 +1993,10 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
           imageUrls: await signPaperPages(db, q.image_paths ?? []),
           tagLabel: q.tag_label ?? "",
           tagImage: q.tag_image ?? "",
+          multipleChoice: isMultipleChoice(
+            (q as { multiple_choice?: boolean | null }).multiple_choice,
+            (q as { mark_scheme?: string | null }).mark_scheme,
+          ),
           creditedAll: Boolean((q as { credited_all_at?: string | null }).credited_all_at),
         })),
       ),
@@ -2049,7 +2060,16 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     // Scaffolding: teachers can cap how many tries a question allows.
     const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
     const scaffolding = await tutorSettingsForAssignment(db, data.assignmentId, userId);
-    if (scaffolding.maxAttempts > 0) {
+    // Multiple-choice questions can be guessed, so they carry their own smaller cap.
+    const questionAttemptLimit = attemptsAllowed({
+      multipleChoice: isMultipleChoice(
+        (question as { multiple_choice?: boolean | null }).multiple_choice,
+        question.mark_scheme as string | null,
+      ),
+      maxAttempts: scaffolding.maxAttempts,
+      maxChoiceAttempts: scaffolding.maxChoiceAttempts,
+    });
+    if (questionAttemptLimit > 0) {
       const { data: priorSubmission } = await db
         .from("submissions")
         .select("id")
@@ -2065,9 +2085,9 @@ export const gradeAnswer = createServerFn({ method: "POST" })
             .maybeSingle()
         : { data: null };
       const used = Number((prior as { attempts?: number } | null)?.attempts ?? 0);
-      if (used >= scaffolding.maxAttempts) {
+      if (used >= questionAttemptLimit) {
         throw new Error(
-          `You have used all ${scaffolding.maxAttempts} tries your teacher allowed for this question.`,
+          `You have used all ${questionAttemptLimit} ${questionAttemptLimit === 1 ? "try" : "tries"} your teacher allowed for this question.`,
         );
       }
     }
@@ -2648,6 +2668,10 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
           imageUrls: await signPaperPages(db, q.image_paths ?? []),
           tagLabel: q.tag_label ?? "",
           tagImage: q.tag_image ?? "",
+          multipleChoice: isMultipleChoice(
+            (q as { multiple_choice?: boolean | null }).multiple_choice,
+            (q as { mark_scheme?: string | null }).mark_scheme,
+          ),
         })),
       ),
     };
@@ -3668,6 +3692,10 @@ export const getStudentHomeworkView = createServerFn({ method: "POST" })
           imageUrls: await signPaperPages(db, (q.image_paths ?? []) as string[]),
           tagLabel: q.tag_label ?? "",
           tagImage: q.tag_image ?? "",
+          multipleChoice: isMultipleChoice(
+            (q as { multiple_choice?: boolean | null }).multiple_choice,
+            (q as { mark_scheme?: string | null }).mark_scheme,
+          ),
           creditedAll: Boolean((q as { credited_all_at?: string | null }).credited_all_at),
         })),
       ),

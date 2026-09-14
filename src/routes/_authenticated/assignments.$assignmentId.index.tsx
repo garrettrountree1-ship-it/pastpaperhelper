@@ -1,3 +1,4 @@
+import { attemptsAllowed } from "@/lib/multiple-choice";
 import { normalisePhotoFiles } from "@/lib/heic";
 import { formatDueDate } from "@/lib/datetime";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -245,7 +246,13 @@ function AssignmentPage() {
                       protectQuestions={Boolean(settings?.protectQuestions)}
                       allowHint={settings?.allowHint !== false}
                       allowSteps={settings?.allowSteps !== false}
-                      maxAttempts={settings?.maxAttempts ?? 0}
+                      maxAttempts={attemptsAllowed({
+                        multipleChoice: Boolean(
+                          (question as { multipleChoice?: boolean }).multipleChoice,
+                        ),
+                        maxAttempts: settings?.maxAttempts ?? 0,
+                        maxChoiceAttempts: settings?.maxChoiceAttempts ?? 0,
+                      })}
                     />
                   ))}
                 </div>

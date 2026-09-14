@@ -440,6 +440,7 @@ export const createAssignment = createServerFn({ method: "POST" })
             answerSourcePagePath: z.string().default(""),
             tagLabel: z.string().max(12).default(""),
             tagImage: z.string().max(200000).default(""),
+            multipleChoice: z.boolean().nullable().default(null),
           }),
         ),
       })
@@ -487,6 +488,7 @@ export const createAssignment = createServerFn({ method: "POST" })
         answer_source_page_path: q.answerSourcePagePath,
         tag_label: q.tagLabel ?? "",
         tag_image: q.tagImage ?? "",
+        multiple_choice: q.multipleChoice ?? null,
       })),
     );
     if (qError) throw new Error(qError.message);
@@ -515,7 +517,7 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
     const { data: questions, error: qError } = await supabase
       .from("questions")
       .select(
-        "id, question_text, mark_scheme, marks, position, image_paths, answer_image_paths, source_page_path, answer_source_page_path, tag_label, tag_image",
+        "id, question_text, mark_scheme, marks, position, image_paths, answer_image_paths, source_page_path, answer_source_page_path, tag_label, tag_image, multiple_choice",
       )
       .eq("assignment_id", data.assignmentId)
       .order("position");
@@ -815,6 +817,7 @@ export const updateAssignment = createServerFn({ method: "POST" })
             answerSourcePagePath: z.string().default(""),
             tagLabel: z.string().max(12).default(""),
             tagImage: z.string().max(200000).default(""),
+            multipleChoice: z.boolean().nullable().default(null),
           }),
         ),
       })
@@ -863,6 +866,7 @@ export const updateAssignment = createServerFn({ method: "POST" })
         answer_source_page_path: q.answerSourcePagePath,
         tag_label: q.tagLabel ?? "",
         tag_image: q.tagImage ?? "",
+        multiple_choice: q.multipleChoice ?? null,
       };
       if (q.id && existingIds.has(q.id)) {
         const { error } = await supabase.from("questions").update(payload).eq("id", q.id);
@@ -1850,7 +1854,7 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     const { data: allQuestions } = await db
       .from("questions")
       .select(
-        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image, credited_all_at",
+        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image, credited_all_at, multiple_choice",
       )
       .eq("assignment_id", data.assignmentId)
       .order("position");
@@ -2028,7 +2032,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     const { data: question, error: qError } = await db
       .from("questions")
       .select(
-        "id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position",
+        "id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position, multiple_choice",
       )
       .eq("id", data.questionId)
       .single();
@@ -2544,7 +2548,7 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
     const { data: allPreviewQuestions } = await db
       .from("questions")
       .select(
-        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image",
+        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image, multiple_choice",
       )
       .eq("assignment_id", data.assignmentId)
       .order("position");
@@ -2687,7 +2691,7 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
     const { data: question, error: qError } = await db
       .from("questions")
       .select(
-        "id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position",
+        "id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position, multiple_choice",
       )
       .eq("id", data.questionId)
       .single();
@@ -3541,7 +3545,7 @@ export const getStudentHomeworkView = createServerFn({ method: "POST" })
     const { data: allQuestions } = await db
       .from("questions")
       .select(
-        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image, credited_all_at",
+        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image, credited_all_at, multiple_choice",
       )
       .eq("assignment_id", data.assignmentId)
       .order("position");

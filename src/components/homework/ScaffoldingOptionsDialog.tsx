@@ -34,6 +34,7 @@ type Row = {
   allowHint: boolean | null;
   allowSteps: boolean | null;
   maxAttempts: number | null;
+  maxChoiceAttempts: number | null;
   examMode: boolean | null;
   maxPaperSubmissions: number | null;
 };
@@ -41,6 +42,8 @@ type AssignmentRow = Row & { id: string; title: string };
 type StudentRow = { id: string; name: string };
 type OverrideRow = Row & { assignmentId: string; studentId: string };
 const ATTEMPT_CHOICES = [1, 2, 3, 4, 5, 6, 8, 10];
+/** Multiple choice is guessable, so the cap stops at four tries. */
+const CHOICE_ATTEMPT_CHOICES = [1, 2, 3, 4];
 
 function attemptLabel(value: number) {
   return value === 0 ? "Unlimited tries" : `${value} ${value === 1 ? "try" : "tries"}`;
@@ -117,10 +120,14 @@ function AttemptsSelect({
   value,
   inheritLabel,
   onChange,
+  choices = ATTEMPT_CHOICES,
+  allowUnlimited = true,
 }: {
   value: number | null;
   inheritLabel: string | null;
   onChange: (value: number | null) => void;
+  choices?: number[];
+  allowUnlimited?: boolean;
 }) {
   return (
     <Select
@@ -132,8 +139,8 @@ function AttemptsSelect({
       </SelectTrigger>
       <SelectContent>
         {inheritLabel ? <SelectItem value={INHERIT}>{inheritLabel}</SelectItem> : null}
-        <SelectItem value="0">Unlimited tries</SelectItem>
-        {ATTEMPT_CHOICES.map((count) => (
+        {allowUnlimited ? <SelectItem value="0">Unlimited tries</SelectItem> : null}
+        {choices.map((count) => (
           <SelectItem key={count} value={String(count)}>
             {attemptLabel(count)}
           </SelectItem>
@@ -210,9 +217,7 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                   <Label>Step-by-step breakdown</Label>
                   <Select
                     value={data.klass.allowSteps ? "on" : "off"}
-                    onValueChange={(value) =>
-                      classMutation.mutate({ allowSteps: value === "on" })
-                    }
+                    onValueChange={(value) => classMutation.mutate({ allowSteps: value === "on" })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -247,6 +252,16 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label>Tries on multiple choice</Label>
+                  <AttemptsSelect
+                    value={data.klass.maxChoiceAttempts || 1}
+                    inheritLabel={null}
+                    choices={CHOICE_ATTEMPT_CHOICES}
+                    allowUnlimited={false}
+                    onChange={(value) => classMutation.mutate({ maxChoiceAttempts: value ?? 1 })}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label>Take it like a real paper</Label>
                   <Select
                     value={data.klass.examMode ? "on" : "off"}
@@ -269,9 +284,7 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                     value={data.klass.maxPaperSubmissions}
                     inheritLabel={null}
                     disabled={!data.klass.examMode}
-                    onChange={(value) =>
-                      classMutation.mutate({ maxPaperSubmissions: value ?? 0 })
-                    }
+                    onChange={(value) => classMutation.mutate({ maxPaperSubmissions: value ?? 0 })}
                   />
                 </div>
               </div>
@@ -294,6 +307,8 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                       allowSteps: assignment.allowSteps ?? data.klass.allowSteps,
                       allowHint: assignment.allowHint ?? data.klass.allowHint,
                       maxAttempts: assignment.maxAttempts ?? data.klass.maxAttempts,
+                      maxChoiceAttempts:
+                        assignment.maxChoiceAttempts ?? data.klass.maxChoiceAttempts,
                       examMode: assignment.examMode ?? data.klass.examMode,
                       maxPaperSubmissions:
                         assignment.maxPaperSubmissions ?? data.klass.maxPaperSubmissions,
@@ -337,6 +352,23 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                                 assignmentMutation.mutate({
                                   assignmentId: assignment.id,
                                   maxAttempts: value,
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">
+                              Multiple-choice tries
+                            </Label>
+                            <AttemptsSelect
+                              value={assignment.maxChoiceAttempts}
+                              inheritLabel={`Class default (${attemptLabel(data.klass.maxChoiceAttempts || 1)})`}
+                              choices={CHOICE_ATTEMPT_CHOICES}
+                              allowUnlimited={false}
+                              onChange={(value) =>
+                                assignmentMutation.mutate({
+                                  assignmentId: assignment.id,
+                                  maxChoiceAttempts: value,
                                 })
                               }
                             />
@@ -428,6 +460,19 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                                           })
                                         }
                                       />
+                                      <AttemptsSelect
+                                        value={override?.maxChoiceAttempts ?? null}
+                                        inheritLabel={`Multiple choice: same as homework (${attemptLabel(effective.maxChoiceAttempts || 1)})`}
+                                        choices={CHOICE_ATTEMPT_CHOICES}
+                                        allowUnlimited={false}
+                                        onChange={(value) =>
+                                          studentMutation.mutate({
+                                            assignmentId: assignment.id,
+                                            studentId: student.id,
+                                            maxChoiceAttempts: value,
+                                          })
+                                        }
+                                      />
                                       <OnOffSelect
                                         value={override?.examMode ?? null}
                                         inheritLabel={`Real paper: same as homework (${effective.examMode ? "on" : "off"})`}
@@ -439,7 +484,7 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                                           })
                                         }
                                       />
-                                       <SubmissionsSelect
+                                      <SubmissionsSelect
                                         disabled={!(override?.examMode ?? effective.examMode)}
                                         value={override?.maxPaperSubmissions ?? null}
                                         inheritLabel={`Hand-ins: same as homework (${submissionLabel(effective.maxPaperSubmissions)})`}

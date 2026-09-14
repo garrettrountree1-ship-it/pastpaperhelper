@@ -1,3 +1,4 @@
+import { attemptsAllowed } from "@/lib/multiple-choice";
 import { formatDueDate } from "@/lib/datetime";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
@@ -266,7 +267,13 @@ function PreviewPage() {
                           protectQuestions={Boolean(data.tutorSettings?.protectQuestions)}
                           allowHint={settings?.allowHint !== false}
                           allowSteps={settings?.allowSteps !== false}
-                          maxAttempts={settings?.maxAttempts ?? 0}
+                          maxAttempts={attemptsAllowed({
+                            multipleChoice: Boolean(
+                              (question as { multipleChoice?: boolean }).multipleChoice,
+                            ),
+                            maxAttempts: settings?.maxAttempts ?? 0,
+                            maxChoiceAttempts: settings?.maxChoiceAttempts ?? 0,
+                          })}
                           markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
                           revealOnFullMarks={Boolean(data.assignment.revealOnFullMarks)}
                           onFlag={() => setFlags((count) => count + 1)}

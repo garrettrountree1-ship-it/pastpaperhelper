@@ -147,6 +147,8 @@ type QuestionDraft = {
   answerSourcePagePath: string;
   tagLabel: string;
   tagImage: string;
+  /** null lets the app work it out from the printed answer. */
+  multipleChoice: boolean | null;
 };
 
 const emptyQuestion = (): QuestionDraft => ({
@@ -162,6 +164,7 @@ const emptyQuestion = (): QuestionDraft => ({
   answerSourcePagePath: "",
   tagLabel: "",
   tagImage: "",
+  multipleChoice: null,
 });
 
 function PendingClassPage() {
@@ -666,6 +669,7 @@ function AssignmentDialog({
           answerSourcePagePath: q.answerSourcePagePath ?? "",
           tagLabel: "",
           tagImage: "",
+          multipleChoice: null,
         })),
       );
       toast.success(`${result.questions.length} questions read from your files`);
@@ -732,6 +736,7 @@ function AssignmentDialog({
         answerSourcePagePath: q.answerSourcePagePath ?? "",
         tagLabel: q.tagLabel ?? "",
         tagImage: q.tagImage ?? "",
+        multipleChoice: q.multipleChoice ?? null,
       }));
       if (editing) {
         return update({
@@ -1301,6 +1306,33 @@ function AssignmentDialog({
                         }
                         className="w-20"
                       />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor={`mc-${index}`}>Multiple choice</Label>
+                      <Select
+                        value={
+                          question.multipleChoice === null
+                            ? "auto"
+                            : question.multipleChoice
+                              ? "yes"
+                              : "no"
+                        }
+                        onValueChange={(value) =>
+                          update_(index, {
+                            multipleChoice: value === "auto" ? null : value === "yes",
+                          })
+                        }
+                      >
+                        <SelectTrigger id={`mc-${index}`} className="w-44">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto">Work it out</SelectItem>
+                          <SelectItem value="yes">Yes — fewer tries</SelectItem>
+                          <SelectItem value="no">No</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>

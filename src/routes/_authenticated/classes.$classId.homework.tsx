@@ -1224,7 +1224,14 @@ function AssignmentDialog({
                             variant="ghost"
                             size="sm"
                             onClick={() =>
-                              update_(index, { answerImagePaths: [], answerImageUrls: [] })
+                              update_(index, {
+                                answerImagePaths: [],
+                                answerImageUrls: [],
+                                markScheme:
+                                  question.markScheme === "See the printed mark scheme picture."
+                                    ? ""
+                                    : question.markScheme,
+                              })
                             }
                           >
                             Remove answer picture
@@ -1234,8 +1241,7 @@ function AssignmentDialog({
                     ) : (
                       <div className="space-y-2 rounded-md border border-dashed border-border p-3">
                         <p className="text-xs text-muted-foreground">
-                          No answer picture yet. Answers are only ever the picture cut from the
-                          printed mark scheme — cut this one from the mark-scheme page.
+                          Cut the official answer from the mark-scheme page, or type it below.
                         </p>
                         <QuestionRecutDialog
                           label="Cut answer"
@@ -1255,6 +1261,20 @@ function AssignmentDialog({
                             update_(index, { answerImagePaths, answerImageUrls })
                           }
                         />
+                        <div className="space-y-1">
+                          <Label htmlFor={`answer-text-${index}`}>Type the answer instead</Label>
+                          <Textarea
+                            id={`answer-text-${index}`}
+                            value={
+                              question.markScheme === "See the printed mark scheme picture."
+                                ? ""
+                                : question.markScheme
+                            }
+                            onChange={(event) => update_(index, { markScheme: event.target.value })}
+                            placeholder="Type the official answer and the marking points"
+                            rows={4}
+                          />
+                        </div>
                       </div>
                     )}
 

@@ -200,10 +200,18 @@ export function QuestionRecutDialog({
             <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_15rem]">
               <div className="relative mx-auto w-full max-w-2xl overflow-hidden border border-border bg-card">
                 <img
-                  src={pageWithoutCrop(current.url)}
+                  key={pageWithoutCrop(current.path)}
+                  src={pageWithoutCrop(pages[pageIndex]?.url ?? current.url)}
                   alt="Full original paper page"
+                  loading="eager"
                   className="block w-full"
+                  onError={() => {
+                    // A page link can go stale while the window is open; fetch
+                    // a fresh one so the teacher sees the paper, not blank space.
+                    void pagesQuery.refetch();
+                  }}
                 />
+
                 <div
                   aria-hidden="true"
                   className="pointer-events-none absolute inset-x-0 top-0 bg-foreground/45"

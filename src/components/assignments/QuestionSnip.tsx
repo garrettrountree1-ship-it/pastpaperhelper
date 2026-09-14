@@ -48,7 +48,7 @@ function SnipBand({ url, alt }: { url: string; alt: string }) {
       <img
         src={url}
         alt={alt}
-        loading="lazy"
+        loading="eager"
         {...guard}
         className="pointer-events-none block w-full select-none object-contain"
       />
@@ -67,7 +67,7 @@ function SnipBand({ url, alt }: { url: string; alt: string }) {
       <img
         src={url}
         alt={alt}
-        loading="lazy"
+        loading="eager"
         {...guard}
         onLoad={(event) => {
           const image = event.currentTarget;
@@ -188,5 +188,3 @@ export function QuestionSnipStack({
     </div>
   );
 }
-
-

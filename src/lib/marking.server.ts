@@ -45,7 +45,6 @@ type MarkInput = {
   markSchemeImageUrls?: string[];
 };
 
-
 export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
   const images = input.imageUrls ?? [];
   const questionImages = input.questionImageUrls ?? [];
@@ -80,6 +79,8 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     "Be generous with equivalent wording: a short answer such as a single letter, number, formula or option that matches the mark scheme earns full marks.",
     "Answers may include photos of handwritten maths working, graphs or diagrams; read the images and credit correct working shown there.",
     "When the answer is a photo of handwritten calculation working, mark it step by step: award each method/substitution mark that is correct even if the final answer is wrong, so partial credit is normal. If a diagram or drawing is photographed, judge the drawing itself against the mark scheme (labels, lines, shading, plotted points) rather than expecting typed words.",
+    "CALCULATIONS — a correct final number alone is FULL MARKS: when the mark scheme shows working leading to a final numerical answer (e.g. '7 - 4 = 3', or M1 for the method and A1 for the value), and the student gives only that final answer with no working at all, award EVERY mark for that question, mark all of its markPoints as awarded and set verdict 'correct'. Never deduct marks for missing steps, missing method lines or missing substitutions. Accept the value in any equivalent form: same number written differently, an equivalent fraction/decimal, correct rounding or significant figures, with or without the unit unless the printed scheme explicitly demands the unit, and with or without an '=' sign or restated formula.",
+    "When a student DOES show working, still mark each step against the scheme and award partial credit for correct steps; but if their final numerical answer is correct, award full marks regardless of how much working is shown or whether an intermediate line is untidy or omitted.",
     "If a photo is unreadable or shows no relevant working, say so plainly without revealing the answer.",
     "Split the mark scheme into its individual marking points exactly as written (each M1/A1/B1 or bullet worth its stated marks) and return them in markPoints with marks for that point and awarded true/false. The sum of the marks of awarded points MUST equal awardedMarks.",
     "Award marks only for points that genuinely match the mark scheme. Never award more than the marks available and never award negative marks.",
@@ -92,8 +93,10 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     "Output raw JSON only.",
   ].join(" ");
 
-  const asImage = (url: string) =>
-    ({ type: "image" as const, image: url.startsWith("data:") ? url : new URL(url) });
+  const asImage = (url: string) => ({
+    type: "image" as const,
+    image: url.startsWith("data:") ? url : new URL(url),
+  });
 
   const content = [
     { type: "text" as const, text: prompt },
@@ -101,9 +104,6 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     ...schemeImages.map(asImage),
     ...images.map(asImage),
   ];
-
-
-
 
   let lastError: unknown = null;
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -171,9 +171,7 @@ function extractJson(text: string): string {
   return start >= 0 && end > start ? source.slice(start, end + 1) : source;
 }
 
-
 type TutorTurn = { role: "tutor" | "student"; content: string };
-
 
 type TutorInput = {
   curriculum: string;
@@ -250,4 +248,3 @@ export async function tutorStep(input: TutorInput): Promise<string> {
   const { text } = await generateText({ model: gatewayModel(), system, prompt });
   return text.trim();
 }
-

@@ -53,7 +53,9 @@ export async function findCopiedFromPeers(
   answerText: string,
 ): Promise<OriginalityHit | null> {
   const words = normalise(answerText).split(" ").filter(Boolean).length;
-  if (words < 5) return null;
+  // Short answers and working legitimately match between students — only long
+  // prose blocks are compared at all.
+  if (words < 25) return null;
 
   const { data: rows } = await db
     .from("answers")
@@ -82,12 +84,10 @@ export async function findCopiedFromPeers(
     if (score > best) best = score;
   }
 
-  if (best >= 0.28) {
+  if (best >= 0.85) {
     return {
       reason:
-        best >= 0.8
-          ? "The answer is word-for-word identical to another student's answer, so it is copied from a shared source."
-          : "The answer closely matches another student's wording, so it is copied from a shared source rather than written independently.",
+        "The answer is word-for-word identical to another student's answer, so it is copied from a shared source.",
       confidence: Math.min(0.99, best),
     };
   }

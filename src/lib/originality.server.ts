@@ -53,7 +53,9 @@ export async function findCopiedFromPeers(
   answerText: string,
 ): Promise<OriginalityHit | null> {
   const words = normalise(answerText).split(" ").filter(Boolean).length;
-  if (words < 5) return null;
+  // Short answers and working legitimately match between students — only long
+  // prose blocks are compared at all.
+  if (words < 25) return null;
 
   const { data: rows } = await db
     .from("answers")

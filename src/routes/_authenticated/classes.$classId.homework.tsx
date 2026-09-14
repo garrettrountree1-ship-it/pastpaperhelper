@@ -1205,12 +1205,27 @@ function AssignmentDialog({
                       </div>
                     </div>
                   ) : (
-                    <Textarea
-                      value={question.markScheme}
-                      onChange={(event) => update_(index, { markScheme: event.target.value })}
-                      placeholder="Paste the mark scheme answer here (students never see this)"
-                      rows={3}
-                    />
+                    <div className="space-y-2 rounded-md border border-dashed border-border p-3">
+                      <p className="text-xs text-muted-foreground">
+                        No answer picture yet. Answers are only ever the picture cut from the
+                        printed mark scheme — cut this one from the mark-scheme page.
+                      </p>
+                      <QuestionRecutDialog
+                        label="Cut answer"
+                        sheet="answer"
+                        sourcePath={
+                          question.imagePaths[0] ??
+                          questions.find((q) => q.answerImagePaths.length > 0)
+                            ?.answerImagePaths[0] ??
+                          ""
+                        }
+                        imagePaths={[]}
+                        imageUrls={[]}
+                        onSave={(answerImagePaths, answerImageUrls) =>
+                          update_(index, { answerImagePaths, answerImageUrls })
+                        }
+                      />
+                    </div>
                   )}
 
                   <div className="space-y-1">

@@ -1037,7 +1037,8 @@ function cropSignature(item: ExtractedQuestion | DetailResult): string | null {
   if (!crops || crops.length === 0) return null;
   return crops
     .map((crop) => {
-      const sheet = "sheet" in crop ? String((crop as { sheet?: string }).sheet ?? "paper") : "paper";
+      const sheet =
+        "sheet" in crop ? String((crop as { sheet?: string }).sheet ?? "paper") : "paper";
       return `${sheet}:${crop.page}:${crop.top.toFixed(2)}:${crop.bottom.toFixed(2)}`;
     })
     .sort()

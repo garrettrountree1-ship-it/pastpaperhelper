@@ -531,13 +531,18 @@ export function DrawingPad({
   function scheduleSave() {
     window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
-      if (strokesRef.current.length > 0) attach();
+      // Save empty sheets too. Clearing the final stroke must replace the old
+      // attached image and thumbnail rather than leaving stale writing behind.
+      attach();
     }, 700);
   }
 
   /** Minimising saves the sheet so the student can go straight to submitting. */
   function minimise() {
-    if (hasInk) attach();
+    window.clearTimeout(saveTimer.current);
+    // Always capture the current canvas, including a sheet that was just
+    // cleared, so the collapsed preview exactly matches the pad.
+    attach();
     setFull(false);
   }
 
@@ -745,6 +750,7 @@ export function DrawingPad({
             setHasInk(false);
             setSaved(false);
             redraw();
+            scheduleSave();
           }}
         >
           <Eraser className="size-4" />

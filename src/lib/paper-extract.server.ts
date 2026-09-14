@@ -216,11 +216,19 @@ export async function extractQuestionsFromPapers(input: ExtractInput): Promise<E
 
   const results = await runBatches(key, header, documents, inventory, hasAnswerPages);
 
-  // Any label the detail pass dropped gets one focused retry.
+  // Any label the detail pass dropped gets one focused retry. The retry may hand
+  // back items already present, so only genuinely new keys are appended —
+  // otherwise the repeats pile up at the end of the question list.
   const done = new Set(results.map((r) => r.key.toLowerCase()));
   const missing = inventory.filter((i) => !done.has(i.key.toLowerCase()));
   if (missing.length > 0) {
-    results.push(...(await runBatches(key, header, documents, missing, hasAnswerPages)));
+    const retried = await runBatches(key, header, documents, missing, hasAnswerPages);
+    for (const item of retried) {
+      const itemKey = item.key.toLowerCase();
+      if (done.has(itemKey)) continue;
+      done.add(itemKey);
+      results.push(item);
+    }
   }
 
   const kept = new Set(results.map((r) => r.label.toLowerCase()));
@@ -1023,8 +1031,23 @@ export function scrubIdentifiers(input: string): string {
     .trim();
 }
 
+/** The page region a question is cut from, rounded so tiny drifts still match. */
+function cropSignature(item: ExtractedQuestion | DetailResult): string | null {
+  const crops = item.crops;
+  if (!crops || crops.length === 0) return null;
+  return crops
+    .map((crop) => {
+      const sheet =
+        "sheet" in crop ? String((crop as { sheet?: string }).sheet ?? "paper") : "paper";
+      return `${sheet}:${crop.page}:${crop.top.toFixed(2)}:${crop.bottom.toFixed(2)}`;
+    })
+    .sort()
+    .join("|");
+}
+
 function dedupe(items: Array<ExtractedQuestion | DetailResult>): ExtractedQuestion[] {
   const seen = new Set<string>();
+  const seenRegions = new Set<string>();
   const out: ExtractedQuestion[] = [];
   for (const item of items) {
     if (!item.questionText) continue;
@@ -1032,7 +1055,12 @@ function dedupe(items: Array<ExtractedQuestion | DetailResult>): ExtractedQuesti
     // wording (whitespace-normalised) instead of the first few words.
     const fingerprint = item.questionText.replace(/\s+/g, " ").trim().toLowerCase();
     if (seen.has(fingerprint)) continue;
+    // The same picture must never be published twice, even when the wording the
+    // reader returned for it differs slightly between passes.
+    const region = cropSignature(item);
+    if (region && seenRegions.has(region)) continue;
     seen.add(fingerprint);
+    if (region) seenRegions.add(region);
     out.push({
       questionText: item.questionText,
       markScheme: item.markScheme,

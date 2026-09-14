@@ -499,7 +499,12 @@ export const getQuizWorkspace = createServerFn({ method: "POST" })
             questionText: q.question_text,
             marks: q.marks,
             imageUrls: await signPaperPages(db, q.image_paths ?? []),
-            markScheme: finished && quiz.reveal_mark_scheme ? q.mark_scheme : null,
+            // Released answers are only ever the picture cut from the printed
+            // mark scheme, never retyped text.
+            markSchemeImageUrls:
+              finished && quiz.reveal_mark_scheme
+                ? await signPaperPages(db, q.answer_image_paths ?? [])
+                : [],
             answerText: answer?.answer_text ?? "",
             answerImageUrls: await signWorkImages(db, answer?.image_paths ?? []),
             result:

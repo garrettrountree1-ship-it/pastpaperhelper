@@ -114,6 +114,8 @@ const DETAIL_SYSTEM = [
   "If an answer or mark scheme is printed on the same page below this part, the band MUST end above the first character of that answer text, even if that means the band is short.",
   "Only set crops to null if you truly cannot locate the part on any page.",
   "answerCrops: the band(s) of page picture(s) showing the OFFICIAL ANSWER / mark scheme for this exact part, so the printed marking points, ticks, fractions and notation are kept as pictures instead of retyped. Paper pages are labelled PAGE N; mark scheme pages are labelled ANSWER PAGE N. Use {\"sheet\":\"answer\",\"page\":N,\"top\":T,\"bottom\":B} for a mark scheme page and {\"sheet\":\"paper\",...} when the answer is printed on a paper page. Start at this part's own answer row/label and stop before the next part's answer. Give at most two bands, and set answerCrops to null if you cannot locate the answer.",
+  "Mark-scheme rows are printed very close together, often a single line apart. Every answerCrops band must be as tight as the printed rows for that one part — a band only one or two lines tall is correct. Never pad a band, and never let the row above or below appear inside it.",
+  "answerCrops are required whenever the answer is printed anywhere in the upload: the answer is always shown as this picture and is never retyped for the student.",
 
   "Symbols and units MUST be reproduced as real Unicode characters exactly as printed: \u00b0C, \u00b0F, \u00b5, \u03a9, \u00b1, \u00d7, \u00f7, \u2264, \u2265, \u2248, \u2192, \u21cc, \u221a, \u03b1\u03b2\u03b3\u03bb\u03c0\u0394\u03b8, subscripts/superscripts (H\u2082O, cm\u00b3, m s\u207b\u00b2, 10\u2076).",
   "Never write symbols as words, ASCII stand-ins or escapes: no \"degrees C\", \"deg C\", \"oC\", \"^oC\", \"ohms\", \"micro\", \"+/-\", \"\\\\u00b0\", \"&deg;\", \"?C\". Write 25 \u00b0C, 4.7 k\u03a9, 3 \u00b5A.",
@@ -252,6 +254,7 @@ export async function locateAnswerCrop(input: {
     "Locate the exact printed mark-scheme answer for the requested question.",
     "Return only its horizontal crop band, starting at its own label and ending before the next answer.",
     "Cut only through blank white space. Never include another answer.",
+    "Mark-scheme rows sit very close together, often one line apart. Keep the band as tight as possible — a band only one or two printed lines tall is correct and expected. Never widen it to be safe.",
     'Reply with JSON only: {"answerCrops":[{"page":1,"top":0.2,"bottom":0.3}]}.',
   ].join(" "), [
     {

@@ -42,12 +42,16 @@ export const getClassScaffolding = createServerFn({ method: "POST" })
     const [{ data: klass }, { data: assignments }, { data: members }] = await Promise.all([
       db
         .from("classes")
-        .select("allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions")
+        .select(
+          "allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions",
+        )
         .eq("id", data.classId)
         .single(),
       db
         .from("assignments")
-        .select("id, title, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions, archived_at")
+        .select(
+          "id, title, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions, archived_at",
+        )
         .eq("class_id", data.classId)
         .is("archived_at", null)
         .order("created_at", { ascending: false }),
@@ -64,7 +68,9 @@ export const getClassScaffolding = createServerFn({ method: "POST" })
       assignmentIds.length
         ? db
             .from("student_assignment_settings")
-            .select("assignment_id, student_id, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions")
+            .select(
+              "assignment_id, student_id, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions",
+            )
             .in("assignment_id", assignmentIds)
         : Promise.resolve({ data: [] as any[] }),
     ]);
@@ -137,8 +143,7 @@ export const setClassScaffolding = createServerFn({ method: "POST" })
     if (data.allowHint !== undefined) patch["allow_hint"] = data.allowHint;
     if (data.allowSteps !== undefined) patch["allow_steps"] = data.allowSteps;
     if (data.maxAttempts !== undefined) patch["max_answer_attempts"] = data.maxAttempts;
-    if (data.maxChoiceAttempts !== undefined)
-      patch["max_choice_attempts"] = data.maxChoiceAttempts;
+    if (data.maxChoiceAttempts !== undefined) patch["max_choice_attempts"] = data.maxChoiceAttempts;
     if (data.examMode !== undefined) patch["exam_mode"] = data.examMode;
     if (data.maxPaperSubmissions !== undefined)
       patch["max_paper_submissions"] = data.maxPaperSubmissions;
@@ -168,8 +173,7 @@ export const setAssignmentScaffolding = createServerFn({ method: "POST" })
     if (data.allowHint !== undefined) patch["allow_hint"] = data.allowHint;
     if (data.allowSteps !== undefined) patch["allow_steps"] = data.allowSteps;
     if (data.maxAttempts !== undefined) patch["max_answer_attempts"] = data.maxAttempts;
-    if (data.maxChoiceAttempts !== undefined)
-      patch["max_choice_attempts"] = data.maxChoiceAttempts;
+    if (data.maxChoiceAttempts !== undefined) patch["max_choice_attempts"] = data.maxChoiceAttempts;
     if (data.examMode !== undefined) patch["exam_mode"] = data.examMode;
     if (data.maxPaperSubmissions !== undefined)
       patch["max_paper_submissions"] = data.maxPaperSubmissions;
@@ -210,8 +214,7 @@ export const setStudentScaffolding = createServerFn({ method: "POST" })
     if (data.allowHint !== undefined) patch["allow_hint"] = data.allowHint;
     if (data.allowSteps !== undefined) patch["allow_steps"] = data.allowSteps;
     if (data.maxAttempts !== undefined) patch["max_answer_attempts"] = data.maxAttempts;
-    if (data.maxChoiceAttempts !== undefined)
-      patch["max_choice_attempts"] = data.maxChoiceAttempts;
+    if (data.maxChoiceAttempts !== undefined) patch["max_choice_attempts"] = data.maxChoiceAttempts;
     if (data.examMode !== undefined) patch["exam_mode"] = data.examMode;
     if (data.maxPaperSubmissions !== undefined)
       patch["max_paper_submissions"] = data.maxPaperSubmissions;

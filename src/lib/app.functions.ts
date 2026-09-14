@@ -547,8 +547,8 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
             pageWithoutCrop((q.answer_image_paths ?? [])[0] ?? (q.image_paths ?? [])[0] ?? ""),
           tagLabel: q.tag_label ?? "",
           tagImage: q.tag_image ?? "",
-          multipleChoice: ((q as { multiple_choice?: boolean | null }).multiple_choice ??
-            null) as boolean | null,
+          multipleChoice: ((q as { multiple_choice?: boolean | null }).multiple_choice ?? null) as
+            boolean | null,
           autoMultipleChoice: isMultipleChoice(
             (q as { multiple_choice?: boolean | null }).multiple_choice,
             (q as { mark_scheme?: string | null }).mark_scheme,

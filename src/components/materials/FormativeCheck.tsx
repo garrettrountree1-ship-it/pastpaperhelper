@@ -100,6 +100,7 @@ const ATTEMPT_OPTIONS = [
   { value: 1, label: "1 try" },
   { value: 2, label: "2 tries" },
   { value: 3, label: "3 tries" },
+  { value: 4, label: "4 tries" },
   { value: 5, label: "5 tries" },
 ] as const;
 
@@ -188,7 +189,9 @@ function ClassroomLeaderboard({
           </span>
           Live leaderboard
         </p>
-        <p className="mt-1 text-sm text-primary-foreground/80">Every correct answer can change the race.</p>
+        <p className="mt-1 text-sm text-primary-foreground/80">
+          Every correct answer can change the race.
+        </p>
       </div>
       <div className="h-[calc(100%-5.5rem)] space-y-3 overflow-y-auto p-3 lg:h-[calc(100%-6.5rem)] lg:p-4">
         {rows.map((row, index) => {
@@ -205,7 +208,9 @@ function ClassroomLeaderboard({
             >
               <span
                 className={`flex size-10 shrink-0 items-center justify-center rounded-full font-display text-lg ${
-                  rank <= 3 ? "bg-warning text-warning-foreground" : "bg-secondary text-secondary-foreground"
+                  rank <= 3
+                    ? "bg-warning text-warning-foreground"
+                    : "bg-secondary text-secondary-foreground"
                 }`}
               >
                 {rank}
@@ -227,7 +232,9 @@ function ClassroomLeaderboard({
           );
         })}
         {rows.length === 0 ? (
-          <p className="p-6 text-center text-sm text-muted-foreground">Scores appear after the first correct answer.</p>
+          <p className="p-6 text-center text-sm text-muted-foreground">
+            Scores appear after the first correct answer.
+          </p>
         ) : null}
       </div>
     </aside>
@@ -304,7 +311,6 @@ export function FormativeCheckButton({
     onError: (error: Error) => toast.error(error.message),
   });
 
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -345,8 +351,8 @@ export function FormativeCheckButton({
               placeholder="Add text here, or paste a picture of the question"
             />
             <p className="text-xs text-muted-foreground">
-              Copy a picture of the question and paste it here (Ctrl/⌘+V) — students see the
-              picture and the AI reads it too.
+              Copy a picture of the question and paste it here (Ctrl/⌘+V) — students see the picture
+              and the AI reads it too.
             </p>
             <div className="flex items-center gap-2">
               <Button asChild type="button" size="sm" variant="outline">
@@ -439,8 +445,6 @@ export function FormativeCheckButton({
           <div className="space-y-1">
             <Label>Timer</Label>
             <div className="flex flex-wrap gap-2">
-
-
               {TIMER_OPTIONS.map((option) => (
                 <Button
                   key={option.value}
@@ -486,8 +490,8 @@ export function FormativeCheckButton({
             </div>
             {countUp ? (
               <p className="pt-1 text-xs text-muted-foreground">
-                No time limit — the clock counts up while students work, and each student sees
-                the total time they took once they get it right.
+                No time limit — the clock counts up while students work, and each student sees the
+                total time they took once they get it right.
               </p>
             ) : null}
             {customTimer && !countUp ? (
@@ -521,7 +525,10 @@ export function FormativeCheckButton({
           </div>
           <div className="space-y-1">
             <Label>Tries allowed</Label>
-            <p className="text-xs text-muted-foreground">How many goes each student gets</p>
+            <p className="text-xs text-muted-foreground">
+              How many goes each student gets — for multiple choice, keep it at 1 so it cannot be
+              guessed
+            </p>
             <div className="flex flex-wrap gap-2">
               {ATTEMPT_OPTIONS.map((option) => (
                 <Button
@@ -536,7 +543,6 @@ export function FormativeCheckButton({
               ))}
             </div>
           </div>
-
         </div>
         <DialogFooter>
           <Button
@@ -561,7 +567,6 @@ export function FormativeCheckButton({
 export { questionParts };
 
 export function FormativeCheckPanel({
-
   classId,
   asStudent = false,
   showPopup = true,
@@ -617,8 +622,7 @@ export function FormativeCheckPanel({
   // The teacher's launch works out the parts (reading the picture too); the
   // text reader is the fallback for older questions.
   const parts = useMemo(
-    () =>
-      check ? (check.parts?.length ? check.parts : questionParts(check.question)) : [],
+    () => (check ? (check.parts?.length ? check.parts : questionParts(check.question)) : []),
     [check?.parts, check?.question],
   );
   // Parts already right on an earlier try are frozen.
@@ -630,7 +634,6 @@ export function FormativeCheckPanel({
         .filter((line) => line.replace(/^\([a-z0-9ivx\s]+\)\s*/i, "").length > 0)
         .join("\n")
     : answer;
-
 
   const results = useQuery({
     queryKey: ["formative-results", check?.id],
@@ -725,9 +728,6 @@ export function FormativeCheckPanel({
     onError: (error: Error) => toast.error(error.message),
   });
 
-
-
-
   const latest = useMemo(
     () => (check?.myAttempts.length ? check.myAttempts[check.myAttempts.length - 1] : null),
     [check],
@@ -742,7 +742,7 @@ export function FormativeCheckPanel({
   }, [check?.id]);
 
   // A student's question box only leaves the screen when they get it right (a
-// short celebration first) or when the teacher closes it for everyone.
+  // short celebration first) or when the teacher closes it for everyone.
   const gotItRight = latest?.verdict === "correct";
   useEffect(() => {
     if (!check?.id || check.isTeacher || !gotItRight) return;
@@ -765,7 +765,6 @@ export function FormativeCheckPanel({
           ),
         )
       : null;
-
 
   const student = !check.isTeacher;
   // Teacher's tries limit for this question (0 = as many as they like).
@@ -831,303 +830,294 @@ export function FormativeCheckPanel({
             : "contents"
         }
       >
-      {boardOn ? (
-        <ClassroomLeaderboard
-          rows={boardRows}
-          className={
-            student
-              ? `${showPhoneLeaderboard ? "block" : "hidden"} h-full md:block`
-              : "fixed bottom-3 left-3 right-3 z-[71] max-h-[34vh] lg:bottom-auto lg:left-4 lg:right-auto lg:top-1/2 lg:max-h-[92vh] lg:w-[min(34vw,28rem)] lg:-translate-y-1/2"
-          }
-        />
-      ) : null}
-      <div
-        className={
-          student
-            ? `${showPhoneQuestion ? "block" : "hidden"} min-h-0 min-w-0 overflow-y-auto rounded-2xl border border-border bg-background p-4 shadow-2xl md:block sm:p-6`
-            : "pointer-events-auto max-h-[80vh] w-[min(96vw,34rem)] overflow-y-auto rounded-2xl border border-border bg-background p-5 shadow-2xl"
-        }
-      >
-        {student ? (
-          <div className="mb-5 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
-            <AliasAvatar alias={myAlias} size={40} />
-            <div>
-              <p className="text-sm font-medium text-foreground">You are answering as</p>
-              <p className="font-display text-base text-primary">{myAlias}</p>
-            </div>
-          </div>
-        ) : null}
-
-
-        <div className="flex items-start gap-3">
-          <Badge
-            variant={timeUp ? "outline" : "secondary"}
-            className={student ? "shrink-0 text-sm" : "shrink-0"}
-          >
-            <Timer className={student ? "mr-1 size-4" : "mr-1 size-3"} />
-            {check.countUp
-              ? totalSeconds !== null
-                ? formatDuration(totalSeconds)
-                : (stopwatch?.label ?? "0s")
-              : timeUp
-                ? "Time up"
-                : (countdown?.label ?? "--")}
-          </Badge>
-          <p
+        {boardOn ? (
+          <ClassroomLeaderboard
+            rows={boardRows}
             className={
               student
-                ? "min-w-0 flex-1 whitespace-pre-wrap text-lg font-medium leading-relaxed"
-                : "min-w-0 flex-1 whitespace-pre-wrap text-base font-medium leading-relaxed"
-            }
-          >
-            {check.question}
-          </p>
-          {check.isTeacher ? (
-            <Button
-              size="icon"
-              variant="ghost"
-              className="size-7 shrink-0"
-              aria-label="End this question and close it on every screen"
-              title="End this question and close it on every screen"
-              onClick={async () => {
-                await close({ data: { checkId: check.id } });
-                await queryClient.invalidateQueries({ queryKey: ["formative-active", classId] });
-                setDismissed(check.id);
-              }}
-            >
-              <X className="size-4" />
-            </Button>
-          ) : null}
-        </div>
-
-        {check.questionImage ? (
-          <img
-            src={check.questionImage}
-            alt="Question picture"
-            className={
-              student
-                ? "mt-4 max-h-[45vh] w-full rounded-lg border border-border object-contain"
-                : "mt-3 max-h-[38vh] w-full rounded-md border border-border object-contain"
+                ? `${showPhoneLeaderboard ? "block" : "hidden"} h-full md:block`
+                : "fixed bottom-3 left-3 right-3 z-[71] max-h-[34vh] lg:bottom-auto lg:left-4 lg:right-auto lg:top-1/2 lg:max-h-[92vh] lg:w-[min(34vw,28rem)] lg:-translate-y-1/2"
             }
           />
         ) : null}
+        <div
+          className={
+            student
+              ? `${showPhoneQuestion ? "block" : "hidden"} min-h-0 min-w-0 overflow-y-auto rounded-2xl border border-border bg-background p-4 shadow-2xl md:block sm:p-6`
+              : "pointer-events-auto max-h-[80vh] w-[min(96vw,34rem)] overflow-y-auto rounded-2xl border border-border bg-background p-5 shadow-2xl"
+          }
+        >
+          {student ? (
+            <div className="mb-5 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+              <AliasAvatar alias={myAlias} size={40} />
+              <div>
+                <p className="text-sm font-medium text-foreground">You are answering as</p>
+                <p className="font-display text-base text-primary">{myAlias}</p>
+              </div>
+            </div>
+          ) : null}
 
-        {check.releasedAnswer ? (
-          <div className="mt-4 rounded-lg border border-primary/40 bg-primary/10 p-4">
-            <p className="font-display text-base text-primary">The answer</p>
-            <p className="mt-1 whitespace-pre-wrap text-base">{check.releasedAnswer}</p>
+          <div className="flex items-start gap-3">
+            <Badge
+              variant={timeUp ? "outline" : "secondary"}
+              className={student ? "shrink-0 text-sm" : "shrink-0"}
+            >
+              <Timer className={student ? "mr-1 size-4" : "mr-1 size-3"} />
+              {check.countUp
+                ? totalSeconds !== null
+                  ? formatDuration(totalSeconds)
+                  : (stopwatch?.label ?? "0s")
+                : timeUp
+                  ? "Time up"
+                  : (countdown?.label ?? "--")}
+            </Badge>
+            <p
+              className={
+                student
+                  ? "min-w-0 flex-1 whitespace-pre-wrap text-lg font-medium leading-relaxed"
+                  : "min-w-0 flex-1 whitespace-pre-wrap text-base font-medium leading-relaxed"
+              }
+            >
+              {check.question}
+            </p>
+            {check.isTeacher ? (
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-7 shrink-0"
+                aria-label="End this question and close it on every screen"
+                title="End this question and close it on every screen"
+                onClick={async () => {
+                  await close({ data: { checkId: check.id } });
+                  await queryClient.invalidateQueries({ queryKey: ["formative-active", classId] });
+                  setDismissed(check.id);
+                }}
+              >
+                <X className="size-4" />
+              </Button>
+            ) : null}
           </div>
-        ) : null}
 
-        {check.isTeacher ? (
-          <div className="mt-3 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              {check.countUp ? null : (
+          {check.questionImage ? (
+            <img
+              src={check.questionImage}
+              alt="Question picture"
+              className={
+                student
+                  ? "mt-4 max-h-[45vh] w-full rounded-lg border border-border object-contain"
+                  : "mt-3 max-h-[38vh] w-full rounded-md border border-border object-contain"
+              }
+            />
+          ) : null}
+
+          {check.releasedAnswer ? (
+            <div className="mt-4 rounded-lg border border-primary/40 bg-primary/10 p-4">
+              <p className="font-display text-base text-primary">The answer</p>
+              <p className="mt-1 whitespace-pre-wrap text-base">{check.releasedAnswer}</p>
+            </div>
+          ) : null}
+
+          {check.isTeacher ? (
+            <div className="mt-3 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {check.countUp ? null : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={extend.isPending}
+                    onClick={() => extend.mutate(30)}
+                  >
+                    <Timer className="size-4" />
+                    Add 30 sec
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={extend.isPending}
-                  onClick={() => extend.mutate(30)}
+                  disabled={reveal.isPending || Boolean(check.releasedAnswer)}
+                  onClick={() => reveal.mutate()}
                 >
-                  <Timer className="size-4" />
-                  Add 30 sec
+                  <Eye className="size-4" />
+                  {check.releasedAnswer
+                    ? "Answer released"
+                    : reveal.isPending
+                      ? "Working it out…"
+                      : "Release the answer"}
                 </Button>
-              )}
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={reveal.isPending || Boolean(check.releasedAnswer)}
-                onClick={() => reveal.mutate()}
-              >
-                <Eye className="size-4" />
-                {check.releasedAnswer
-                  ? "Answer released"
-                  : reveal.isPending
-                    ? "Working it out…"
-                    : "Release the answer"}
-              </Button>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                variant={boardOn ? "default" : "outline"}
-                disabled={setBoard.isPending}
-                onClick={() => setBoard.mutate(!boardOn)}
-              >
-                <Trophy className="size-4" />
-                {boardOn ? "Leaderboard on" : "Leaderboard off"}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={resetBoard.isPending}
-                onClick={() => resetBoard.mutate()}
-              >
-                <TimerReset className="size-4" />
-                Reset scores
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {(results.data ?? []).length} answered
-              {" · "}
-              {(results.data ?? []).filter((r) => r.verdict === "correct").length} correct
-            </p>
-            <div className="max-h-48 space-y-1 overflow-y-auto">
-              {(results.data ?? []).map((row) => (
-                <div
-                  key={row.studentId}
-                  className="flex items-center justify-between gap-2 rounded-md bg-secondary/50 px-2 py-1 text-xs"
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant={boardOn ? "default" : "outline"}
+                  disabled={setBoard.isPending}
+                  onClick={() => setBoard.mutate(!boardOn)}
                 >
-                  <span className="truncate">{row.name}</span>
-                  <span
-                    className={
-                      row.verdict === "correct" ? "text-primary" : "text-muted-foreground"
-                    }
+                  <Trophy className="size-4" />
+                  {boardOn ? "Leaderboard on" : "Leaderboard off"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={resetBoard.isPending}
+                  onClick={() => resetBoard.mutate()}
+                >
+                  <TimerReset className="size-4" />
+                  Reset scores
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {(results.data ?? []).length} answered
+                {" · "}
+                {(results.data ?? []).filter((r) => r.verdict === "correct").length} correct
+              </p>
+              <div className="max-h-48 space-y-1 overflow-y-auto">
+                {(results.data ?? []).map((row) => (
+                  <div
+                    key={row.studentId}
+                    className="flex items-center justify-between gap-2 rounded-md bg-secondary/50 px-2 py-1 text-xs"
                   >
-                    {row.verdict === "correct" ? "Correct" : "Still working"} · {row.attempts}{" "}
-                    {row.attempts === 1 ? "try" : "tries"}
-                  </span>
+                    <span className="truncate">{row.name}</span>
+                    <span
+                      className={
+                        row.verdict === "correct" ? "text-primary" : "text-muted-foreground"
+                      }
+                    >
+                      {row.verdict === "correct" ? "Correct" : "Still working"} · {row.attempts}{" "}
+                      {row.attempts === 1 ? "try" : "tries"}
+                    </span>
+                  </div>
+                ))}
+                {(results.data ?? []).length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Waiting for answers…</p>
+                ) : null}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This stays on every screen — including after the timer — until you press the X.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {correct ? (
+                <div className="rounded-lg border border-primary/40 bg-primary/10 p-4">
+                  <p className="flex items-center gap-2 font-display text-lg text-primary">
+                    <PartyPopper className="size-5" />
+                    Yes! That&apos;s exactly right — brilliant work!
+                  </p>
+                  {check.countUp && totalSeconds !== null ? (
+                    <p className="mt-1 flex items-center gap-2 text-base font-medium">
+                      <TimerReset className="size-4" />
+                      You took {formatDuration(totalSeconds)} in total.
+                    </p>
+                  ) : null}
+                  {latest?.feedback ? <p className="mt-1 text-base">{latest.feedback}</p> : null}
+                  <div className="mt-3 flex items-center gap-2">
+                    <Button size="sm" onClick={() => setDismissed(check.id)}>
+                      Close
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      This closes on its own in a moment.
+                    </span>
+                  </div>
                 </div>
-              ))}
-              {(results.data ?? []).length === 0 ? (
-                <p className="text-xs text-muted-foreground">Waiting for answers…</p>
+              ) : latest ? (
+                <div className="rounded-lg border border-accent bg-accent/30 p-4 text-base">
+                  <p className="font-medium">You&apos;re on your way — keep going!</p>
+                  <p className="mt-1">{latest.feedback}</p>
+                </div>
+              ) : null}
+
+              {outOfTries && !correct ? (
+                <p className="rounded-lg border border-border bg-secondary/40 p-3 text-base">
+                  You have used all {check.maxAttempts} of your tries for this question — wait for
+                  your teacher to go through it.
+                </p>
+              ) : null}
+
+              {timeUp && !correct ? (
+                <p className="rounded-lg border border-border bg-secondary/40 p-3 text-base">
+                  Time is up — you can still keep trying until you get it right.
+                </p>
+              ) : null}
+
+              {!correct ? (
+                <>
+                  {parts.length ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        This question has {parts.length} parts — answer each one in its own box.
+                        {solved.size > 0
+                          ? ` ${solved.size} of ${parts.length} already right and locked in.`
+                          : ""}
+                      </p>
+                      {parts.map((label) =>
+                        solved.has(label) ? (
+                          <div
+                            key={label}
+                            className="flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-3 text-base"
+                          >
+                            <PartyPopper className="size-4 shrink-0 text-primary" />
+                            <span>
+                              Part ({label}) is correct — locked in. Keep going with the rest!
+                            </span>
+                          </div>
+                        ) : (
+                          <div key={label} className="space-y-1">
+                            <Label htmlFor={`part-${label}`} className="text-base">
+                              Part ({label})
+                            </Label>
+                            <Textarea
+                              id={`part-${label}`}
+                              rows={2}
+                              className="text-base"
+                              value={partAnswers[label] ?? ""}
+                              onChange={(event) =>
+                                setPartAnswers((prev) => ({ ...prev, [label]: event.target.value }))
+                              }
+                              placeholder={`Your answer to (${label}), in English`}
+                            />
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  ) : (
+                    <Textarea
+                      rows={4}
+                      className="text-base"
+                      value={answer}
+                      onChange={(event) => setAnswer(event.target.value)}
+                      placeholder="Type your answer in English"
+                    />
+                  )}
+                  {combined && !isEnglishOnly(combined) ? (
+                    <p className="text-sm text-destructive">{ENGLISH_ONLY_MESSAGE}</p>
+                  ) : null}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      {triesLeft !== null
+                        ? triesLeft > 0
+                          ? `${triesLeft} ${triesLeft === 1 ? "try" : "tries"} left`
+                          : "No tries left on this question"
+                        : check.myAttempts.length > 0
+                          ? `Attempt ${check.myAttempts.length} sent — try again!`
+                          : "As many tries as you like"}
+                    </span>
+                    <Button
+                      onClick={() => send.mutate()}
+                      disabled={
+                        !combined.trim() || send.isPending || !isEnglishOnly(combined) || outOfTries
+                      }
+                    >
+                      {send.isPending ? "Checking..." : "Send answer"}
+                    </Button>
+                  </div>
+                </>
               ) : null}
             </div>
-            <p className="text-xs text-muted-foreground">
-              This stays on every screen — including after the timer — until you press the X.
-            </p>
-          </div>
-        ) : (
-
-          <div className="mt-4 space-y-3">
-            {correct ? (
-              <div className="rounded-lg border border-primary/40 bg-primary/10 p-4">
-                <p className="flex items-center gap-2 font-display text-lg text-primary">
-                  <PartyPopper className="size-5" />
-                  Yes! That&apos;s exactly right — brilliant work!
-                </p>
-                {check.countUp && totalSeconds !== null ? (
-                  <p className="mt-1 flex items-center gap-2 text-base font-medium">
-                    <TimerReset className="size-4" />
-                    You took {formatDuration(totalSeconds)} in total.
-                  </p>
-                ) : null}
-                {latest?.feedback ? <p className="mt-1 text-base">{latest.feedback}</p> : null}
-                <div className="mt-3 flex items-center gap-2">
-                  <Button size="sm" onClick={() => setDismissed(check.id)}>
-                    Close
-                  </Button>
-                  <span className="text-sm text-muted-foreground">
-                    This closes on its own in a moment.
-                  </span>
-                </div>
-              </div>
-            ) : latest ? (
-              <div className="rounded-lg border border-accent bg-accent/30 p-4 text-base">
-                <p className="font-medium">You&apos;re on your way — keep going!</p>
-                <p className="mt-1">{latest.feedback}</p>
-              </div>
-            ) : null}
-
-            {outOfTries && !correct ? (
-              <p className="rounded-lg border border-border bg-secondary/40 p-3 text-base">
-                You have used all {check.maxAttempts} of your tries for this question — wait for
-                your teacher to go through it.
-              </p>
-            ) : null}
-
-            {timeUp && !correct ? (
-              <p className="rounded-lg border border-border bg-secondary/40 p-3 text-base">
-                Time is up — you can still keep trying until you get it right.
-              </p>
-            ) : null}
-
-            {!correct ? (
-
-              <>
-
-                {parts.length ? (
-                  <div className="space-y-3">
-                    <p className="text-sm text-muted-foreground">
-                      This question has {parts.length} parts — answer each one in its own box.
-                      {solved.size > 0
-                        ? ` ${solved.size} of ${parts.length} already right and locked in.`
-                        : ""}
-                    </p>
-                    {parts.map((label) =>
-                      solved.has(label) ? (
-                        <div
-                          key={label}
-                          className="flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-3 text-base"
-                        >
-                          <PartyPopper className="size-4 shrink-0 text-primary" />
-                          <span>
-                            Part ({label}) is correct — locked in. Keep going with the rest!
-                          </span>
-                        </div>
-                      ) : (
-                        <div key={label} className="space-y-1">
-                          <Label htmlFor={`part-${label}`} className="text-base">
-                            Part ({label})
-                          </Label>
-                          <Textarea
-                            id={`part-${label}`}
-                            rows={2}
-                            className="text-base"
-                            value={partAnswers[label] ?? ""}
-                            onChange={(event) =>
-                              setPartAnswers((prev) => ({ ...prev, [label]: event.target.value }))
-                            }
-                            placeholder={`Your answer to (${label}), in English`}
-                          />
-                        </div>
-                      ),
-                    )}
-                  </div>
-                ) : (
-                  <Textarea
-                    rows={4}
-                    className="text-base"
-                    value={answer}
-                    onChange={(event) => setAnswer(event.target.value)}
-                    placeholder="Type your answer in English"
-                  />
-                )}
-                {combined && !isEnglishOnly(combined) ? (
-                  <p className="text-sm text-destructive">{ENGLISH_ONLY_MESSAGE}</p>
-                ) : null}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    {triesLeft !== null
-                      ? triesLeft > 0
-                        ? `${triesLeft} ${triesLeft === 1 ? "try" : "tries"} left`
-                        : "No tries left on this question"
-                      : check.myAttempts.length > 0
-                        ? `Attempt ${check.myAttempts.length} sent — try again!`
-                        : "As many tries as you like"}
-
-                  </span>
-                  <Button
-                    onClick={() => send.mutate()}
-                    disabled={
-                      !combined.trim() ||
-                      send.isPending ||
-                      !isEnglishOnly(combined) ||
-                      outOfTries
-                    }
-                  >
-                    {send.isPending ? "Checking..." : "Send answer"}
-                  </Button>
-                </div>
-              </>
-            ) : null}
-          </div>
-        )}
-      </div>
+          )}
+        </div>
       </div>
     </div>
   );
-
 }
 
 /**
@@ -1150,9 +1140,9 @@ export function FormativeRecordBook({ classId }: { classId: string }) {
   const students = (() => {
     const map = new Map<string, string>();
     for (const check of checks) for (const s of check.students) map.set(s.studentId, s.name);
-    return [...map.entries()].map(([id, name]) => ({ id, name })).sort((a, b) =>
-      a.name.localeCompare(b.name),
-    );
+    return [...map.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   })();
 
   function cellFor(checkId: string, studentId: string) {
@@ -1171,9 +1161,7 @@ export function FormativeRecordBook({ classId }: { classId: string }) {
     const ordered = [...checks].reverse();
     const header = [
       "Student",
-      ...ordered.map(
-        (c) => `${new Date(c.sentAt).toLocaleDateString()} — ${c.question}`,
-      ),
+      ...ordered.map((c) => `${new Date(c.sentAt).toLocaleDateString()} — ${c.question}`),
       "% attempted",
       "% correct",
     ];
@@ -1201,7 +1189,6 @@ export function FormativeRecordBook({ classId }: { classId: string }) {
     }
     downloadXlsx("formative-record-book.xlsx", "Formative checks", rows);
   }
-
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -1305,7 +1292,6 @@ export function FormativeRecordBook({ classId }: { classId: string }) {
   );
 }
 
-
 /**
  * Student review book: every quick class question they were asked, their own
  * answers, and the correct answer once it is available.
@@ -1344,7 +1330,6 @@ export function FormativeReviewButton({ classId }: { classId: string }) {
             </p>
           ) : (
             rows.map((row) => <ReviewRow key={row.id} row={row} />)
-
           )}
         </div>
       </DialogContent>
@@ -1375,8 +1360,7 @@ function ReviewRow({ row }: { row: ReviewCheck }) {
   const [revealed, setRevealed] = useState<string | null>(null);
 
   const tryAgain = useMutation({
-    mutationFn: () =>
-      practise({ data: { checkId: row.id, answer: draft.trim(), practice: true } }),
+    mutationFn: () => practise({ data: { checkId: row.id, answer: draft.trim(), practice: true } }),
     onError: (error: Error) => toast.error(error.message),
   });
 
@@ -1408,9 +1392,7 @@ function ReviewRow({ row }: { row: ReviewCheck }) {
           {row.myAttempts.map((attempt, index) => (
             <p key={index} className="text-sm">
               <span className="text-muted-foreground">Your try {index + 1}: </span>
-              <span
-                className={attempt.verdict === "correct" ? "text-primary" : "text-destructive"}
-              >
+              <span className={attempt.verdict === "correct" ? "text-primary" : "text-destructive"}>
                 {attempt.answer}
               </span>
             </p>
@@ -1501,4 +1483,3 @@ function ReviewRow({ row }: { row: ReviewCheck }) {
     </div>
   );
 }
-

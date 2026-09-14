@@ -217,9 +217,7 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                   <Label>Step-by-step breakdown</Label>
                   <Select
                     value={data.klass.allowSteps ? "on" : "off"}
-                    onValueChange={(value) =>
-                      classMutation.mutate({ allowSteps: value === "on" })
-                    }
+                    onValueChange={(value) => classMutation.mutate({ allowSteps: value === "on" })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -286,9 +284,7 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                     value={data.klass.maxPaperSubmissions}
                     inheritLabel={null}
                     disabled={!data.klass.examMode}
-                    onChange={(value) =>
-                      classMutation.mutate({ maxPaperSubmissions: value ?? 0 })
-                    }
+                    onChange={(value) => classMutation.mutate({ maxPaperSubmissions: value ?? 0 })}
                   />
                 </div>
               </div>
@@ -488,7 +484,7 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                                           })
                                         }
                                       />
-                                       <SubmissionsSelect
+                                      <SubmissionsSelect
                                         disabled={!(override?.examMode ?? effective.examMode)}
                                         value={override?.maxPaperSubmissions ?? null}
                                         inheritLabel={`Hand-ins: same as homework (${submissionLabel(effective.maxPaperSubmissions)})`}

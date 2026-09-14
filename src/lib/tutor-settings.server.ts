@@ -74,7 +74,6 @@ export async function effectiveTutorSettings(
   };
 }
 
-
 /**
  * Same, resolved from an assignment id, with the assignment-level and
  * per-student-per-assignment overrides applied on top of the class defaults.
@@ -116,7 +115,9 @@ export async function tutorSettingsForAssignment(
     studentId
       ? db
           .from("student_assignment_settings")
-          .select("keyword_translation, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions")
+          .select(
+            "keyword_translation, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions",
+          )
           .eq("assignment_id", assignmentId)
           .eq("student_id", studentId)
           .maybeSingle()
@@ -161,10 +162,8 @@ export async function tutorSettingsForAssignment(
   const examMode =
     pickBool(studentOverride?.data?.exam_mode, assignment.exam_mode) ?? base.examMode;
   const maxPaperSubmissions =
-    pickNumber(
-      studentOverride?.data?.max_paper_submissions,
-      assignment.max_paper_submissions,
-    ) ?? base.maxPaperSubmissions;
+    pickNumber(studentOverride?.data?.max_paper_submissions, assignment.max_paper_submissions) ??
+    base.maxPaperSubmissions;
 
   return {
     ...base,
@@ -182,5 +181,4 @@ export async function tutorSettingsForAssignment(
     vocabTranslation: base.vocabTranslation && assignment.vocab_translation !== false,
     vocabLanguage: (assignment.vocab_language as string | null) ?? base.vocabLanguage,
   };
-
 }

@@ -538,8 +538,7 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
           imageUrls: await signPaperPages(await admin(), q.image_paths ?? []),
           answerImagePaths: q.answer_image_paths ?? [],
           answerImageUrls: await signPaperPages(await admin(), q.answer_image_paths ?? []),
-          sourcePagePath:
-            q.source_page_path || pageWithoutCrop((q.image_paths ?? [])[0] ?? ""),
+          sourcePagePath: q.source_page_path || pageWithoutCrop((q.image_paths ?? [])[0] ?? ""),
           answerSourcePagePath:
             q.answer_source_page_path ||
             pageWithoutCrop((q.answer_image_paths ?? [])[0] ?? (q.image_paths ?? [])[0] ?? ""),
@@ -2342,7 +2341,7 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
           ? (firstAnswerCrop.sheet ?? "paper") === "answer"
             ? answerPagePaths[firstAnswerCrop.page]
             : pagePaths[firstAnswerCrop.page]
-          : answerPagePaths[1] ?? pagePaths[1] ?? "";
+          : (answerPagePaths[1] ?? pagePaths[1] ?? "");
         return {
           questionText: q.questionText,
           markScheme: q.markScheme,
@@ -2586,14 +2585,15 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
     );
 
     // Previewing an SL student hides HL-only questions, exactly as they see it.
-    const { data: previewLevelRow } = studentId && previewClassIsIbdp
-      ? await db
-          .from("class_student_settings")
-          .select("ib_level")
-          .eq("class_id", assignment.class_id)
-          .eq("student_id", studentId)
-          .maybeSingle()
-      : { data: null };
+    const { data: previewLevelRow } =
+      studentId && previewClassIsIbdp
+        ? await db
+            .from("class_student_settings")
+            .select("ib_level")
+            .eq("class_id", assignment.class_id)
+            .eq("student_id", studentId)
+            .maybeSingle()
+        : { data: null };
     const previewIsStandardLevel =
       previewClassIsIbdp &&
       (previewLevelRow as { ib_level?: string | null } | null)?.ib_level === "SL";

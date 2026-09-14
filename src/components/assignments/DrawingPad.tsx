@@ -750,7 +750,7 @@ export function DrawingPad({
             setHasInk(false);
             setSaved(false);
             redraw();
-             scheduleSave();
+            scheduleSave();
           }}
         >
           <Eraser className="size-4" />

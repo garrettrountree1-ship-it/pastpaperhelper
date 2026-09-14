@@ -2104,7 +2104,9 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       ),
     ]);
     const violation = photoCheck.ok
-      ? (peerCopy ?? (detection.isAi ? detection : null))
+      ? detection.isAi
+        ? detection
+        : null
       : { reason: photoCheck.reason, confidence: photoCheck.confidence };
     if (violation) {
       const strikes = (guardSubmission.ai_flag_count ?? 0) + 1;

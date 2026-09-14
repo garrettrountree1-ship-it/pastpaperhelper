@@ -300,19 +300,17 @@ export function QuestionExperience({
       ) : null}
 
 
-      {markScheme || markSchemeImageUrls.length > 0 ? (
+      {markSchemeImageUrls.length > 0 ? (
         <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
           <p className="text-sm font-medium">Mark scheme</p>
-          {markSchemeImageUrls.length > 0 ? (
-            <QuestionSnipStack
-              urls={markSchemeImageUrls}
-              answers
-              alt="Official answer as printed in the mark scheme"
-              className="mt-2"
-            />
-          ) : (
-            <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{cleanMathText(markScheme ?? "")}</p>
-          )}
+          {/* Answers are only ever shown as the picture cut from the printed
+              mark scheme — never as retyped text. */}
+          <QuestionSnipStack
+            urls={markSchemeImageUrls}
+            answers
+            alt="Official answer as printed in the mark scheme"
+            className="mt-2"
+          />
           {answerAction ? <div className="mt-3 flex flex-wrap gap-2">{answerAction}</div> : null}
         </div>
       ) : null}

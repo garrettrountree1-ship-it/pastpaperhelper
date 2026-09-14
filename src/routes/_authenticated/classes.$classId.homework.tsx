@@ -109,6 +109,7 @@ import {
   shiftLetter,
 } from "@/lib/question-label";
 import { cropAfter } from "@/lib/next-crop";
+import { pageWithoutCrop } from "@/lib/snip-crop";
 
 import { QuestionSnipStack } from "@/components/assignments/QuestionSnip";
 import { QuestionTagPicker } from "@/components/assignments/QuestionTagPicker";

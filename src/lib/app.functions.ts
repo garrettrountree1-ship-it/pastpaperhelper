@@ -13,6 +13,7 @@ import { isHigherLevelTag } from "@/lib/ib-level.functions";
 import { isPhotoMode, resolvePhotoMode } from "@/lib/photo-mode";
 import { teachesClass, teachingClassIds } from "@/lib/teach-access";
 import { cropAfter } from "@/lib/next-crop";
+import { pageWithoutCrop } from "@/lib/snip-crop";
 import {
   formatLabel,
   nextLabelAfter,

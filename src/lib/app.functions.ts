@@ -627,7 +627,12 @@ export const updateQuestionCrop = createServerFn({ method: "POST" })
 export const listRecutPages = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ imagePath: z.string().min(1) }).parse(input),
+    z
+      .object({
+        imagePath: z.string().min(1),
+        sheet: z.enum(["question", "answer"]).optional(),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;

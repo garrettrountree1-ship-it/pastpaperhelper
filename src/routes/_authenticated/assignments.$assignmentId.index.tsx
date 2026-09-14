@@ -513,7 +513,6 @@ function QuestionCard({
       maxAttempts={maxAttempts}
       assignmentId={assignmentId}
       protectQuestions={protectQuestions}
-      markScheme={null}
       markSchemeImageUrls={question.answerImageUrls ?? []}
 
       headerAction={

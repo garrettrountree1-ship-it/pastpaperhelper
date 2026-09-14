@@ -7,7 +7,6 @@ import { QuestionSnipStack } from "@/components/assignments/QuestionSnip";
 import { StudentWorkPhoto } from "@/components/StudentWorkPhoto";
 import { QuestionVocabBox } from "@/components/assignments/QuestionVocabBox";
 
-import { cleanMathText } from "@/lib/math-text";
 import { cleanTutorText, TutorText } from "@/lib/tutor-text";
 import { getQuestionGlossary, getTutorGlossary } from "@/lib/tutor-settings.functions";
 
@@ -90,7 +89,6 @@ export function QuestionExperience({
   tutorError,
   onSend,
   locked = false,
-  markScheme = null,
   markSchemeImageUrls = [],
   answerAction = null,
   headerAction = null,
@@ -145,7 +143,6 @@ export function QuestionExperience({
   /** Homework locked for suspected AI use or a passed due date — read-only. */
   locked?: boolean;
   /** Mark-scheme answer, only present once the teacher reveals it. */
-  markScheme?: string | null;
   /** The official answer exactly as printed, shown only once released. */
   markSchemeImageUrls?: string[];
   /** Teacher-only control beside the answer picture (recut). */

@@ -445,7 +445,6 @@ function PreviewQuestion({
       checking={check.isPending}
       checkError={check.isError ? (check.error as Error).message : undefined}
       onCheck={() => check.mutate()}
-      markScheme={null}
       markSchemeImageUrls={showAnswer ? (question.answerImageUrls ?? []) : []}
       keywordTranslation={keywordTranslation}
       allowHint={allowHint}
@@ -619,7 +618,6 @@ function StudentWorkView({
               tutoring={false}
               tutorError={undefined}
               onSend={() => {}}
-              markScheme={null}
               markSchemeImageUrls={question.answerImageUrls ?? []}
               keywordTranslation={false}
               assignmentId={assignmentId}

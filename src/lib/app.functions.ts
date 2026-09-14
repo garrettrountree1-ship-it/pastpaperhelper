@@ -651,7 +651,9 @@ export const listRecutPages = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
 
-    const isAnswerSheet = (page.split("/").pop() ?? "").startsWith("ms-page-");
+    const isAnswerSheet = data.sheet
+      ? data.sheet === "answer"
+      : (page.split("/").pop() ?? "").startsWith("ms-page-");
     const pages = (files ?? [])
       .map((file) => {
         const name = file.name;

@@ -44,7 +44,14 @@ type ExtractInput = {
   markSchemeFiles: UploadedFile[];
 };
 
-type InventoryItem = { label: string; marks: number; pages: number[]; kind?: string };
+type InventoryItem = {
+  /** Unique request key. Printed labels can restart or repeat in compilations. */
+  key: string;
+  label: string;
+  marks: number;
+  pages: number[];
+  kind?: string;
+};
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const BATCH_SIZE = 6;
@@ -65,31 +72,34 @@ const SHARED_RULES = [
 const INVENTORY_SYSTEM = [
   SHARED_RULES,
   "Task: produce a COMPLETE index of every answerable question part in the upload.",
+  "Give every item a unique extractionKey in reading order: q001, q002, q003, and so on. extractionKey is only an internal locator; label remains the label printed beside that question.",
   "Do not write the question wording or the answers here — only the part label, its marks and its type.",
   'Use the printed label exactly where one exists, e.g. "1(a)", "1(b)(ii)", "3", "7(c)".',
-  'When numbering is missing, ambiguous or repeats a label you already used, invent a unique stable label instead of skipping the question: "p3-Q1", "p3-Q1b", "MCQ-4". Never output the same label twice.',
+  'When numbering is missing, use a short descriptive label such as "unnumbered". Printed labels MAY repeat or restart in a teacher compilation; keep the printed label and use extractionKey to distinguish each occurrence. Never discard an item because its label was already used.',
   "If a question has no sub-parts, list the question number alone.",
   "Include every part: multiple choice items, one-mark recall items, calculations, diagram/graph tasks and extended-writing tasks.",
   'kind: "mcq" for multiple-choice items with printed options, otherwise "short".',
   "Anything that is only a mark scheme / answer block for a question you have already indexed is NOT a new item.",
   "Each paper page is supplied as an image labelled PAGE 1, PAGE 2, ... Record which page(s) each part appears on, including a page that only holds its figure, diagram, graph or table.",
-  'Reply with JSON only: {"items":[{"label":"1(a)","marks":2,"kind":"short","pages":[3]}]}',
+  'Reply with JSON only: {"items":[{"extractionKey":"q001","label":"1(a)","marks":2,"kind":"short","pages":[3]}]}',
 ].join(" ");
 
 const SWEEP_SYSTEM = [
   SHARED_RULES,
   "Task: a first pass already indexed some question parts. Find the ones it MISSED.",
   "You are given the labels already found. Scan the whole upload again and list only answerable question parts that are not already covered.",
+  "The same printed label can belong to several different questions. Compare the page and surrounding wording, not the label alone.",
   "Pay special attention to multiple-choice blocks, questions pasted mid-document, questions after a mark scheme section, and unnumbered questions.",
   'Above all, check for MISSING SUB-PARTS: for each question already indexed, read every page it touches and the pages after it and list any (a)/(b)/(c) or (i)/(ii)/(iii) part — including forms like (a.ii) or (b) alone on a line, and parts printed after a mark scheme block — that is not already in the list. Use the printed label for these, e.g. "1(a)(ii)", not an invented one.',
-  'Give missed items a unique label that does not clash with the supplied list (e.g. "p5-Q2").',
+  'Give each missed item a new unique extractionKey continuing the supplied sequence. Keep its printed label even when that label repeats.',
   "If nothing was missed, reply with an empty items array.",
-  'Reply with JSON only: {"items":[{"label":"p5-Q2","marks":1,"kind":"mcq","pages":[5]}]}',
+  'Reply with JSON only: {"items":[{"extractionKey":"q017","label":"2","marks":1,"kind":"mcq","pages":[5]}]}',
 ].join(" ");
 
 const DETAIL_SYSTEM = [
   SHARED_RULES,
   "Task: for ONLY the requested part labels, transcribe the question and align the official mark scheme.",
+  "Return the extractionKey supplied for every requested item. It distinguishes separate questions whose printed numbers repeat or restart.",
   "questionText: start with the part label, then reproduce the printed wording CHARACTER FOR CHARACTER. You are an OCR transcriber, not an editor or a rewriter.",
   "For multiple-choice questions, transcribe the stem AND every printed option on its own line, keeping the printed option letters/numbers (A, B, C, D). Never drop, reorder or reword options.",
   'ABSOLUTE RULE: never change, modernise, simplify, translate, correct, shorten, expand or reorder ANY word of the question. Do not swap a word for a synonym (no "work out" for "calculate", no "find" for "determine", no "picture" for "Fig."). Do not fix the paper\'s spelling, capitalisation, punctuation, spacing or British/American usage. Do not add words such as "the", "your" or "please" that are not printed, and do not drop printed words.',
@@ -113,10 +123,12 @@ const DETAIL_SYSTEM = [
   'answerCrops: the band(s) of page picture(s) showing the OFFICIAL ANSWER / mark scheme for this exact part, so the printed marking points, ticks, fractions and notation are kept as pictures instead of retyped. Paper pages are labelled PAGE N; mark scheme pages are labelled ANSWER PAGE N. Use {"sheet":"answer","page":N,"top":T,"bottom":B} for a mark scheme page and {"sheet":"paper",...} when the answer is printed on a paper page. Start at this part\'s own answer row/label and stop before the next part\'s answer. Give at most two bands, and set answerCrops to null if you cannot locate the answer.',
   "Mark-scheme rows are printed very close together, often a single line apart. Every answerCrops band must be as tight as the printed rows for that one part — a band only one or two lines tall is correct. Never pad a band, and never let the row above or below appear inside it.",
   "answerCrops are required whenever the answer is printed anywhere in the upload: the answer is always shown as this picture and is never retyped for the student.",
+  'An inline line such as "Mark scheme 1 = A", "Answer = C", or "1 A" immediately below a multiple-choice question IS that question\'s official answer. Return a separate, very thin answerCrops band around the whole line. Do not mistake it for page furniture and do not omit the question above it.',
+  "A question followed immediately by its answer is still a complete question: crops must contain the full question up to the blank strip before the answer, while answerCrops contains only the answer line.",
 
   "Symbols and units MUST be reproduced as real Unicode characters exactly as printed: \u00b0C, \u00b0F, \u00b5, \u03a9, \u00b1, \u00d7, \u00f7, \u2264, \u2265, \u2248, \u2192, \u21cc, \u221a, \u03b1\u03b2\u03b3\u03bb\u03c0\u0394\u03b8, subscripts/superscripts (H\u2082O, cm\u00b3, m s\u207b\u00b2, 10\u2076).",
   'Never write symbols as words, ASCII stand-ins or escapes: no "degrees C", "deg C", "oC", "^oC", "ohms", "micro", "+/-", "\\\\u00b0", "&deg;", "?C". Write 25 \u00b0C, 4.7 k\u03a9, 3 \u00b5A.',
-  'Reply with JSON only: {"questions":[{"label":"1(a)","questionText":"...","markScheme":"...","marks":2,"pages":[3,4],"crops":[{"page":3,"top":0.62,"bottom":0.97},{"page":4,"top":0.05,"bottom":0.3}],"answerCrops":[{"sheet":"answer","page":2,"top":0.31,"bottom":0.4}]}]}',
+  'Reply with JSON only: {"questions":[{"extractionKey":"q001","label":"1(a)","questionText":"...","markScheme":"...","marks":2,"pages":[3,4],"crops":[{"page":3,"top":0.62,"bottom":0.97},{"page":4,"top":0.05,"bottom":0.3}],"answerCrops":[{"sheet":"answer","page":2,"top":0.31,"bottom":0.4}]}]}',
 ].join(" ");
 
 const CROP_AUDIT_SYSTEM = [
@@ -130,7 +142,8 @@ const CROP_AUDIT_SYSTEM = [
   "Return at most one crop per page. Use a second crop only when the SAME part genuinely continues on the next page.",
   "Crop only through a continuous horizontal strip of completely blank white paper. Never cut through any letter, symbol, line, table, graph, image or diagram.",
   "The bottom boundary should be the first blank white strip immediately after the printed point value such as [1], [2], (1), or (2), when a point value is present. It must be above any answer, solution, mark scheme, repeated question, or next part.",
-  'Reply with JSON only: {"items":[{"label":"1(a)","crops":[{"page":2,"top":0.12,"bottom":0.34}]}]}',
+  "Every requested item has a unique extractionKey. Return that exact key; do not use its possibly repeated printed label as the identifier.",
+  'Reply with JSON only: {"items":[{"extractionKey":"q001","crops":[{"page":2,"top":0.12,"bottom":0.34}]}]}',
 ].join(" ");
 
 const CROSSCHECK_SYSTEM = [
@@ -162,10 +175,10 @@ export async function extractQuestionsFromPapers(input: ExtractInput): Promise<E
   for (let pass = 0; pass < 2 && inventory.length > 0; pass += 1) {
     const missed = await runSweep(key, header, documents, inventory);
     if (missed.length === 0) break;
-    const seen = new Set(inventory.map((i) => i.label.toLowerCase()));
+    const seen = new Set(inventory.map((i) => i.key.toLowerCase()));
     for (const item of missed) {
-      if (seen.has(item.label.toLowerCase())) continue;
-      seen.add(item.label.toLowerCase());
+      if (seen.has(item.key.toLowerCase())) continue;
+      seen.add(item.key.toLowerCase());
       inventory.push(item);
     }
     inventory = inventory.slice(0, MAX_ITEMS);
@@ -191,7 +204,7 @@ export async function extractQuestionsFromPapers(input: ExtractInput): Promise<E
   const missedFromAnswerKey = answerKeyGaps(inventory, crossCheck.answerLabels);
   if (missedFromAnswerKey.length > 0) {
     for (const label of missedFromAnswerKey) {
-      inventory.push({ label, marks: 1, pages: [] });
+      inventory.push({ key: `answer-gap-${inventory.length + 1}`, label, marks: 1, pages: [] });
       warnings.push(
         `The mark scheme lists ${label}, which the first read did not find in the paper — it was searched for again. Check it is here, and use "Add a question here" if it is still missing.`,
       );
@@ -204,8 +217,8 @@ export async function extractQuestionsFromPapers(input: ExtractInput): Promise<E
   const results = await runBatches(key, header, documents, inventory, hasAnswerPages);
 
   // Any label the detail pass dropped gets one focused retry.
-  const done = new Set(results.map((r) => r.label.toLowerCase()));
-  const missing = inventory.filter((i) => !done.has(i.label.toLowerCase()));
+  const done = new Set(results.map((r) => r.key.toLowerCase()));
+  const missing = inventory.filter((i) => !done.has(i.key.toLowerCase()));
   if (missing.length > 0) {
     results.push(...(await runBatches(key, header, documents, missing, hasAnswerPages)));
   }
@@ -692,7 +705,7 @@ async function callGateway(
   return payload.choices?.[0]?.message?.content ?? "";
 }
 
-type DetailResult = ExtractedQuestion & { label: string };
+type DetailResult = ExtractedQuestion & { key: string; label: string };
 
 function parseInventoryItems(parsed: Record<string, unknown>, taken: Set<string>): InventoryItem[] {
   const items = Array.isArray(parsed["items"]) ? (parsed["items"] as unknown[]) : [];
@@ -700,8 +713,10 @@ function parseInventoryItems(parsed: Record<string, unknown>, taken: Set<string>
   for (const raw of items) {
     const item = raw as Record<string, unknown>;
     const label = String(item["label"] ?? "").trim();
-    if (!label || taken.has(label.toLowerCase())) continue;
-    taken.add(label.toLowerCase());
+    const suppliedKey = String(item["extractionKey"] ?? item["key"] ?? "").trim();
+    const key = suppliedKey || `q${String(taken.size + 1).padStart(3, "0")}`;
+    if (!label || taken.has(key.toLowerCase())) continue;
+    taken.add(key.toLowerCase());
     const pages = Array.isArray(item["pages"])
       ? (item["pages"] as unknown[])
           .map((n) => Math.round(Number(n)))
@@ -711,6 +726,7 @@ function parseInventoryItems(parsed: Record<string, unknown>, taken: Set<string>
       .trim()
       .toLowerCase();
     out.push({
+      key,
       label,
       marks: Math.max(1, Math.round(Number(item["marks"]) || 1)),
       pages: [...new Set(pages)].slice(0, 3),
@@ -757,7 +773,7 @@ async function runSweep(
       },
       ...documents,
     ]);
-    const taken = new Set(found.map((f) => f.label.toLowerCase()));
+    const taken = new Set(found.map((f) => f.key.toLowerCase()));
     return parseInventoryItems(parseJson(text), taken).slice(0, MAX_ITEMS);
   } catch {
     return [];
@@ -779,7 +795,7 @@ async function runDetail(
         batch
           .map(
             (b) =>
-              `- ${b.label} (${b.marks} mark${b.marks === 1 ? "" : "s"}${
+              `- ${b.key}: printed label ${b.label} (${b.marks} mark${b.marks === 1 ? "" : "s"}${
                 b.kind === "mcq" ? ", multiple choice — include every option" : ""
               })${b.pages.length ? ` on PAGE ${b.pages.join(", ")}` : ""}`,
           )
@@ -797,14 +813,18 @@ async function runDetail(
   const details = rows
     .map((raw, rowIndex) => {
       const item = raw as Record<string, unknown>;
-      const label = String(item["label"] ?? "").trim() || batch[rowIndex]?.label || "";
+      const key =
+        String(item["extractionKey"] ?? item["key"] ?? "").trim() ||
+        batch[rowIndex]?.key ||
+        `result-${rowIndex + 1}`;
+      const match = batch.find((candidate) => candidate.key.toLowerCase() === key.toLowerCase()) ?? batch[rowIndex];
+      const label = String(item["label"] ?? "").trim() || match?.label || "";
       let questionText = String(item["questionText"] ?? "").trim();
       // Only printed numbering is echoed into the wording; invented keys (p3-Q1) are not.
       const printed = /^\d/.test(label);
       if (printed && !questionText.toLowerCase().startsWith(label.toLowerCase())) {
         questionText = `${label} ${questionText}`;
       }
-      const match = batch.find((b) => b.label.toLowerCase() === label.toLowerCase());
       const pagesFromModel = Array.isArray(item["pages"])
         ? (item["pages"] as unknown[])
             .map((n) => Math.round(Number(n)))
@@ -812,6 +832,7 @@ async function runDetail(
         : [];
       const pages = match?.pages?.length ? match.pages : [...new Set(pagesFromModel)].slice(0, 3);
       return {
+        key,
         label,
         questionText: scrubIdentifiers(normaliseSymbols(questionText)),
         markScheme: normaliseSymbols(String(item["markScheme"] ?? "").trim()),
@@ -832,11 +853,11 @@ async function runDetail(
     const audited = await runCropAudit(key, header, documents, details);
     return details.map((detail) => ({
       ...detail,
-      // Once the independent visual audit has run, it is authoritative. A
-      // missing/unsafe crop means no picture, not a return to the first pass.
-      crops: audited.has(detail.label.toLowerCase())
-        ? (audited.get(detail.label.toLowerCase()) ?? null)
-        : null,
+      // An omitted audit row is not evidence that a valid first-pass crop is
+      // unsafe. Only replace a crop when the audit explicitly reports the item.
+      crops: audited.has(detail.key.toLowerCase())
+        ? (audited.get(detail.key.toLowerCase()) ?? null)
+        : detail.crops,
     }));
   } catch {
     return details;
@@ -852,7 +873,7 @@ async function runCropAudit(
   const request = details
     .map(
       (item) =>
-        `- ${item.label}${item.pages.length ? ` on PAGE ${item.pages.join(", ")}` : ""}: ${item.questionText.slice(0, 180)}`,
+        `- ${item.key}: printed label ${item.label}${item.pages.length ? ` on PAGE ${item.pages.join(", ")}` : ""}: ${item.questionText.slice(0, 180)}`,
     )
     .join("\n");
   const text = await callGateway(key, CROP_AUDIT_SYSTEM, [
@@ -864,16 +885,16 @@ async function runCropAudit(
   ]);
   const parsed = parseJson(text);
   const items = Array.isArray(parsed["items"]) ? (parsed["items"] as unknown[]) : [];
-  const allowed = new Map(details.map((item) => [item.label.toLowerCase(), item.pages]));
+  const allowed = new Map(details.map((item) => [item.key.toLowerCase(), item.pages]));
   const result = new Map<string, QuestionCrop[] | null>();
   for (const raw of items) {
     const item = raw as Record<string, unknown>;
-    const label = String(item["label"] ?? "")
+    const key = String(item["extractionKey"] ?? item["key"] ?? "")
       .trim()
       .toLowerCase();
-    const pages = allowed.get(label);
+    const pages = allowed.get(key);
     if (!pages) continue;
-    result.set(label, parseCropList(item["crops"] ?? item["crop"], pages));
+    result.set(key, parseCropList(item["crops"] ?? item["crop"], pages));
   }
   return result;
 }
@@ -900,12 +921,14 @@ function parseCropValue(
   if (sheet === "paper" && pages.length > 0 && !pages.includes(page)) return null;
   if (!Number.isFinite(top) || !Number.isFinite(bottom)) return null;
   if (bottom <= top) return null;
-  // A little breathing room at the top so nothing printed is clipped. The
-  // bottom is barely padded: whatever is printed below may be the answer or
-  // mark scheme for this very question.
-  top = Math.max(0, top - 0.012);
-  bottom = Math.min(1, bottom + 0.003);
-  if (bottom - top < 0.04) return null;
+  const isAnswer = sheet === "answer" || defaultSheet === "answer";
+  // Question cuts keep a little breathing room. Answer rows can be only one
+  // printed line tall, so preserve their exact bounds without adding padding.
+  if (!isAnswer) {
+    top = Math.max(0, top - 0.012);
+    bottom = Math.min(1, bottom + 0.003);
+  }
+  if (bottom - top < (isAnswer ? 0.006 : 0.02)) return null;
   return { sheet, page, top, bottom };
 }
 

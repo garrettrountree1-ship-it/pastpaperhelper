@@ -1138,7 +1138,15 @@ function AssignmentDialog({
                             variant="ghost"
                             size="sm"
                             className="absolute right-1 top-1 bg-card/90"
-                            onClick={() => update_(index, { imageUrls: [], imagePaths: [] })}
+                            title="Remove picture and type the question"
+                            aria-label="Remove picture and type the question"
+                            onClick={() =>
+                              update_(index, {
+                                imageUrls: [],
+                                imagePaths: [],
+                                questionText: questionLabel(question.questionText, index),
+                              })
+                            }
                           >
                             <Trash2 className="size-3" />
                           </Button>
@@ -1156,9 +1164,7 @@ function AssignmentDialog({
                     ) : (
                       <div className="space-y-2 rounded-md border border-dashed border-border p-3">
                         <p className="text-xs text-muted-foreground">
-                          No question picture yet. Questions are always shown as the picture cut
-                          from the paper, never as retyped text — cut this one from the original
-                          page.
+                          Cut the question from the original page, or type it below.
                         </p>
                         <QuestionRecutDialog
                           label="Cut question"
@@ -1175,6 +1181,21 @@ function AssignmentDialog({
                             update_(index, { imagePaths, imageUrls })
                           }
                         />
+                        <div className="space-y-1">
+                          <Label htmlFor={`question-text-${index}`}>Type question instead</Label>
+                          <Textarea
+                            id={`question-text-${index}`}
+                            value={questionBody(question.questionText)}
+                            onChange={(event) =>
+                              update_(index, {
+                                questionText:
+                                  `${questionLabel(question.questionText, index)} ${event.target.value}`.trim(),
+                              })
+                            }
+                            placeholder="Type the full question students should see"
+                            rows={5}
+                          />
+                        </div>
                       </div>
                     )}
                     {question.answerImageUrls.length > 0 ? (

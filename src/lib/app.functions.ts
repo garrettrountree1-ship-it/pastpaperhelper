@@ -20,8 +20,6 @@ import {
   setQuestionLabel,
 } from "@/lib/question-label";
 
-
-
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
@@ -68,14 +66,17 @@ export const getMe = createServerFn({ method: "GET" })
 
 export const setOAuthRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ role: z.enum(["teacher", "student"]) }).parse(input))
+  .inputValidator((input: unknown) =>
+    z.object({ role: z.enum(["teacher", "student"]) }).parse(input),
+  )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
     const { data: user, error: userError } = await supabase.auth.getUser();
     if (userError || !user.user) throw new Error("Could not verify user.");
 
-    const isOAuth = user.user.identities?.some((identity) => identity.provider !== "email") ?? false;
+    const isOAuth =
+      user.user.identities?.some((identity) => identity.provider !== "email") ?? false;
     if (!isOAuth) throw new Error("Role can only be set after OAuth sign-in.");
 
     const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userId);
@@ -88,12 +89,16 @@ export const setOAuthRole = createServerFn({ method: "POST" })
 
       const adminClient = await admin();
       await adminClient.from("user_roles").delete().eq("user_id", userId).eq("role", "student");
-      const { error } = await adminClient.from("user_roles").insert({ user_id: userId, role: "teacher" });
+      const { error } = await adminClient
+        .from("user_roles")
+        .insert({ user_id: userId, role: "teacher" });
       if (error) throw new Error(error.message);
     } else {
       if (hasStudent) return { ok: true };
       const adminClient = await admin();
-      const { error } = await adminClient.from("user_roles").insert({ user_id: userId, role: "student" });
+      const { error } = await adminClient
+        .from("user_roles")
+        .insert({ user_id: userId, role: "student" });
       if (error) throw new Error(error.message);
     }
 
@@ -406,12 +411,10 @@ export const deleteClass = createServerFn({ method: "POST" })
     await supabaseAdmin.from("assignments").delete().eq("class_id", data.classId);
     await supabaseAdmin.from("class_members").delete().eq("class_id", data.classId);
 
-
     const { error } = await supabaseAdmin.from("classes").delete().eq("id", data.classId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
-
 
 export const createAssignment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -583,9 +586,9 @@ export const updateQuestionCrop = createServerFn({ method: "POST" })
       .select("image_paths, answer_image_paths")
       .eq("id", question.id)
       .single();
-    const existingPaths = (data.target === "answer"
-      ? current?.answer_image_paths
-      : current?.image_paths) as string[] | null | undefined;
+    const existingPaths = (
+      data.target === "answer" ? current?.answer_image_paths : current?.image_paths
+    ) as string[] | null | undefined;
     const allowedPages = new Set((existingPaths ?? []).map((path) => path.split("#")[0]));
     // The teacher may move a cut onto another page of the same uploaded document
     // (a question often runs over a page break), so allow any page in that folder.
@@ -627,7 +630,12 @@ export const updateQuestionCrop = createServerFn({ method: "POST" })
 export const listRecutPages = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ imagePath: z.string().min(1) }).parse(input),
+    z
+      .object({
+        imagePath: z.string().min(1),
+        sheet: z.enum(["question", "answer"]).optional(),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -646,7 +654,9 @@ export const listRecutPages = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
 
-    const isAnswerSheet = (page.split("/").pop() ?? "").startsWith("ms-page-");
+    const isAnswerSheet = data.sheet
+      ? data.sheet === "answer"
+      : (page.split("/").pop() ?? "").startsWith("ms-page-");
     const pages = (files ?? [])
       .map((file) => {
         const name = file.name;
@@ -657,7 +667,10 @@ export const listRecutPages = createServerFn({ method: "POST" })
       .filter((item) => item.number > 0 && item.answerSheet === isAnswerSheet)
       .sort((a, b) => a.number - b.number);
 
-    const urls = await signPaperPages(db, pages.map((item) => item.path));
+    const urls = await signPaperPages(
+      db,
+      pages.map((item) => item.path),
+    );
     return {
       pages: pages.map((item, index) => ({
         path: item.path,
@@ -667,7 +680,6 @@ export const listRecutPages = createServerFn({ method: "POST" })
     };
   });
 
-
 /**
  * Inserts a blank question straight after an existing one — for a question the
  * AI extraction missed. The number is suggested and the ones after it move
@@ -675,9 +687,7 @@ export const listRecutPages = createServerFn({ method: "POST" })
  */
 export const insertQuestionAfter = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
-    z.object({ questionId: z.string().uuid() }).parse(input),
-  )
+  .inputValidator((input: unknown) => z.object({ questionId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const db = await admin();
@@ -913,15 +923,10 @@ export const deleteAssignment = createServerFn({ method: "POST" })
       await supabaseAdmin.from("submissions").delete().in("id", subIds);
     }
     await supabaseAdmin.from("questions").delete().eq("assignment_id", data.assignmentId);
-    const { error } = await supabaseAdmin
-      .from("assignments")
-      .delete()
-      .eq("id", data.assignmentId);
+    const { error } = await supabaseAdmin.from("assignments").delete().eq("id", data.assignmentId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
-
-
 
 export const getClassOverview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -1021,15 +1026,12 @@ export const getClassOverview = createServerFn({ method: "POST" })
         ).length,
         pastDue,
         behindCount,
-        protectQuestions: Boolean(
-          (a as { protect_questions?: boolean | null }).protect_questions,
-        ),
+        protectQuestions: Boolean((a as { protect_questions?: boolean | null }).protect_questions),
         archivedAt: ((a as { archived_at?: string | null }).archived_at ?? null) as string | null,
         /** Live scores: grades update as students work; the deadline only freezes them. */
         resultsReleased: true,
       };
     });
-
 
     const classDetail = (klass as { gradebook_detail?: boolean | null }).gradebook_detail !== false;
 
@@ -1051,9 +1053,7 @@ export const getClassOverview = createServerFn({ method: "POST" })
           resultsReleased: a.resultsReleased,
         };
       });
-      const marked = grades.filter(
-        (g) => g.awardedMarks !== null && g.status !== "not_started",
-      );
+      const marked = grades.filter((g) => g.awardedMarks !== null && g.status !== "not_started");
 
       const earned = marked.reduce((sum, g) => sum + (g.awardedMarks ?? 0), 0);
       const possible = marked.reduce((sum, g) => sum + g.totalMarks, 0);
@@ -1101,9 +1101,7 @@ export const overrideAnswerMarks = createServerFn({ method: "POST" })
 export const rejectAnswer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z
-      .object({ answerId: z.string().uuid(), note: z.string().max(600).optional() })
-      .parse(input),
+    z.object({ answerId: z.string().uuid(), note: z.string().max(600).optional() }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -1127,7 +1125,9 @@ export const rejectAnswer = createServerFn({ method: "POST" })
       .update({
         verdict: null,
         awarded_marks: 0,
-        feedback: note ? `Sent back by your teacher: ${note}` : "Sent back by your teacher to redo.",
+        feedback: note
+          ? `Sent back by your teacher: ${note}`
+          : "Sent back by your teacher to redo.",
         resolved: false,
         mark_breakdown: [],
         rejected_at: new Date().toISOString(),
@@ -1215,7 +1215,6 @@ export const listRedoAlerts = createServerFn({ method: "GET" })
       };
     });
   });
-
 
 /**
  * Teacher override for one question across the class: give full credit, mark it
@@ -1389,9 +1388,6 @@ export const bulkGradeQuestion = createServerFn({ method: "POST" })
     return { ok: true, changed };
   });
 
-
-
-
 export const getSubmissionDetail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
@@ -1428,7 +1424,6 @@ export const getSubmissionDetail = createServerFn({ method: "POST" })
           .eq("submission_id", submission.id)
           .order("created_at")
       : { data: [] };
-
 
     const { data: answers } = submission
       ? await db
@@ -1515,7 +1510,6 @@ export const unlockSubmission = createServerFn({ method: "POST" })
       .eq("id", submission.id);
     if (error) throw new Error(error.message);
 
-
     await recalcSubmission(db, submission.id);
     return { ok: true };
   });
@@ -1591,7 +1585,6 @@ export const getStudentClassReport = createServerFn({ method: "POST" })
           .order("created_at")
       : { data: [] };
 
-
     const report = await Promise.all(
       (assignments ?? []).map(async (assignment) => {
         const submission = (submissions ?? []).find((s) => s.assignment_id === assignment.id);
@@ -1643,14 +1636,16 @@ export const getStudentClassReport = createServerFn({ method: "POST" })
                   content: m.content,
                   createdAt: m.created_at,
                 })),
-              helpMessages: ((helpMessages ?? []) as Array<{
-                id: string;
-                question_id: string;
-                mode: string;
-                role: string;
-                content: string;
-                created_at: string;
-              }>)
+              helpMessages: (
+                (helpMessages ?? []) as Array<{
+                  id: string;
+                  question_id: string;
+                  mode: string;
+                  role: string;
+                  content: string;
+                  created_at: string;
+                }>
+              )
                 .filter((m) => m.question_id === question.id)
                 .map((m) => ({
                   id: m.id,
@@ -1660,7 +1655,6 @@ export const getStudentClassReport = createServerFn({ method: "POST" })
                   createdAt: m.created_at,
                 })),
             };
-
           }),
         );
 
@@ -1683,7 +1677,6 @@ export const getStudentClassReport = createServerFn({ method: "POST" })
 
     return { assignments: report };
   });
-
 
 /* --------------------------------------------------------------- student --- */
 
@@ -1829,8 +1822,6 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
       .eq("assignment_id", data.assignmentId)
       .order("position");
 
-
-
     const { data: exemptions } = await db
       .from("question_exclusions")
       .select("question_id")
@@ -1846,7 +1837,8 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     const isStandardLevel = (levelRow as { ib_level?: string | null } | null)?.ib_level === "SL";
     const questions = (allQuestions ?? []).filter(
       (q) =>
-        !exemptIds.has(q.id) && !(isStandardLevel && isHigherLevelTag(q.tag_label as string | null)),
+        !exemptIds.has(q.id) &&
+        !(isStandardLevel && isHigherLevelTag(q.tag_label as string | null)),
     );
 
     const submission = await ensureSubmission(db, data.assignmentId, userId);
@@ -1894,7 +1886,8 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
       if ((q as { credited_all_at?: string | null }).credited_all_at) fullMarkQuestionIds.add(q.id);
     }
     const revealsQuestion = (questionId: string) =>
-      access.markSchemeRevealed || (access.revealOnFullMarks && fullMarkQuestionIds.has(questionId));
+      access.markSchemeRevealed ||
+      (access.revealOnFullMarks && fullMarkQuestionIds.has(questionId));
 
     // Some questions were extracted without their mark-scheme cut saved. Find
     // and store that exact cut now, so every released question shows a picture.
@@ -1930,7 +1923,6 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
         markSchemeRevealed: access.markSchemeRevealed,
         classId: assignment.class_id,
         className: klass?.name ?? "",
-
       },
       questions: await Promise.all(
         (questions ?? []).map(async (q) => ({
@@ -1963,7 +1955,6 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     };
   });
 
-
 export const gradeAnswer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
@@ -1973,7 +1964,12 @@ export const gradeAnswer = createServerFn({ method: "POST" })
         questionId: z.string().uuid(),
         answerText: z.string(),
         imagePaths: z.array(z.string()).max(6).optional(),
-        timeSpentSeconds: z.number().int().min(0).max(60 * 60 * 6).optional(),
+        timeSpentSeconds: z
+          .number()
+          .int()
+          .min(0)
+          .max(60 * 60 * 6)
+          .optional(),
       })
       .parse(input),
   )
@@ -1994,7 +1990,9 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: question, error: qError } = await db
       .from("questions")
-      .select("id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position")
+      .select(
+        "id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position",
+      )
       .eq("id", data.questionId)
       .single();
     if (qError) throw new Error(qError.message);
@@ -2046,7 +2044,6 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     const guardSubmission = await ensureSubmission(db, data.assignmentId, userId);
     if (guardSubmission.locked_at) throw new Error(LOCKED_MESSAGE);
 
-
     /* ---- academic integrity: reject copied AI / web / peer answers ---- */
     const [{ detectAiAnswer }, { findCopiedFromPeers }, { checkHandDrawnPhotos }] =
       await Promise.all([
@@ -2069,7 +2066,6 @@ export const gradeAnswer = createServerFn({ method: "POST" })
           imagePaths.filter((path) => !path.endsWith("working-pad.png")),
         ),
       ),
-
     ]);
     const violation = photoCheck.ok
       ? (peerCopy ?? (detection.isAi ? detection : null))
@@ -2103,9 +2099,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       throw new Error(
         `${violation.reason} This answer was not accepted — write it in your own words. Warning ${strikes} of ${warningLimit} — one more copied answer locks this homework and marks it as a fail until your teacher unlocks it.`,
       );
-
     }
-
 
     const imageUrls = await signWorkImages(db, imagePaths);
 
@@ -2134,8 +2128,6 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
       markSchemeImageUrls: await signPaperPages(db, markSchemePaths),
     });
-
-
 
     const submission = await ensureSubmission(db, data.assignmentId, userId);
     const { data: existing } = await db
@@ -2191,8 +2183,6 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     }
 
     await recalcSubmission(db, submission.id);
-
-
 
     return {
       answerId: answer.id,
@@ -2298,8 +2288,7 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
         // same page. If no safe crop was found, the exact transcribed wording
         // is safer than exposing unrelated or answer content.
         const paths = crops.map(
-          (crop) =>
-            `${pagePaths[crop.page]}#crop=${crop.top.toFixed(4)},${crop.bottom.toFixed(4)}`,
+          (crop) => `${pagePaths[crop.page]}#crop=${crop.top.toFixed(4)},${crop.bottom.toFixed(4)}`,
         );
         // The official answer is kept as a picture too, so ticks, fractions and
         // marking notation stay exactly as printed. Answers are only ever shown
@@ -2326,8 +2315,23 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
       }),
     );
 
+    // Questions and answers are only ever used as pictures, so say plainly
+    // which ones still need cutting by hand instead of falling back to text.
+    const missingQuestion = withPages.filter((q) => q.imagePaths.length === 0).length;
+    const missingAnswer = withPages.filter((q) => q.answerImagePaths.length === 0).length;
+    const warnings = [...extraction.warnings];
+    if (missingQuestion > 0) {
+      warnings.push(
+        `${missingQuestion} question${missingQuestion === 1 ? "" : "s"} could not be cut safely from the paper. Use "Cut question" to pick the area yourself.`,
+      );
+    }
+    if (missingAnswer > 0) {
+      warnings.push(
+        `${missingAnswer} answer${missingAnswer === 1 ? "" : "s"} could not be cut safely from the mark scheme. Use "Cut answer" to pick the area yourself.`,
+      );
+    }
 
-    return { questions: withPages, warnings: extraction.warnings };
+    return { questions: withPages, warnings };
   });
 
 export const sendTutorMessage = createServerFn({ method: "POST" })
@@ -2343,7 +2347,6 @@ export const sendTutorMessage = createServerFn({ method: "POST" })
     });
     if (!owns) throw new Error("Not your answer.");
     if (!isEnglishOnly(data.message)) throw new Error("Please ask your question in English.");
-
 
     const db = await admin();
     const { data: answerRow } = await db
@@ -2441,7 +2444,6 @@ export const submitAssignment = createServerFn({ method: "POST" })
       );
     }
 
-
     const { error } = await supabase
       .from("submissions")
       .update({ status: "submitted", submitted_at: new Date().toISOString() })
@@ -2537,7 +2539,7 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
     // "Reveal on full marks" shows one question's answer the moment it is fully correct.
     const revealOnFullMarks = Boolean(
       (studentRelease as { reveal_on_full_marks?: boolean | null } | null)?.reveal_on_full_marks ??
-        (assignment as { reveal_on_full_marks?: boolean | null }).reveal_on_full_marks,
+      (assignment as { reveal_on_full_marks?: boolean | null }).reveal_on_full_marks,
     );
 
     // Previewing an SL student hides HL-only questions, exactly as they see it.
@@ -2594,10 +2596,8 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
           tagImage: q.tag_image ?? "",
         })),
       ),
-
     };
   });
-
 
 /** Teacher-only trial marking: runs the real AI marker but saves nothing. */
 export const previewGradeAnswer = createServerFn({ method: "POST" })
@@ -2608,7 +2608,10 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
         assignmentId: z.string().uuid(),
         questionId: z.string().uuid(),
         answerText: z.string(),
-        imageDataUrls: z.array(z.string().startsWith("data:image/").max(8_000_000)).max(3).optional(),
+        imageDataUrls: z
+          .array(z.string().startsWith("data:image/").max(8_000_000))
+          .max(3)
+          .optional(),
         /** Pictures produced by the in-app writing pad; skipped by the photo check. */
         padDataUrls: z.array(z.string().startsWith("data:image/").max(8_000_000)).max(3).optional(),
 
@@ -2624,7 +2627,6 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
     }
     if (!isEnglishOnly(data.answerText)) throw new Error(ENGLISH_ONLY_MESSAGE);
 
-
     const { data: allowed } = await supabase.rpc("can_teach_assignment", {
       _assignment_id: data.assignmentId,
       _user_id: userId,
@@ -2634,7 +2636,9 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: question, error: qError } = await db
       .from("questions")
-      .select("id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position")
+      .select(
+        "id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position",
+      )
       .eq("id", data.questionId)
       .single();
     if (qError) throw new Error(qError.message);
@@ -2665,10 +2669,7 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
         answer: data.answerText,
         marks: question.marks,
       }),
-      checkHandDrawnPhotos(
-        previewImages.filter((url) => !(data.padDataUrls ?? []).includes(url)),
-      ),
-
+      checkHandDrawnPhotos(previewImages.filter((url) => !(data.padDataUrls ?? []).includes(url))),
     ]);
     if (!previewPhotoCheck.ok || previewDetection.isAi) {
       const strikes = (data.priorFlags ?? 0) + 1;
@@ -2677,8 +2678,6 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
         `${previewPhotoCheck.ok ? "This answer looks AI-generated or copied, so it was not accepted. Write it in your own words." : previewPhotoCheck.reason} Warning ${strikes} of ${previewLimit} — one more rejected answer locks the homework and marks it as a fail until a teacher unlocks it.`,
       );
     }
-
-
 
     const { recoverAnswerCrops: recoverPreviewAnswerCrops } = await import("./answer-crop.server");
     const previewMarkSchemePaths = await recoverPreviewAnswerCrops({
@@ -2703,7 +2702,6 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       markSchemeImageUrls: await signPaperPages(db, previewMarkSchemePaths),
     });
 
-
     return {
       verdict: result.verdict,
       awardedMarks: result.awardedMarks,
@@ -2713,7 +2711,6 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       markBreakdown: result.markPoints ?? [],
     };
   });
-
 
 /** Teacher-only trial tutor chat: same Socratic tutor, nothing saved. */
 export const previewTutorMessage = createServerFn({ method: "POST" })
@@ -2785,14 +2782,10 @@ export const previewTutorMessage = createServerFn({ method: "POST" })
     return { reply };
   });
 
-
-
-
 type AnyClient = Awaited<ReturnType<typeof admin>>;
 
 const SUBMISSION_FIELDS =
   "id, status, awarded_marks, total_marks, submitted_at, ai_flag_count, locked_at, locked_reason, penalty_percent";
-
 
 async function ensureSubmission(db: AnyClient, assignmentId: string, studentId: string) {
   const { data: existing } = await db
@@ -2842,9 +2835,7 @@ async function recalcSubmission(db: AnyClient, submissionId: string) {
     .filter((a) => !excluded.has(a.question_id))
     .reduce((sum, a) => sum + Number(a.awarded_marks), 0);
   const penalty = Number(submission.penalty_percent ?? 0);
-  const awarded = submission.locked_at
-    ? 0
-    : Math.round(raw * (1 - penalty / 100) * 100) / 100;
+  const awarded = submission.locked_at ? 0 : Math.round(raw * (1 - penalty / 100) * 100) / 100;
   await db
     .from("submissions")
     .update({ awarded_marks: awarded, total_marks: totalMarks })
@@ -2882,24 +2873,21 @@ async function questionForTeacher(
   return question;
 }
 
-
 async function signPaperPages(db: AnyClient, paths: string[]) {
   if (paths.length === 0) return [];
   // A stored path may carry "#crop=top,bottom" — the band of that page to show.
   const parts = paths.map((path) => {
     const at = path.indexOf("#");
-    return at === -1
-      ? { path, hash: "" }
-      : { path: path.slice(0, at), hash: path.slice(at) };
+    return at === -1 ? { path, hash: "" } : { path: path.slice(0, at), hash: path.slice(at) };
   });
-  const { data } = await db.storage
-    .from("paper-pages")
-    .createSignedUrls(parts.map((p) => p.path), 60 * 60 * 8);
+  const { data } = await db.storage.from("paper-pages").createSignedUrls(
+    parts.map((p) => p.path),
+    60 * 60 * 8,
+  );
   return (data ?? [])
     .map((item, index) => (item.signedUrl ? `${item.signedUrl}${parts[index]?.hash ?? ""}` : null))
     .filter((url): url is string => Boolean(url));
 }
-
 
 async function signWorkImages(db: AnyClient, paths: string[]) {
   if (paths.length === 0) return [];
@@ -3010,7 +2998,6 @@ export const setQuestionPhotoMode = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
-
 
 /** Teacher-only: removes a question from an assignment along with every student answer to it. */
 export const deleteQuestion = createServerFn({ method: "POST" })
@@ -3223,23 +3210,21 @@ async function studentAccess(
       .maybeSingle(),
   ]);
   const dueOverridden = Boolean(override?.due_at);
-  const dueAt = (override?.due_at as string | null) ?? (assignment?.due_at as string | null) ?? null;
+  const dueAt =
+    (override?.due_at as string | null) ?? (assignment?.due_at as string | null) ?? null;
   return {
     dueAt,
     dueOverridden,
     pastDue: Boolean(dueAt && new Date(dueAt).getTime() < Date.now()),
-    markSchemeRevealed: Boolean(
-      override?.mark_scheme_revealed ?? assignment?.mark_scheme_revealed,
-    ),
+    markSchemeRevealed: Boolean(override?.mark_scheme_revealed ?? assignment?.mark_scheme_revealed),
     revealOnFullMarks: Boolean(
       (override as { reveal_on_full_marks?: boolean | null } | null)?.reveal_on_full_marks ??
-        (assignment as { reveal_on_full_marks?: boolean | null } | null)?.reveal_on_full_marks,
+      (assignment as { reveal_on_full_marks?: boolean | null } | null)?.reveal_on_full_marks,
     ),
     assignmentPhotoMode: (assignment?.photo_mode as string | null) ?? "auto",
     studentPhotoMode: (override?.photo_mode as string | null) ?? null,
   };
 }
-
 
 /** Teacher view of due dates and mark-scheme reveals for an assignment. */
 export const getAssignmentAccessControls = createServerFn({ method: "POST" })
@@ -3271,10 +3256,14 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
     const [{ data: profiles }, { data: settings }] = await Promise.all([
       studentIds.length
         ? db.from("profiles").select("id, full_name, email").in("id", studentIds)
-        : Promise.resolve({ data: [] as Array<{ id: string; full_name: string; email: string | null }> }),
+        : Promise.resolve({
+            data: [] as Array<{ id: string; full_name: string; email: string | null }>,
+          }),
       db
         .from("student_assignment_settings")
-        .select("student_id, due_at, mark_scheme_revealed, reveal_on_full_marks, photo_mode, keyword_translation")
+        .select(
+          "student_id, due_at, mark_scheme_revealed, reveal_on_full_marks, photo_mode, keyword_translation",
+        )
         .eq("assignment_id", data.assignmentId),
     ]);
 
@@ -3305,7 +3294,6 @@ export const getAssignmentAccessControls = createServerFn({ method: "POST" })
         };
       }),
     };
-
   });
 
 /** Teacher-only: whole-class due date, mark-scheme reveal and/or photo answers. */
@@ -3350,7 +3338,6 @@ export const setAssignmentAccess = createServerFn({ method: "POST" })
     if (data.vocabTranslation !== undefined) patch.vocab_translation = data.vocabTranslation;
     if (data.vocabLanguage !== undefined) patch.vocab_language = data.vocabLanguage;
     if (Object.keys(patch).length === 0) return { ok: true };
-
 
     const db = await admin();
     const { error } = await db.from("assignments").update(patch).eq("id", data.assignmentId);
@@ -3410,7 +3397,6 @@ export const setStudentAssignmentAccess = createServerFn({ method: "POST" })
       .upsert(patch, { onConflict: "assignment_id,student_id" });
     if (error) throw new Error(error.message);
     return { ok: true };
-
   });
 
 /**
@@ -3454,7 +3440,11 @@ export const setGradebookDetail = createServerFn({ method: "POST" })
       .eq("student_id", data.studentId)
       .maybeSingle();
 
-    const patch = { gradebook_detail: data.enabled, updated_by: userId, updated_at: new Date().toISOString() };
+    const patch = {
+      gradebook_detail: data.enabled,
+      updated_by: userId,
+      updated_at: new Date().toISOString(),
+    };
     const { error } = existing
       ? await db.from("class_student_settings").update(patch).eq("id", existing.id)
       : await db
@@ -3563,7 +3553,11 @@ export const getStudentHomeworkView = createServerFn({ method: "POST" })
     const fullMarkQuestionIds = new Set(
       (answers ?? [])
         .filter((a) => {
-          const row = a as { question_id: string; awarded_marks?: number; rejected_at?: string | null };
+          const row = a as {
+            question_id: string;
+            awarded_marks?: number;
+            rejected_at?: string | null;
+          };
           const q = (allQuestions ?? []).find((item) => item.id === row.question_id);
           const marks = Number(q?.marks ?? 0);
           return marks > 0 && Number(row.awarded_marks ?? 0) >= marks && !row.rejected_at;
@@ -3574,7 +3568,8 @@ export const getStudentHomeworkView = createServerFn({ method: "POST" })
       if ((q as { credited_all_at?: string | null }).credited_all_at) fullMarkQuestionIds.add(q.id);
     }
     const revealsQuestion = (questionId: string) =>
-      access.markSchemeRevealed || (access.revealOnFullMarks && fullMarkQuestionIds.has(questionId));
+      access.markSchemeRevealed ||
+      (access.revealOnFullMarks && fullMarkQuestionIds.has(questionId));
 
     const { data: profile } = await db
       .from("profiles")

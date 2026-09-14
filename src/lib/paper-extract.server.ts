@@ -31,9 +31,6 @@ export type ExtractionResult = {
   warnings: string[];
 };
 
-
-
-
 export type UploadedFile = {
   filename: string;
   mimeType: string;
@@ -58,7 +55,7 @@ const SHARED_RULES = [
   "The upload is often NOT a clean official paper: teachers paste questions and mark schemes together from several different papers into a Word document or PDF, in any order, with inconsistent numbering, duplicated numbers, missing numbers, stray headings, tables and screenshots.",
   "Papers mix question types freely: multiple choice (A/B/C/D), short answer, calculations, diagram/drawing tasks and extended writing. Treat every one of them as a question.",
   "Every answerable sub-part is its own item: 1(a), 1(b)(i), 1(b)(ii), 2(a) ... Never merge sub-parts and never summarise a paper down to a few sample questions.",
-  "Sub-part labels are printed in many styles and ALL of them count as their own part: (a), a), a., (i), (ii), (a)(i), (a.i), (a.ii), (b.iii), c.i, ai, aii, bi, bii. A label such as \"(a.ii)\" or \"(b)\" standing alone on its own line is a real sub-part even when its parent number is printed pages earlier.",
+  'Sub-part labels are printed in many styles and ALL of them count as their own part: (a), a), a., (i), (ii), (a)(i), (a.i), (a.ii), (b.iii), c.i, ai, aii, bi, bii. A label such as "(a.ii)" or "(b)" standing alone on its own line is a real sub-part even when its parent number is printed pages earlier.',
   "Work through the documents page by page, in order, from the first question to the very last one, including anything that appears after a mark scheme block or between mark scheme blocks.",
   "In teacher-made documents each sub-part is usually followed immediately by its own mark scheme block, then the NEXT sub-part continues below or on the following page. Always keep reading past every mark scheme block: the parts printed after it are still questions and are the ones most often missed.",
   "Before you finish, walk the sub-part letters and roman numerals of every question in order and check none is absent: if you have (a) and (a)(i) and (b), make sure (a)(ii) is not printed somewhere between them. A gap in the sequence means you missed a part — go back and find it.",
@@ -69,11 +66,11 @@ const INVENTORY_SYSTEM = [
   SHARED_RULES,
   "Task: produce a COMPLETE index of every answerable question part in the upload.",
   "Do not write the question wording or the answers here — only the part label, its marks and its type.",
-  "Use the printed label exactly where one exists, e.g. \"1(a)\", \"1(b)(ii)\", \"3\", \"7(c)\".",
-  "When numbering is missing, ambiguous or repeats a label you already used, invent a unique stable label instead of skipping the question: \"p3-Q1\", \"p3-Q1b\", \"MCQ-4\". Never output the same label twice.",
+  'Use the printed label exactly where one exists, e.g. "1(a)", "1(b)(ii)", "3", "7(c)".',
+  'When numbering is missing, ambiguous or repeats a label you already used, invent a unique stable label instead of skipping the question: "p3-Q1", "p3-Q1b", "MCQ-4". Never output the same label twice.',
   "If a question has no sub-parts, list the question number alone.",
   "Include every part: multiple choice items, one-mark recall items, calculations, diagram/graph tasks and extended-writing tasks.",
-  "kind: \"mcq\" for multiple-choice items with printed options, otherwise \"short\".",
+  'kind: "mcq" for multiple-choice items with printed options, otherwise "short".',
   "Anything that is only a mark scheme / answer block for a question you have already indexed is NOT a new item.",
   "Each paper page is supplied as an image labelled PAGE 1, PAGE 2, ... Record which page(s) each part appears on, including a page that only holds its figure, diagram, graph or table.",
   'Reply with JSON only: {"items":[{"label":"1(a)","marks":2,"kind":"short","pages":[3]}]}',
@@ -84,8 +81,8 @@ const SWEEP_SYSTEM = [
   "Task: a first pass already indexed some question parts. Find the ones it MISSED.",
   "You are given the labels already found. Scan the whole upload again and list only answerable question parts that are not already covered.",
   "Pay special attention to multiple-choice blocks, questions pasted mid-document, questions after a mark scheme section, and unnumbered questions.",
-  "Above all, check for MISSING SUB-PARTS: for each question already indexed, read every page it touches and the pages after it and list any (a)/(b)/(c) or (i)/(ii)/(iii) part — including forms like (a.ii) or (b) alone on a line, and parts printed after a mark scheme block — that is not already in the list. Use the printed label for these, e.g. \"1(a)(ii)\", not an invented one.",
-  "Give missed items a unique label that does not clash with the supplied list (e.g. \"p5-Q2\").",
+  'Above all, check for MISSING SUB-PARTS: for each question already indexed, read every page it touches and the pages after it and list any (a)/(b)/(c) or (i)/(ii)/(iii) part — including forms like (a.ii) or (b) alone on a line, and parts printed after a mark scheme block — that is not already in the list. Use the printed label for these, e.g. "1(a)(ii)", not an invented one.',
+  'Give missed items a unique label that does not clash with the supplied list (e.g. "p5-Q2").',
   "If nothing was missed, reply with an empty items array.",
   'Reply with JSON only: {"items":[{"label":"p5-Q2","marks":1,"kind":"mcq","pages":[5]}]}',
 ].join(" ");
@@ -95,31 +92,31 @@ const DETAIL_SYSTEM = [
   "Task: for ONLY the requested part labels, transcribe the question and align the official mark scheme.",
   "questionText: start with the part label, then reproduce the printed wording CHARACTER FOR CHARACTER. You are an OCR transcriber, not an editor or a rewriter.",
   "For multiple-choice questions, transcribe the stem AND every printed option on its own line, keeping the printed option letters/numbers (A, B, C, D). Never drop, reorder or reword options.",
-  "ABSOLUTE RULE: never change, modernise, simplify, translate, correct, shorten, expand or reorder ANY word of the question. Do not swap a word for a synonym (no \"work out\" for \"calculate\", no \"find\" for \"determine\", no \"picture\" for \"Fig.\"). Do not fix the paper's spelling, capitalisation, punctuation, spacing or British/American usage. Do not add words such as \"the\", \"your\" or \"please\" that are not printed, and do not drop printed words.",
-  "Keep the printed line structure, bracketed instructions, blank-line dots and \"[2]\" style mark tags out of the wording only if they are page furniture; everything the student reads stays exactly as printed.",
+  'ABSOLUTE RULE: never change, modernise, simplify, translate, correct, shorten, expand or reorder ANY word of the question. Do not swap a word for a synonym (no "work out" for "calculate", no "find" for "determine", no "picture" for "Fig."). Do not fix the paper\'s spelling, capitalisation, punctuation, spacing or British/American usage. Do not add words such as "the", "your" or "please" that are not printed, and do not drop printed words.',
+  'Keep the printed line structure, bracketed instructions, blank-line dots and "[2]" style mark tags out of the wording only if they are page furniture; everything the student reads stays exactly as printed.',
   "If part of the wording is unreadable in the scan, transcribe what is legible and put [unclear] at that spot — never guess or paraphrase a replacement.",
-  "NEVER describe or re-draw a figure, diagram, graph, table, circuit or chemical structure in words: the original paper page image is attached to the question for the student to look at. Instead transcribe the wording and refer to it as printed (e.g. \"Fig. 2.1\").",
+  'NEVER describe or re-draw a figure, diagram, graph, table, circuit or chemical structure in words: the original paper page image is attached to the question for the student to look at. Instead transcribe the wording and refer to it as printed (e.g. "Fig. 2.1").',
   "Equations, formulae and expressions must be transcribed exactly as printed, keeping symbols, indices, fractions and units.",
   "NEVER use LaTeX or markdown: no $ or $$ delimiters, no \\\\frac, \\\\text, \\\\times, ^{ }, _{ }, no ** bold. Write maths in plain text with real Unicode characters instead — nuclide symbols as ²³⁵₉₂U, indices as m², formulae as H₂O, and fractions as (y - b)/m, with °C, °F, ×, ÷, ≤, ≥, ≈, →, π, Δ, Ω, µ, ± typed directly.",
   "markScheme: the official marking points for that exact part, verbatim where possible, with accepted alternatives and mark allocation. The mark scheme may sit far away from the question in the upload, or immediately under it — search the whole document for it.",
-  "For multiple choice, the mark scheme is the correct option letter plus a one-line reason, e.g. \"C (1 mark) — ...\".",
+  'For multiple choice, the mark scheme is the correct option letter plus a one-line reason, e.g. "C (1 mark) — ...".',
   "If no mark scheme is supplied anywhere for that part, write a concise expected answer with marking points instead.",
   "marks: the integer marks for that part (default 1).",
   "Return one item per requested label, in the same order, and never skip a label.",
-  "crops: the band(s) of the page picture(s) that must be shown to the student for this part, so nothing printed is lost. Give a list: [{\"page\":N,\"top\":T,\"bottom\":B}] where T and B are fractions of that page's full height measured from the top of the page (0 = very top, 1 = very bottom).",
+  'crops: the band(s) of the page picture(s) that must be shown to the student for this part, so nothing printed is lost. Give a list: [{"page":N,"top":T,"bottom":B}] where T and B are fractions of that page\'s full height measured from the top of the page (0 = very top, 1 = very bottom).',
   "When the part runs over a page break — for example the wording is at the foot of one page and its options, table or diagram continue at the top of the next — give TWO bands in reading order: the tail of the first page, then the head of the next page. Never drop the continuation and never set crops to null just because it spans pages.",
   "Boundaries: a band starts at this part's own printed label and stops immediately BEFORE the next printed question or part label (the next number, the next (a)/(b), the next (i)/(ii)). Include only what is printed between this part's label and that next label. Never let another question's label, stem or options appear inside a band.",
   "Never include an answer inside a band. Exclude any 'Answer', 'Answer:', 'Markscheme', 'Mark scheme', 'Answers', worked solution, answer key, teacher note or highlighted/boxed answer text, and any answer written into the paper. If such an answer block sits between this part and the next label, end the band just above it. Blank ruled answer lines with no writing on them are fine to include.",
   "Give ONE band per page. Never give two bands that cover the same print, and never repeat the same region of a page — a second band is only ever the continuation on the NEXT page.",
   "If an answer or mark scheme is printed on the same page below this part, the band MUST end above the first character of that answer text, even if that means the band is short.",
   "Only set crops to null if you truly cannot locate the part on any page.",
-  "answerCrops: the band(s) of page picture(s) showing the OFFICIAL ANSWER / mark scheme for this exact part, so the printed marking points, ticks, fractions and notation are kept as pictures instead of retyped. Paper pages are labelled PAGE N; mark scheme pages are labelled ANSWER PAGE N. Use {\"sheet\":\"answer\",\"page\":N,\"top\":T,\"bottom\":B} for a mark scheme page and {\"sheet\":\"paper\",...} when the answer is printed on a paper page. Start at this part's own answer row/label and stop before the next part's answer. Give at most two bands, and set answerCrops to null if you cannot locate the answer.",
+  'answerCrops: the band(s) of page picture(s) showing the OFFICIAL ANSWER / mark scheme for this exact part, so the printed marking points, ticks, fractions and notation are kept as pictures instead of retyped. Paper pages are labelled PAGE N; mark scheme pages are labelled ANSWER PAGE N. Use {"sheet":"answer","page":N,"top":T,"bottom":B} for a mark scheme page and {"sheet":"paper",...} when the answer is printed on a paper page. Start at this part\'s own answer row/label and stop before the next part\'s answer. Give at most two bands, and set answerCrops to null if you cannot locate the answer.',
+  "Mark-scheme rows are printed very close together, often a single line apart. Every answerCrops band must be as tight as the printed rows for that one part — a band only one or two lines tall is correct. Never pad a band, and never let the row above or below appear inside it.",
+  "answerCrops are required whenever the answer is printed anywhere in the upload: the answer is always shown as this picture and is never retyped for the student.",
 
   "Symbols and units MUST be reproduced as real Unicode characters exactly as printed: \u00b0C, \u00b0F, \u00b5, \u03a9, \u00b1, \u00d7, \u00f7, \u2264, \u2265, \u2248, \u2192, \u21cc, \u221a, \u03b1\u03b2\u03b3\u03bb\u03c0\u0394\u03b8, subscripts/superscripts (H\u2082O, cm\u00b3, m s\u207b\u00b2, 10\u2076).",
-  "Never write symbols as words, ASCII stand-ins or escapes: no \"degrees C\", \"deg C\", \"oC\", \"^oC\", \"ohms\", \"micro\", \"+/-\", \"\\\\u00b0\", \"&deg;\", \"?C\". Write 25 \u00b0C, 4.7 k\u03a9, 3 \u00b5A.",
+  'Never write symbols as words, ASCII stand-ins or escapes: no "degrees C", "deg C", "oC", "^oC", "ohms", "micro", "+/-", "\\\\u00b0", "&deg;", "?C". Write 25 \u00b0C, 4.7 k\u03a9, 3 \u00b5A.',
   'Reply with JSON only: {"questions":[{"label":"1(a)","questionText":"...","markScheme":"...","marks":2,"pages":[3,4],"crops":[{"page":3,"top":0.62,"bottom":0.97},{"page":4,"top":0.05,"bottom":0.3}],"answerCrops":[{"sheet":"answer","page":2,"top":0.31,"bottom":0.4}]}]}',
-
-
 ].join(" ");
 
 const CROP_AUDIT_SYSTEM = [
@@ -139,18 +136,13 @@ const CROP_AUDIT_SYSTEM = [
 const CROSSCHECK_SYSTEM = [
   "You are a bookkeeper checking an uploaded question paper and its mark scheme. You do not transcribe questions.",
   "Report two things only.",
-  "totals: for every printed main question number, the total marks printed for the WHOLE question (e.g. \"[Total: 9]\", \"(9 marks)\" or the sum shown in the mark scheme). Omit a question when no total is printed.",
-  "answerLabels: every question part label that the mark scheme / answer key lists an answer for, using the printed form, e.g. \"7(a)\", \"7(b)(ii)\", \"12\".",
+  'totals: for every printed main question number, the total marks printed for the WHOLE question (e.g. "[Total: 9]", "(9 marks)" or the sum shown in the mark scheme). Omit a question when no total is printed.',
+  'answerLabels: every question part label that the mark scheme / answer key lists an answer for, using the printed form, e.g. "7(a)", "7(b)(ii)", "12".',
   "Never invent labels or totals. Only report what is printed.",
   'Reply with JSON only: {"totals":[{"question":"7","printedTotal":9}],"answerLabels":["7(a)","7(b)(i)","7(b)(ii)"]}',
 ].join(" ");
 
-
-
-
-export async function extractQuestionsFromPapers(
-  input: ExtractInput,
-): Promise<ExtractionResult> {
+export async function extractQuestionsFromPapers(input: ExtractInput): Promise<ExtractionResult> {
   const key = process.env["LOVABLE_API_KEY"];
   if (!key) throw new Error("AI is not configured yet. Missing LOVABLE_API_KEY.");
 
@@ -159,8 +151,8 @@ export async function extractQuestionsFromPapers(
     `Curriculum: ${input.curriculum}`,
     `Subject/topic: ${input.subject || "unspecified"}`,
     input.markSchemeFiles.length > 0
-      ? "The first document(s) are the past paper(s); the last document(s) are the mark scheme(s). Either set may be a teacher-made compilation pasted from several papers, in any order. Every official answer lives on an ANSWER PAGE sheet, so every answerCrops band must use sheet \"answer\"."
-      : "The document(s) may contain both questions and mark schemes combined, pasted together from several papers in any order — separate them yourself. Answer pictures are cut from the same pages as the questions, so answerCrops bands use sheet \"paper\".",
+      ? 'The first document(s) are the past paper(s); the last document(s) are the mark scheme(s). Either set may be a teacher-made compilation pasted from several papers, in any order. Every official answer lives on an ANSWER PAGE sheet, so every answerCrops band must use sheet "answer".'
+      : 'The document(s) may contain both questions and mark schemes combined, pasted together from several papers in any order — separate them yourself. Answer pictures are cut from the same pages as the questions, so answerCrops bands use sheet "paper".',
   ].join("\n");
 
   let inventory = await runInventory(key, header, documents);
@@ -248,18 +240,23 @@ export async function locateAnswerCrop(input: {
       image_url: { url: `data:${file.mimeType};base64,${file.base64}` },
     });
   });
-  const text = await callGateway(key, [
-    "Locate the exact printed mark-scheme answer for the requested question.",
-    "Return only its horizontal crop band, starting at its own label and ending before the next answer.",
-    "Cut only through blank white space. Never include another answer.",
-    'Reply with JSON only: {"answerCrops":[{"page":1,"top":0.2,"bottom":0.3}]}.',
-  ].join(" "), [
-    {
-      type: "text",
-      text: `Question label: ${input.label}\nQuestion: ${input.questionText}\nExpected answer: ${input.markScheme}`,
-    },
-    ...documents,
-  ]);
+  const text = await callGateway(
+    key,
+    [
+      "Locate the exact printed mark-scheme answer for the requested question.",
+      "Return only its horizontal crop band, starting at its own label and ending before the next answer.",
+      "Cut only through blank white space. Never include another answer.",
+      "Mark-scheme rows sit very close together, often one line apart. Keep the band as tight as possible — a band only one or two printed lines tall is correct and expected. Never widen it to be safe.",
+      'Reply with JSON only: {"answerCrops":[{"page":1,"top":0.2,"bottom":0.3}]}.',
+    ].join(" "),
+    [
+      {
+        type: "text",
+        text: `Question label: ${input.label}\nQuestion: ${input.questionText}\nExpected answer: ${input.markScheme}`,
+      },
+      ...documents,
+    ],
+  );
   const parsed = parseJson(text);
   return parseCropList(parsed["answerCrops"] ?? parsed["answerCrop"], [], "answer");
 }
@@ -282,7 +279,9 @@ async function runCrossCheck(
     const totals = new Map<string, number>();
     for (const raw of Array.isArray(parsed["totals"]) ? (parsed["totals"] as unknown[]) : []) {
       const row = raw as Record<string, unknown>;
-      const question = String(row["question"] ?? "").trim().replace(/[^\d]/g, "");
+      const question = String(row["question"] ?? "")
+        .trim()
+        .replace(/[^\d]/g, "");
       const total = Math.round(Number(row["printedTotal"]));
       if (question && Number.isFinite(total) && total > 0) totals.set(question, total);
     }
@@ -365,7 +364,10 @@ function sequenceGapNotes(inventory: InventoryItem[]): string[] {
     const romans = list.filter((p) => ROMAN_SEQUENCE.includes(p));
     const letters = list.filter((p) => p.length === 1 && !romans.includes(p));
     const check = (values: string[], sequence: string[]) => {
-      const indexes = values.map((v) => sequence.indexOf(v)).filter((i) => i >= 0).sort((a, b) => a - b);
+      const indexes = values
+        .map((v) => sequence.indexOf(v))
+        .filter((i) => i >= 0)
+        .sort((a, b) => a - b);
       const first = indexes[0];
       const last = indexes[indexes.length - 1];
       if (first === undefined || last === undefined) return;
@@ -383,7 +385,6 @@ function sequenceGapNotes(inventory: InventoryItem[]): string[] {
   }
   return notes.slice(0, 10);
 }
-
 
 /**
  * A final paper-wide guard: two different question parts must not display the
@@ -407,7 +408,9 @@ export function separateQuestionCrops(items: ExtractedQuestion[]): ExtractedQues
       let candidate: QuestionCrop | null = { ...crop };
       for (const previous of earlier) {
         if (!candidate) break;
-        const overlap = Math.min(candidate.bottom, previous.crop.bottom) - Math.max(candidate.top, previous.crop.top);
+        const overlap =
+          Math.min(candidate.bottom, previous.crop.bottom) -
+          Math.max(candidate.top, previous.crop.top);
         if (overlap <= 0) continue;
         const smaller = Math.min(
           candidate.bottom - candidate.top,
@@ -441,10 +444,7 @@ const COMPACT_LETTER_SUBPART = new RegExp(
   `^\\s*([a-z])(?:\\s*\\(?(${PART_ROMAN})\\)?)?(?=\\s|[.):-]|$)`,
   "i",
 );
-const STANDALONE_ROMAN_SUBPART = new RegExp(
-  `^\\s*\\(?(${PART_ROMAN})\\)?(?=\\s|[.):-]|$)`,
-  "i",
-);
+const STANDALONE_ROMAN_SUBPART = new RegExp(`^\\s*\\(?(${PART_ROMAN})\\)?(?=\\s|[.):-]|$)`, "i");
 
 type LeadingQuestionLabel = {
   main: string | null;
@@ -540,7 +540,6 @@ export function renumberQuestions(items: ExtractedQuestion[]): ExtractedQuestion
   });
 }
 
-
 async function runBatches(
   key: string,
   header: string,
@@ -569,8 +568,7 @@ async function runBatches(
   return results;
 }
 
-const DOCX_MIME =
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 function buildDocumentContent(input: ExtractInput): Array<Record<string, unknown>> {
   const content: Array<Record<string, unknown>> = [];
@@ -662,7 +660,6 @@ function extractDocxText(base64: string): string {
   return joined;
 }
 
-
 async function callGateway(
   key: string,
   system: string,
@@ -710,14 +707,15 @@ function parseInventoryItems(parsed: Record<string, unknown>, taken: Set<string>
           .map((n) => Math.round(Number(n)))
           .filter((n) => Number.isFinite(n) && n > 0)
       : [];
-    const kind = String(item["kind"] ?? "").trim().toLowerCase();
+    const kind = String(item["kind"] ?? "")
+      .trim()
+      .toLowerCase();
     out.push({
       label,
       marks: Math.max(1, Math.round(Number(item["marks"]) || 1)),
       pages: [...new Set(pages)].slice(0, 3),
       ...(kind ? { kind } : {}),
     });
-
   }
   return out;
 }
@@ -765,7 +763,6 @@ async function runSweep(
     return [];
   }
 }
-
 
 async function runDetail(
   key: string,
@@ -827,9 +824,6 @@ async function runDetail(
           hasAnswerPages ? "answer" : "paper",
         ),
       };
-
-
-
     })
     .filter((item) => item.questionText.length > 0);
 
@@ -856,10 +850,16 @@ async function runCropAudit(
   details: DetailResult[],
 ) {
   const request = details
-    .map((item) => `- ${item.label}${item.pages.length ? ` on PAGE ${item.pages.join(", ")}` : ""}: ${item.questionText.slice(0, 180)}`)
+    .map(
+      (item) =>
+        `- ${item.label}${item.pages.length ? ` on PAGE ${item.pages.join(", ")}` : ""}: ${item.questionText.slice(0, 180)}`,
+    )
     .join("\n");
   const text = await callGateway(key, CROP_AUDIT_SYSTEM, [
-    { type: "text", text: `${header}\n\nReturn safe crops for only these separate parts:\n${request}` },
+    {
+      type: "text",
+      text: `${header}\n\nReturn safe crops for only these separate parts:\n${request}`,
+    },
     ...documents,
   ]);
   const parsed = parseJson(text);
@@ -868,7 +868,9 @@ async function runCropAudit(
   const result = new Map<string, QuestionCrop[] | null>();
   for (const raw of items) {
     const item = raw as Record<string, unknown>;
-    const label = String(item["label"] ?? "").trim().toLowerCase();
+    const label = String(item["label"] ?? "")
+      .trim()
+      .toLowerCase();
     const pages = allowed.get(label);
     if (!pages) continue;
     result.set(label, parseCropList(item["crops"] ?? item["crop"], pages));
@@ -905,7 +907,6 @@ function parseCropValue(
   bottom = Math.min(1, bottom + 0.003);
   if (bottom - top < 0.04) return null;
   return { sheet, page, top, bottom };
-
 }
 
 /**
@@ -925,7 +926,9 @@ function parseCropList(
     if (!band) continue;
     // There can only be one crop for a question part on one page. If the model
     // reports it twice, keep the shared/narrower region rather than expanding.
-    const same = out.find((b) => b.page === band.page && (b.sheet ?? "paper") === (band.sheet ?? "paper"));
+    const same = out.find(
+      (b) => b.page === band.page && (b.sheet ?? "paper") === (band.sheet ?? "paper"),
+    );
     if (same) {
       const overlaps = band.top < same.bottom + 0.02 && band.bottom > same.top - 0.02;
       const sharedTop = Math.max(same.top, band.top);
@@ -954,7 +957,6 @@ function parseCropList(
   return out.length > 0 ? out : null;
 }
 
-
 /**
  * Removes anything a student could search on (year, exam board, session and
  * paper codes, copyright and website lines) from extracted question text.
@@ -963,18 +965,26 @@ function parseCropList(
 export function scrubIdentifiers(input: string): string {
   return input
     .replace(/^\s*(?:©|\(c\))\s*(?:19|20)\d{2}[^\n]*$/gim, "")
-    .replace(/\b(UCLES|Cambridge Assessment|Cambridge International|CAIE|Edexcel|Pearson|AQA|OCR|WJEC|International Baccalaureate|IBO)\b[^\n]*/gi, "")
-    .replace(/\b(?:May|June|October|November|January|February|March)\s*\/?\s*(?:19|20)\d{2}\b/gi, "")
+    .replace(
+      /\b(UCLES|Cambridge Assessment|Cambridge International|CAIE|Edexcel|Pearson|AQA|OCR|WJEC|International Baccalaureate|IBO)\b[^\n]*/gi,
+      "",
+    )
+    .replace(
+      /\b(?:May|June|October|November|January|February|March)\s*\/?\s*(?:19|20)\d{2}\b/gi,
+      "",
+    )
     .replace(/\b\d{4}\/\d{2}\/[A-Z]\/[A-Z]\/[A-Z]{2}\b/g, "")
     .replace(/\b\d{4}\/\d{2}\b/g, "")
     .replace(/\b(?:19|20)\d{2}\b(?!\s*(?:cm|mm|m|km|g|kg|s|ml|cm3|J|N|K|°))/g, "")
     .replace(/\b(?:https?:\/\/|www\.)\S+/gi, "")
-    .replace(/\b(?:Turn over|BLANK PAGE|For Examiner'?s Use|Candidate (?:Name|Number)|Centre Number|Syllabus (?:code|number)|Paper \d+)\b[^\n]*/gi, "")
+    .replace(
+      /\b(?:Turn over|BLANK PAGE|For Examiner'?s Use|Candidate (?:Name|Number)|Centre Number|Syllabus (?:code|number)|Paper \d+)\b[^\n]*/gi,
+      "",
+    )
     .replace(/[ \t]{2,}/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
-
 
 function dedupe(items: Array<ExtractedQuestion | DetailResult>): ExtractedQuestion[] {
   const seen = new Set<string>();
@@ -994,11 +1004,9 @@ function dedupe(items: Array<ExtractedQuestion | DetailResult>): ExtractedQuesti
       crops: item.crops ?? null,
       answerCrops: item.answerCrops ?? null,
     });
-
   }
   return out;
 }
-
 
 function parseJson(text: string): Record<string, unknown> {
   const start = text.indexOf("{");

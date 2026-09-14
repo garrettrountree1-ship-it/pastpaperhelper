@@ -77,7 +77,7 @@ function blankEdge(
 ) {
   // A single pale scan-line can pass through the gap inside a letter. Require a
   // full text-line-sized strip of paper before treating a boundary as safe.
-  const need = Math.max(6, clearance);
+  const need = Math.max(3, clearance);
   let run = 0;
   for (let step = 0; step <= limit; step += 1) {
     const y = start + direction * step;
@@ -127,10 +127,11 @@ export async function snapBandToWhitespace(url: string, band: Band): Promise<Ban
   if (!rows || rows.length < 20) return band;
   const height = rows.length;
   const shrinkLimit = Math.round(height * 0.08);
-  const growLimit = Math.max(12, Math.round(height * 0.045));
-  // A full line of white paper, not merely a few pixels, around the first and
-  // last ink. This also covers symbols and the outer strokes of diagrams.
-  const pad = Math.max(8, Math.round(height * 0.02));
+  const growLimit = Math.max(6, Math.round(height * 0.015));
+  // Just enough white paper to keep letters, symbols and the outer strokes of
+  // diagrams whole. Mark-scheme lines sit very close together, so this stays
+  // small: a large pad used to swallow the answer printed underneath.
+  const pad = Math.max(3, Math.round(height * 0.005));
 
   const rawTop = Math.min(height - 1, Math.max(0, Math.round(band.top * height)));
   const rawBottom = Math.min(height - 1, Math.max(0, Math.round(band.bottom * height)));
@@ -161,5 +162,3 @@ export async function snapBandToWhitespace(url: string, band: Band): Promise<Ban
     bottom: Math.min(1, (bottom + 1) / height),
   };
 }
-
-

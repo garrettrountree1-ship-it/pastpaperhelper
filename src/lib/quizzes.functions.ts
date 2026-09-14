@@ -42,7 +42,6 @@ const questionInput = z.object({
   answerImagePaths: z.array(z.string()).default([]),
 });
 
-
 const settingsInput = {
   title: z.string().min(1),
   subject: z.string().default(""),
@@ -150,7 +149,6 @@ export const createQuiz = createServerFn({ method: "POST" })
         image_paths: q.imagePaths,
         answer_image_paths: q.answerImagePaths,
       })),
-
     );
     if (qError) throw new Error(qError.message);
 
@@ -291,7 +289,9 @@ export const getQuizRoster = createServerFn({ method: "POST" })
       db.from("class_members").select("student_id").eq("class_id", quiz.class_id),
       db
         .from("quiz_attempts")
-        .select("id, student_id, started_at, ends_at, submitted_at, status, awarded_marks, total_marks")
+        .select(
+          "id, student_id, started_at, ends_at, submitted_at, status, awarded_marks, total_marks",
+        )
         .eq("quiz_id", data.quizId),
       db.from("quiz_questions").select("id, marks").eq("quiz_id", data.quizId),
     ]);
@@ -349,7 +349,9 @@ export const listStudentQuizzes = createServerFn({ method: "GET" })
 
     const { data: quizzes } = await supabase
       .from("quizzes")
-      .select("id, class_id, title, subject, time_limit_minutes, released_at, closed_at, show_score")
+      .select(
+        "id, class_id, title, subject, time_limit_minutes, released_at, closed_at, show_score",
+      )
       .in("class_id", classIds)
       .not("released_at", "is", null)
       .order("released_at", { ascending: false });
@@ -425,7 +427,7 @@ export const getQuizWorkspace = createServerFn({ method: "POST" })
 
     const { data: questions } = await db
       .from("quiz_questions")
-      .select("id, position, question_text, mark_scheme, marks, image_paths")
+      .select("id, position, question_text, mark_scheme, marks, image_paths, answer_image_paths")
       .eq("quiz_id", data.quizId)
       .order("position");
     const totalMarks = (questions ?? []).reduce((sum, q) => sum + q.marks, 0);
@@ -461,7 +463,9 @@ export const getQuizWorkspace = createServerFn({ method: "POST" })
     const finished = attempt.status === "submitted";
     const { data: answers } = await db
       .from("quiz_answers")
-      .select("question_id, answer_text, image_paths, awarded_marks, verdict, feedback, mark_breakdown")
+      .select(
+        "question_id, answer_text, image_paths, awarded_marks, verdict, feedback, mark_breakdown",
+      )
       .eq("attempt_id", attempt.id);
 
     return {
@@ -497,7 +501,12 @@ export const getQuizWorkspace = createServerFn({ method: "POST" })
             questionText: q.question_text,
             marks: q.marks,
             imageUrls: await signPaperPages(db, q.image_paths ?? []),
-            markScheme: finished && quiz.reveal_mark_scheme ? q.mark_scheme : null,
+            // Released answers are only ever the picture cut from the printed
+            // mark scheme, never retyped text.
+            markSchemeImageUrls:
+              finished && quiz.reveal_mark_scheme
+                ? await signPaperPages(db, q.answer_image_paths ?? [])
+                : [],
             answerText: answer?.answer_text ?? "",
             answerImageUrls: await signWorkImages(db, answer?.image_paths ?? []),
             result:
@@ -670,9 +679,8 @@ async function gradeAttempt(db: AnyDb, attemptId: string) {
         questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
         markSchemeImageUrls: await signPaperPages(
           db,
-          ((question as { answer_image_paths?: string[] | null }).answer_image_paths ?? []),
+          (question as { answer_image_paths?: string[] | null }).answer_image_paths ?? [],
         ),
-
       });
       awardedTotal += result.awardedMarks;
       await db

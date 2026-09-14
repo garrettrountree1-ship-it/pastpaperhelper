@@ -48,9 +48,7 @@ function QuizPage() {
   useEffect(() => {
     if (!workspace.data) return;
     setSeconds(workspace.data.attempt.secondsLeft);
-    setDrafts(
-      Object.fromEntries(workspace.data.questions.map((q) => [q.id, q.answerText])),
-    );
+    setDrafts(Object.fromEntries(workspace.data.questions.map((q) => [q.id, q.answerText])));
   }, [workspace.data]);
 
   const finished = workspace.data?.attempt.status === "submitted";
@@ -116,7 +114,8 @@ function QuizPage() {
               <div>
                 <h1 className="font-display text-2xl">{workspace.data.quiz.title}</h1>
                 <p className="text-sm text-muted-foreground">
-                  {workspace.data.quiz.instructions || "Answer every question before time runs out."}
+                  {workspace.data.quiz.instructions ||
+                    "Answer every question before time runs out."}
                 </p>
               </div>
               {finished ? (
@@ -137,9 +136,9 @@ function QuizPage() {
 
             {!finished ? (
               <p className="mb-4 text-sm text-muted-foreground">
-                Quiz conditions: English only, no AI tutor, no vocab list and no hover
-                translations. Copy, paste, screenshots and snipping tools are blocked. Your answers
-                are only marked after you submit or the timer runs out.
+                Quiz conditions: English only, no AI tutor, no vocab list and no hover translations.
+                Copy, paste, screenshots and snipping tools are blocked. Your answers are only
+                marked after you submit or the timer runs out.
               </p>
             ) : null}
 
@@ -147,7 +146,9 @@ function QuizPage() {
               {workspace.data.questions.map((question) => (
                 <section key={question.id} className="paper p-5">
                   <div className="flex items-start justify-between gap-3">
-                    <p className="whitespace-pre-wrap text-sm">{cleanMathText(question.questionText)}</p>
+                    <p className="whitespace-pre-wrap text-sm">
+                      {cleanMathText(question.questionText)}
+                    </p>
                     <Badge variant="outline">{question.marks} marks</Badge>
                   </div>
                   {question.imageUrls.map((url) => (
@@ -165,7 +166,12 @@ function QuizPage() {
                         {question.answerText || "No answer given."}
                       </p>
                       {question.answerImageUrls.map((url) => (
-                        <img key={url} src={url} alt="Your work" className="w-full rounded-md border" />
+                        <img
+                          key={url}
+                          src={url}
+                          alt="Your work"
+                          className="w-full rounded-md border"
+                        />
                       ))}
                       {question.result ? (
                         <p className="text-sm">
@@ -175,12 +181,17 @@ function QuizPage() {
                           {question.result.feedback}
                         </p>
                       ) : null}
-                      {question.markScheme ? (
-                        <div className="rounded-md border p-3 text-sm">
+                      {question.markSchemeImageUrls.length > 0 ? (
+                        <div className="space-y-2 rounded-md border p-3 text-sm">
                           <p className="font-medium">Mark scheme</p>
-                          <p className="mt-1 whitespace-pre-wrap text-muted-foreground">
-                            {cleanMathText(question.markScheme)}
-                          </p>
+                          {question.markSchemeImageUrls.map((url) => (
+                            <img
+                              key={url}
+                              src={url}
+                              alt="Official answer as printed in the mark scheme"
+                              className="w-full rounded-md border"
+                            />
+                          ))}
                         </div>
                       ) : null}
                     </div>
@@ -190,7 +201,10 @@ function QuizPage() {
                         rows={4}
                         value={drafts[question.id] ?? ""}
                         onChange={(event) =>
-                          setDrafts((current) => ({ ...current, [question.id]: event.target.value }))
+                          setDrafts((current) => ({
+                            ...current,
+                            [question.id]: event.target.value,
+                          }))
                         }
                         onBlur={() =>
                           saveMutation.mutate({
@@ -201,7 +215,10 @@ function QuizPage() {
                         placeholder="Type your answer in English"
                       />
                       <div className="space-y-1">
-                        <label className="text-xs text-muted-foreground" htmlFor={`photo-${question.id}`}>
+                        <label
+                          className="text-xs text-muted-foreground"
+                          htmlFor={`photo-${question.id}`}
+                        >
                           Optional: photo of working or a diagram
                         </label>
                         <Input

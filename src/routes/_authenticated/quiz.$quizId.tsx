@@ -175,12 +175,17 @@ function QuizPage() {
                           {question.result.feedback}
                         </p>
                       ) : null}
-                      {question.markScheme ? (
-                        <div className="rounded-md border p-3 text-sm">
+                      {question.markSchemeImageUrls.length > 0 ? (
+                        <div className="space-y-2 rounded-md border p-3 text-sm">
                           <p className="font-medium">Mark scheme</p>
-                          <p className="mt-1 whitespace-pre-wrap text-muted-foreground">
-                            {cleanMathText(question.markScheme)}
-                          </p>
+                          {question.markSchemeImageUrls.map((url) => (
+                            <img
+                              key={url}
+                              src={url}
+                              alt="Official answer as printed in the mark scheme"
+                              className="w-full rounded-md border"
+                            />
+                          ))}
                         </div>
                       ) : null}
                     </div>

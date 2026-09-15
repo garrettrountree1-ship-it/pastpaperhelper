@@ -68,9 +68,13 @@ export function usePaneZoom({
 
     const touches = new Map<number, Point>();
     let lastSingle: Point | null = null;
-    let pinch:
-      | { distance: number; zoom: number; center: Point; scrollLeft: number; scrollTop: number }
-      | null = null;
+    let pinch: {
+      distance: number;
+      zoom: number;
+      center: Point;
+      scrollLeft: number;
+      scrollTop: number;
+    } | null = null;
 
     const localPoint = (event: PointerEvent): Point => {
       const rect = el.getBoundingClientRect();

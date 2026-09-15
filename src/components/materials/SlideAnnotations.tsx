@@ -4,7 +4,6 @@ import { useUndoHistory } from "@/hooks/use-undo-history";
 import { escapeHtml, formatSelection } from "@/lib/rich-text";
 import { RichTextEditable } from "@/components/materials/RichTextEditable";
 
-
 export type SlideStroke = {
   points: Array<{ x: number; y: number }>;
   color: string;
@@ -36,7 +35,9 @@ export type SlideTool = "none" | "edit" | "draw" | "highlight" | "erase" | "text
 export const HIGHLIGHT_WIDTH = 22;
 
 const strokePath = (stroke: SlideStroke) =>
-  stroke.points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  stroke.points
+    .map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
+    .join(" ");
 
 /**
  * Highlighter marks, painted so they behave like a real highlighter: the colour
@@ -103,7 +104,6 @@ export function SlideAnnotations({
   /** Set when the caller paints highlighter marks with its own blended layer. */
   hideHighlights?: boolean;
 }) {
-
   const hostRef = useRef<HTMLDivElement | null>(null);
   const drawing = useRef(false);
   const [live, setLive] = useState<SlideStroke | null>(null);
@@ -114,9 +114,13 @@ export function SlideAnnotations({
   // Latest marks, so a drag started earlier still writes onto current state.
   const valueRef = useRef(value);
   valueRef.current = value;
-  const drag = useRef<{ index: number; startX: number; startY: number; x: number; y: number } | null>(
-    null,
-  );
+  const drag = useRef<{
+    index: number;
+    startX: number;
+    startY: number;
+    x: number;
+    y: number;
+  } | null>(null);
 
   /** Pick up a text box by its move grip and slide it around the page. */
   function beginDrag(event: React.PointerEvent, index: number) {
@@ -189,8 +193,6 @@ export function SlideAnnotations({
     window.addEventListener("pointercancel", onUp);
   }
 
-
-
   function pointOf(event: React.PointerEvent) {
     const rect = hostRef.current?.getBoundingClientRect();
     if (!rect || rect.width === 0) return { x: 0, y: 0 };
@@ -253,9 +255,10 @@ export function SlideAnnotations({
   // Saved highlighter marks are painted by the caller's blended layer when it
   // has one; the mark being drawn right now is always shown here so the teacher
   // sees the stroke follow the pointer.
-  const highlightStrokes = [...(hideHighlights ? [] : value.strokes), ...(live ? [live] : [])].filter(
-    (stroke) => stroke.highlight,
-  );
+  const highlightStrokes = [
+    ...(hideHighlights ? [] : value.strokes),
+    ...(live ? [live] : []),
+  ].filter((stroke) => stroke.highlight);
 
   return (
     <div
@@ -328,34 +331,33 @@ export function SlideAnnotations({
             userSelect: textActive ? undefined : "none",
           }}
         >
-
           <div className="relative">
             {activeText === index ? (
-            <div
-              className="absolute -top-8 left-0 flex items-center gap-1 rounded border bg-white/95 px-1 py-0.5 shadow"
-              onPointerDown={(event) => event.stopPropagation()}
-            >
-              {(
-                [
-                  ["bold", "B", "font-bold"],
-                  ["italic", "I", "italic"],
-                  ["underline", "U", "underline"],
-                ] as const
-              ).map(([key, label, cls]) => (
-                <button
-                  key={key}
-                  type="button"
-                  aria-label={`Toggle ${key}`}
-                  title={`${label} — highlighted text, or the text you type next`}
-                  // Keep the highlighted words selected while clicking.
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => formatSelection(key)}
-                  className={`size-6 rounded text-xs text-neutral-800 hover:bg-neutral-200 ${cls}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+              <div
+                className="absolute -top-8 left-0 flex items-center gap-1 rounded border bg-white/95 px-1 py-0.5 shadow"
+                onPointerDown={(event) => event.stopPropagation()}
+              >
+                {(
+                  [
+                    ["bold", "B", "font-bold"],
+                    ["italic", "I", "italic"],
+                    ["underline", "U", "underline"],
+                  ] as const
+                ).map(([key, label, cls]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-label={`Toggle ${key}`}
+                    title={`${label} — highlighted text, or the text you type next`}
+                    // Keep the highlighted words selected while clicking.
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => formatSelection(key)}
+                    className={`size-6 rounded text-xs text-neutral-800 hover:bg-neutral-200 ${cls}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             ) : null}
             <RichTextEditable
               autoFocus={box.text === ""}
@@ -366,9 +368,7 @@ export function SlideAnnotations({
               onFocus={() => setActiveText(index)}
               onBlur={() => setActiveText((current) => (current === index ? null : current))}
               onChange={({ html, text }) => {
-                const texts = value.texts.map((t, i) =>
-                  i === index ? { ...t, html, text } : t,
-                );
+                const texts = value.texts.map((t, i) => (i === index ? { ...t, html, text } : t));
                 onChange({ ...value, texts });
               }}
               className="min-h-[1.6em] overflow-auto rounded border border-dashed border-neutral-400 bg-white/85 p-1"
@@ -379,7 +379,6 @@ export function SlideAnnotations({
                 width: box.w ?? 420,
               }}
             />
-
 
             {textActive ? (
               <>

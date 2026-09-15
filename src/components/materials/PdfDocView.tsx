@@ -205,12 +205,12 @@ export function PdfDocView({
           Refresh
         </Button>
         {canDownload === false ? null : (
-        <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
-          <a href={url} download={`${title}.pdf`} target="_blank" rel="noreferrer">
-            <Download className="size-3.5" />
-            Download
-          </a>
-        </Button>
+          <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
+            <a href={url} download={`${title}.pdf`} target="_blank" rel="noreferrer">
+              <Download className="size-3.5" />
+              Download
+            </a>
+          </Button>
         )}
       </div>
       <div
@@ -248,7 +248,6 @@ export function PdfDocView({
           </div>
         ))}
       </div>
-
     </div>
   );
 }
@@ -323,4 +322,3 @@ function PdfTextLayer({ page, selectable }: { page: PageText; selectable: boolea
     </div>
   );
 }
-

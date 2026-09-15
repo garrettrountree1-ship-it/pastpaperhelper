@@ -43,6 +43,8 @@ type MarkInput = {
   questionImageUrls?: string[];
   /** Exact cut picture(s) of the printed official answer / mark scheme for this question. */
   markSchemeImageUrls?: string[];
+  /** Ignore working and assess only the final numerical value (photos still require vision). */
+  finalNumericOnly?: boolean;
 };
 
 export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
@@ -67,6 +69,9 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     images.length > 0
       ? `The student also attached ${images.length} photo(s) of handwritten working or a diagram. Read them carefully — that working is part of the answer.`
       : "",
+    input.finalNumericOnly
+      ? "FINAL-NUMBER-ONLY MODE: read the student's final numerical value, including from handwriting, and compare only that value with the official final value. Do not assess or award method/working marks separately. Award all available marks for a matching value and no marks otherwise."
+      : "FULL-RUBRIC MODE: assess every calculation step against the printed mark scheme. Award method and accuracy marks separately; a bare final answer earns only the marks the printed rubric allows.",
     "Respond with ONLY a JSON object (no markdown fences, no commentary) of exactly this shape:",
     `{"verdict":"correct|partial|incorrect","awardedMarks":number,"feedback":"string","explanation":"string","leadingQuestion":"string","markPoints":[{"point":"string","marks":number,"awarded":true}]}`,
   ]
@@ -79,8 +84,9 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     "Be generous with equivalent wording: a short answer such as a single letter, number, formula or option that matches the mark scheme earns full marks.",
     "Answers may include photos of handwritten maths working, graphs or diagrams; read the images and credit correct working shown there.",
     "When the answer is a photo of handwritten calculation working, mark it step by step: award each method/substitution mark that is correct even if the final answer is wrong, so partial credit is normal. If a diagram or drawing is photographed, judge the drawing itself against the mark scheme (labels, lines, shading, plotted points) rather than expecting typed words.",
-    "CALCULATIONS — a correct final number alone is FULL MARKS: when the mark scheme shows working leading to a final numerical answer (e.g. '7 - 4 = 3', or M1 for the method and A1 for the value), and the student gives only that final answer with no working at all, award EVERY mark for that question, mark all of its markPoints as awarded and set verdict 'correct'. Never deduct marks for missing steps, missing method lines or missing substitutions. The number must be reported to EXACTLY the same precision as the printed answer: the same number of decimal places (and the same significant figures) as the mark scheme's final value. A value rounded or truncated to fewer decimals, or padded to more decimals, than the printed answer does NOT earn the final accuracy mark — say so in the feedback and state the printed precision. Apart from precision, accept the value with or without the unit unless the printed scheme explicitly demands the unit, and with or without an '=' sign or restated formula.",
-    "When a student DOES show working, still mark each step against the scheme and award partial credit for correct steps; but if their final numerical answer is correct AND written to the same number of decimal places as the printed answer, award full marks regardless of how much working is shown or whether an intermediate line is untidy or omitted.",
+    input.finalNumericOnly
+      ? "For numerical questions, ignore the method and compare the final value only. Accept equivalent scientific notation. Follow any precision or unit requirement explicitly printed in the official answer."
+      : "For calculations, follow the printed rubric exactly: inspect the working step by step, award its M/A/B marks independently, and do not invent full credit for a bare final value when the rubric requires method marks.",
     "If a photo is unreadable or shows no relevant working, say so plainly without revealing the answer.",
     "Split the mark scheme into its individual marking points exactly as written (each M1/A1/B1 or bullet worth its stated marks) and return them in markPoints with marks for that point and awarded true/false. The sum of the marks of awarded points MUST equal awardedMarks.",
     "Award marks only for points that genuinely match the mark scheme. Never award more than the marks available and never award negative marks.",
@@ -110,6 +116,7 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     try {
       const { text } = await generateText({
         model: gatewayModel(),
+        maxOutputTokens: 1200,
         system,
         messages: [{ role: "user", content }],
       });

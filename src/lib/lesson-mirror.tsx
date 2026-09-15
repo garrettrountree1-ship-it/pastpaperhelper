@@ -208,8 +208,7 @@ export function useLessonMirrorState({
       if (Object.keys(extra).length > 0 || !sentAny) send({ ...meta(), ...extra });
     };
 
-    const sendAll = () =>
-      sendFields(allContent.current, sendingRef.current ? allView.current : {});
+    const sendAll = () => sendFields(allContent.current, sendingRef.current ? allView.current : {});
 
     void (async () => {
       // Realtime can retain an older token after a long-lived school session.
@@ -311,7 +310,11 @@ export function useLessonMirrorState({
 
       if (stopping) {
         // A delayed stop from an older run must never cancel a newer mirror.
-        if (message.sessionId && activeSession.current && message.sessionId !== activeSession.current) {
+        if (
+          message.sessionId &&
+          activeSession.current &&
+          message.sessionId !== activeSession.current
+        ) {
           return;
         }
         if (activePresenter.current && activePresenter.current !== message.from) return;
@@ -478,14 +481,16 @@ function scrollTargetOf(el: HTMLElement): HTMLElement {
   while (parent) {
     const style = window.getComputedStyle(parent);
     const scrolls = /(auto|scroll|overlay)/.test(`${style.overflowY}${style.overflowX}`);
-    if (scrolls && (parent.scrollHeight - parent.clientHeight > 4 || parent.scrollWidth - parent.clientWidth > 4)) {
+    if (
+      scrolls &&
+      (parent.scrollHeight - parent.clientHeight > 4 || parent.scrollWidth - parent.clientWidth > 4)
+    ) {
       return parent;
     }
     parent = parent.parentElement;
   }
   return el;
 }
-
 
 /**
  * Mirrors scrolling of a pane. Positions travel as a fraction of the scrollable
@@ -547,7 +552,6 @@ export function useMirrorScroll(
     };
   }, [publish, key, el]);
 
-
   const incoming = received[key] as
     | {
         top: number;
@@ -569,14 +573,8 @@ export function useMirrorScroll(
       const position = incomingRef.current;
       if (!position) return;
       const target = scrollTargetOf(el);
-      const teacherTopRange = Math.max(
-        0,
-        position.height - (position.clientHeight ?? 0),
-      );
-      const teacherLeftRange = Math.max(
-        0,
-        position.width - (position.clientWidth ?? 0),
-      );
+      const teacherTopRange = Math.max(0, position.height - (position.clientHeight ?? 0));
+      const teacherLeftRange = Math.max(0, position.width - (position.clientWidth ?? 0));
       const studentTopRange = Math.max(0, target.scrollHeight - target.clientHeight);
       const studentLeftRange = Math.max(0, target.scrollWidth - target.clientWidth);
       const top = exact
@@ -592,7 +590,6 @@ export function useMirrorScroll(
       if (Math.abs(target.scrollTop - top) > 0.5) target.scrollTop = top;
       if (Math.abs(target.scrollLeft - left) > 0.5) target.scrollLeft = left;
     };
-
 
     applyTeacherPosition();
     const hold = window.setInterval(applyTeacherPosition, 60);

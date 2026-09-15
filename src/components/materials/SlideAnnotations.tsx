@@ -368,7 +368,15 @@ export function SlideAnnotations({
       const kept = value.strokes.filter(
         (stroke) => !stroke.points.some((p) => Math.hypot(p.x - point.x, p.y - point.y) < 24),
       );
-      if (kept.length !== value.strokes.length) onChange({ ...value, strokes: kept });
+      if (kept.length !== value.strokes.length) {
+        onChange({ ...value, strokes: kept });
+        return;
+      }
+      // Nothing drawn there: rub out a pasted picture under the tap instead.
+      const keptImages = images.filter(
+        (picture) => !(point.x >= picture.x && point.y >= picture.y && point.x <= picture.x + picture.w),
+      );
+      if (keptImages.length !== images.length) onChange({ ...value, images: keptImages });
       return;
     }
 

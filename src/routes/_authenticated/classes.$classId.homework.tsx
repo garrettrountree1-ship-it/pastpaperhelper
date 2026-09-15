@@ -149,6 +149,9 @@ type QuestionDraft = {
   tagImage: string;
   /** null lets the app work it out from the printed answer. */
   multipleChoice: boolean | null;
+  /** Teacher-verified answer used by the instant code checker. */
+  expectedAnswer: string;
+  numericalAnswer: boolean;
 };
 
 const emptyQuestion = (): QuestionDraft => ({
@@ -165,6 +168,8 @@ const emptyQuestion = (): QuestionDraft => ({
   tagLabel: "",
   tagImage: "",
   multipleChoice: null,
+  expectedAnswer: "",
+  numericalAnswer: false,
 });
 
 function PendingClassPage() {
@@ -670,6 +675,8 @@ function AssignmentDialog({
           tagLabel: "",
           tagImage: "",
           multipleChoice: null,
+          expectedAnswer: q.expectedAnswer ?? "",
+          numericalAnswer: Boolean(q.numericalAnswer),
         })),
       );
       toast.success(`${result.questions.length} questions read from your files`);
@@ -737,6 +744,8 @@ function AssignmentDialog({
         tagLabel: q.tagLabel ?? "",
         tagImage: q.tagImage ?? "",
         multipleChoice: q.multipleChoice ?? null,
+        expectedAnswer: q.expectedAnswer.trim(),
+        numericalAnswer: q.numericalAnswer,
       }));
       if (editing) {
         return update({
@@ -1306,6 +1315,42 @@ function AssignmentDialog({
                         }
                         className="w-20"
                       />
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <Label htmlFor={`expected-${index}`}>
+                          Verified answer for fast checking
+                        </Label>
+                        <Input
+                          id={`expected-${index}`}
+                          value={question.expectedAnswer}
+                          placeholder="e.g. B or 3.42 × 10⁻³"
+                          onChange={(event) =>
+                            update_(index, { expectedAnswer: event.target.value })
+                          }
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Read from the answer-key picture. Check this carefully before publishing.
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor={`numeric-${index}`}>Calculation answer</Label>
+                        <Select
+                          value={question.numericalAnswer ? "yes" : "no"}
+                          onValueChange={(value) =>
+                            update_(index, { numericalAnswer: value === "yes" })
+                          }
+                        >
+                          <SelectTrigger id={`numeric-${index}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="yes">Yes — numerical result</SelectItem>
+                            <SelectItem value="no">No — use answer-key rubric</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-2">

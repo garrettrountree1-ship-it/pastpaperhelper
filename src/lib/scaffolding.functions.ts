@@ -13,6 +13,7 @@ export type ScaffoldOverride = {
   allowSteps: boolean | null;
   maxAttempts: number | null;
   maxChoiceAttempts: number | null;
+  checkFinalNumericOnly: boolean | null;
   examMode: boolean | null;
   maxPaperSubmissions: number | null;
 };
@@ -22,6 +23,7 @@ const overrideInput = {
   allowSteps: z.boolean().nullable().optional(),
   maxAttempts: z.number().int().min(0).max(20).nullable().optional(),
   maxChoiceAttempts: z.number().int().min(0).max(20).nullable().optional(),
+  checkFinalNumericOnly: z.boolean().nullable().optional(),
   examMode: z.boolean().nullable().optional(),
   maxPaperSubmissions: z.number().int().min(0).max(20).nullable().optional(),
 };
@@ -43,14 +45,14 @@ export const getClassScaffolding = createServerFn({ method: "POST" })
       db
         .from("classes")
         .select(
-          "allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions",
+          "allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, check_final_numeric_only, exam_mode, max_paper_submissions",
         )
         .eq("id", data.classId)
         .single(),
       db
         .from("assignments")
         .select(
-          "id, title, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions, archived_at",
+          "id, title, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, check_final_numeric_only, exam_mode, max_paper_submissions, archived_at",
         )
         .eq("class_id", data.classId)
         .is("archived_at", null)
@@ -69,7 +71,7 @@ export const getClassScaffolding = createServerFn({ method: "POST" })
         ? db
             .from("student_assignment_settings")
             .select(
-              "assignment_id, student_id, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions",
+              "assignment_id, student_id, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, check_final_numeric_only, exam_mode, max_paper_submissions",
             )
             .in("assignment_id", assignmentIds)
         : Promise.resolve({ data: [] as any[] }),
@@ -88,6 +90,7 @@ export const getClassScaffolding = createServerFn({ method: "POST" })
         allowSteps: klass?.allow_steps !== false,
         maxAttempts: Number(klass?.max_answer_attempts ?? 0) || 0,
         maxChoiceAttempts: Number(klass?.max_choice_attempts ?? 1) || 0,
+        checkFinalNumericOnly: Boolean(klass?.check_final_numeric_only),
         examMode: Boolean(klass?.exam_mode),
         maxPaperSubmissions: Number(klass?.max_paper_submissions ?? 0) || 0,
       },
@@ -99,6 +102,7 @@ export const getClassScaffolding = createServerFn({ method: "POST" })
         allowSteps: (a.allow_steps ?? null) as boolean | null,
         maxAttempts: (a.max_answer_attempts ?? null) as number | null,
         maxChoiceAttempts: (a.max_choice_attempts ?? null) as number | null,
+        checkFinalNumericOnly: (a.check_final_numeric_only ?? null) as boolean | null,
         examMode: (a.exam_mode ?? null) as boolean | null,
         maxPaperSubmissions: (a.max_paper_submissions ?? null) as number | null,
       })),
@@ -109,6 +113,7 @@ export const getClassScaffolding = createServerFn({ method: "POST" })
         allowSteps: (o.allow_steps ?? null) as boolean | null,
         maxAttempts: (o.max_answer_attempts ?? null) as number | null,
         maxChoiceAttempts: (o.max_choice_attempts ?? null) as number | null,
+        checkFinalNumericOnly: (o.check_final_numeric_only ?? null) as boolean | null,
         examMode: (o.exam_mode ?? null) as boolean | null,
         maxPaperSubmissions: (o.max_paper_submissions ?? null) as number | null,
       })),
@@ -126,6 +131,7 @@ export const setClassScaffolding = createServerFn({ method: "POST" })
         allowSteps: z.boolean().optional(),
         maxAttempts: z.number().int().min(0).max(20).optional(),
         maxChoiceAttempts: z.number().int().min(0).max(20).optional(),
+        checkFinalNumericOnly: z.boolean().optional(),
         examMode: z.boolean().optional(),
         maxPaperSubmissions: z.number().int().min(0).max(20).optional(),
       })
@@ -144,6 +150,8 @@ export const setClassScaffolding = createServerFn({ method: "POST" })
     if (data.allowSteps !== undefined) patch["allow_steps"] = data.allowSteps;
     if (data.maxAttempts !== undefined) patch["max_answer_attempts"] = data.maxAttempts;
     if (data.maxChoiceAttempts !== undefined) patch["max_choice_attempts"] = data.maxChoiceAttempts;
+    if (data.checkFinalNumericOnly !== undefined)
+      patch["check_final_numeric_only"] = data.checkFinalNumericOnly;
     if (data.examMode !== undefined) patch["exam_mode"] = data.examMode;
     if (data.maxPaperSubmissions !== undefined)
       patch["max_paper_submissions"] = data.maxPaperSubmissions;
@@ -174,6 +182,8 @@ export const setAssignmentScaffolding = createServerFn({ method: "POST" })
     if (data.allowSteps !== undefined) patch["allow_steps"] = data.allowSteps;
     if (data.maxAttempts !== undefined) patch["max_answer_attempts"] = data.maxAttempts;
     if (data.maxChoiceAttempts !== undefined) patch["max_choice_attempts"] = data.maxChoiceAttempts;
+    if (data.checkFinalNumericOnly !== undefined)
+      patch["check_final_numeric_only"] = data.checkFinalNumericOnly;
     if (data.examMode !== undefined) patch["exam_mode"] = data.examMode;
     if (data.maxPaperSubmissions !== undefined)
       patch["max_paper_submissions"] = data.maxPaperSubmissions;
@@ -215,6 +225,8 @@ export const setStudentScaffolding = createServerFn({ method: "POST" })
     if (data.allowSteps !== undefined) patch["allow_steps"] = data.allowSteps;
     if (data.maxAttempts !== undefined) patch["max_answer_attempts"] = data.maxAttempts;
     if (data.maxChoiceAttempts !== undefined) patch["max_choice_attempts"] = data.maxChoiceAttempts;
+    if (data.checkFinalNumericOnly !== undefined)
+      patch["check_final_numeric_only"] = data.checkFinalNumericOnly;
     if (data.examMode !== undefined) patch["exam_mode"] = data.examMode;
     if (data.maxPaperSubmissions !== undefined)
       patch["max_paper_submissions"] = data.maxPaperSubmissions;

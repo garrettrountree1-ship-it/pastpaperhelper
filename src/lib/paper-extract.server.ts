@@ -1,5 +1,10 @@
 import { unzipSync } from "fflate";
 import { cleanMathText } from "@/lib/math-text";
+import {
+  extractChoiceAnswer,
+  extractFinalNumber,
+  looksNumericalQuestion,
+} from "@/lib/deterministic-marking";
 
 import { TUTOR_MODEL } from "./ai-gateway.server";
 
@@ -17,6 +22,9 @@ export type ExtractedQuestion = {
   questionText: string;
   markScheme: string;
   marks: number;
+  /** OCR-derived fast-check answer. It is always shown to the teacher for verification. */
+  expectedAnswer?: string;
+  numericalAnswer?: boolean;
   /** 1-based page numbers of the uploaded paper this part appears on. */
   pages: number[];
   /** Region(s) of the page(s) to show the student, in reading order. */
@@ -110,6 +118,7 @@ const DETAIL_SYSTEM = [
   "NEVER use LaTeX or markdown: no $ or $$ delimiters, no \\\\frac, \\\\text, \\\\times, ^{ }, _{ }, no ** bold. Write maths in plain text with real Unicode characters instead — nuclide symbols as ²³⁵₉₂U, indices as m², formulae as H₂O, and fractions as (y - b)/m, with °C, °F, ×, ÷, ≤, ≥, ≈, →, π, Δ, Ω, µ, ± typed directly.",
   "markScheme: the official marking points for that exact part, verbatim where possible, with accepted alternatives and mark allocation. The mark scheme may sit far away from the question in the upload, or immediately under it — search the whole document for it.",
   'For multiple choice, the mark scheme is the correct option letter plus a one-line reason, e.g. "C (1 mark) — ...".',
+  "expectedAnswer: for multiple choice, return only its correct option letter. For a calculation, return only the final numerical value exactly as printed, including its sign, scientific notation and unit. Otherwise return an empty string. numericalAnswer: true only when expectedAnswer is a calculation result. These fields are shown to the teacher for verification and used for fast code checking.",
   "If no mark scheme is supplied anywhere for that part, write a concise expected answer with marking points instead.",
   "marks: the integer marks for that part (default 1).",
   "Return one item per requested label, in the same order, and never skip a label.",
@@ -855,6 +864,8 @@ async function runDetail(
         label,
         questionText: scrubIdentifiers(normaliseSymbols(questionText)),
         markScheme: normaliseSymbols(String(item["markScheme"] ?? "").trim()),
+        expectedAnswer: normaliseSymbols(String(item["expectedAnswer"] ?? "").trim()),
+        numericalAnswer: item["numericalAnswer"] === true,
         marks: Math.max(1, Math.round(Number(item["marks"]) || match?.marks || 1)),
         pages,
         crops: parseCropList(item["crops"] ?? item["crop"], pages),
@@ -1065,6 +1076,14 @@ function dedupe(items: Array<ExtractedQuestion | DetailResult>): ExtractedQuesti
       questionText: item.questionText,
       markScheme: item.markScheme,
       marks: item.marks,
+      expectedAnswer:
+        item.expectedAnswer ??
+        extractChoiceAnswer(item.markScheme) ??
+        (looksNumericalQuestion(item.questionText, item.markScheme)
+          ? (extractFinalNumber(item.markScheme) ?? "")
+          : ""),
+      numericalAnswer:
+        item.numericalAnswer ?? looksNumericalQuestion(item.questionText, item.markScheme),
       pages: item.pages,
       crops: item.crops ?? null,
       answerCrops: item.answerCrops ?? null,

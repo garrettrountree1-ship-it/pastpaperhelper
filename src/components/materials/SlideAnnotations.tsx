@@ -1,5 +1,5 @@
 import { Move, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useUndoHistory } from "@/hooks/use-undo-history";
 import { escapeHtml, formatSelection } from "@/lib/rich-text";
 import { RichTextEditable } from "@/components/materials/RichTextEditable";

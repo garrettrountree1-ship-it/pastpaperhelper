@@ -157,7 +157,9 @@ export function usePaneZoom({
     };
 
     const previousTouchAction = el.style.touchAction;
-    el.style.touchAction = "none";
+    // The browser keeps one-finger scrolling (and scroll chaining out to the
+    // page); only whole-page pinch zoom is blocked, since we handle pinch here.
+    el.style.touchAction = "pan-x pan-y";
     el.addEventListener("wheel", onWheel, { passive: false });
     el.addEventListener("pointerdown", onPointerDown, true);
     el.addEventListener("pointermove", onPointerMove, true);

@@ -9,6 +9,8 @@ import { LOCKED_MESSAGE } from "@/lib/integrity";
 import { attemptsAllowed, isMultipleChoice } from "@/lib/multiple-choice";
 import {
   extractChoiceAnswer,
+  extractFinalNumber,
+  looksNumericalQuestion,
   markTypedChoice,
   markTypedFinalNumber,
 } from "@/lib/deterministic-marking";
@@ -501,6 +503,11 @@ export const createAssignment = createServerFn({ method: "POST" })
         tag_label: q.tagLabel ?? "",
         tag_image: q.tagImage ?? "",
         multiple_choice: q.multipleChoice ?? null,
+        expected_answer:
+          q.expectedAnswer.trim() ||
+          extractChoiceAnswer(q.markScheme) ||
+          (q.numericalAnswer ? extractFinalNumber(q.markScheme) || "" : ""),
+        numerical_answer: q.numericalAnswer || looksNumericalQuestion(q.questionText, q.markScheme),
         expected_answer: q.expectedAnswer.trim(),
         numerical_answer: q.numericalAnswer,
       })),
@@ -580,6 +587,21 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
           tagImage: q.tag_image ?? "",
           multipleChoice: ((q as { multiple_choice?: boolean | null }).multiple_choice ?? null) as
             boolean | null,
+          expectedAnswer:
+            q.expected_answer?.trim() ||
+            extractChoiceAnswer(q.mark_scheme) ||
+            (looksNumericalQuestion(q.question_text, q.mark_scheme)
+              ? extractFinalNumber(q.mark_scheme) || ""
+              : ""),
+          numericalAnswer:
+            Boolean(q.numerical_answer) || looksNumericalQuestion(q.question_text, q.mark_scheme),
+          autoMultipleChoice:
+            isMultipleChoice(
+              (q as { multiple_choice?: boolean | null }).multiple_choice,
+              (q as { mark_scheme?: string | null }).mark_scheme,
+            ) ||
+            ((q as { multiple_choice?: boolean | null }).multiple_choice == null &&
+              /^[A-E]$/i.test(q.expected_answer?.trim() || "")),
           expectedAnswer: q.expected_answer ?? "",
           numericalAnswer: Boolean(q.numerical_answer),
           autoMultipleChoice: isMultipleChoice(
@@ -909,6 +931,11 @@ export const updateAssignment = createServerFn({ method: "POST" })
         tag_label: q.tagLabel ?? "",
         tag_image: q.tagImage ?? "",
         multiple_choice: q.multipleChoice ?? null,
+        expected_answer:
+          q.expectedAnswer.trim() ||
+          extractChoiceAnswer(q.markScheme) ||
+          (q.numericalAnswer ? extractFinalNumber(q.markScheme) || "" : ""),
+        numerical_answer: q.numericalAnswer || looksNumericalQuestion(q.questionText, q.markScheme),
         expected_answer: q.expectedAnswer.trim(),
         numerical_answer: q.numericalAnswer,
       };
@@ -2107,10 +2134,11 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     // Scaffolding: teachers can cap how many tries a question allows.
     const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
     const scaffolding = await tutorSettingsForAssignment(db, data.assignmentId, userId);
-    const multipleChoice = isMultipleChoice(
-      (question as { multiple_choice?: boolean | null }).multiple_choice,
-      question.mark_scheme as string | null,
-    );
+    const choiceOverride = (question as { multiple_choice?: boolean | null }).multiple_choice;
+    const storedAnswer = String(question.expected_answer ?? "").trim();
+    const multipleChoice =
+      isMultipleChoice(choiceOverride, question.mark_scheme as string | null) ||
+      (choiceOverride == null && /^[A-E]$/i.test(storedAnswer));
     // Multiple-choice questions can be guessed, so they carry their own smaller cap.
     const questionAttemptLimit = attemptsAllowed({
       multipleChoice,

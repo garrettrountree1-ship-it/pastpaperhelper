@@ -25,9 +25,52 @@ export type SlideTextBox = {
   italic?: boolean;
   underline?: boolean;
 };
-export type SlideAnnotation = { strokes: SlideStroke[]; texts: SlideTextBox[] };
+/** A picture pasted onto the page or into the blank space beside it. */
+export type SlideImage = {
+  x: number;
+  y: number;
+  /** Width in document coordinates; the height follows the picture's shape. */
+  w: number;
+  src: string;
+};
+export type SlideAnnotation = {
+  strokes: SlideStroke[];
+  texts: SlideTextBox[];
+  images?: SlideImage[];
+};
 
-export const emptyAnnotation: SlideAnnotation = { strokes: [], texts: [] };
+export const emptyAnnotation: SlideAnnotation = { strokes: [], texts: [], images: [] };
+
+/**
+ * The surface the pointer was last used on, so a pasted picture lands on the
+ * page (or margin) the user is actually working on rather than every page.
+ */
+let activeSurface: symbol | null = null;
+
+/** Shrinks a pasted picture so saved marks stay small. */
+async function shrinkPastedImage(file: File): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Couldn't read that picture."));
+    reader.readAsDataURL(file);
+  });
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error("Couldn't open that picture."));
+    el.src = dataUrl;
+  });
+  const maxWidth = 900;
+  if (image.naturalWidth <= maxWidth) return dataUrl;
+  const canvas = document.createElement("canvas");
+  canvas.width = maxWidth;
+  canvas.height = Math.round((image.naturalHeight / image.naturalWidth) * maxWidth);
+  const context = canvas.getContext("2d");
+  if (!context) return dataUrl;
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/png");
+}
 
 export type SlideTool = "none" | "edit" | "draw" | "highlight" | "erase" | "text";
 

@@ -20,6 +20,7 @@ import { OfficeDocView } from "@/components/materials/OfficeDocView";
 import { PdfDocView } from "@/components/materials/PdfDocView";
 import { SlideDeckView } from "@/components/materials/SlideDeckView";
 import { prerenderUploadedMaterial } from "@/lib/office-prerender";
+import { prepareSlidePdf } from "@/lib/slide-pdf.functions";
 import { docFormat } from "@/lib/doc-kind";
 
 import {

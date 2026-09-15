@@ -332,6 +332,9 @@ export function LessonWorkspace({
       target instanceof Element && Boolean(target.closest("[data-mirror-exit]"));
     const blockKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") return;
+      // Typing in a quick check (or another allowed control) still works while
+      // the teacher's screen is being shared.
+      if (isExit(event.target) || isExit(document.activeElement)) return;
       event.preventDefault();
       event.stopImmediatePropagation();
     };

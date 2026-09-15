@@ -106,6 +106,8 @@ export function useLessonMirrorState({
   const activePresenter = useRef<string | null>(null);
   const activeSession = useRef<string | null>(null);
   const sessionId = useRef<string | null>(null);
+  /** When the last live message from the presenting teacher arrived. */
+  const lastActiveAt = useRef(0);
   const trustedPresenters = useRef<string[]>(presenterIds);
   trustedPresenters.current = presenterIds;
 

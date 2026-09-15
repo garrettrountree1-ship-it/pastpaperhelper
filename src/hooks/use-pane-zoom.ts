@@ -275,6 +275,5 @@ export function usePaneZoom({
     };
   }, [applyZoom, enabled, max, min, scrollRef, setZoom]);
 
-
   return { applyZoom };
 }

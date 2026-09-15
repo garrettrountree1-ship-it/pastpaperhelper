@@ -184,7 +184,6 @@ export type Database = {
           allow_steps: boolean | null
           archived_at: string | null
           class_id: string
-          check_final_numeric_only: boolean | null
           created_at: string
           created_by: string
           curriculum: string
@@ -211,7 +210,6 @@ export type Database = {
           allow_steps?: boolean | null
           archived_at?: string | null
           class_id: string
-          check_final_numeric_only?: boolean | null
           created_at?: string
           created_by: string
           curriculum?: string
@@ -238,7 +236,6 @@ export type Database = {
           allow_steps?: boolean | null
           archived_at?: string | null
           class_id?: string
-          check_final_numeric_only?: boolean | null
           created_at?: string
           created_by?: string
           curriculum?: string
@@ -586,7 +583,6 @@ export type Database = {
           ai_warning_limit: number
           allow_hint: boolean
           allow_steps: boolean
-          check_final_numeric_only: boolean
           created_at: string
           curriculum: string
           exam_mode: boolean
@@ -612,7 +608,6 @@ export type Database = {
           ai_warning_limit?: number
           allow_hint?: boolean
           allow_steps?: boolean
-          check_final_numeric_only?: boolean
           created_at?: string
           curriculum?: string
           exam_mode?: boolean
@@ -638,7 +633,6 @@ export type Database = {
           ai_warning_limit?: number
           allow_hint?: boolean
           allow_steps?: boolean
-          check_final_numeric_only?: boolean
           created_at?: string
           curriculum?: string
           exam_mode?: boolean
@@ -1230,7 +1224,6 @@ export type Database = {
           mark_scheme: string
           marks: number
           multiple_choice: boolean | null
-          expected_answer: string
           numerical_answer: boolean
           photo_mode: string
           position: number
@@ -1252,7 +1245,6 @@ export type Database = {
           mark_scheme: string
           marks?: number
           multiple_choice?: boolean | null
-          expected_answer?: string
           numerical_answer?: boolean
           photo_mode?: string
           position?: number
@@ -1274,7 +1266,6 @@ export type Database = {
           mark_scheme?: string
           marks?: number
           multiple_choice?: boolean | null
-          expected_answer?: string
           numerical_answer?: boolean
           photo_mode?: string
           position?: number
@@ -1493,7 +1484,6 @@ export type Database = {
           allow_hint: boolean | null
           allow_steps: boolean | null
           assignment_id: string
-          check_final_numeric_only: boolean | null
           created_at: string
           due_at: string | null
           exam_mode: boolean | null
@@ -1513,7 +1503,6 @@ export type Database = {
           allow_hint?: boolean | null
           allow_steps?: boolean | null
           assignment_id: string
-          check_final_numeric_only?: boolean | null
           created_at?: string
           due_at?: string | null
           exam_mode?: boolean | null
@@ -1533,7 +1522,6 @@ export type Database = {
           allow_hint?: boolean | null
           allow_steps?: boolean | null
           assignment_id?: string
-          check_final_numeric_only?: boolean | null
           created_at?: string
           due_at?: string | null
           exam_mode?: boolean | null

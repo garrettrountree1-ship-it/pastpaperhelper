@@ -928,8 +928,6 @@ export const updateAssignment = createServerFn({ method: "POST" })
           extractChoiceAnswer(q.markScheme) ||
           (q.numericalAnswer ? extractFinalNumber(q.markScheme) || "" : ""),
         numerical_answer: q.numericalAnswer || looksNumericalQuestion(q.questionText, q.markScheme),
-        expected_answer: q.expectedAnswer.trim(),
-        numerical_answer: q.numericalAnswer,
       };
       if (q.id && existingIds.has(q.id)) {
         const { error } = await supabase.from("questions").update(payload).eq("id", q.id);

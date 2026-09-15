@@ -98,6 +98,7 @@ export function usePaneZoom({
         scrollTop: el.scrollTop,
       };
       lastSingle = null;
+      singleDraws = false;
     };
 
     // Drawing layers mark themselves with touch-action: none while a pen,
@@ -162,6 +163,7 @@ export function usePaneZoom({
       if (event.pointerType !== "touch") return;
       touches.delete(event.pointerId);
       pinch = null;
+      singleDraws = false;
       const remaining = pair()[0];
       lastSingle = remaining ?? null;
     };

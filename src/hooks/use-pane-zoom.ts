@@ -1,4 +1,12 @@
-import { type RefObject, useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import {
+  type Dispatch,
+  type RefObject,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from "react";
 
 type Point = { x: number; y: number };
 
@@ -17,7 +25,7 @@ export function usePaneZoom({
 }: {
   scrollRef: RefObject<HTMLDivElement | null>;
   zoom: number;
-  setZoom: React.Dispatch<React.SetStateAction<number>>;
+  setZoom: Dispatch<SetStateAction<number>>;
   min?: number;
   max?: number;
   enabled?: boolean;

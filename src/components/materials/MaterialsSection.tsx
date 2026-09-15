@@ -23,10 +23,7 @@ import { prerenderUploadedMaterial } from "@/lib/office-prerender";
 import { prepareSlidePdf } from "@/lib/slide-pdf.functions";
 import { docFormat } from "@/lib/doc-kind";
 
-import {
-  FormativeCheckPanel,
-  FormativeRecordBook,
-} from "@/components/materials/FormativeCheck";
+import { FormativeCheckPanel, FormativeRecordBook } from "@/components/materials/FormativeCheck";
 import { LessonWorkspace } from "@/components/materials/LessonWorkspace";
 import { MyDrivePanel } from "@/components/materials/MyDrivePanel";
 
@@ -57,7 +54,6 @@ import { formatDueDate } from "@/lib/datetime";
 import { saveMaterialToMyDrive } from "@/lib/google-drive.functions";
 import {
   addMaterial,
-
   createUnit,
   deleteMaterial,
   deleteUnit,
@@ -209,8 +205,8 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
   if (units.isLoading) return <Skeleton className="h-40 w-full" />;
 
   const allUnits = units.data ?? [];
-  const archivedUnits = allUnits.filter(
-    (unit) => Boolean((unit as { archived_at?: string | null }).archived_at),
+  const archivedUnits = allUnits.filter((unit) =>
+    Boolean((unit as { archived_at?: string | null }).archived_at),
   );
   const fetchedActive = allUnits.filter(
     (unit) => !(unit as { archived_at?: string | null }).archived_at,
@@ -270,42 +266,42 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
       {canManage ? (
         <div className="flex flex-wrap items-center gap-3">
           <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>New unit</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>New unit</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="unit-title">Unit title *</Label>
-                <Input
-                  id="unit-title"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  placeholder="Add text here"
-                />
+            <DialogTrigger asChild>
+              <Button>New unit</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>New unit</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="unit-title">Unit title *</Label>
+                  <Input
+                    id="unit-title"
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    placeholder="Add text here"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="unit-description">Description (optional)</Label>
+                  <Textarea
+                    id="unit-description"
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    placeholder="Add text here"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="unit-description">Description (optional)</Label>
-                <Textarea
-                  id="unit-description"
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                  placeholder="Add text here"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                onClick={() => createMutation.mutate()}
-                disabled={!title.trim() || createMutation.isPending}
-              >
-                Create unit
-              </Button>
-            </DialogFooter>
-          </DialogContent>
+              <DialogFooter>
+                <Button
+                  onClick={() => createMutation.mutate()}
+                  disabled={!title.trim() || createMutation.isPending}
+                >
+                  Create unit
+                </Button>
+              </DialogFooter>
+            </DialogContent>
           </Dialog>
           <ArchivedUnitsDialog
             units={archivedUnits}
@@ -354,22 +350,22 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
                   />
                 ) : null}
                 <div>
-                <h3 className="font-display text-2xl">{unit.title}</h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {[
-                    unit.planned_start && unit.planned_end
-                      ? `${unit.planned_start} → ${unit.planned_end}`
-                      : unit.planned_start || unit.planned_end || null,
-                    unit.planned_classes ? `${unit.planned_classes} classes planned` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ") || "No dates or class count set yet"}
-                </p>
-                {unit.description ? (
-                  <p className="mt-1 max-w-prose text-sm text-muted-foreground">
-                    {unit.description}
+                  <h3 className="font-display text-2xl">{unit.title}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {[
+                      unit.planned_start && unit.planned_end
+                        ? `${unit.planned_start} → ${unit.planned_end}`
+                        : unit.planned_start || unit.planned_end || null,
+                      unit.planned_classes ? `${unit.planned_classes} classes planned` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "No dates or class count set yet"}
                   </p>
-                ) : null}
+                  {unit.description ? (
+                    <p className="mt-1 max-w-prose text-sm text-muted-foreground">
+                      {unit.description}
+                    </p>
+                  ) : null}
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -551,7 +547,6 @@ function MaterialRow({
                   canDownload={canManage || allowDownload}
                 />
               </div>
-
             ) : viewerFormat === "docx" ? (
               <div className="h-[70vh]">
                 <OfficeDocView
@@ -668,7 +663,6 @@ function UploadDialog({
             );
           void prerenderUploadedMaterial(materialId, file, "pptx").catch(() => undefined);
         }
-
       }
       toast.success("Added");
       setOpen(false);
@@ -881,7 +875,12 @@ function ArchivedUnitsDialog({
               <li key={unit.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
                 <p className="min-w-0 truncate font-medium">{unit.title}</p>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant="outline" disabled={busy} onClick={() => onRestore(unit.id)}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => onRestore(unit.id)}
+                  >
                     <RotateCcw className="size-4" />
                     Reactivate
                   </Button>

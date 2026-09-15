@@ -589,6 +589,7 @@ export function OfficeDocView({
                     edits={edits}
                     onEdit={(shapeIndex, patch) => updateEdit(index, shapeIndex, patch)}
                     pageSrc={slidePages?.[index]}
+                    hideRebuilt={format === "pptx" && !slidePages?.[index] && !pagesError}
                   />
 
                 </div>
@@ -629,6 +630,7 @@ function SlidePage({
   edits,
   onEdit,
   pageSrc,
+  hideRebuilt,
 }: {
   deck: PptxDeck;
   index: number;

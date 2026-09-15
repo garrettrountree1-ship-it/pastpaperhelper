@@ -643,6 +643,11 @@ function SlidePage({
   onEdit: (shapeIndex: number, patch: ShapeEdit) => void;
   /** The exact slide, as a picture. When present it replaces the rebuilt slide. */
   pageSrc?: string | undefined;
+  /**
+   * The exact slide picture is still being prepared. Nothing rebuilt is shown in
+   * the meantime, so viewers never see re-laid-out PowerPoint text.
+   */
+  hideRebuilt?: boolean | undefined;
 }) {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);

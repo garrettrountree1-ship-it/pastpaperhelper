@@ -868,6 +868,7 @@ async function runDetail(
         ...(typeof item["numericalAnswer"] === "boolean"
           ? { numericalAnswer: item["numericalAnswer"] }
           : {}),
+        numericalAnswer: item["numericalAnswer"] === true,
         marks: Math.max(1, Math.round(Number(item["marks"]) || match?.marks || 1)),
         pages,
         crops: parseCropList(item["crops"] ?? item["crop"], pages),
@@ -1081,11 +1082,14 @@ function dedupe(items: Array<ExtractedQuestion | DetailResult>): ExtractedQuesti
       expectedAnswer:
         item.expectedAnswer?.trim() ||
         extractChoiceAnswer(item.markScheme) ||
+        item.expectedAnswer ??
+        extractChoiceAnswer(item.markScheme) ??
         (looksNumericalQuestion(item.questionText, item.markScheme)
           ? (extractFinalNumber(item.markScheme) ?? "")
           : ""),
       numericalAnswer:
         item.numericalAnswer || looksNumericalQuestion(item.questionText, item.markScheme),
+        item.numericalAnswer ?? looksNumericalQuestion(item.questionText, item.markScheme),
       pages: item.pages,
       crops: item.crops ?? null,
       answerCrops: item.answerCrops ?? null,

@@ -508,6 +508,8 @@ export const createAssignment = createServerFn({ method: "POST" })
           extractChoiceAnswer(q.markScheme) ||
           (q.numericalAnswer ? extractFinalNumber(q.markScheme) || "" : ""),
         numerical_answer: q.numericalAnswer || looksNumericalQuestion(q.questionText, q.markScheme),
+        expected_answer: q.expectedAnswer.trim(),
+        numerical_answer: q.numericalAnswer,
       })),
     );
     if (qError) throw new Error(qError.message);
@@ -600,6 +602,12 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
             ) ||
             ((q as { multiple_choice?: boolean | null }).multiple_choice == null &&
               /^[A-E]$/i.test(q.expected_answer?.trim() || "")),
+          expectedAnswer: q.expected_answer ?? "",
+          numericalAnswer: Boolean(q.numerical_answer),
+          autoMultipleChoice: isMultipleChoice(
+            (q as { multiple_choice?: boolean | null }).multiple_choice,
+            (q as { mark_scheme?: string | null }).mark_scheme,
+          ),
         })),
       ),
     };
@@ -928,6 +936,8 @@ export const updateAssignment = createServerFn({ method: "POST" })
           extractChoiceAnswer(q.markScheme) ||
           (q.numericalAnswer ? extractFinalNumber(q.markScheme) || "" : ""),
         numerical_answer: q.numericalAnswer || looksNumericalQuestion(q.questionText, q.markScheme),
+        expected_answer: q.expectedAnswer.trim(),
+        numerical_answer: q.numericalAnswer,
       };
       if (q.id && existingIds.has(q.id)) {
         const { error } = await supabase.from("questions").update(payload).eq("id", q.id);
@@ -2174,7 +2184,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     // Typed MCQ and opted-in final-value answers are simple comparisons. Keep
     // photo/sketch submissions on the multimodal route so handwriting is read.
     const expectedAnswer =
-      storedAnswer ||
+      String(question.expected_answer ?? "").trim() ||
       (multipleChoice ? (extractChoiceAnswer(question.mark_scheme)?.toUpperCase() ?? "") : "");
     const deterministicResult =
       imagePaths.length === 0 && expectedAnswer
@@ -2874,13 +2884,10 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       answer_image_paths: (question.answer_image_paths ?? []) as string[],
     });
 
+    const previewMultipleChoice = isMultipleChoice(question.multiple_choice, question.mark_scheme);
     const previewExpected =
       String(question.expected_answer ?? "").trim() ||
-      extractChoiceAnswer(question.mark_scheme) ||
-      "";
-    const previewMultipleChoice =
-      isMultipleChoice(question.multiple_choice, question.mark_scheme) ||
-      (question.multiple_choice == null && /^[A-E]$/i.test(previewExpected));
+      (previewMultipleChoice ? (extractChoiceAnswer(question.mark_scheme) ?? "") : "");
     const previewDeterministic =
       previewImages.length === 0 && previewExpected
         ? previewMultipleChoice

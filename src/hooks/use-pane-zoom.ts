@@ -84,10 +84,20 @@ export function usePaneZoom({
   }, [scrollRef, zoom]);
 
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el || !enabled) return;
+    if (!enabled) return;
+
+    // The pane is looked up when a gesture happens, not when this runs: viewers
+    // show a loading state first, so the scrolling element usually does not
+    // exist yet at mount and listeners bound to it then would never fire.
+    const paneOf = (target: EventTarget | null): HTMLDivElement | null => {
+      const el = scrollRef.current;
+      if (!el) return null;
+      if (!(target instanceof Node)) return null;
+      return el === target || el.contains(target) ? el : null;
+    };
 
     let pinch: {
+      el: HTMLDivElement;
       distance: number;
       zoom: number;
       center: Point;
@@ -97,11 +107,23 @@ export function usePaneZoom({
 
     const distance = (a: Point, b: Point) => Math.hypot(b.x - a.x, b.y - a.y);
     const center = (a: Point, b: Point): Point => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-    const localTouches = (event: TouchEvent): Point[] => {
+    const localTouches = (event: TouchEvent, el: HTMLElement): Point[] => {
       const rect = el.getBoundingClientRect();
       return Array.from(event.touches)
         .slice(0, 2)
         .map((touch) => ({ x: touch.clientX - rect.left, y: touch.clientY - rect.top }));
+    };
+
+    const beginPinch = (el: HTMLDivElement, a: Point, b: Point) => {
+      pinch = {
+        el,
+        distance: Math.max(1, distance(a, b)),
+        zoom: zoomRef.current,
+        center: center(a, b),
+        scrollLeft: el.scrollLeft,
+        scrollTop: el.scrollTop,
+      };
+      el.style.touchAction = "none";
     };
 
     const zoomTo = (nextRaw: number, currentCenter: Point) => {
@@ -121,46 +143,32 @@ export function usePaneZoom({
     // window, so the gesture stays inside this pane. They are listened for on
     // the document during the capture phase so that drawing layers, text layers
     // and other children can never swallow the gesture first.
-    const inside = (event: TouchEvent) =>
-      event.target instanceof Node && (el === event.target || el.contains(event.target));
-
     const onTouchStart = (event: TouchEvent) => {
       // One finger is left entirely to the browser (native scrolling) or to
       // whichever drawing tool is under it.
-      if (event.touches.length < 2 || !inside(event)) {
+      if (event.touches.length < 2) {
         pinch = null;
         return;
       }
-      const [a, b] = localTouches(event);
+      const el = paneOf(event.target);
+      if (!el) return;
+      const [a, b] = localTouches(event, el);
       if (!a || !b) return;
       if (event.cancelable) event.preventDefault();
       event.stopPropagation();
-      pinch = {
-        distance: Math.max(1, distance(a, b)),
-        zoom: zoomRef.current,
-        center: center(a, b),
-        scrollLeft: el.scrollLeft,
-        scrollTop: el.scrollTop,
-      };
-      el.style.touchAction = "none";
+      beginPinch(el, a, b);
     };
 
     const onTouchMove = (event: TouchEvent) => {
       if (event.touches.length < 2) return;
-      if (!pinch && !inside(event)) return;
-      const [a, b] = localTouches(event);
+      const el = pinch?.el ?? paneOf(event.target);
+      if (!el) return;
+      const [a, b] = localTouches(event, el);
       if (!a || !b) return;
       if (event.cancelable) event.preventDefault();
       event.stopPropagation();
       if (!pinch) {
-        pinch = {
-          distance: Math.max(1, distance(a, b)),
-          zoom: zoomRef.current,
-          center: center(a, b),
-          scrollLeft: el.scrollLeft,
-          scrollTop: el.scrollTop,
-        };
-        el.style.touchAction = "none";
+        beginPinch(el, a, b);
         return;
       }
       zoomTo(pinch.zoom * (distance(a, b) / pinch.distance), center(a, b));
@@ -168,15 +176,20 @@ export function usePaneZoom({
 
     const onTouchEnd = (event: TouchEvent) => {
       if (event.touches.length >= 2) return;
+      if (pinch) pinch.el.style.touchAction = "pan-x pan-y";
       pinch = null;
-      el.style.touchAction = "pan-x pan-y";
     };
 
     // Safari reports trackpad and touch pinch as gesture events, which ignore
     // touch-action; without these the page itself zooms.
-    let gesture: { zoom: number; center: Point; scrollLeft: number; scrollTop: number } | null =
-      null;
-    const gesturePoint = (event: Event): Point => {
+    let gesture: {
+      el: HTMLDivElement;
+      zoom: number;
+      center: Point;
+      scrollLeft: number;
+      scrollTop: number;
+    } | null = null;
+    const gesturePoint = (event: Event, el: HTMLElement): Point => {
       const rect = el.getBoundingClientRect();
       const source = event as Event & { clientX?: number; clientY?: number };
       return {
@@ -185,22 +198,26 @@ export function usePaneZoom({
       };
     };
     const onGestureStart = (event: Event) => {
+      const el = paneOf(event.target);
+      if (!el) return;
       event.preventDefault();
       gesture = {
+        el,
         zoom: zoomRef.current,
-        center: gesturePoint(event),
+        center: gesturePoint(event, el),
         scrollLeft: el.scrollLeft,
         scrollTop: el.scrollTop,
       };
     };
     const onGestureChange = (event: Event) => {
-      event.preventDefault();
       if (!gesture) return;
+      event.preventDefault();
       const scale = (event as Event & { scale?: number }).scale ?? 1;
       pinch = { ...gesture, distance: 1 };
-      zoomTo(gesture.zoom * scale, gesturePoint(event));
+      zoomTo(gesture.zoom * scale, gesturePoint(event, gesture.el));
     };
     const onGestureEnd = (event: Event) => {
+      if (!gesture) return;
       event.preventDefault();
       gesture = null;
       pinch = null;
@@ -208,6 +225,8 @@ export function usePaneZoom({
 
     const onWheel = (event: WheelEvent) => {
       if (!event.ctrlKey && !event.metaKey) return;
+      const el = paneOf(event.target);
+      if (!el) return;
       event.preventDefault();
       const dy = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
       const rect = el.getBoundingClientRect();
@@ -217,28 +236,42 @@ export function usePaneZoom({
       });
     };
 
-    const previousTouchAction = el.style.touchAction;
     // The browser keeps one-finger scrolling (and scroll chaining out to the
     // page); only whole-page pinch zoom is blocked, since we handle pinch here.
-    el.style.touchAction = "pan-x pan-y";
-    el.addEventListener("wheel", onWheel, { passive: false });
+    const paneTouchAction = () => {
+      const el = scrollRef.current;
+      if (el && !el.style.touchAction) el.style.touchAction = "pan-x pan-y";
+    };
+    paneTouchAction();
+    const touchActionTimer = window.setInterval(paneTouchAction, 1000);
+
+    document.addEventListener("wheel", onWheel, { passive: false, capture: true });
     document.addEventListener("touchstart", onTouchStart, { passive: false, capture: true });
     document.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
     document.addEventListener("touchend", onTouchEnd, true);
     document.addEventListener("touchcancel", onTouchEnd, true);
-    el.addEventListener("gesturestart", onGestureStart as EventListener, { passive: false });
-    el.addEventListener("gesturechange", onGestureChange as EventListener, { passive: false });
-    el.addEventListener("gestureend", onGestureEnd as EventListener, { passive: false });
+    document.addEventListener("gesturestart", onGestureStart as EventListener, {
+      passive: false,
+      capture: true,
+    });
+    document.addEventListener("gesturechange", onGestureChange as EventListener, {
+      passive: false,
+      capture: true,
+    });
+    document.addEventListener("gestureend", onGestureEnd as EventListener, {
+      passive: false,
+      capture: true,
+    });
     return () => {
-      el.style.touchAction = previousTouchAction;
-      el.removeEventListener("wheel", onWheel);
+      window.clearInterval(touchActionTimer);
+      document.removeEventListener("wheel", onWheel, true);
       document.removeEventListener("touchstart", onTouchStart, true);
       document.removeEventListener("touchmove", onTouchMove, true);
       document.removeEventListener("touchend", onTouchEnd, true);
       document.removeEventListener("touchcancel", onTouchEnd, true);
-      el.removeEventListener("gesturestart", onGestureStart as EventListener);
-      el.removeEventListener("gesturechange", onGestureChange as EventListener);
-      el.removeEventListener("gestureend", onGestureEnd as EventListener);
+      document.removeEventListener("gesturestart", onGestureStart as EventListener, true);
+      document.removeEventListener("gesturechange", onGestureChange as EventListener, true);
+      document.removeEventListener("gestureend", onGestureEnd as EventListener, true);
     };
   }, [applyZoom, enabled, max, min, scrollRef, setZoom]);
 

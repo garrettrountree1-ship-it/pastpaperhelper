@@ -403,8 +403,22 @@ export function useLessonMirrorState({
     const ask = () =>
       void studentChannel.current?.send({ type: "broadcast", event: "hello", payload: {} });
     ask();
-    if (viewActive) return;
-    const timer = window.setInterval(ask, 1500);
+    // Keep asking, even while following, so a shared screen that was switched
+    // off and on again is always picked back up.
+    const timer = window.setInterval(ask, viewActive ? 4000 : 1500);
+    return () => window.clearInterval(timer);
+  }, [isTeacher, viewActive]);
+
+  // If the teacher's screen goes quiet (closed tab, lost connection), release
+  // the student's screen instead of leaving it frozen on the last picture.
+  useEffect(() => {
+    if (isTeacher || !viewActive) return;
+    const timer = window.setInterval(() => {
+      if (Date.now() - lastActiveAt.current < 6000) return;
+      activeSession.current = null;
+      activePresenter.current = null;
+      setViewActive(false);
+    }, 1000);
     return () => window.clearInterval(timer);
   }, [isTeacher, viewActive]);
 

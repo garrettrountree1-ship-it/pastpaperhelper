@@ -194,7 +194,6 @@ export function usePaneZoom({
       pinch = null;
     };
 
-
     const onWheel = (event: WheelEvent) => {
       if (!event.ctrlKey && !event.metaKey) return;
       event.preventDefault();

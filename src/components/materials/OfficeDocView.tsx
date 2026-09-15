@@ -479,7 +479,7 @@ export function OfficeDocView({
 
       <div
         ref={scrollRef}
-        className="min-h-0 flex-1 overflow-scroll overscroll-contain rounded-md bg-muted/30 p-2"
+        className="min-h-0 flex-1 overflow-auto overscroll-contain rounded-md bg-muted/30 p-2"
       >
         {status === "loading" ? (
           <div className="space-y-2 p-2">

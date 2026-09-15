@@ -33,7 +33,7 @@ export function usePaneZoom({
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
   const pendingScroll = useRef<Point | null>(null);
-  const pendingFrame = useRef<number | null>(null);
+  const pendingFrames = useRef<number[]>([]);
 
   const applyZoom = useCallback(
     (nextOf: (current: number) => number, anchor?: Point) => {
@@ -60,21 +60,26 @@ export function usePaneZoom({
     pendingScroll.current = null;
     if (!el || !target) return;
     const moveToAnchor = () => {
-      el.scrollLeft = Math.max(0, target.x);
-      el.scrollTop = Math.max(0, target.y);
+      const maxLeft = Math.max(0, el.scrollWidth - el.clientWidth);
+      const maxTop = Math.max(0, el.scrollHeight - el.clientHeight);
+      el.scrollLeft = Math.min(maxLeft, Math.max(0, target.x));
+      el.scrollTop = Math.min(maxTop, Math.max(0, target.y));
     };
-    // Apply once during layout and again after resized pages and annotation
-    // surfaces have settled. Without the second pass, some browsers clamp the
-    // first horizontal move against the old width and leave zoom pinned left.
+    // Pages, slides and annotation layers resize over the next few frames.
+    // Re-apply the anchor until the scrollable width has caught up, otherwise
+    // the first move is clamped against the old width and the view stays pinned
+    // to the left edge.
     moveToAnchor();
-    if (pendingFrame.current !== null) cancelAnimationFrame(pendingFrame.current);
-    pendingFrame.current = requestAnimationFrame(() => {
+    let frames = 0;
+    const step = () => {
       moveToAnchor();
-      pendingFrame.current = null;
-    });
+      frames += 1;
+      if (frames < 6) pendingFrames.current.push(requestAnimationFrame(step));
+    };
+    pendingFrames.current.push(requestAnimationFrame(step));
     return () => {
-      if (pendingFrame.current !== null) cancelAnimationFrame(pendingFrame.current);
-      pendingFrame.current = null;
+      pendingFrames.current.forEach((id) => cancelAnimationFrame(id));
+      pendingFrames.current = [];
     };
   }, [scrollRef, zoom]);
 
@@ -113,11 +118,16 @@ export function usePaneZoom({
 
     // Native touch events are used instead of pointer events: only a
     // cancelable touchmove can stop the browser from pinch-zooming the whole
-    // window, so the gesture stays inside this pane.
+    // window, so the gesture stays inside this pane. They are listened for on
+    // the document during the capture phase so that drawing layers, text layers
+    // and other children can never swallow the gesture first.
+    const inside = (event: TouchEvent) =>
+      event.target instanceof Node && (el === event.target || el.contains(event.target));
+
     const onTouchStart = (event: TouchEvent) => {
       // One finger is left entirely to the browser (native scrolling) or to
       // whichever drawing tool is under it.
-      if (event.touches.length < 2) {
+      if (event.touches.length < 2 || !inside(event)) {
         pinch = null;
         return;
       }
@@ -137,6 +147,7 @@ export function usePaneZoom({
 
     const onTouchMove = (event: TouchEvent) => {
       if (event.touches.length < 2) return;
+      if (!pinch && !inside(event)) return;
       const [a, b] = localTouches(event);
       if (!a || !b) return;
       if (event.cancelable) event.preventDefault();
@@ -149,6 +160,7 @@ export function usePaneZoom({
           scrollLeft: el.scrollLeft,
           scrollTop: el.scrollTop,
         };
+        el.style.touchAction = "none";
         return;
       }
       zoomTo(pinch.zoom * (distance(a, b) / pinch.distance), center(a, b));
@@ -210,20 +222,20 @@ export function usePaneZoom({
     // page); only whole-page pinch zoom is blocked, since we handle pinch here.
     el.style.touchAction = "pan-x pan-y";
     el.addEventListener("wheel", onWheel, { passive: false });
-    el.addEventListener("touchstart", onTouchStart, { passive: false, capture: true });
-    el.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
-    el.addEventListener("touchend", onTouchEnd, true);
-    el.addEventListener("touchcancel", onTouchEnd, true);
+    document.addEventListener("touchstart", onTouchStart, { passive: false, capture: true });
+    document.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
+    document.addEventListener("touchend", onTouchEnd, true);
+    document.addEventListener("touchcancel", onTouchEnd, true);
     el.addEventListener("gesturestart", onGestureStart as EventListener, { passive: false });
     el.addEventListener("gesturechange", onGestureChange as EventListener, { passive: false });
     el.addEventListener("gestureend", onGestureEnd as EventListener, { passive: false });
     return () => {
       el.style.touchAction = previousTouchAction;
       el.removeEventListener("wheel", onWheel);
-      el.removeEventListener("touchstart", onTouchStart, true);
-      el.removeEventListener("touchmove", onTouchMove, true);
-      el.removeEventListener("touchend", onTouchEnd, true);
-      el.removeEventListener("touchcancel", onTouchEnd, true);
+      document.removeEventListener("touchstart", onTouchStart, true);
+      document.removeEventListener("touchmove", onTouchMove, true);
+      document.removeEventListener("touchend", onTouchEnd, true);
+      document.removeEventListener("touchcancel", onTouchEnd, true);
       el.removeEventListener("gesturestart", onGestureStart as EventListener);
       el.removeEventListener("gesturechange", onGestureChange as EventListener);
       el.removeEventListener("gestureend", onGestureEnd as EventListener);

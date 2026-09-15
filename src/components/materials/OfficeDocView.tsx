@@ -511,7 +511,10 @@ export function OfficeDocView({
           deck ? (
             // Slides size themselves to their container, so zoom widens the stack
             // and the pane scrolls — the anchored scroll keeps the view steady.
-            <div className="office-slides space-y-3" style={{ width: `${zoom * 100}%` }}>
+            <div
+              className="office-slides space-y-3"
+              style={{ width: `${Math.max(1, zoom) * 100}%` }}
+            >
               {deck.slides.map((_, index) => (
                 <div
                   key={index}
@@ -530,6 +533,7 @@ export function OfficeDocView({
                     onAnnotationChange={(next) => updateNotes(index, next)}
                     edits={edits}
                     onEdit={(shapeIndex, patch) => updateEdit(index, shapeIndex, patch)}
+                    slideFraction={Math.min(1, zoom)}
                     pageSrc={slidePages?.[index]}
                     hideRebuilt={format === "pptx" && !slidePages?.[index] && !pagesError}
                   />

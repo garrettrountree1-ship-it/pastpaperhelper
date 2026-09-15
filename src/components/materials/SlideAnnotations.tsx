@@ -164,6 +164,114 @@ export function SlideAnnotations({
     x: number;
     y: number;
   } | null>(null);
+  const images = value.images ?? [];
+  const surfaceId = useRef<symbol>(Symbol("markup-surface"));
+  const lastPoint = useRef({ x: Math.round(width * 0.1), y: Math.round(height * 0.1) });
+
+  // Remember where the pointer was last put down on this surface, so a pasted
+  // picture appears there — including in the blank space beside the page.
+  useEffect(() => {
+    const id = surfaceId.current;
+    const onDown = (event: PointerEvent) => {
+      const rect = hostRef.current?.getBoundingClientRect();
+      if (!rect || rect.width === 0) return;
+      if (
+        event.clientX < rect.left ||
+        event.clientX > rect.right ||
+        event.clientY < rect.top ||
+        event.clientY > rect.bottom
+      )
+        return;
+      const scale = rect.width / width;
+      activeSurface = id;
+      lastPoint.current = {
+        x: (event.clientX - rect.left) / scale,
+        y: (event.clientY - rect.top) / scale,
+      };
+    };
+    window.addEventListener("pointerdown", onDown, true);
+    return () => {
+      window.removeEventListener("pointerdown", onDown, true);
+      if (activeSurface === id) activeSurface = null;
+    };
+  }, [width]);
+
+  // Paste a picture straight onto the page or the blank space beside it.
+  useEffect(() => {
+    const id = surfaceId.current;
+    const onPaste = (event: ClipboardEvent) => {
+      if (activeSurface !== id) return;
+      const target = event.target as HTMLElement | null;
+      // Never steal a paste meant for a text box or an ordinary input.
+      if (target?.closest?.('[contenteditable="true"], input, textarea')) return;
+      const file = Array.from(event.clipboardData?.files ?? []).find((f) =>
+        f.type.startsWith("image/"),
+      );
+      if (!file) return;
+      event.preventDefault();
+      void (async () => {
+        try {
+          const src = await shrinkPastedImage(file);
+          const point = lastPoint.current;
+          const current = valueRef.current;
+          onChange({
+            ...current,
+            images: [
+              ...(current.images ?? []),
+              {
+                x: Math.round(point.x),
+                y: Math.round(point.y),
+                w: Math.round(width * 0.35),
+                src,
+              },
+            ],
+          });
+        } catch {
+          /* an unreadable picture is simply ignored */
+        }
+      })();
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [width, onChange]);
+
+  /** Drag a pasted picture around, or drag its corner to resize it. */
+  function beginImageDrag(event: React.PointerEvent, index: number, mode: "move" | "resize") {
+    const picture = images[index];
+    if (!picture) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = hostRef.current?.getBoundingClientRect();
+    const scale = rect && rect.width > 0 ? rect.width / width : 1;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const start = { x: picture.x, y: picture.y, w: picture.w };
+
+    const onMove = (moveEvent: PointerEvent) => {
+      const dx = (moveEvent.clientX - startX) / scale;
+      const dy = (moveEvent.clientY - startY) / scale;
+      const current = valueRef.current;
+      const list = current.images ?? [];
+      onChange({
+        ...current,
+        images: list.map((item, i) =>
+          i !== index
+            ? item
+            : mode === "move"
+              ? { ...item, x: Math.round(start.x + dx), y: Math.round(start.y + dy) }
+              : { ...item, w: Math.max(40, Math.round(start.w + dx)) },
+        ),
+      });
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  }
 
   /** Pick up a text box by its move grip and slide it around the page. */
   function beginDrag(event: React.PointerEvent, index: number) {

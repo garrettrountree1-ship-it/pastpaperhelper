@@ -654,6 +654,19 @@ function UploadDialog({
             .then(() => toast.success("Document prepared — it will open instantly now."))
             .catch(() => undefined);
         }
+        // Slides: turn the original PowerPoint into exact pages straight away, so
+        // nobody ever sees a rebuilt, re-laid-out version of the deck.
+        if (created?.id && format === "pptx") {
+          const materialId = created.id;
+          void prepareSlidePdf({ data: { materialId } })
+            .then(() => toast.success("Slides prepared — they will open exactly as in PowerPoint."))
+            .catch(() =>
+              toast.error(
+                "Couldn't prepare the exact slides yet. Open the resource once to try again.",
+              ),
+            );
+          void prerenderUploadedMaterial(materialId, file, "pptx").catch(() => undefined);
+        }
 
       }
       toast.success("Added");

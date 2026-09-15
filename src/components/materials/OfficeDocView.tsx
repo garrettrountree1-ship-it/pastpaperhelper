@@ -14,7 +14,6 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { readableTextColor } from "@/lib/color-contrast";
 
-
 import {
   emptyAnnotation,
   HighlightLayer,
@@ -34,19 +33,13 @@ import { clearCachedDoc, readCachedJson, writeCachedJson } from "@/lib/doc-cache
 import { useMirrorField, useMirrorScroll } from "@/lib/lesson-mirror";
 import { scopedKey, useMarkupScope } from "@/lib/markup-scope";
 
-import {
-  buildOfficeRender,
-  fetchSharedRender,
-  saveSharedRender,
-} from "@/lib/office-prerender";
+import { buildOfficeRender, fetchSharedRender, saveSharedRender } from "@/lib/office-prerender";
 import { type PptxDeck, type PptxShape } from "@/lib/pptx-render";
 import { pdfToSlideImages } from "@/lib/slide-images";
 import { getSlidePdfUrl, prepareSlidePdf } from "@/lib/slide-pdf.functions";
 
 /** A teacher's change to one slide element: retyped text, or a moved/resized box. */
 export type ShapeEdit = { text?: string; x?: number; y?: number; w?: number; h?: number };
-
-
 
 /**
  * Renders .pptx slide decks and .docx documents inline so they simply scroll in
@@ -100,7 +93,6 @@ export function OfficeDocView({
   const notesKey = scopedKey(`office-annotations:${format}:${cacheKey ?? title}`, scope);
   const editsKey = scopedKey(`office-shape-edits:${format}:${cacheKey ?? title}`, scope);
 
-
   // Drawings and text boxes made on top of the slides, kept per slide index and
   // saved locally so they are still there next lesson.
   const [tool, setTool] = useState<SlideTool>("none");
@@ -150,7 +142,6 @@ export function OfficeDocView({
     };
   }, [notesKey, editsKey, scopeReady]);
 
-
   function updateNotes(index: number, next: SlideAnnotation) {
     setNotes((current) => {
       const merged = { ...current, [index]: next };
@@ -169,7 +160,6 @@ export function OfficeDocView({
       return merged;
     });
   }
-
 
   // Zoom keeps the anchor point fixed instead of drifting the scroll position.
   const pendingScroll = useRef<{ x: number; y: number } | null>(null);
@@ -243,7 +233,7 @@ export function OfficeDocView({
         if (bestRatio <= 0) return;
         setCurrentSlide(best);
       },
-      { root: el, threshold: [0, 0.25, 0.5, 0.75, 1] }
+      { root: el, threshold: [0, 0.25, 0.5, 0.75, 1] },
     );
     slideRefs.current.forEach((node) => {
       if (node) observer.observe(node);
@@ -273,7 +263,6 @@ export function OfficeDocView({
     observer.observe(el);
     return () => observer.disconnect();
   }, [deck, currentSlide]);
-
 
   // The download address can be refreshed while the resource stays the same;
   // reading it from a ref keeps a new address from reloading (and rescrolling)
@@ -409,9 +398,6 @@ export function OfficeDocView({
       cancelled = true;
     };
   }, [format, materialId, pagesKey, canPrepareShared, rebuilding]);
-
-
-
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -589,8 +575,8 @@ export function OfficeDocView({
                     edits={edits}
                     onEdit={(shapeIndex, patch) => updateEdit(index, shapeIndex, patch)}
                     pageSrc={slidePages?.[index]}
+                    hideRebuilt={format === "pptx" && !slidePages?.[index] && !pagesError}
                   />
-
                 </div>
               ))}
             </div>
@@ -629,6 +615,7 @@ function SlidePage({
   edits,
   onEdit,
   pageSrc,
+  hideRebuilt,
 }: {
   deck: PptxDeck;
   index: number;
@@ -641,6 +628,11 @@ function SlidePage({
   onEdit: (shapeIndex: number, patch: ShapeEdit) => void;
   /** The exact slide, as a picture. When present it replaces the rebuilt slide. */
   pageSrc?: string | undefined;
+  /**
+   * The exact slide picture is still being prepared. Nothing rebuilt is shown in
+   * the meantime, so viewers never see re-laid-out PowerPoint text.
+   */
+  hideRebuilt?: boolean | undefined;
 }) {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);
@@ -680,6 +672,13 @@ function SlidePage({
             decoding="async"
           />
         ) : null}
+        {hideRebuilt ? (
+          <div className="absolute inset-0 flex animate-pulse items-center justify-center bg-muted/40">
+            <p className="px-4 text-center text-xs text-muted-foreground">
+              Getting the exact slide from your PowerPoint…
+            </p>
+          </div>
+        ) : null}
         <div
           className="absolute left-0 top-0"
           style={{
@@ -694,6 +693,7 @@ function SlidePage({
             // With the exact slide picture showing, only the text boxes are kept
             // on top — invisible until the teacher retypes them, so the words on
             // screen are always the original ones.
+            if (hideRebuilt) return null;
             if (pageSrc && shape.type !== "text") return null;
             return (
               <SlideShape
@@ -717,10 +717,6 @@ function SlidePage({
             );
           })}
 
-
-
-
-
           <SlideAnnotations
             width={deck.width}
             height={deck.height}
@@ -735,15 +731,12 @@ function SlidePage({
         {/* Highlighter marks belong beside the slide picture so the colour
             blends with the words instead of washing out. */}
         <HighlightLayer width={deck.width} height={deck.height} strokes={annotation.strokes} />
-
       </div>
     </div>
   );
 }
 
 type Rect = { x: number; y: number; w: number; h: number };
-
-
 
 /**
  * Works out the colour actually sitting behind a text box: the topmost filled
@@ -771,7 +764,6 @@ function backgroundBehind(
   return background;
 }
 
-
 function SlideShape({
   shape,
   slideWidth,
@@ -796,9 +788,7 @@ function SlideShape({
   edit?: ShapeEdit | undefined;
   onEdit: (patch: ShapeEdit) => void;
 }) {
-
   const rotate = shape.rot ? `rotate(${shape.rot}deg)` : undefined;
-
 
   if (shape.type === "image") {
     return (
@@ -858,7 +848,6 @@ function SlideShape({
       rotate={rotate}
     />
   );
-
 }
 
 /**
@@ -932,8 +921,6 @@ function TextShape({
     }
   }, [baseW, baseH, overrideText, shape]);
 
-
-
   function startDrag(mode: "move" | "resize", event: React.PointerEvent) {
     event.preventDefault();
     event.stopPropagation();
@@ -1002,9 +989,8 @@ function TextShape({
           : overPicture
             ? (shape.fill ?? slideBackground)
             : (shape.fill ?? undefined),
-        border: hidden || !shape.line
-          ? undefined
-          : `${shape.line.width}px solid ${shape.line.color}`,
+        border:
+          hidden || !shape.line ? undefined : `${shape.line.width}px solid ${shape.line.color}`,
         outline: editable ? "1px dashed hsl(var(--primary))" : undefined,
         borderRadius: shape.radius || undefined,
         boxSizing: "border-box",
@@ -1014,7 +1000,6 @@ function TextShape({
         overflow: "visible",
       }}
     >
-
       <div ref={innerRef} style={{ transformOrigin: "top left" }}>
         <div
           contentEditable={editable}
@@ -1039,31 +1024,31 @@ function TextShape({
                 const sourceParagraph = shape.paragraphs[li] ?? firstParagraph;
                 const sourceRun = sourceParagraph?.runs[0] ?? firstRun;
                 return (
-                <p
-                  key={li}
-                  style={{
-                    margin: `${sourceParagraph?.spaceBefore ?? 0}px 0 ${sourceParagraph?.spaceAfter ?? 0}px`,
-                    textAlign:
-                      sourceParagraph?.align === "ctr"
-                        ? "center"
-                        : sourceParagraph?.align === "r"
-                          ? "right"
-                          : "left",
-                    lineHeight: sourceParagraph?.lineHeight ?? 1.2,
-                    fontSize: sourceRun?.size,
-                    fontFamily: sourceRun?.font
-                      ? `"${sourceRun.font}", system-ui, sans-serif`
-                      : undefined,
-                    fontWeight: sourceRun?.bold ? 700 : 400,
-                    fontStyle: sourceRun?.italic ? "italic" : undefined,
-                    color: ink(sourceRun?.color),
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    minHeight: line === "" ? "0.75em" : undefined,
-                  }}
-                >
-                  {line}
-                </p>
+                  <p
+                    key={li}
+                    style={{
+                      margin: `${sourceParagraph?.spaceBefore ?? 0}px 0 ${sourceParagraph?.spaceAfter ?? 0}px`,
+                      textAlign:
+                        sourceParagraph?.align === "ctr"
+                          ? "center"
+                          : sourceParagraph?.align === "r"
+                            ? "right"
+                            : "left",
+                      lineHeight: sourceParagraph?.lineHeight ?? 1.2,
+                      fontSize: sourceRun?.size,
+                      fontFamily: sourceRun?.font
+                        ? `"${sourceRun.font}", system-ui, sans-serif`
+                        : undefined,
+                      fontWeight: sourceRun?.bold ? 700 : 400,
+                      fontStyle: sourceRun?.italic ? "italic" : undefined,
+                      color: ink(sourceRun?.color),
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      minHeight: line === "" ? "0.75em" : undefined,
+                    }}
+                  >
+                    {line}
+                  </p>
                 );
               })
             : shape.paragraphs.map((paragraph, pi) => (
@@ -1079,7 +1064,9 @@ function TextShape({
                             ? "justify"
                             : "left",
                     margin: `${paragraph.spaceBefore}px 0 ${paragraph.spaceAfter}px`,
-                    paddingLeft: paragraph.bullet ? 18 + paragraph.level * 18 : paragraph.level * 18,
+                    paddingLeft: paragraph.bullet
+                      ? 18 + paragraph.level * 18
+                      : paragraph.level * 18,
                     textIndent: paragraph.bullet ? -14 : 0,
                     lineHeight: paragraph.lineHeight,
                     whiteSpace: "pre-wrap",
@@ -1105,7 +1092,6 @@ function TextShape({
                         color: ink(run.color),
                       }}
                     >
-
                       {run.text}
                     </span>
                   ))}

@@ -14,7 +14,6 @@ import { readCachedJson, writeCachedJson } from "@/lib/doc-cache";
 import { useMirrorField } from "@/lib/lesson-mirror";
 import { scopedKey, useMarkupScope } from "@/lib/markup-scope";
 
-
 const SWATCHES = ["#dc2626", "#2563eb", "#16a34a", "#111827"];
 
 /** Highlighter colours (translucent when drawn over text). */
@@ -49,7 +48,6 @@ export function useDocMarkup(baseKey: string) {
       cancelled = true;
     };
   }, [storageKey, ready]);
-
 
   // Marks the teacher makes on the document appear live on student screens,
   // whether or not the teacher is mirroring their whole view.
@@ -224,4 +222,3 @@ export function DocMarkupSurface({
     </div>
   );
 }
-

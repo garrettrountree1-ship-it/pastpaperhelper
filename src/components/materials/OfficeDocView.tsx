@@ -688,7 +688,6 @@ function SlidePage({
               />
             );
           })}
-
         </div>
       </div>
 
@@ -698,11 +697,7 @@ function SlidePage({
 
       {/* Highlighter marks belong beside the slide picture so the colour
           blends with the words instead of washing out. */}
-      <HighlightLayer
-        width={surfaceWidth}
-        height={deck.height}
-        strokes={annotation.strokes}
-      />
+      <HighlightLayer width={surfaceWidth} height={deck.height} strokes={annotation.strokes} />
       <div
         className="absolute left-0 top-0"
         style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}

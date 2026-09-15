@@ -33,6 +33,10 @@ async function admin() {
   return supabaseAdmin;
 }
 
+function isMissingDeterministicAnswerColumn(error: { message?: string } | null | undefined) {
+  return /(?:expected_answer|numerical_answer)/i.test(error?.message ?? "");
+}
+
 function decodeBase64(base64: string): Uint8Array {
   const clean = base64.includes(",") ? base64.slice(base64.indexOf(",") + 1) : base64;
   const binary = atob(clean);
@@ -524,13 +528,31 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    const { data: questions, error: qError } = await supabase
+    let questionResult = await supabase
       .from("questions")
       .select(
         "id, question_text, mark_scheme, marks, position, image_paths, answer_image_paths, source_page_path, answer_source_page_path, tag_label, tag_image, multiple_choice, expected_answer, numerical_answer",
       )
       .eq("assignment_id", data.assignmentId)
       .order("position");
+    let questions = questionResult.data;
+    let qError = questionResult.error;
+    if (isMissingDeterministicAnswerColumn(qError)) {
+      const legacyResult = await supabase
+        .from("questions")
+        .select(
+          "id, question_text, mark_scheme, marks, position, image_paths, answer_image_paths, source_page_path, answer_source_page_path, tag_label, tag_image, multiple_choice",
+        )
+        .eq("assignment_id", data.assignmentId)
+        .order("position");
+      questions =
+        legacyResult.data?.map((question) => ({
+          ...question,
+          expected_answer: "",
+          numerical_answer: false,
+        })) ?? null;
+      qError = legacyResult.error;
+    }
     if (qError) throw new Error(qError.message);
 
     return {
@@ -2055,13 +2077,23 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     if (!allowed) throw new Error("This assignment is not available to you.");
 
     const db = await admin();
-    const { data: question, error: qError } = await db
+    let questionResult = await db
       .from("questions")
       .select(
         "id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position, multiple_choice, expected_answer, numerical_answer",
       )
       .eq("id", data.questionId)
       .single();
+    if (isMissingDeterministicAnswerColumn(questionResult.error)) {
+      questionResult = await db
+        .from("questions")
+        .select(
+          "id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position, multiple_choice",
+        )
+        .eq("id", data.questionId)
+        .single();
+    }
+    const { data: question, error: qError } = questionResult;
     if (qError) throw new Error(qError.message);
     if (question.assignment_id !== data.assignmentId) throw new Error("Question mismatch.");
 
@@ -2756,13 +2788,23 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
     if (!allowed) throw new Error("You don't teach this assignment.");
 
     const db = await admin();
-    const { data: question, error: qError } = await db
+    let questionResult = await db
       .from("questions")
       .select(
         "id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position, multiple_choice, expected_answer, numerical_answer",
       )
       .eq("id", data.questionId)
       .single();
+    if (isMissingDeterministicAnswerColumn(questionResult.error)) {
+      questionResult = await db
+        .from("questions")
+        .select(
+          "id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position, multiple_choice",
+        )
+        .eq("id", data.questionId)
+        .single();
+    }
+    const { data: question, error: qError } = questionResult;
     if (qError) throw new Error(qError.message);
     if (question.assignment_id !== data.assignmentId) throw new Error("Question mismatch.");
 

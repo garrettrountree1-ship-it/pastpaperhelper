@@ -35,6 +35,14 @@ export type EffectiveTutorSettings = {
 
 export const CLASS_SETTINGS_FIELDS =
   "tutor_language, tutor_level, protect_questions, keyword_translation, student_can_change_level, vocab_translation, vocab_language, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, check_final_numeric_only, exam_mode, max_paper_submissions";
+const LEGACY_CLASS_SETTINGS_FIELDS = CLASS_SETTINGS_FIELDS.replace(
+  ", check_final_numeric_only",
+  "",
+);
+
+function isMissingFastCheckColumn(error: { message?: string } | null | undefined) {
+  return /check_final_numeric_only/i.test(error?.message ?? "");
+}
 
 /** Class defaults with the per-student override applied. */
 export async function effectiveTutorSettings(
@@ -42,7 +50,7 @@ export async function effectiveTutorSettings(
   classId: string,
   studentId: string | null,
 ): Promise<EffectiveTutorSettings> {
-  const [{ data: klass }, override] = await Promise.all([
+  let [classResult, override] = await Promise.all([
     db.from("classes").select(CLASS_SETTINGS_FIELDS).eq("id", classId).maybeSingle(),
     studentId
       ? db
@@ -53,6 +61,14 @@ export async function effectiveTutorSettings(
           .maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
+  if (isMissingFastCheckColumn(classResult.error)) {
+    classResult = await db
+      .from("classes")
+      .select(LEGACY_CLASS_SETTINGS_FIELDS)
+      .eq("id", classId)
+      .maybeSingle();
+  }
+  const klass = classResult.data;
   const row = override?.data ?? null;
   const level = row?.tutor_level ?? klass?.tutor_level ?? DEFAULT_TUTOR_LEVEL;
   const language = row?.tutor_language ?? klass?.tutor_language ?? DEFAULT_TUTOR_LANGUAGE;
@@ -88,13 +104,23 @@ export async function tutorSettingsForAssignment(
   assignmentId: string,
   studentId: string | null,
 ): Promise<EffectiveTutorSettings> {
-  const { data: assignment } = await db
+  let assignmentResult = await db
     .from("assignments")
     .select(
       "class_id, keyword_translation, vocab_translation, vocab_language, protect_questions, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, check_final_numeric_only, exam_mode, max_paper_submissions",
     )
     .eq("id", assignmentId)
     .maybeSingle();
+  if (isMissingFastCheckColumn(assignmentResult.error)) {
+    assignmentResult = await db
+      .from("assignments")
+      .select(
+        "class_id, keyword_translation, vocab_translation, vocab_language, protect_questions, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions",
+      )
+      .eq("id", assignmentId)
+      .maybeSingle();
+  }
+  const assignment = assignmentResult.data;
   if (!assignment?.class_id) {
     return {
       language: DEFAULT_TUTOR_LANGUAGE,
@@ -114,7 +140,7 @@ export async function tutorSettingsForAssignment(
     };
   }
 
-  const [base, studentOverride, classOverride] = await Promise.all([
+  let [base, studentOverride, classOverride] = await Promise.all([
     effectiveTutorSettings(db, assignment.class_id, studentId),
     studentId
       ? db
@@ -135,6 +161,18 @@ export async function tutorSettingsForAssignment(
           .maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
+  if (isMissingFastCheckColumn(studentOverride?.error)) {
+    studentOverride = studentId
+      ? await db
+          .from("student_assignment_settings")
+          .select(
+            "keyword_translation, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions",
+          )
+          .eq("assignment_id", assignmentId)
+          .eq("student_id", studentId)
+          .maybeSingle()
+      : { data: null };
+  }
 
   const chain = [
     studentOverride?.data?.keyword_translation,

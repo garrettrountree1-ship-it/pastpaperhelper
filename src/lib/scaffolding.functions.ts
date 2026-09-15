@@ -8,6 +8,10 @@ async function admin() {
   return supabaseAdmin as unknown as any;
 }
 
+function isMissingFastCheckColumn(error: { message?: string } | null | undefined) {
+  return /check_final_numeric_only/i.test(error?.message ?? "");
+}
+
 export type ScaffoldOverride = {
   allowHint: boolean | null;
   allowSteps: boolean | null;
@@ -41,7 +45,7 @@ export const getClassScaffolding = createServerFn({ method: "POST" })
     if (!isTeacher) throw new Error("You do not teach this class.");
 
     const db = await admin();
-    const [{ data: klass }, { data: assignments }, { data: members }] = await Promise.all([
+    let [classResult, assignmentResult, memberResult] = await Promise.all([
       db
         .from("classes")
         .select(
@@ -59,11 +63,37 @@ export const getClassScaffolding = createServerFn({ method: "POST" })
         .order("created_at", { ascending: false }),
       db.from("class_members").select("student_id").eq("class_id", data.classId),
     ]);
+    // Database migrations and edge deployments are not atomic. Keep all older
+    // scaffolding controls usable while the new optional column reaches PostgREST.
+    if (isMissingFastCheckColumn(classResult.error)) {
+      [classResult, assignmentResult] = await Promise.all([
+        db
+          .from("classes")
+          .select(
+            "allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions",
+          )
+          .eq("id", data.classId)
+          .single(),
+        db
+          .from("assignments")
+          .select(
+            "id, title, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions, archived_at",
+          )
+          .eq("class_id", data.classId)
+          .is("archived_at", null)
+          .order("created_at", { ascending: false }),
+      ]);
+    }
+    if (classResult.error) throw new Error(classResult.error.message);
+    if (assignmentResult.error) throw new Error(assignmentResult.error.message);
+    const klass = classResult.data;
+    const assignments = assignmentResult.data;
+    const members = memberResult.data;
 
     const studentIds = (members ?? []).map((m: any) => m.student_id as string);
     const assignmentIds = (assignments ?? []).map((a: any) => a.id as string);
 
-    const [{ data: profiles }, { data: overrides }] = await Promise.all([
+    let [profileResult, overrideResult] = await Promise.all([
       studentIds.length
         ? db.from("profiles").select("id, full_name, email").in("id", studentIds)
         : Promise.resolve({ data: [] as any[] }),
@@ -76,6 +106,20 @@ export const getClassScaffolding = createServerFn({ method: "POST" })
             .in("assignment_id", assignmentIds)
         : Promise.resolve({ data: [] as any[] }),
     ]);
+    if (isMissingFastCheckColumn(overrideResult.error)) {
+      overrideResult = assignmentIds.length
+        ? await db
+            .from("student_assignment_settings")
+            .select(
+              "assignment_id, student_id, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions",
+            )
+            .in("assignment_id", assignmentIds)
+        : { data: [] as any[], error: null };
+    }
+    if (profileResult.error) throw new Error(profileResult.error.message);
+    if (overrideResult.error) throw new Error(overrideResult.error.message);
+    const profiles = profileResult.data;
+    const overrides = overrideResult.data;
 
     const students = (profiles ?? [])
       .map((p: any) => ({

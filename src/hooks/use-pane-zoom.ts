@@ -82,8 +82,6 @@ export function usePaneZoom({
     const el = scrollRef.current;
     if (!el || !enabled) return;
 
-    const touches = new Map<number, Point>();
-    let lastSingle: Point | null = null;
     let pinch: {
       distance: number;
       zoom: number;
@@ -92,58 +90,18 @@ export function usePaneZoom({
       scrollTop: number;
     } | null = null;
 
-    const localPoint = (event: PointerEvent): Point => {
-      const rect = el.getBoundingClientRect();
-      return { x: event.clientX - rect.left, y: event.clientY - rect.top };
-    };
-    const pair = () => Array.from(touches.values()).slice(0, 2);
     const distance = (a: Point, b: Point) => Math.hypot(b.x - a.x, b.y - a.y);
     const center = (a: Point, b: Point): Point => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-
-    const beginPinch = () => {
-      const [a, b] = pair();
-      if (!a || !b) return;
-      pinch = {
-        distance: Math.max(1, distance(a, b)),
-        zoom: zoomRef.current,
-        center: center(a, b),
-        scrollLeft: el.scrollLeft,
-        scrollTop: el.scrollTop,
-      };
-      lastSingle = null;
+    const localTouches = (event: TouchEvent): Point[] => {
+      const rect = el.getBoundingClientRect();
+      return Array.from(event.touches)
+        .slice(0, 2)
+        .map((touch) => ({ x: touch.clientX - rect.left, y: touch.clientY - rect.top }));
     };
 
-    const onPointerDown = (event: PointerEvent) => {
-      if (event.pointerType !== "touch") return;
-      touches.set(event.pointerId, localPoint(event));
-      // One finger is left entirely to the browser (native scrolling, which
-      // chains out to the page) or to whichever drawing tool is under it.
-      if (touches.size < 2) {
-        lastSingle = localPoint(event);
-        return;
-      }
-      // Two fingers always mean zoom, so take the gesture back.
-      event.preventDefault();
-      event.stopPropagation();
-      beginPinch();
-    };
-
-    const onPointerMove = (event: PointerEvent) => {
-      if (event.pointerType !== "touch" || !touches.has(event.pointerId)) return;
-      const nextPoint = localPoint(event);
-      touches.set(event.pointerId, nextPoint);
-      if (touches.size < 2) return;
-      event.preventDefault();
-      event.stopPropagation();
-
-      if (!pinch) beginPinch();
-      const [a, b] = pair();
-      if (!pinch || !a || !b) return;
-      const currentCenter = center(a, b);
-      const nextZoom = Math.min(
-        max,
-        Math.max(min, Number((pinch.zoom * (distance(a, b) / pinch.distance)).toFixed(3))),
-      );
+    const zoomTo = (nextRaw: number, currentCenter: Point) => {
+      if (!pinch) return;
+      const nextZoom = Math.min(max, Math.max(min, Number(nextRaw.toFixed(3))));
       const k = nextZoom / pinch.zoom;
       pendingScroll.current = {
         x: (pinch.scrollLeft + pinch.center.x) * k - currentCenter.x,
@@ -153,12 +111,87 @@ export function usePaneZoom({
       setZoom(nextZoom);
     };
 
-    const endPointer = (event: PointerEvent) => {
-      if (event.pointerType !== "touch") return;
-      touches.delete(event.pointerId);
+    // Native touch events are used instead of pointer events: only a
+    // cancelable touchmove can stop the browser from pinch-zooming the whole
+    // window, so the gesture stays inside this pane.
+    const onTouchStart = (event: TouchEvent) => {
+      // One finger is left entirely to the browser (native scrolling) or to
+      // whichever drawing tool is under it.
+      if (event.touches.length < 2) {
+        pinch = null;
+        return;
+      }
+      const [a, b] = localTouches(event);
+      if (!a || !b) return;
+      if (event.cancelable) event.preventDefault();
+      event.stopPropagation();
+      pinch = {
+        distance: Math.max(1, distance(a, b)),
+        zoom: zoomRef.current,
+        center: center(a, b),
+        scrollLeft: el.scrollLeft,
+        scrollTop: el.scrollTop,
+      };
+      el.style.touchAction = "none";
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (event.touches.length < 2) return;
+      const [a, b] = localTouches(event);
+      if (!a || !b) return;
+      if (event.cancelable) event.preventDefault();
+      event.stopPropagation();
+      if (!pinch) {
+        pinch = {
+          distance: Math.max(1, distance(a, b)),
+          zoom: zoomRef.current,
+          center: center(a, b),
+          scrollLeft: el.scrollLeft,
+          scrollTop: el.scrollTop,
+        };
+        return;
+      }
+      zoomTo(pinch.zoom * (distance(a, b) / pinch.distance), center(a, b));
+    };
+
+    const onTouchEnd = (event: TouchEvent) => {
+      if (event.touches.length >= 2) return;
       pinch = null;
-      const remaining = pair()[0];
-      lastSingle = remaining ?? null;
+      el.style.touchAction = "pan-x pan-y";
+    };
+
+    // Safari reports trackpad and touch pinch as gesture events, which ignore
+    // touch-action; without these the page itself zooms.
+    let gesture: { zoom: number; center: Point; scrollLeft: number; scrollTop: number } | null =
+      null;
+    const gesturePoint = (event: Event): Point => {
+      const rect = el.getBoundingClientRect();
+      const source = event as Event & { clientX?: number; clientY?: number };
+      return {
+        x: (source.clientX ?? rect.left + rect.width / 2) - rect.left,
+        y: (source.clientY ?? rect.top + rect.height / 2) - rect.top,
+      };
+    };
+    const onGestureStart = (event: Event) => {
+      event.preventDefault();
+      gesture = {
+        zoom: zoomRef.current,
+        center: gesturePoint(event),
+        scrollLeft: el.scrollLeft,
+        scrollTop: el.scrollTop,
+      };
+    };
+    const onGestureChange = (event: Event) => {
+      event.preventDefault();
+      if (!gesture) return;
+      const scale = (event as Event & { scale?: number }).scale ?? 1;
+      pinch = { ...gesture, distance: 1 };
+      zoomTo(gesture.zoom * scale, gesturePoint(event));
+    };
+    const onGestureEnd = (event: Event) => {
+      event.preventDefault();
+      gesture = null;
+      pinch = null;
     };
 
     const onWheel = (event: WheelEvent) => {
@@ -177,17 +210,23 @@ export function usePaneZoom({
     // page); only whole-page pinch zoom is blocked, since we handle pinch here.
     el.style.touchAction = "pan-x pan-y";
     el.addEventListener("wheel", onWheel, { passive: false });
-    el.addEventListener("pointerdown", onPointerDown, true);
-    el.addEventListener("pointermove", onPointerMove, true);
-    el.addEventListener("pointerup", endPointer, true);
-    el.addEventListener("pointercancel", endPointer, true);
+    el.addEventListener("touchstart", onTouchStart, { passive: false, capture: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
+    el.addEventListener("touchend", onTouchEnd, true);
+    el.addEventListener("touchcancel", onTouchEnd, true);
+    el.addEventListener("gesturestart", onGestureStart as EventListener, { passive: false });
+    el.addEventListener("gesturechange", onGestureChange as EventListener, { passive: false });
+    el.addEventListener("gestureend", onGestureEnd as EventListener, { passive: false });
     return () => {
       el.style.touchAction = previousTouchAction;
       el.removeEventListener("wheel", onWheel);
-      el.removeEventListener("pointerdown", onPointerDown, true);
-      el.removeEventListener("pointermove", onPointerMove, true);
-      el.removeEventListener("pointerup", endPointer, true);
-      el.removeEventListener("pointercancel", endPointer, true);
+      el.removeEventListener("touchstart", onTouchStart, true);
+      el.removeEventListener("touchmove", onTouchMove, true);
+      el.removeEventListener("touchend", onTouchEnd, true);
+      el.removeEventListener("touchcancel", onTouchEnd, true);
+      el.removeEventListener("gesturestart", onGestureStart as EventListener);
+      el.removeEventListener("gesturechange", onGestureChange as EventListener);
+      el.removeEventListener("gestureend", onGestureEnd as EventListener);
     };
   }, [applyZoom, enabled, max, min, scrollRef, setZoom]);
 

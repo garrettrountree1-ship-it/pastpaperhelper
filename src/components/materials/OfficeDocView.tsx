@@ -576,6 +576,7 @@ function SlidePage({
   onEdit,
   pageSrc,
   hideRebuilt,
+  slideFraction = 1,
 }: {
   deck: PptxDeck;
   index: number;

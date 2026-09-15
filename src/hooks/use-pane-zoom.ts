@@ -97,52 +97,26 @@ export function usePaneZoom({
       lastSingle = null;
     };
 
-    // A single finger that lands on an active drawing surface (or a picture /
-    // text box being dragged) belongs to that tool, not to scrolling.
-    let singleDraws = false;
-    const onDrawSurface = (event: PointerEvent) => {
-      const target = event.target;
-      if (!(target instanceof Element)) return false;
-      const surface = target.closest('[data-touch-draw="true"]');
-      return Boolean(surface && el.contains(surface));
-    };
-
     const onPointerDown = (event: PointerEvent) => {
       if (event.pointerType !== "touch") return;
       touches.set(event.pointerId, localPoint(event));
-      if (touches.size >= 2) {
-        // Two fingers always mean zoom, so take the gesture back from the tool.
-        singleDraws = false;
-        event.preventDefault();
-        event.stopPropagation();
-        beginPinch();
+      // One finger is left entirely to the browser (native scrolling, which
+      // chains out to the page) or to whichever drawing tool is under it.
+      if (touches.size < 2) {
+        lastSingle = localPoint(event);
         return;
       }
-      singleDraws = onDrawSurface(event);
-      lastSingle = localPoint(event);
-      if (singleDraws) return;
+      // Two fingers always mean zoom, so take the gesture back.
       event.preventDefault();
       event.stopPropagation();
+      beginPinch();
     };
 
     const onPointerMove = (event: PointerEvent) => {
       if (event.pointerType !== "touch" || !touches.has(event.pointerId)) return;
       const nextPoint = localPoint(event);
       touches.set(event.pointerId, nextPoint);
-      if (touches.size < 2) {
-        // One finger scrolls the pane unless a drawing tool owns this gesture.
-        if (singleDraws) return;
-        event.preventDefault();
-        event.stopPropagation();
-        if (!lastSingle) {
-          lastSingle = nextPoint;
-          return;
-        }
-        el.scrollLeft -= nextPoint.x - lastSingle.x;
-        el.scrollTop -= nextPoint.y - lastSingle.y;
-        lastSingle = nextPoint;
-        return;
-      }
+      if (touches.size < 2) return;
       event.preventDefault();
       event.stopPropagation();
 

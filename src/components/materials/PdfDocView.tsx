@@ -218,8 +218,9 @@ export function PdfDocView({
         className="min-h-0 flex-1 space-y-3 overflow-auto rounded-md bg-muted/30 p-2"
       >
         {pages.map((src, index) => (
-          <div key={index} style={{ width: `${zoom * 100}%` }}>
+          <div key={index} style={{ width: `${Math.max(1, zoom) * 100}%` }}>
             <DocMarkupSurface
+              pageFraction={Math.min(1, zoom)}
               ratio={ratios[index] ?? 1.414}
               tool={effTool}
               penColor={markup.penColor}

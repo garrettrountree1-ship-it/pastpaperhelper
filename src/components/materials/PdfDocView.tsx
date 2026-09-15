@@ -1,5 +1,5 @@
 import { Download, Minus, Plus, RefreshCw } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   DocMarkupSurface,
@@ -16,6 +16,7 @@ import {
   writeCachedJson,
 } from "@/lib/doc-cache";
 import { useMirrorField, useMirrorScroll } from "@/lib/lesson-mirror";
+import { usePaneZoom } from "@/hooks/use-pane-zoom";
 
 /** One selectable word/run from the PDF, in rendered page pixels. */
 type TextRun = { x: number; y: number; w: number; h: number; s: string };
@@ -59,63 +60,12 @@ export function PdfDocView({
   const [texts, setTexts] = useState<PageText[] | null>(null);
   const textKey = `pdf-text-v1:${key}`;
 
-  // Zooming keeps the anchor point fixed instead of shifting the scroll.
-  const pendingScroll = useRef<{ x: number; y: number } | null>(null);
+  const { applyZoom } = usePaneZoom({ scrollRef, zoom, setZoom });
 
-  function applyZoom(
-    nextOf: (current: number) => number,
-    anchor?: { x: number; y: number },
-  ) {
-    setZoom((current) => {
-      const next = Math.min(3, Math.max(0.5, Number(nextOf(current).toFixed(3))));
-      const el = scrollRef.current;
-      if (el && next !== current) {
-        const ax = anchor?.x ?? el.clientWidth / 2;
-        const ay = anchor?.y ?? el.clientHeight / 2;
-        const k = next / current;
-        pendingScroll.current = {
-          x: (el.scrollLeft + ax) * k - ax,
-          y: (el.scrollTop + ay) * k - ay,
-        };
-      }
-      return next;
-    });
-  }
-
-  useLayoutEffect(() => {
-    const el = scrollRef.current;
-    const target = pendingScroll.current;
-    pendingScroll.current = null;
-    if (!el || !target) return;
-    el.scrollLeft = Math.max(0, target.x);
-    el.scrollTop = Math.max(0, target.y);
-  }, [zoom]);
-
-  // Ctrl/⌘ + wheel zooms only the document pane.
   // A refreshed download address must not reload the document and throw the
   // reader back to page one.
   const urlRef = useRef(url);
   urlRef.current = url;
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const onWheel = (event: WheelEvent) => {
-      if (!event.ctrlKey && !event.metaKey) return;
-      event.preventDefault();
-      const dy = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
-      const rect = el.getBoundingClientRect();
-      applyZoom((value) => value * Math.exp(-dy * 0.0015), {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top,
-      });
-    };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pages]);
-
-
 
   useEffect(() => {
     const current = ++token.current;

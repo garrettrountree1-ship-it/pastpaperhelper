@@ -200,6 +200,7 @@ export function SlideAnnotations({
 
   function down(event: React.PointerEvent) {
     if (tool === "none") return;
+    if (event.pointerType === "touch") return;
     const point = pointOf(event);
 
     if (tool === "text") {
@@ -234,6 +235,7 @@ export function SlideAnnotations({
   }
 
   function move(event: React.PointerEvent) {
+    if (event.pointerType === "touch") return;
     if (!drawing.current) return;
     event.preventDefault();
     const point = pointOf(event);

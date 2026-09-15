@@ -10,7 +10,7 @@ import {
   SquarePen,
   Type,
 } from "lucide-react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { readableTextColor } from "@/lib/color-contrast";
 
@@ -32,6 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { clearCachedDoc, readCachedJson, writeCachedJson } from "@/lib/doc-cache";
 import { useMirrorField, useMirrorScroll } from "@/lib/lesson-mirror";
 import { scopedKey, useMarkupScope } from "@/lib/markup-scope";
+import { usePaneZoom } from "@/hooks/use-pane-zoom";
 
 import { buildOfficeRender, fetchSharedRender, saveSharedRender } from "@/lib/office-prerender";
 import { type PptxDeck, type PptxShape } from "@/lib/pptx-render";
@@ -161,52 +162,7 @@ export function OfficeDocView({
     });
   }
 
-  // Zoom keeps the anchor point fixed instead of drifting the scroll position.
-  const pendingScroll = useRef<{ x: number; y: number } | null>(null);
-
-  function applyZoom(nextOf: (current: number) => number, anchor?: { x: number; y: number }) {
-    setZoom((current) => {
-      const next = Math.min(3, Math.max(0.5, Number(nextOf(current).toFixed(3))));
-      const el = scrollRef.current;
-      if (el && next !== current) {
-        const ax = anchor?.x ?? el.clientWidth / 2;
-        const ay = anchor?.y ?? el.clientHeight / 2;
-        const k = next / current;
-        pendingScroll.current = {
-          x: (el.scrollLeft + ax) * k - ax,
-          y: (el.scrollTop + ay) * k - ay,
-        };
-      }
-      return next;
-    });
-  }
-
-  useLayoutEffect(() => {
-    const el = scrollRef.current;
-    const target = pendingScroll.current;
-    pendingScroll.current = null;
-    if (!el || !target) return;
-    el.scrollLeft = Math.max(0, target.x);
-    el.scrollTop = Math.max(0, target.y);
-  }, [zoom]);
-
-  // Ctrl/⌘ + wheel (and trackpad pinch) zooms only this pane.
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const onWheel = (event: WheelEvent) => {
-      if (!event.ctrlKey && !event.metaKey) return;
-      event.preventDefault();
-      const dy = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
-      const rect = el.getBoundingClientRect();
-      applyZoom((value) => value * Math.exp(-dy * 0.0015), {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top,
-      });
-    };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, []);
+  const { applyZoom } = usePaneZoom({ scrollRef, zoom, setZoom });
 
   // Track which slide is most visible while scrolling.
   useEffect(() => {

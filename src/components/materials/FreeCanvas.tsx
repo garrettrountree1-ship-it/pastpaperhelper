@@ -421,6 +421,7 @@ export function FreeCanvas({
 
   function startInk(event: React.PointerEvent) {
     if (!canEdit || (mode !== "draw" && mode !== "highlight" && mode !== "erase")) return;
+    if (event.pointerType === "touch") return;
     event.preventDefault();
     (event.target as Element).setPointerCapture?.(event.pointerId);
     if (mode === "erase") {
@@ -433,6 +434,7 @@ export function FreeCanvas({
   }
 
   function moveInk(event: React.PointerEvent) {
+    if (event.pointerType === "touch") return;
     if (erasing.current) {
       eraseAt(point(event));
       return;

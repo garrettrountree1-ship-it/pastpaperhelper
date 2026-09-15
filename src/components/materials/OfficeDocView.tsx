@@ -511,7 +511,10 @@ export function OfficeDocView({
           deck ? (
             // Slides size themselves to their container, so zoom widens the stack
             // and the pane scrolls — the anchored scroll keeps the view steady.
-            <div className="office-slides space-y-3" style={{ width: `${zoom * 100}%` }}>
+            <div
+              className="office-slides space-y-3"
+              style={{ width: `${Math.max(1, zoom) * 100}%` }}
+            >
               {deck.slides.map((_, index) => (
                 <div
                   key={index}
@@ -530,6 +533,7 @@ export function OfficeDocView({
                     onAnnotationChange={(next) => updateNotes(index, next)}
                     edits={edits}
                     onEdit={(shapeIndex, patch) => updateEdit(index, shapeIndex, patch)}
+                    slideFraction={Math.min(1, zoom)}
                     pageSrc={slidePages?.[index]}
                     hideRebuilt={format === "pptx" && !slidePages?.[index] && !pagesError}
                   />
@@ -537,8 +541,9 @@ export function OfficeDocView({
               ))}
             </div>
           ) : (
-            <div style={{ width: `${zoom * 100}%` }}>
+            <div style={{ width: `${Math.max(1, zoom) * 100}%` }}>
               <DocMarkupSurface
+                pageFraction={Math.min(1, zoom)}
                 ratio={docRatio}
                 tool={effTool}
                 penColor={penColor}
@@ -572,6 +577,7 @@ function SlidePage({
   onEdit,
   pageSrc,
   hideRebuilt,
+  slideFraction = 1,
 }: {
   deck: PptxDeck;
   index: number;
@@ -589,6 +595,11 @@ function SlidePage({
    * the meantime, so viewers never see re-laid-out PowerPoint text.
    */
   hideRebuilt?: boolean | undefined;
+  /**
+   * How much of the pane width the slide fills when zoomed out. The leftover
+   * room becomes plain white writing space beside the slide.
+   */
+  slideFraction?: number | undefined;
 }) {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);
@@ -607,13 +618,18 @@ function SlidePage({
   const slide = deck.slides[index];
   if (!slide) return null;
 
+  const fraction = Math.min(1, Math.max(0.05, slideFraction));
+  // Writing space covers the slide plus the blank room beside it, in the same
+  // coordinates, so a line can run off the slide and carry on in the white space.
+  const surfaceWidth = Math.round(deck.width / fraction);
+
   return (
-    <div className="relative overflow-hidden rounded-md border shadow-sm">
+    <div className="relative flex items-stretch rounded-md border shadow-sm">
       <div
         ref={frameRef}
-        className="relative origin-top-left"
+        className="relative shrink-0 origin-top-left overflow-hidden"
         style={{
-          width: "100%",
+          width: `${fraction * 100}%`,
           aspectRatio: `${deck.width} / ${deck.height}`,
           background: slide.background ?? "#ffffff",
         }}
@@ -672,21 +688,30 @@ function SlidePage({
               />
             );
           })}
-
-          <SlideAnnotations
-            width={deck.width}
-            height={deck.height}
-            tool={tool}
-            color={penColor}
-            highlightColor={highlightColor}
-            value={annotation}
-            onChange={onAnnotationChange}
-            hideHighlights
-          />
         </div>
-        {/* Highlighter marks belong beside the slide picture so the colour
-            blends with the words instead of washing out. */}
-        <HighlightLayer width={deck.width} height={deck.height} strokes={annotation.strokes} />
+      </div>
+
+      {fraction < 1 ? (
+        <div aria-label="Extra writing space" className="min-w-0 flex-1 bg-white" />
+      ) : null}
+
+      {/* Highlighter marks belong beside the slide picture so the colour
+          blends with the words instead of washing out. */}
+      <HighlightLayer width={surfaceWidth} height={deck.height} strokes={annotation.strokes} />
+      <div
+        className="absolute left-0 top-0"
+        style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}
+      >
+        <SlideAnnotations
+          width={surfaceWidth}
+          height={deck.height}
+          tool={tool}
+          color={penColor}
+          highlightColor={highlightColor}
+          value={annotation}
+          onChange={onAnnotationChange}
+          hideHighlights
+        />
       </div>
     </div>
   );

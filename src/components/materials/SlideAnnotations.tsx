@@ -1,5 +1,5 @@
 import { Move, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useUndoHistory } from "@/hooks/use-undo-history";
 import { escapeHtml, formatSelection } from "@/lib/rich-text";
 import { RichTextEditable } from "@/components/materials/RichTextEditable";
@@ -25,9 +25,52 @@ export type SlideTextBox = {
   italic?: boolean;
   underline?: boolean;
 };
-export type SlideAnnotation = { strokes: SlideStroke[]; texts: SlideTextBox[] };
+/** A picture pasted onto the page or into the blank space beside it. */
+export type SlideImage = {
+  x: number;
+  y: number;
+  /** Width in document coordinates; the height follows the picture's shape. */
+  w: number;
+  src: string;
+};
+export type SlideAnnotation = {
+  strokes: SlideStroke[];
+  texts: SlideTextBox[];
+  images?: SlideImage[];
+};
 
-export const emptyAnnotation: SlideAnnotation = { strokes: [], texts: [] };
+export const emptyAnnotation: SlideAnnotation = { strokes: [], texts: [], images: [] };
+
+/**
+ * The surface the pointer was last used on, so a pasted picture lands on the
+ * page (or margin) the user is actually working on rather than every page.
+ */
+let activeSurface: symbol | null = null;
+
+/** Shrinks a pasted picture so saved marks stay small. */
+async function shrinkPastedImage(file: File): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Couldn't read that picture."));
+    reader.readAsDataURL(file);
+  });
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error("Couldn't open that picture."));
+    el.src = dataUrl;
+  });
+  const maxWidth = 900;
+  if (image.naturalWidth <= maxWidth) return dataUrl;
+  const canvas = document.createElement("canvas");
+  canvas.width = maxWidth;
+  canvas.height = Math.round((image.naturalHeight / image.naturalWidth) * maxWidth);
+  const context = canvas.getContext("2d");
+  if (!context) return dataUrl;
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/png");
+}
 
 export type SlideTool = "none" | "edit" | "draw" | "highlight" | "erase" | "text";
 
@@ -121,6 +164,114 @@ export function SlideAnnotations({
     x: number;
     y: number;
   } | null>(null);
+  const images = value.images ?? [];
+  const surfaceId = useRef<symbol>(Symbol("markup-surface"));
+  const lastPoint = useRef({ x: Math.round(width * 0.1), y: Math.round(height * 0.1) });
+
+  // Remember where the pointer was last put down on this surface, so a pasted
+  // picture appears there — including in the blank space beside the page.
+  useEffect(() => {
+    const id = surfaceId.current;
+    const onDown = (event: PointerEvent) => {
+      const rect = hostRef.current?.getBoundingClientRect();
+      if (!rect || rect.width === 0) return;
+      if (
+        event.clientX < rect.left ||
+        event.clientX > rect.right ||
+        event.clientY < rect.top ||
+        event.clientY > rect.bottom
+      )
+        return;
+      const scale = rect.width / width;
+      activeSurface = id;
+      lastPoint.current = {
+        x: (event.clientX - rect.left) / scale,
+        y: (event.clientY - rect.top) / scale,
+      };
+    };
+    window.addEventListener("pointerdown", onDown, true);
+    return () => {
+      window.removeEventListener("pointerdown", onDown, true);
+      if (activeSurface === id) activeSurface = null;
+    };
+  }, [width]);
+
+  // Paste a picture straight onto the page or the blank space beside it.
+  useEffect(() => {
+    const id = surfaceId.current;
+    const onPaste = (event: ClipboardEvent) => {
+      if (activeSurface !== id) return;
+      const target = event.target as HTMLElement | null;
+      // Never steal a paste meant for a text box or an ordinary input.
+      if (target?.closest?.('[contenteditable="true"], input, textarea')) return;
+      const file = Array.from(event.clipboardData?.files ?? []).find((f) =>
+        f.type.startsWith("image/"),
+      );
+      if (!file) return;
+      event.preventDefault();
+      void (async () => {
+        try {
+          const src = await shrinkPastedImage(file);
+          const point = lastPoint.current;
+          const current = valueRef.current;
+          onChange({
+            ...current,
+            images: [
+              ...(current.images ?? []),
+              {
+                x: Math.round(point.x),
+                y: Math.round(point.y),
+                w: Math.round(width * 0.35),
+                src,
+              },
+            ],
+          });
+        } catch {
+          /* an unreadable picture is simply ignored */
+        }
+      })();
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [width, onChange]);
+
+  /** Drag a pasted picture around, or drag its corner to resize it. */
+  function beginImageDrag(event: React.PointerEvent, index: number, mode: "move" | "resize") {
+    const picture = images[index];
+    if (!picture) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = hostRef.current?.getBoundingClientRect();
+    const scale = rect && rect.width > 0 ? rect.width / width : 1;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const start = { x: picture.x, y: picture.y, w: picture.w };
+
+    const onMove = (moveEvent: PointerEvent) => {
+      const dx = (moveEvent.clientX - startX) / scale;
+      const dy = (moveEvent.clientY - startY) / scale;
+      const current = valueRef.current;
+      const list = current.images ?? [];
+      onChange({
+        ...current,
+        images: list.map((item, i) =>
+          i !== index
+            ? item
+            : mode === "move"
+              ? { ...item, x: Math.round(start.x + dx), y: Math.round(start.y + dy) }
+              : { ...item, w: Math.max(40, Math.round(start.w + dx)) },
+        ),
+      });
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  }
 
   /** Pick up a text box by its move grip and slide it around the page. */
   function beginDrag(event: React.PointerEvent, index: number) {
@@ -217,7 +368,21 @@ export function SlideAnnotations({
       const kept = value.strokes.filter(
         (stroke) => !stroke.points.some((p) => Math.hypot(p.x - point.x, p.y - point.y) < 24),
       );
-      if (kept.length !== value.strokes.length) onChange({ ...value, strokes: kept });
+      if (kept.length !== value.strokes.length) {
+        onChange({ ...value, strokes: kept });
+        return;
+      }
+      // Nothing drawn there: rub out a pasted picture under the tap instead.
+      const keptImages = images.filter(
+        (picture) =>
+          !(
+            point.x >= picture.x &&
+            point.x <= picture.x + picture.w &&
+            point.y >= picture.y &&
+            point.y <= picture.y + picture.w * 1.6
+          ),
+      );
+      if (keptImages.length !== images.length) onChange({ ...value, images: keptImages });
       return;
     }
 
@@ -279,6 +444,59 @@ export function SlideAnnotations({
       onPointerUp={up}
       onPointerCancel={up}
     >
+      {/* Pasted pictures sit under the ink, so they can be drawn on. */}
+      {images.map((picture, index) => (
+        <div
+          key={`img-${index}`}
+          className="absolute"
+          style={{
+            left: picture.x,
+            top: picture.y,
+            width: picture.w,
+            pointerEvents: textActive ? "auto" : "none",
+          }}
+        >
+          <div className="relative">
+            <img
+              src={picture.src}
+              alt="Pasted picture"
+              draggable={false}
+              className="block w-full select-none rounded shadow-sm"
+            />
+            {textActive ? (
+              <>
+                <button
+                  type="button"
+                  aria-label="Move picture"
+                  title="Drag to move this picture"
+                  onPointerDown={(event) => beginImageDrag(event, index, "move")}
+                  className="absolute -left-3 -top-3 cursor-grab touch-none rounded-full border bg-white p-1 shadow active:cursor-grabbing"
+                >
+                  <Move className="size-4 text-neutral-700" />
+                </button>
+                <span
+                  aria-label="Resize picture"
+                  title="Drag to make this picture bigger or smaller"
+                  onPointerDown={(event) => beginImageDrag(event, index, "resize")}
+                  className="absolute -bottom-2 -right-2 size-4 cursor-nwse-resize touch-none rounded-sm border border-neutral-500 bg-white shadow"
+                />
+                <button
+                  type="button"
+                  aria-label="Delete picture"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={() =>
+                    onChange({ ...value, images: images.filter((_, i) => i !== index) })
+                  }
+                  className="absolute -right-3 -top-3 rounded-full border bg-white p-1 shadow"
+                >
+                  <X className="size-4 text-neutral-700" />
+                </button>
+              </>
+            ) : null}
+          </div>
+        </div>
+      ))}
+
       <svg
         width={width}
         height={height}

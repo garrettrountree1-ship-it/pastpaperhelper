@@ -688,20 +688,34 @@ function SlidePage({
             );
           })}
 
-          <SlideAnnotations
-            width={deck.width}
-            height={deck.height}
-            tool={tool}
-            color={penColor}
-            highlightColor={highlightColor}
-            value={annotation}
-            onChange={onAnnotationChange}
-            hideHighlights
-          />
         </div>
-        {/* Highlighter marks belong beside the slide picture so the colour
-            blends with the words instead of washing out. */}
-        <HighlightLayer width={deck.width} height={deck.height} strokes={annotation.strokes} />
+      </div>
+
+      {fraction < 1 ? (
+        <div aria-label="Extra writing space" className="min-w-0 flex-1 bg-white" />
+      ) : null}
+
+      {/* Highlighter marks belong beside the slide picture so the colour
+          blends with the words instead of washing out. */}
+      <HighlightLayer
+        width={surfaceWidth}
+        height={deck.height}
+        strokes={annotation.strokes}
+      />
+      <div
+        className="absolute left-0 top-0"
+        style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}
+      >
+        <SlideAnnotations
+          width={surfaceWidth}
+          height={deck.height}
+          tool={tool}
+          color={penColor}
+          highlightColor={highlightColor}
+          value={annotation}
+          onChange={onAnnotationChange}
+          hideHighlights
+        />
       </div>
     </div>
   );

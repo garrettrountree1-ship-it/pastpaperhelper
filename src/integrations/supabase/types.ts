@@ -1223,6 +1223,7 @@ export type Database = {
           assignment_id: string
           created_at: string
           credited_all_at: string | null
+          expected_answer: string
           id: string
           image_paths: string[]
           keyword_glossary: Json
@@ -1244,6 +1245,7 @@ export type Database = {
           assignment_id: string
           created_at?: string
           credited_all_at?: string | null
+          expected_answer?: string
           id?: string
           image_paths?: string[]
           keyword_glossary?: Json
@@ -1265,6 +1267,7 @@ export type Database = {
           assignment_id?: string
           created_at?: string
           credited_all_at?: string | null
+          expected_answer?: string
           id?: string
           image_paths?: string[]
           keyword_glossary?: Json

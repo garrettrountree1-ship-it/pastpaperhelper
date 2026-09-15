@@ -1217,12 +1217,14 @@ export type Database = {
           assignment_id: string
           created_at: string
           credited_all_at: string | null
+          expected_answer: string
           id: string
           image_paths: string[]
           keyword_glossary: Json
           mark_scheme: string
           marks: number
           multiple_choice: boolean | null
+          numerical_answer: boolean
           photo_mode: string
           position: number
           question_text: string
@@ -1236,12 +1238,14 @@ export type Database = {
           assignment_id: string
           created_at?: string
           credited_all_at?: string | null
+          expected_answer?: string
           id?: string
           image_paths?: string[]
           keyword_glossary?: Json
           mark_scheme: string
           marks?: number
           multiple_choice?: boolean | null
+          numerical_answer?: boolean
           photo_mode?: string
           position?: number
           question_text: string
@@ -1255,12 +1259,14 @@ export type Database = {
           assignment_id?: string
           created_at?: string
           credited_all_at?: string | null
+          expected_answer?: string
           id?: string
           image_paths?: string[]
           keyword_glossary?: Json
           mark_scheme?: string
           marks?: number
           multiple_choice?: boolean | null
+          numerical_answer?: boolean
           photo_mode?: string
           position?: number
           question_text?: string

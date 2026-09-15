@@ -22,9 +22,9 @@ import { usePaneZoom } from "@/hooks/use-pane-zoom";
 type TextRun = { x: number; y: number; w: number; h: number; s: string };
 type PageText = { w: number; h: number; runs: TextRun[] };
 
-// Keep a usable writing margin visible beside PDF pages at the normal 100%
-// setting instead of only revealing it after the teacher zooms out.
-const PAGE_WITH_WRITING_MARGIN = 0.75;
+// At 100%, the PDF and its writing canvas each occupy half of the surface, so
+// the blank space is always at least one displayed page wide.
+const PAGE_WITH_WRITING_MARGIN = 0.5;
 
 /**
  * Renders every page of a PDF as an image so the document simply scrolls in the
@@ -219,7 +219,7 @@ export function PdfDocView({
       </div>
       <div
         ref={scrollRef}
-        className="min-h-0 flex-1 space-y-3 overflow-auto rounded-md bg-muted/30 p-2"
+        className="min-h-0 flex-1 space-y-3 overflow-scroll overscroll-contain rounded-md bg-muted/30 p-2"
       >
         {pages.map((src, index) => {
           const surfaceScale = Math.max(1, zoom);

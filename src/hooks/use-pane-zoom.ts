@@ -33,6 +33,7 @@ export function usePaneZoom({
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
   const pendingScroll = useRef<Point | null>(null);
+  const pendingFrame = useRef<number | null>(null);
 
   const applyZoom = useCallback(
     (nextOf: (current: number) => number, anchor?: Point) => {
@@ -58,8 +59,23 @@ export function usePaneZoom({
     const target = pendingScroll.current;
     pendingScroll.current = null;
     if (!el || !target) return;
-    el.scrollLeft = Math.max(0, target.x);
-    el.scrollTop = Math.max(0, target.y);
+    const moveToAnchor = () => {
+      el.scrollLeft = Math.max(0, target.x);
+      el.scrollTop = Math.max(0, target.y);
+    };
+    // Apply once during layout and again after resized pages and annotation
+    // surfaces have settled. Without the second pass, some browsers clamp the
+    // first horizontal move against the old width and leave zoom pinned left.
+    moveToAnchor();
+    if (pendingFrame.current !== null) cancelAnimationFrame(pendingFrame.current);
+    pendingFrame.current = requestAnimationFrame(() => {
+      moveToAnchor();
+      pendingFrame.current = null;
+    });
+    return () => {
+      if (pendingFrame.current !== null) cancelAnimationFrame(pendingFrame.current);
+      pendingFrame.current = null;
+    };
   }, [scrollRef, zoom]);
 
   useEffect(() => {

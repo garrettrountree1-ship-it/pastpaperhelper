@@ -303,22 +303,22 @@ export function useLessonMirrorState({
     const receive = ({ payload }: { payload: unknown }) => {
       const message = payload as Payload;
       if (!message.from || !trustedPresenters.current.includes(message.from)) return;
-      if (
-        message.viewActive === false &&
-        message.sessionId &&
-        activeSession.current &&
-        message.sessionId !== activeSession.current
-      ) {
+
+      const starting = message.viewActive === true;
+      const stopping = message.viewActive === false;
+
+      if (stopping) {
         // A delayed stop from an older run must never cancel a newer mirror.
-        return;
+        if (message.sessionId && activeSession.current && message.sessionId !== activeSession.current) {
+          return;
+        }
+        if (activePresenter.current && activePresenter.current !== message.from) return;
       }
-      if (message.viewActive === true) {
+      if (starting) {
         activePresenter.current = message.from;
-      } else if (activePresenter.current && activePresenter.current !== message.from) {
-        return;
-      } else if (message.viewActive === false) {
-        activePresenter.current = null;
+        lastActiveAt.current = Date.now();
       }
+
       const patch: Fields = { ...(message.content ?? {}), ...(message.view ?? {}) };
       // A big piece of work arrives in slices; hold them until the last one.
       const slice = message.chunk;
@@ -348,14 +348,24 @@ export function useLessonMirrorState({
         // position before unlocking the student's workspace at that location.
         const endingSession = message.sessionId ?? null;
         window.requestAnimationFrame(() => {
-          if (activeSession.current !== endingSession) return;
+          if (endingSession && activeSession.current !== endingSession) return;
           activeSession.current = null;
+          activePresenter.current = null;
           setViewActive(false);
         });
         return;
       }
-      if (message.viewActive === false) activeSession.current = null;
-      setViewActive(message.viewActive === true);
+      if (starting) {
+        // Any live message from the presenting teacher starts (or keeps) the
+        // shared screen, however many times mirroring was switched on and off.
+        setViewActive(true);
+        return;
+      }
+      if (stopping) {
+        activeSession.current = null;
+        activePresenter.current = null;
+        setViewActive(false);
+      }
     };
 
     void (async () => {

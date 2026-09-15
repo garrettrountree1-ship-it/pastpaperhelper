@@ -541,8 +541,9 @@ export function OfficeDocView({
               ))}
             </div>
           ) : (
-            <div style={{ width: `${zoom * 100}%` }}>
+            <div style={{ width: `${Math.max(1, zoom) * 100}%` }}>
               <DocMarkupSurface
+                pageFraction={Math.min(1, zoom)}
                 ratio={docRatio}
                 tool={effTool}
                 penColor={penColor}

@@ -83,7 +83,6 @@ export function usePaneZoom({
     };
   }, [scrollRef, zoom]);
 
-
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || !enabled) return;
@@ -173,7 +172,6 @@ export function usePaneZoom({
       el.style.touchAction = "pan-x pan-y";
     };
 
-
     // Safari reports trackpad and touch pinch as gesture events, which ignore
     // touch-action; without these the page itself zooms.
     let gesture: { zoom: number; center: Point; scrollLeft: number; scrollTop: number } | null =
@@ -242,7 +240,6 @@ export function usePaneZoom({
       el.removeEventListener("gesturechange", onGestureChange as EventListener);
       el.removeEventListener("gestureend", onGestureEnd as EventListener);
     };
-
   }, [applyZoom, enabled, max, min, scrollRef, setZoom]);
 
   return { applyZoom };

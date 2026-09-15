@@ -708,6 +708,7 @@ function SlidePage({
             // With the exact slide picture showing, only the text boxes are kept
             // on top — invisible until the teacher retypes them, so the words on
             // screen are always the original ones.
+            if (hideRebuilt) return null;
             if (pageSrc && shape.type !== "text") return null;
             return (
               <SlideShape

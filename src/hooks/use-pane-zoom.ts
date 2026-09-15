@@ -33,7 +33,7 @@ export function usePaneZoom({
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
   const pendingScroll = useRef<Point | null>(null);
-  const pendingFrame = useRef<number | null>(null);
+  const pendingFrames = useRef<number[]>([]);
 
   const applyZoom = useCallback(
     (nextOf: (current: number) => number, anchor?: Point) => {
@@ -60,23 +60,29 @@ export function usePaneZoom({
     pendingScroll.current = null;
     if (!el || !target) return;
     const moveToAnchor = () => {
-      el.scrollLeft = Math.max(0, target.x);
-      el.scrollTop = Math.max(0, target.y);
+      const maxLeft = Math.max(0, el.scrollWidth - el.clientWidth);
+      const maxTop = Math.max(0, el.scrollHeight - el.clientHeight);
+      el.scrollLeft = Math.min(maxLeft, Math.max(0, target.x));
+      el.scrollTop = Math.min(maxTop, Math.max(0, target.y));
     };
-    // Apply once during layout and again after resized pages and annotation
-    // surfaces have settled. Without the second pass, some browsers clamp the
-    // first horizontal move against the old width and leave zoom pinned left.
+    // Pages, slides and annotation layers resize over the next few frames.
+    // Re-apply the anchor until the scrollable width has caught up, otherwise
+    // the first move is clamped against the old width and the view stays pinned
+    // to the left edge.
     moveToAnchor();
-    if (pendingFrame.current !== null) cancelAnimationFrame(pendingFrame.current);
-    pendingFrame.current = requestAnimationFrame(() => {
+    let frames = 0;
+    const step = () => {
       moveToAnchor();
-      pendingFrame.current = null;
-    });
+      frames += 1;
+      if (frames < 6) pendingFrames.current.push(requestAnimationFrame(step));
+    };
+    pendingFrames.current.push(requestAnimationFrame(step));
     return () => {
-      if (pendingFrame.current !== null) cancelAnimationFrame(pendingFrame.current);
-      pendingFrame.current = null;
+      pendingFrames.current.forEach((id) => cancelAnimationFrame(id));
+      pendingFrames.current = [];
     };
   }, [scrollRef, zoom]);
+
 
   useEffect(() => {
     const el = scrollRef.current;

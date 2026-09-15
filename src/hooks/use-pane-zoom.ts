@@ -185,7 +185,7 @@ export function usePaneZoom({
       event.preventDefault();
       if (!gesture) return;
       const scale = (event as Event & { scale?: number }).scale ?? 1;
-      pinch = gesture;
+      pinch = { ...gesture, distance: 1 };
       zoomTo(gesture.zoom * scale, gesturePoint(event));
     };
     const onGestureEnd = (event: Event) => {

@@ -687,6 +687,13 @@ function SlidePage({
             decoding="async"
           />
         ) : null}
+        {hideRebuilt ? (
+          <div className="absolute inset-0 flex animate-pulse items-center justify-center bg-muted/40">
+            <p className="px-4 text-center text-xs text-muted-foreground">
+              Getting the exact slide from your PowerPoint…
+            </p>
+          </div>
+        ) : null}
         <div
           className="absolute left-0 top-0"
           style={{

@@ -224,24 +224,25 @@ export function usePaneZoom({
     // page); only whole-page pinch zoom is blocked, since we handle pinch here.
     el.style.touchAction = "pan-x pan-y";
     el.addEventListener("wheel", onWheel, { passive: false });
-    el.addEventListener("touchstart", onTouchStart, { passive: false, capture: true });
-    el.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
-    el.addEventListener("touchend", onTouchEnd, true);
-    el.addEventListener("touchcancel", onTouchEnd, true);
+    document.addEventListener("touchstart", onTouchStart, { passive: false, capture: true });
+    document.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
+    document.addEventListener("touchend", onTouchEnd, true);
+    document.addEventListener("touchcancel", onTouchEnd, true);
     el.addEventListener("gesturestart", onGestureStart as EventListener, { passive: false });
     el.addEventListener("gesturechange", onGestureChange as EventListener, { passive: false });
     el.addEventListener("gestureend", onGestureEnd as EventListener, { passive: false });
     return () => {
       el.style.touchAction = previousTouchAction;
       el.removeEventListener("wheel", onWheel);
-      el.removeEventListener("touchstart", onTouchStart, true);
-      el.removeEventListener("touchmove", onTouchMove, true);
-      el.removeEventListener("touchend", onTouchEnd, true);
-      el.removeEventListener("touchcancel", onTouchEnd, true);
+      document.removeEventListener("touchstart", onTouchStart, true);
+      document.removeEventListener("touchmove", onTouchMove, true);
+      document.removeEventListener("touchend", onTouchEnd, true);
+      document.removeEventListener("touchcancel", onTouchEnd, true);
       el.removeEventListener("gesturestart", onGestureStart as EventListener);
       el.removeEventListener("gesturechange", onGestureChange as EventListener);
       el.removeEventListener("gestureend", onGestureEnd as EventListener);
     };
+
   }, [applyZoom, enabled, max, min, scrollRef, setZoom]);
 
   return { applyZoom };

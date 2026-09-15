@@ -125,6 +125,7 @@ export function usePaneZoom({
       event.target instanceof Node && (el === event.target || el.contains(event.target));
 
     const onTouchStart = (event: TouchEvent) => {
+      console.log('ZOOMDBG start', event.touches.length, inside(event));
       // One finger is left entirely to the browser (native scrolling) or to
       // whichever drawing tool is under it.
       if (event.touches.length < 2 || !inside(event)) {
@@ -163,6 +164,7 @@ export function usePaneZoom({
         el.style.touchAction = "none";
         return;
       }
+      console.log('ZOOMDBG move', pinch.zoom, distance(a, b) / pinch.distance);
       zoomTo(pinch.zoom * (distance(a, b) / pinch.distance), center(a, b));
     };
 

@@ -617,13 +617,18 @@ function SlidePage({
   const slide = deck.slides[index];
   if (!slide) return null;
 
+  const fraction = Math.min(1, Math.max(0.05, slideFraction));
+  // Writing space covers the slide plus the blank room beside it, in the same
+  // coordinates, so a line can run off the slide and carry on in the white space.
+  const surfaceWidth = Math.round(deck.width / fraction);
+
   return (
-    <div className="relative overflow-hidden rounded-md border shadow-sm">
+    <div className="relative flex items-stretch rounded-md border shadow-sm">
       <div
         ref={frameRef}
-        className="relative origin-top-left"
+        className="relative shrink-0 origin-top-left overflow-hidden"
         style={{
-          width: "100%",
+          width: `${fraction * 100}%`,
           aspectRatio: `${deck.width} / ${deck.height}`,
           background: slide.background ?? "#ffffff",
         }}

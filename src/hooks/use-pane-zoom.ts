@@ -100,7 +100,7 @@ export function usePaneZoom({
     const onPointerDown = (event: PointerEvent) => {
       if (event.pointerType !== "touch") return;
       touches.set(event.pointerId, localPoint(event));
-      el.setPointerCapture?.(event.pointerId);
+      // One finger stays available for drawing, erasing and dragging tools.
       if (touches.size >= 2) beginPinch();
       else lastSingle = localPoint(event);
     };
@@ -109,33 +109,29 @@ export function usePaneZoom({
       if (event.pointerType !== "touch" || !touches.has(event.pointerId)) return;
       const nextPoint = localPoint(event);
       touches.set(event.pointerId, nextPoint);
+      // Single-finger moves belong to whatever tool is active; leave them alone.
+      if (touches.size < 2) {
+        lastSingle = nextPoint;
+        return;
+      }
       event.preventDefault();
       event.stopPropagation();
 
-      if (touches.size >= 2) {
-        if (!pinch) beginPinch();
-        const [a, b] = pair();
-        if (!pinch || !a || !b) return;
-        const currentCenter = center(a, b);
-        const nextZoom = Math.min(
-          max,
-          Math.max(min, Number((pinch.zoom * (distance(a, b) / pinch.distance)).toFixed(3))),
-        );
-        const k = nextZoom / pinch.zoom;
-        pendingScroll.current = {
-          x: (pinch.scrollLeft + pinch.center.x) * k - currentCenter.x,
-          y: (pinch.scrollTop + pinch.center.y) * k - currentCenter.y,
-        };
-        zoomRef.current = nextZoom;
-        setZoom(nextZoom);
-        return;
-      }
-
-      if (lastSingle) {
-        el.scrollLeft -= nextPoint.x - lastSingle.x;
-        el.scrollTop -= nextPoint.y - lastSingle.y;
-      }
-      lastSingle = nextPoint;
+      if (!pinch) beginPinch();
+      const [a, b] = pair();
+      if (!pinch || !a || !b) return;
+      const currentCenter = center(a, b);
+      const nextZoom = Math.min(
+        max,
+        Math.max(min, Number((pinch.zoom * (distance(a, b) / pinch.distance)).toFixed(3))),
+      );
+      const k = nextZoom / pinch.zoom;
+      pendingScroll.current = {
+        x: (pinch.scrollLeft + pinch.center.x) * k - currentCenter.x,
+        y: (pinch.scrollTop + pinch.center.y) * k - currentCenter.y,
+      };
+      zoomRef.current = nextZoom;
+      setZoom(nextZoom);
     };
 
     const endPointer = (event: PointerEvent) => {

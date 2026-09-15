@@ -68,6 +68,9 @@ export function usePaneZoom({
 
     const touches = new Map<number, Point>();
     let lastSingle: Point | null = null;
+    // True while the single finger rests on an active drawing surface (pen,
+    // eraser, highlighter) — that finger draws instead of scrolling.
+    let singleDraws = false;
     let pinch: {
       distance: number;
       zoom: number;

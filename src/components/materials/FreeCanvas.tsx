@@ -502,6 +502,11 @@ export function FreeCanvas({
         {/* Ink layer: captures the pen everywhere while in draw mode. */}
         <svg
           className="absolute inset-0 h-full w-full"
+          data-touch-draw={
+            canEdit && (mode === "draw" || mode === "highlight" || mode === "erase")
+              ? "true"
+              : undefined
+          }
           style={{
             pointerEvents:
               canEdit && (mode === "draw" || mode === "highlight" || mode === "erase")

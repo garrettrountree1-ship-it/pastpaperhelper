@@ -444,6 +444,59 @@ export function SlideAnnotations({
       onPointerUp={up}
       onPointerCancel={up}
     >
+      {/* Pasted pictures sit under the ink, so they can be drawn on. */}
+      {images.map((picture, index) => (
+        <div
+          key={`img-${index}`}
+          className="absolute"
+          style={{
+            left: picture.x,
+            top: picture.y,
+            width: picture.w,
+            pointerEvents: textActive ? "auto" : "none",
+          }}
+        >
+          <div className="relative">
+            <img
+              src={picture.src}
+              alt="Pasted picture"
+              draggable={false}
+              className="block w-full select-none rounded shadow-sm"
+            />
+            {textActive ? (
+              <>
+                <button
+                  type="button"
+                  aria-label="Move picture"
+                  title="Drag to move this picture"
+                  onPointerDown={(event) => beginImageDrag(event, index, "move")}
+                  className="absolute -left-3 -top-3 cursor-grab touch-none rounded-full border bg-white p-1 shadow active:cursor-grabbing"
+                >
+                  <Move className="size-4 text-neutral-700" />
+                </button>
+                <span
+                  aria-label="Resize picture"
+                  title="Drag to make this picture bigger or smaller"
+                  onPointerDown={(event) => beginImageDrag(event, index, "resize")}
+                  className="absolute -bottom-2 -right-2 size-4 cursor-nwse-resize touch-none rounded-sm border border-neutral-500 bg-white shadow"
+                />
+                <button
+                  type="button"
+                  aria-label="Delete picture"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={() =>
+                    onChange({ ...value, images: images.filter((_, i) => i !== index) })
+                  }
+                  className="absolute -right-3 -top-3 rounded-full border bg-white p-1 shadow"
+                >
+                  <X className="size-4 text-neutral-700" />
+                </button>
+              </>
+            ) : null}
+          </div>
+        </div>
+      ))}
+
       <svg
         width={width}
         height={height}

@@ -426,6 +426,7 @@ export function SlideAnnotations({
   return (
     <div
       ref={hostRef}
+      data-touch-draw={tool === "none" || tool === "edit" ? undefined : "true"}
       className="absolute left-0 top-0"
       style={{
         width,

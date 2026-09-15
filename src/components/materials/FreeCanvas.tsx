@@ -502,6 +502,11 @@ export function FreeCanvas({
         {/* Ink layer: captures the pen everywhere while in draw mode. */}
         <svg
           className="absolute inset-0 h-full w-full"
+          data-touch-draw={
+            canEdit && (mode === "draw" || mode === "highlight" || mode === "erase")
+              ? "true"
+              : undefined
+          }
           style={{
             pointerEvents:
               canEdit && (mode === "draw" || mode === "highlight" || mode === "erase")
@@ -608,6 +613,7 @@ export function FreeCanvas({
             return (
               <div
                 key={block.id}
+                data-touch-draw={canEdit ? "true" : undefined}
                 onPointerDown={
                   canEdit
                     ? (event) => {
@@ -783,6 +789,7 @@ export function FreeCanvas({
           return (
             <figure
               key={block.id}
+              data-touch-draw={canEdit ? "true" : undefined}
               className={`group absolute ${isSelected ? "z-30" : ""}`}
               style={{
                 ...style,

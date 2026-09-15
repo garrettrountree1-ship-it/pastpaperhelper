@@ -97,25 +97,43 @@ export function usePaneZoom({
       lastSingle = null;
     };
 
+    // A single finger that lands on an active drawing surface (or a picture /
+    // text box being dragged) belongs to that tool, not to scrolling.
+    let singleDraws = false;
+    const onDrawSurface = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return false;
+      const surface = target.closest('[data-touch-draw="true"]');
+      return Boolean(surface && el.contains(surface));
+    };
+
     const onPointerDown = (event: PointerEvent) => {
       if (event.pointerType !== "touch") return;
-      // A finger always controls the viewport. Prevent drawing layers beneath
-      // this capture listener from interpreting the same gesture as ink.
+      touches.set(event.pointerId, localPoint(event));
+      if (touches.size >= 2) {
+        // Two fingers always mean zoom, so take the gesture back from the tool.
+        singleDraws = false;
+        event.preventDefault();
+        event.stopPropagation();
+        beginPinch();
+        return;
+      }
+      singleDraws = onDrawSurface(event);
+      lastSingle = localPoint(event);
+      if (singleDraws) return;
       event.preventDefault();
       event.stopPropagation();
-      touches.set(event.pointerId, localPoint(event));
-      if (touches.size >= 2) beginPinch();
-      else lastSingle = localPoint(event);
     };
 
     const onPointerMove = (event: PointerEvent) => {
       if (event.pointerType !== "touch" || !touches.has(event.pointerId)) return;
       const nextPoint = localPoint(event);
       touches.set(event.pointerId, nextPoint);
-      event.preventDefault();
-      event.stopPropagation();
       if (touches.size < 2) {
-        // One finger always scrolls, regardless of which drawing tool is active.
+        // One finger scrolls the pane unless a drawing tool owns this gesture.
+        if (singleDraws) return;
+        event.preventDefault();
+        event.stopPropagation();
         if (!lastSingle) {
           lastSingle = nextPoint;
           return;
@@ -125,6 +143,8 @@ export function usePaneZoom({
         lastSingle = nextPoint;
         return;
       }
+      event.preventDefault();
+      event.stopPropagation();
 
       if (!pinch) beginPinch();
       const [a, b] = pair();
@@ -145,10 +165,14 @@ export function usePaneZoom({
 
     const endPointer = (event: PointerEvent) => {
       if (event.pointerType !== "touch") return;
-      event.preventDefault();
-      event.stopPropagation();
+      // A drawing gesture must keep its own pointerup so the stroke can finish.
+      if (!singleDraws) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       touches.delete(event.pointerId);
       pinch = null;
+      if (touches.size === 0) singleDraws = false;
       const remaining = pair()[0];
       lastSingle = remaining ?? null;
     };

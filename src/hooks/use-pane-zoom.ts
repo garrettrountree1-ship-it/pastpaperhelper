@@ -119,11 +119,16 @@ export function usePaneZoom({
 
     // Native touch events are used instead of pointer events: only a
     // cancelable touchmove can stop the browser from pinch-zooming the whole
-    // window, so the gesture stays inside this pane.
+    // window, so the gesture stays inside this pane. They are listened for on
+    // the document during the capture phase so that drawing layers, text layers
+    // and other children can never swallow the gesture first.
+    const inside = (event: TouchEvent) =>
+      event.target instanceof Node && (el === event.target || el.contains(event.target));
+
     const onTouchStart = (event: TouchEvent) => {
       // One finger is left entirely to the browser (native scrolling) or to
       // whichever drawing tool is under it.
-      if (event.touches.length < 2) {
+      if (event.touches.length < 2 || !inside(event)) {
         pinch = null;
         return;
       }
@@ -143,6 +148,7 @@ export function usePaneZoom({
 
     const onTouchMove = (event: TouchEvent) => {
       if (event.touches.length < 2) return;
+      if (!pinch && !inside(event)) return;
       const [a, b] = localTouches(event);
       if (!a || !b) return;
       if (event.cancelable) event.preventDefault();
@@ -155,6 +161,7 @@ export function usePaneZoom({
           scrollLeft: el.scrollLeft,
           scrollTop: el.scrollTop,
         };
+        el.style.touchAction = "none";
         return;
       }
       zoomTo(pinch.zoom * (distance(a, b) / pinch.distance), center(a, b));
@@ -165,6 +172,7 @@ export function usePaneZoom({
       pinch = null;
       el.style.touchAction = "pan-x pan-y";
     };
+
 
     // Safari reports trackpad and touch pinch as gesture events, which ignore
     // touch-action; without these the page itself zooms.

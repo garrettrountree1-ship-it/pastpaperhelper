@@ -689,9 +689,6 @@ function AssignmentDialog({
               : ""),
           numericalAnswer:
             Boolean(q.numericalAnswer) || looksNumericalQuestion(q.questionText, q.markScheme),
-          multipleChoice: null,
-          expectedAnswer: q.expectedAnswer ?? "",
-          numericalAnswer: Boolean(q.numericalAnswer),
         })),
       );
       toast.success(`${result.questions.length} questions read from your files`);
@@ -1402,67 +1399,6 @@ function AssignmentDialog({
                           </p>
                         </div>
                       </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <Label htmlFor={`expected-${index}`}>
-                          Verified answer for fast checking
-                        </Label>
-                        <Input
-                          id={`expected-${index}`}
-                          value={question.expectedAnswer}
-                          placeholder="e.g. B or 3.42 × 10⁻³"
-                          onChange={(event) =>
-                            update_(index, { expectedAnswer: event.target.value })
-                          }
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Read from the answer-key picture. Check this carefully before publishing.
-                        </p>
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor={`numeric-${index}`}>Calculation answer</Label>
-                        <Select
-                          value={question.numericalAnswer ? "yes" : "no"}
-                          onValueChange={(value) =>
-                            update_(index, { numericalAnswer: value === "yes" })
-                          }
-                        >
-                          <SelectTrigger id={`numeric-${index}`}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="yes">Yes — numerical result</SelectItem>
-                            <SelectItem value="no">No — use answer-key rubric</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor={`mc-${index}`}>Multiple choice</Label>
-                      <Select
-                        value={
-                          question.multipleChoice === null
-                            ? "auto"
-                            : question.multipleChoice
-                              ? "yes"
-                              : "no"
-                        }
-                        onValueChange={(value) =>
-                          update_(index, {
-                            multipleChoice: value === "auto" ? null : value === "yes",
-                          })
-                        }
-                      >
-                        <SelectTrigger id={`mc-${index}`} className="w-44">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="auto">Work it out</SelectItem>
-                          <SelectItem value="yes">Yes — fewer tries</SelectItem>
-                          <SelectItem value="no">No</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
                   </div>
                 </div>

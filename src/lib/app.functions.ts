@@ -508,8 +508,6 @@ export const createAssignment = createServerFn({ method: "POST" })
           extractChoiceAnswer(q.markScheme) ||
           (q.numericalAnswer ? extractFinalNumber(q.markScheme) || "" : ""),
         numerical_answer: q.numericalAnswer || looksNumericalQuestion(q.questionText, q.markScheme),
-        expected_answer: q.expectedAnswer.trim(),
-        numerical_answer: q.numericalAnswer,
       })),
     );
     if (qError) throw new Error(qError.message);
@@ -602,12 +600,6 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
             ) ||
             ((q as { multiple_choice?: boolean | null }).multiple_choice == null &&
               /^[A-E]$/i.test(q.expected_answer?.trim() || "")),
-          expectedAnswer: q.expected_answer ?? "",
-          numericalAnswer: Boolean(q.numerical_answer),
-          autoMultipleChoice: isMultipleChoice(
-            (q as { multiple_choice?: boolean | null }).multiple_choice,
-            (q as { mark_scheme?: string | null }).mark_scheme,
-          ),
         })),
       ),
     };
@@ -936,8 +928,6 @@ export const updateAssignment = createServerFn({ method: "POST" })
           extractChoiceAnswer(q.markScheme) ||
           (q.numericalAnswer ? extractFinalNumber(q.markScheme) || "" : ""),
         numerical_answer: q.numericalAnswer || looksNumericalQuestion(q.questionText, q.markScheme),
-        expected_answer: q.expectedAnswer.trim(),
-        numerical_answer: q.numericalAnswer,
       };
       if (q.id && existingIds.has(q.id)) {
         const { error } = await supabase.from("questions").update(payload).eq("id", q.id);

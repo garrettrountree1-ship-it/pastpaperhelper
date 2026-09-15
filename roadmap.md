@@ -7,3 +7,5 @@
 - [x] Keep formative questions and leaderboards separate and scrollable on smaller screens.
 - [x] Add two-finger pinch zoom and touch panning to lesson documents and canvas windows.
 - [x] Extend document/slide markup into the blank space beside a zoomed-out page (draw, highlight, erase and paste pictures there).
+- [ ] Make PDF side writing space at least one PDF page wide.
+- [ ] Let PDF and document zoom stay anchored to any chosen area, with horizontal scrolling when enlarged.

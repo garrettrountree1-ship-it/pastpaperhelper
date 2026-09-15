@@ -374,7 +374,13 @@ export function SlideAnnotations({
       }
       // Nothing drawn there: rub out a pasted picture under the tap instead.
       const keptImages = images.filter(
-        (picture) => !(point.x >= picture.x && point.y >= picture.y && point.x <= picture.x + picture.w),
+        (picture) =>
+          !(
+            point.x >= picture.x &&
+            point.x <= picture.x + picture.w &&
+            point.y >= picture.y &&
+            point.y <= picture.y + picture.w * 1.6
+          ),
       );
       if (keptImages.length !== images.length) onChange({ ...value, images: keptImages });
       return;

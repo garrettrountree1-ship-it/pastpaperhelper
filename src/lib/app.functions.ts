@@ -508,8 +508,6 @@ export const createAssignment = createServerFn({ method: "POST" })
           extractChoiceAnswer(q.markScheme) ||
           (q.numericalAnswer ? extractFinalNumber(q.markScheme) || "" : ""),
         numerical_answer: q.numericalAnswer || looksNumericalQuestion(q.questionText, q.markScheme),
-        expected_answer: q.expectedAnswer.trim(),
-        numerical_answer: q.numericalAnswer,
       })),
     );
     if (qError) throw new Error(qError.message);

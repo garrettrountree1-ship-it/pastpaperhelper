@@ -223,41 +223,38 @@ export function PdfDocView({
       >
         {pages.map((src, index) => {
           const surfaceScale = Math.max(1, zoom);
-          const pageFraction = Math.min(
-            1,
-            (zoom * PAGE_WITH_WRITING_MARGIN) / surfaceScale,
-          );
+          const pageFraction = Math.min(1, (zoom * PAGE_WITH_WRITING_MARGIN) / surfaceScale);
 
           return (
-          <div key={index} style={{ width: `${surfaceScale * 100}%` }}>
-            <DocMarkupSurface
-              pageFraction={pageFraction}
-              ratio={ratios[index] ?? 1.414}
-              tool={effTool}
-              penColor={markup.penColor}
-              highlightColor={markup.highlightColor}
-              value={markup.annotationOf(index)}
-              onChange={(next) => markup.update(index, next)}
-            >
-              <img
-                src={src}
-                alt={`${title} page ${index + 1}`}
-                className="w-full rounded-md border bg-white shadow-sm"
-                style={{ maxWidth: "none" }}
-                onLoad={(event) => {
-                  const img = event.currentTarget;
-                  if (!img.naturalWidth) return;
-                  const ratio = img.naturalHeight / img.naturalWidth;
-                  setRatios((current) =>
-                    current[index] === ratio ? current : { ...current, [index]: ratio },
-                  );
-                }}
-              />
-              {texts?.[index] ? (
-                <PdfTextLayer page={texts[index]!} selectable={effTool === "none"} />
-              ) : null}
-            </DocMarkupSurface>
-          </div>
+            <div key={index} style={{ width: `${surfaceScale * 100}%` }}>
+              <DocMarkupSurface
+                pageFraction={pageFraction}
+                ratio={ratios[index] ?? 1.414}
+                tool={effTool}
+                penColor={markup.penColor}
+                highlightColor={markup.highlightColor}
+                value={markup.annotationOf(index)}
+                onChange={(next) => markup.update(index, next)}
+              >
+                <img
+                  src={src}
+                  alt={`${title} page ${index + 1}`}
+                  className="w-full rounded-md border bg-white shadow-sm"
+                  style={{ maxWidth: "none" }}
+                  onLoad={(event) => {
+                    const img = event.currentTarget;
+                    if (!img.naturalWidth) return;
+                    const ratio = img.naturalHeight / img.naturalWidth;
+                    setRatios((current) =>
+                      current[index] === ratio ? current : { ...current, [index]: ratio },
+                    );
+                  }}
+                />
+                {texts?.[index] ? (
+                  <PdfTextLayer page={texts[index]!} selectable={effTool === "none"} />
+                ) : null}
+              </DocMarkupSurface>
+            </div>
           );
         })}
       </div>

@@ -786,7 +786,7 @@ export function FormativeCheckPanel({
       className={
         student
           ? "pointer-events-auto fixed inset-0 z-[70] flex flex-col bg-foreground/40 p-3 backdrop-blur-sm sm:p-4"
-          : "pointer-events-none fixed inset-0 z-[70] flex items-center justify-center p-4"
+          : "pointer-events-none fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4"
       }
     >
       {student && boardOn ? (
@@ -827,7 +827,9 @@ export function FormativeCheckPanel({
                   ? "md:grid-cols-[minmax(15rem,22rem)_minmax(0,52rem)] lg:grid-cols-[minmax(18rem,28rem)_minmax(0,52rem)]"
                   : "max-w-[52rem] grid-cols-1"
               }`
-            : "contents"
+            : boardOn
+              ? "grid max-h-[calc(100dvh-1.5rem)] min-h-0 w-[min(96vw,76rem)] grid-cols-[minmax(14rem,0.8fr)_minmax(18rem,1.2fr)] items-stretch gap-3 sm:max-h-[calc(100dvh-2rem)] lg:grid-cols-[minmax(18rem,28rem)_minmax(22rem,42rem)] lg:gap-4"
+              : "flex max-h-[calc(100dvh-1.5rem)] min-h-0 w-full items-center justify-center sm:max-h-[calc(100dvh-2rem)]"
         }
       >
         {boardOn ? (
@@ -836,7 +838,7 @@ export function FormativeCheckPanel({
             className={
               student
                 ? `${showPhoneLeaderboard ? "block" : "hidden"} h-full md:block`
-                : "fixed bottom-3 left-3 right-3 z-[71] max-h-[34vh] lg:bottom-auto lg:left-4 lg:right-auto lg:top-1/2 lg:max-h-[92vh] lg:w-[min(34vw,28rem)] lg:-translate-y-1/2"
+                : "h-full max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)]"
             }
           />
         ) : null}
@@ -844,7 +846,11 @@ export function FormativeCheckPanel({
           className={
             student
               ? `${showPhoneQuestion ? "block" : "hidden"} min-h-0 min-w-0 overflow-y-auto rounded-2xl border border-border bg-background p-4 shadow-2xl md:block sm:p-6`
-              : "pointer-events-auto max-h-[80vh] w-[min(96vw,34rem)] overflow-y-auto rounded-2xl border border-border bg-background p-5 shadow-2xl"
+              : `pointer-events-auto min-h-0 min-w-0 overflow-y-auto overscroll-contain rounded-xl border border-border bg-background p-4 shadow-2xl sm:p-5 ${
+                  boardOn
+                    ? "h-full max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)]"
+                    : "max-h-[calc(100dvh-1.5rem)] w-[min(96vw,34rem)] sm:max-h-[calc(100dvh-2rem)]"
+                }`
           }
         >
           {student ? (
@@ -905,7 +911,7 @@ export function FormativeCheckPanel({
               className={
                 student
                   ? "mt-4 max-h-[45vh] w-full rounded-lg border border-border object-contain"
-                  : "mt-3 max-h-[38vh] w-full rounded-md border border-border object-contain"
+                  : "mt-3 max-h-[28vh] w-full rounded-md border border-border object-contain"
               }
             />
           ) : null}

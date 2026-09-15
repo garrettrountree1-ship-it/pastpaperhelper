@@ -613,6 +613,7 @@ export function FreeCanvas({
             return (
               <div
                 key={block.id}
+                data-touch-draw={canEdit ? "true" : undefined}
                 onPointerDown={
                   canEdit
                     ? (event) => {
@@ -788,6 +789,7 @@ export function FreeCanvas({
           return (
             <figure
               key={block.id}
+              data-touch-draw={canEdit ? "true" : undefined}
               className={`group absolute ${isSelected ? "z-30" : ""}`}
               style={{
                 ...style,

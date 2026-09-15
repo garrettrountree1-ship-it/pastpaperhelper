@@ -165,10 +165,14 @@ export function usePaneZoom({
 
     const endPointer = (event: PointerEvent) => {
       if (event.pointerType !== "touch") return;
-      event.preventDefault();
-      event.stopPropagation();
+      // A drawing gesture must keep its own pointerup so the stroke can finish.
+      if (!singleDraws) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       touches.delete(event.pointerId);
       pinch = null;
+      if (touches.size === 0) singleDraws = false;
       const remaining = pair()[0];
       lastSingle = remaining ?? null;
     };

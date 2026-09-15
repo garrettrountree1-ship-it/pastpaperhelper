@@ -106,6 +106,8 @@ export function useLessonMirrorState({
   const activePresenter = useRef<string | null>(null);
   const activeSession = useRef<string | null>(null);
   const sessionId = useRef<string | null>(null);
+  /** When the last live message from the presenting teacher arrived. */
+  const lastActiveAt = useRef(0);
   const trustedPresenters = useRef<string[]>(presenterIds);
   trustedPresenters.current = presenterIds;
 
@@ -206,8 +208,7 @@ export function useLessonMirrorState({
       if (Object.keys(extra).length > 0 || !sentAny) send({ ...meta(), ...extra });
     };
 
-    const sendAll = () =>
-      sendFields(allContent.current, sendingRef.current ? allView.current : {});
+    const sendAll = () => sendFields(allContent.current, sendingRef.current ? allView.current : {});
 
     void (async () => {
       // Realtime can retain an older token after a long-lived school session.
@@ -303,22 +304,26 @@ export function useLessonMirrorState({
     const receive = ({ payload }: { payload: unknown }) => {
       const message = payload as Payload;
       if (!message.from || !trustedPresenters.current.includes(message.from)) return;
-      if (
-        message.viewActive === false &&
-        message.sessionId &&
-        activeSession.current &&
-        message.sessionId !== activeSession.current
-      ) {
+
+      const starting = message.viewActive === true;
+      const stopping = message.viewActive === false;
+
+      if (stopping) {
         // A delayed stop from an older run must never cancel a newer mirror.
-        return;
+        if (
+          message.sessionId &&
+          activeSession.current &&
+          message.sessionId !== activeSession.current
+        ) {
+          return;
+        }
+        if (activePresenter.current && activePresenter.current !== message.from) return;
       }
-      if (message.viewActive === true) {
+      if (starting) {
         activePresenter.current = message.from;
-      } else if (activePresenter.current && activePresenter.current !== message.from) {
-        return;
-      } else if (message.viewActive === false) {
-        activePresenter.current = null;
+        lastActiveAt.current = Date.now();
       }
+
       const patch: Fields = { ...(message.content ?? {}), ...(message.view ?? {}) };
       // A big piece of work arrives in slices; hold them until the last one.
       const slice = message.chunk;
@@ -348,14 +353,24 @@ export function useLessonMirrorState({
         // position before unlocking the student's workspace at that location.
         const endingSession = message.sessionId ?? null;
         window.requestAnimationFrame(() => {
-          if (activeSession.current !== endingSession) return;
+          if (endingSession && activeSession.current !== endingSession) return;
           activeSession.current = null;
+          activePresenter.current = null;
           setViewActive(false);
         });
         return;
       }
-      if (message.viewActive === false) activeSession.current = null;
-      setViewActive(message.viewActive === true);
+      if (starting) {
+        // Any live message from the presenting teacher starts (or keeps) the
+        // shared screen, however many times mirroring was switched on and off.
+        setViewActive(true);
+        return;
+      }
+      if (stopping) {
+        activeSession.current = null;
+        activePresenter.current = null;
+        setViewActive(false);
+      }
     };
 
     void (async () => {
@@ -391,8 +406,22 @@ export function useLessonMirrorState({
     const ask = () =>
       void studentChannel.current?.send({ type: "broadcast", event: "hello", payload: {} });
     ask();
-    if (viewActive) return;
-    const timer = window.setInterval(ask, 1500);
+    // Keep asking, even while following, so a shared screen that was switched
+    // off and on again is always picked back up.
+    const timer = window.setInterval(ask, viewActive ? 4000 : 1500);
+    return () => window.clearInterval(timer);
+  }, [isTeacher, viewActive]);
+
+  // If the teacher's screen goes quiet (closed tab, lost connection), release
+  // the student's screen instead of leaving it frozen on the last picture.
+  useEffect(() => {
+    if (isTeacher || !viewActive) return;
+    const timer = window.setInterval(() => {
+      if (Date.now() - lastActiveAt.current < 6000) return;
+      activeSession.current = null;
+      activePresenter.current = null;
+      setViewActive(false);
+    }, 1000);
     return () => window.clearInterval(timer);
   }, [isTeacher, viewActive]);
 
@@ -452,14 +481,16 @@ function scrollTargetOf(el: HTMLElement): HTMLElement {
   while (parent) {
     const style = window.getComputedStyle(parent);
     const scrolls = /(auto|scroll|overlay)/.test(`${style.overflowY}${style.overflowX}`);
-    if (scrolls && (parent.scrollHeight - parent.clientHeight > 4 || parent.scrollWidth - parent.clientWidth > 4)) {
+    if (
+      scrolls &&
+      (parent.scrollHeight - parent.clientHeight > 4 || parent.scrollWidth - parent.clientWidth > 4)
+    ) {
       return parent;
     }
     parent = parent.parentElement;
   }
   return el;
 }
-
 
 /**
  * Mirrors scrolling of a pane. Positions travel as a fraction of the scrollable
@@ -521,7 +552,6 @@ export function useMirrorScroll(
     };
   }, [publish, key, el]);
 
-
   const incoming = received[key] as
     | {
         top: number;
@@ -543,14 +573,8 @@ export function useMirrorScroll(
       const position = incomingRef.current;
       if (!position) return;
       const target = scrollTargetOf(el);
-      const teacherTopRange = Math.max(
-        0,
-        position.height - (position.clientHeight ?? 0),
-      );
-      const teacherLeftRange = Math.max(
-        0,
-        position.width - (position.clientWidth ?? 0),
-      );
+      const teacherTopRange = Math.max(0, position.height - (position.clientHeight ?? 0));
+      const teacherLeftRange = Math.max(0, position.width - (position.clientWidth ?? 0));
       const studentTopRange = Math.max(0, target.scrollHeight - target.clientHeight);
       const studentLeftRange = Math.max(0, target.scrollWidth - target.clientWidth);
       const top = exact
@@ -566,7 +590,6 @@ export function useMirrorScroll(
       if (Math.abs(target.scrollTop - top) > 0.5) target.scrollTop = top;
       if (Math.abs(target.scrollLeft - left) > 0.5) target.scrollLeft = left;
     };
-
 
     applyTeacherPosition();
     const hold = window.setInterval(applyTeacherPosition, 60);

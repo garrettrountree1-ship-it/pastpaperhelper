@@ -11,7 +11,6 @@ import {
   Columns2,
   Layers,
   Minus,
-
   Maximize,
   Minimize,
   Move,
@@ -26,10 +25,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  FormativeCheckButton,
-  FormativeCheckPanel,
-} from "@/components/materials/FormativeCheck";
+import { FormativeCheckButton, FormativeCheckPanel } from "@/components/materials/FormativeCheck";
 import { LessonTutorBar } from "@/components/materials/LessonTutorBar";
 import { NotesCanvas } from "@/components/materials/NotesCanvas";
 import { OfficeDocView } from "@/components/materials/OfficeDocView";
@@ -48,11 +44,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTutorThread } from "@/hooks/use-tutor-thread";
 import { docFormat } from "@/lib/doc-kind";
-import {
-  LessonMirrorContext,
-  useLessonMirrorState,
-  useMirrorFieldWith,
-} from "@/lib/lesson-mirror";
+import { LessonMirrorContext, useLessonMirrorState, useMirrorFieldWith } from "@/lib/lesson-mirror";
 import { listClassPresenters } from "@/lib/mirror.functions";
 import { getMaterialUrl, updateUnit } from "@/lib/materials.functions";
 import { createSection, deleteSection, listSections, updateSection } from "@/lib/notes.functions";
@@ -281,10 +273,6 @@ export function LessonWorkspace({
     window.addEventListener("pointercancel", onUp);
   }
 
-
-
-
-
   function startDrag(event: React.PointerEvent<HTMLDivElement>) {
     event.preventDefault();
     const row = rowRef.current;
@@ -302,8 +290,6 @@ export function LessonWorkspace({
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
   }
-
-
 
   // Presentation mode: hide the top chrome and expand the three panes to fill
   // the whole viewport. ESC or the floating button exits.
@@ -332,6 +318,9 @@ export function LessonWorkspace({
       target instanceof Element && Boolean(target.closest("[data-mirror-exit]"));
     const blockKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") return;
+      // Typing in a quick check (or another allowed control) still works while
+      // the teacher's screen is being shared.
+      if (isExit(event.target) || isExit(document.activeElement)) return;
       event.preventDefault();
       event.stopImmediatePropagation();
     };
@@ -418,7 +407,6 @@ export function LessonWorkspace({
   useMirrorFieldWith(mirror, "tutor.turns", tutorTurns, setMirroredTutorTurns, "content");
   useMirrorFieldWith(mirror, "tutor.draft", tutorDraft, setTutorDraft, "content");
   useMirrorFieldWith(mirror, "tutor.pending", tutorPending, setTutorPending, "content");
-
 
   const invalidateSections = () =>
     queryClient.invalidateQueries({ queryKey: ["unit-sections", unit.id] });
@@ -619,661 +607,657 @@ export function LessonWorkspace({
     </div>
   );
 
-
   return (
     <LessonMirrorContext.Provider value={mirror}>
-    <div className="fixed inset-0 z-50 flex flex-col bg-background">
-      <FormativeCheckPanel classId={classId} asStudent={!canManage} />
-      {mirror.sending || mirror.receiving ? (
-        <div className="pointer-events-none absolute left-1/2 top-2 z-[60] -translate-x-1/2 rounded-full border bg-background/95 px-3 py-1 text-xs font-medium shadow">
-          {mirror.sending
-            ? "Mirroring your lesson workspace to students"
-            : "Following your teacher's board — live"}
-        </div>
-      ) : null}
-      <header className={`flex flex-wrap items-center gap-3 border-b px-4 py-2 ${presenting ? "hidden" : ""}`}>
-        <Button
-          data-mirror-exit
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          className={mirror.receiving ? "-ml-2 relative z-[80]" : "-ml-2"}
+      <div className="fixed inset-0 z-50 flex flex-col bg-background">
+        <FormativeCheckPanel classId={classId} asStudent={!canManage} />
+        {mirror.sending || mirror.receiving ? (
+          <div className="pointer-events-none absolute left-1/2 top-2 z-[60] -translate-x-1/2 rounded-full border bg-background/95 px-3 py-1 text-xs font-medium shadow">
+            {mirror.sending
+              ? "Mirroring your lesson workspace to students"
+              : "Following your teacher's board — live"}
+          </div>
+        ) : null}
+        <header
+          className={`flex flex-wrap items-center gap-3 border-b px-4 py-2 ${presenting ? "hidden" : ""}`}
         >
-          <ArrowLeft className="size-4" />
-          Close
-        </Button>
-        <div className="min-w-0">
-          {canManage ? (
-            <UnitTitleEditor unit={unit} onSaved={onUnitChanged} />
-          ) : (
-            <h2 className="truncate font-display text-lg leading-tight">{unit.title}</h2>
-          )}
-          <p className="flex items-center gap-1 text-xs text-muted-foreground">
-            <CalendarDays className="size-3" />
-            {planLine(unit)}
-          </p>
-        </div>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          {sections.isLoading ? (
-            <Skeleton className="h-8 w-40" />
-          ) : (
-            list.map((section) =>
-              editingId === section.id ? (
-                <Input
-                  key={`edit-${section.id}`}
-                  autoFocus
-                  value={editingTitle}
-                  onChange={(e) => setEditingTitle(e.target.value)}
-                  onBlur={() => commitRename(section.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") commitRename(section.id);
-                    if (e.key === "Escape") setEditingId(null);
-                  }}
-                  className="h-8 w-40 text-xs"
-                />
-              ) : (
-                <div key={section.id} className="inline-flex items-center gap-0.5">
-                  <Button
-                    size="sm"
-                    variant={section.id === active?.id ? "default" : "outline"}
-                    onClick={() => setActiveId(section.id)}
-                    onDoubleClick={() => {
-                      if (canManage) startRename(section);
-                    }}
-                    title={canManage ? "Click to open · double-click to rename" : undefined}
-                  >
-                    {section.title}
-                  </Button>
-                  {canManage ? (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-6 shrink-0"
-                      title="Rename section"
-                      aria-label="Rename section"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        startRename(section);
-                      }}
-                    >
-                      <Pencil className="size-3" />
-                    </Button>
-                  ) : null}
-                </div>
-              ),
-            )
-          )}
-          {canManage ? (
-            <>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  const title = prompt("Section name", `Lesson ${list.length + 1}`);
-                  if (title?.trim()) createMutation.mutate(title.trim());
-                }}
-              >
-                <Plus className="size-4" />
-                New section
-              </Button>
-              {active ? (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={async () => {
-                    if (!confirm(`Delete "${active.title}" and its notes?`)) return;
-                    await removeSection({ data: { sectionId: active.id } });
-                    setActiveId(null);
-                    await invalidateSections();
-                  }}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              ) : null}
-              
-            </>
-          ) : null}
-          {canManage ? (
-            <FormativeCheckButton classId={classId} sectionId={active?.id ?? null} />
-          ) : null}
-          {!isPhone ? (
-            <div className="flex items-center gap-1 rounded-md border p-1">
-              <Button
-                size="sm"
-                variant={layout === "split" ? "default" : "ghost"}
-                onClick={() => setLayout("split")}
-                title="Split screen (side by side)"
-              >
-                <Columns2 className="size-4" />
-                <span className="hidden sm:inline">Split</span>
-              </Button>
-              <Button
-                size="sm"
-                variant={layout === "layered" ? "default" : "ghost"}
-                onClick={() => setLayout("layered")}
-                title="Layered windows (one floating on top of the other)"
-              >
-                <Layers className="size-4" />
-                <span className="hidden sm:inline">Layered</span>
-              </Button>
-            </div>
-          ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setFrontPane(frontPane === "canvas" ? "doc" : "canvas")}
-              title="Switch between the lesson canvas and the documents"
-            >
-              <ArrowLeftRight className="size-4" />
-              {frontPane === "canvas" ? "Materials" : "Canvas"}
-            </Button>
-          )}
-
-          {canManage ? (
-            <Button
-              size="sm"
-              variant={mirror.mirrorOn ? "default" : "outline"}
-              aria-pressed={mirror.mirrorOn}
-              onClick={() => mirror.setMirrorOn(!mirror.mirrorOn)}
-              title={
-                mirror.mirrorOn
-                  ? "Stop mirroring — students get their screens back"
-                  : "Mirror this lesson workspace live to students"
-              }
-            >
-              {mirror.mirrorOn ? (
-                <MonitorOff className="size-4" />
-              ) : (
-                <MonitorPlay className="size-4" />
-              )}
-              {mirror.mirrorOn ? "Stop mirroring" : "Mirror to students"}
-            </Button>
-          ) : null}
-
           <Button
             data-mirror-exit
+            variant="ghost"
             size="sm"
-            variant={presenting ? "default" : "outline"}
-            onClick={togglePresentation}
-            title={presenting ? "Exit full screen" : "Open full screen"}
-            className={mirror.receiving ? "relative z-[80]" : undefined}
+            onClick={onBack}
+            className={mirror.receiving ? "-ml-2 relative z-[80]" : "-ml-2"}
           >
-            {presenting ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
-            <span className="hidden sm:inline">
-              {presenting ? "Exit full screen" : "Full screen"}
-            </span>
+            <ArrowLeft className="size-4" />
+            Close
           </Button>
-        </div>
-      </header>
-
-      {active && !presenting ? (
-        <PlanStrip
-          key={active.id}
-          unit={unit}
-          section={active}
-          canManage={canManage}
-          onSaved={invalidateSections}
-        />
-      ) : null}
-
-      {!active ? (
-        <div className="flex flex-1 items-center justify-center p-8 text-center text-muted-foreground">
-          {canManage ? (
-            <div className="w-full max-w-5xl space-y-2">
-              <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_340px]">
-                <Skeleton className="h-[60vh] w-full" />
-                <Skeleton className="h-[60vh] w-full" />
-                <Skeleton className="h-[60vh] w-full" />
-              </div>
-              <p className="text-sm">Setting up your lesson workspace…</p>
-            </div>
-          ) : (
-            "Your teacher hasn't added lesson notes to this unit yet."
-          )}
-        </div>
-      ) : (
-        <div
-          className={`relative flex min-h-0 flex-1 flex-col gap-2 lg:flex-row ${presenting ? "overflow-hidden p-0" : "overflow-y-auto p-2 lg:overflow-hidden"}`}
-        >
-          {presenting ? (
-            <div className="absolute bottom-3 left-3 z-[80] flex items-center gap-1 rounded-md border bg-background/95 p-1 shadow">
-              {mirror.receiving ? null : (
-                <>
-              {isPhone ? (
+          <div className="min-w-0">
+            {canManage ? (
+              <UnitTitleEditor unit={unit} onSaved={onUnitChanged} />
+            ) : (
+              <h2 className="truncate font-display text-lg leading-tight">{unit.title}</h2>
+            )}
+            <p className="flex items-center gap-1 text-xs text-muted-foreground">
+              <CalendarDays className="size-3" />
+              {planLine(unit)}
+            </p>
+          </div>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {sections.isLoading ? (
+              <Skeleton className="h-8 w-40" />
+            ) : (
+              list.map((section) =>
+                editingId === section.id ? (
+                  <Input
+                    key={`edit-${section.id}`}
+                    autoFocus
+                    value={editingTitle}
+                    onChange={(e) => setEditingTitle(e.target.value)}
+                    onBlur={() => commitRename(section.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitRename(section.id);
+                      if (e.key === "Escape") setEditingId(null);
+                    }}
+                    className="h-8 w-40 text-xs"
+                  />
+                ) : (
+                  <div key={section.id} className="inline-flex items-center gap-0.5">
+                    <Button
+                      size="sm"
+                      variant={section.id === active?.id ? "default" : "outline"}
+                      onClick={() => setActiveId(section.id)}
+                      onDoubleClick={() => {
+                        if (canManage) startRename(section);
+                      }}
+                      title={canManage ? "Click to open · double-click to rename" : undefined}
+                    >
+                      {section.title}
+                    </Button>
+                    {canManage ? (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-6 shrink-0"
+                        title="Rename section"
+                        aria-label="Rename section"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startRename(section);
+                        }}
+                      >
+                        <Pencil className="size-3" />
+                      </Button>
+                    ) : null}
+                  </div>
+                ),
+              )
+            )}
+            {canManage ? (
+              <>
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => setFrontPane(frontPane === "canvas" ? "doc" : "canvas")}
-                  title="Switch between the lesson canvas and the documents"
+                  onClick={() => {
+                    const title = prompt("Section name", `Lesson ${list.length + 1}`);
+                    if (title?.trim()) createMutation.mutate(title.trim());
+                  }}
                 >
-                  <ArrowLeftRight className="size-4" />
-                  {frontPane === "canvas" ? "Materials" : "Canvas"}
+                  <Plus className="size-4" />
+                  New section
                 </Button>
-              ) : (
-                <>
+                {active ? (
                   <Button
                     size="sm"
-                    variant={layout === "split" ? "default" : "ghost"}
-                    onClick={() => setLayout("split")}
-                    title="Split screen (side by side)"
+                    variant="ghost"
+                    onClick={async () => {
+                      if (!confirm(`Delete "${active.title}" and its notes?`)) return;
+                      await removeSection({ data: { sectionId: active.id } });
+                      setActiveId(null);
+                      await invalidateSections();
+                    }}
                   >
-                    <Columns2 className="size-4" />
-                    Split
+                    <Trash2 className="size-4" />
                   </Button>
-                  <Button
-                    size="sm"
-                    variant={layout === "layered" ? "default" : "ghost"}
-                    onClick={() => setLayout("layered")}
-                    title="Layered windows (one floating on top of the other)"
-                  >
-                    <Layers className="size-4" />
-                    Layered
-                  </Button>
-                </>
-              )}
-              {canManage ? (
-                <FormativeCheckButton classId={classId} sectionId={active?.id ?? null} />
-              ) : null}
-              {canManage ? (
+                ) : null}
+              </>
+            ) : null}
+            {canManage ? (
+              <FormativeCheckButton classId={classId} sectionId={active?.id ?? null} />
+            ) : null}
+            {!isPhone ? (
+              <div className="flex items-center gap-1 rounded-md border p-1">
                 <Button
                   size="sm"
-                  variant={mirror.mirrorOn ? "default" : "outline"}
-                  aria-pressed={mirror.mirrorOn}
-                  onClick={() => mirror.setMirrorOn(!mirror.mirrorOn)}
-                  title={
-                    mirror.mirrorOn
-                      ? "Stop mirroring — students get their screens back"
-                      : "Mirror this lesson workspace live to students"
-                  }
+                  variant={layout === "split" ? "default" : "ghost"}
+                  onClick={() => setLayout("split")}
+                  title="Split screen (side by side)"
                 >
-                  {mirror.mirrorOn ? (
-                    <MonitorOff className="size-4" />
-                  ) : (
-                    <MonitorPlay className="size-4" />
-                  )}
-                  {mirror.mirrorOn ? "Stop mirroring" : "Mirror to students"}
+                  <Columns2 className="size-4" />
+                  <span className="hidden sm:inline">Split</span>
                 </Button>
-              ) : null}
-                </>
-              )}
-              <Button
-                data-mirror-exit
-                size="sm"
-                variant="secondary"
-                onClick={togglePresentation}
-                title="Exit full screen (Esc)"
-              >
-                <Minimize className="size-4" />
-                Exit full screen
-              </Button>
-            </div>
-          ) : null}
-          {mirror.receiving ? (
-            <div
-              className="fixed inset-0 z-[75] cursor-default touch-none overscroll-none"
-              aria-label="Teacher screen mirroring is active. Exit the lesson workspace to regain control."
-              onContextMenu={(event) => event.preventDefault()}
-              onPointerDown={(event) => event.preventDefault()}
-              onWheel={(event) => event.preventDefault()}
-            />
-          ) : null}
-          {effectiveLayout === "layered" ? (
-            (() => {
-              const r = floatRect ?? { x: 24, y: 20, w: 520, h: 380 };
-              const minW = Math.max(320, Math.min(r.w, 480));
-              const frontStyle: React.CSSProperties =
-                isPhone || floatState === "max"
-                  ? { left: 0, top: 0, width: "100%", height: "100%" }
-                  : floatState === "min"
-                    ? {
-                        // Park the minimised window as a clearly visible pill
-                        // centred along the bottom edge of the screen so it is
-                        // never lost; clicking it restores the window.
-                        left: "50%",
-                        transform: "translateX(-50%)",
-                        top: Math.max(0, (areaSize.h || BAR_H) - BAR_H - 12),
-                        width: minW,
-                        height: BAR_H,
-                      }
-                    : { left: r.x, top: r.y, width: r.w, height: r.h };
-              const backStyle: React.CSSProperties = { left: 0, top: 0, right: 0, bottom: 0 };
-              const paneWrapper = (pane: "canvas" | "doc") => {
-                const isFront = frontPane === pane;
-                return {
-                  className: `absolute flex min-h-0 flex-col overflow-hidden ${
-                    isFront
-                      ? `z-30 rounded-lg border-2 bg-background shadow-2xl ${
-                          floatDragging ? "border-primary" : "border-border"
-                        }`
-                      : "z-0"
-                  }`,
-                  style: isFront ? { ...frontStyle, zIndex: 30 } : backStyle,
-                };
-              };
-              const canvasWrap = paneWrapper("canvas");
-              const docWrap = paneWrapper("doc");
-              // Minimising must never scroll the resource back to the top, so the
-              // pane keeps its full size and stays laid out — it is simply hidden
-              // and clipped by the collapsed bar.
-              const contentStyle = (pane: "canvas" | "doc"): React.CSSProperties =>
-                frontPane === pane
-                  ? !isPhone && floatState === "min"
-                    ? {
-                        paddingTop: BAR_H,
-                        position: "absolute",
-                        left: 0,
-                        top: 0,
-                        width: Math.max(minW, r.w),
-                        height: Math.max(240, r.h),
-                        visibility: "hidden",
-                        pointerEvents: "none",
-                      }
-                    : { paddingTop: BAR_H }
-                  : {};
-              return (
-                <div
-                  ref={rowRef}
-                  className={`relative min-w-0 lg:h-full lg:min-h-0 lg:flex-1 ${
-                    isPhone ? "min-h-0 flex-1" : "min-h-[80vh]"
-                  }`}
+                <Button
+                  size="sm"
+                  variant={layout === "layered" ? "default" : "ghost"}
+                  onClick={() => setLayout("layered")}
+                  title="Layered windows (one floating on top of the other)"
                 >
-                  {/* Both panes stay mounted; only their position changes when
-                      swapping, so scroll / canvas position never resets. */}
-                  <div className={canvasWrap.className} style={canvasWrap.style}>
-                    <div className="min-h-0 flex-1" style={contentStyle("canvas")}>
-                      {canvasNode}
-                    </div>
-                  </div>
-                  <div className={docWrap.className} style={docWrap.style}>
-                    <div className="min-h-0 flex-1" style={contentStyle("doc")}>
-                      {docNode}
-                    </div>
-                  </div>
+                  <Layers className="size-4" />
+                  <span className="hidden sm:inline">Layered</span>
+                </Button>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setFrontPane(frontPane === "canvas" ? "doc" : "canvas")}
+                title="Switch between the lesson canvas and the documents"
+              >
+                <ArrowLeftRight className="size-4" />
+                {frontPane === "canvas" ? "Materials" : "Canvas"}
+              </Button>
+            )}
 
-                  {/* Keeps drags alive over embedded documents / iframes */}
-                  {floatDragging ? (
-                    <div className="absolute inset-0 z-40 cursor-grabbing" />
-                  ) : null}
+            {canManage ? (
+              <Button
+                size="sm"
+                variant={mirror.mirrorOn ? "default" : "outline"}
+                aria-pressed={mirror.mirrorOn}
+                onClick={() => mirror.setMirrorOn(!mirror.mirrorOn)}
+                title={
+                  mirror.mirrorOn
+                    ? "Stop mirroring — students get their screens back"
+                    : "Mirror this lesson workspace live to students"
+                }
+              >
+                {mirror.mirrorOn ? (
+                  <MonitorOff className="size-4" />
+                ) : (
+                  <MonitorPlay className="size-4" />
+                )}
+                {mirror.mirrorOn ? "Stop mirroring" : "Mirror to students"}
+              </Button>
+            ) : null}
 
-                  {/* Window chrome sits above the front pane so the pane itself
-                      never has to be re-mounted while dragging or swapping. */}
-                  <div className="pointer-events-none absolute z-50" style={frontStyle}>
-                    <div
-                      onPointerDown={(event) => {
-                        if (isPhone) return;
-                        if (floatState === "min") return;
-                        if ((event.target as HTMLElement).closest("button")) return;
-                        startFloatDrag(event, "move");
-                      }}
-                      onClick={() => {
-                        if (isPhone) return;
-                        if (floatState === "min") setFloatState("window");
-                      }}
-                      onDoubleClick={() => {
-                        if (isPhone) return;
-                        if (floatState === "min") return;
-                        setFloatState(floatState === "max" ? "window" : "max");
-                      }}
-                      style={{ height: BAR_H }}
-                      className={`pointer-events-auto flex touch-none select-none items-center gap-1 rounded-t-lg border-b px-2 ${
-                        !isPhone && floatState === "min"
-                          ? "cursor-pointer rounded-lg border-2 border-primary bg-primary/10 shadow-xl ring-2 ring-primary/30"
-                          : `bg-muted/80 ${isPhone ? "" : "cursor-grab active:cursor-grabbing"}`
-                      }`}
-                      title={
-                        isPhone
-                          ? undefined
-                          : floatState === "min"
-                            ? "Window minimised — click here to bring it back"
-                            : "Drag anywhere on this bar to move the window; double-click to maximise"
-                      }
-                    >
-                      {isPhone ? null : floatState === "min" ? (
-                        <ChevronUp className="size-3.5 shrink-0 text-primary" />
-                      ) : (
-                        <Move className="size-3.5 text-muted-foreground" />
-                      )}
-                      <span className="truncate text-xs font-medium">
-                        {frontPane === "canvas" ? "Lesson canvas" : "Lesson Materials"}
-                        {!isPhone && floatState === "min" ? " — minimised, click to restore" : ""}
-                      </span>
-                      <div className="ml-auto flex items-center gap-1">
-                        {isPhone ? (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="h-7 px-2 text-xs"
-                            onClick={() =>
-                              setFrontPane(frontPane === "canvas" ? "doc" : "canvas")
-                            }
-                          >
-                            <ArrowLeftRight className="size-3.5" />
-                            {frontPane === "canvas" ? "Materials" : "Canvas"}
-                          </Button>
+            <Button
+              data-mirror-exit
+              size="sm"
+              variant={presenting ? "default" : "outline"}
+              onClick={togglePresentation}
+              title={presenting ? "Exit full screen" : "Open full screen"}
+              className={mirror.receiving ? "relative z-[80]" : undefined}
+            >
+              {presenting ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
+              <span className="hidden sm:inline">
+                {presenting ? "Exit full screen" : "Full screen"}
+              </span>
+            </Button>
+          </div>
+        </header>
+
+        {active && !presenting ? (
+          <PlanStrip
+            key={active.id}
+            unit={unit}
+            section={active}
+            canManage={canManage}
+            onSaved={invalidateSections}
+          />
+        ) : null}
+
+        {!active ? (
+          <div className="flex flex-1 items-center justify-center p-8 text-center text-muted-foreground">
+            {canManage ? (
+              <div className="w-full max-w-5xl space-y-2">
+                <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_340px]">
+                  <Skeleton className="h-[60vh] w-full" />
+                  <Skeleton className="h-[60vh] w-full" />
+                  <Skeleton className="h-[60vh] w-full" />
+                </div>
+                <p className="text-sm">Setting up your lesson workspace…</p>
+              </div>
+            ) : (
+              "Your teacher hasn't added lesson notes to this unit yet."
+            )}
+          </div>
+        ) : (
+          <div
+            className={`relative flex min-h-0 flex-1 flex-col gap-2 lg:flex-row ${presenting ? "overflow-hidden p-0" : "overflow-y-auto p-2 lg:overflow-hidden"}`}
+          >
+            {presenting ? (
+              <div className="absolute bottom-3 left-3 z-[80] flex items-center gap-1 rounded-md border bg-background/95 p-1 shadow">
+                {mirror.receiving ? null : (
+                  <>
+                    {isPhone ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setFrontPane(frontPane === "canvas" ? "doc" : "canvas")}
+                        title="Switch between the lesson canvas and the documents"
+                      >
+                        <ArrowLeftRight className="size-4" />
+                        {frontPane === "canvas" ? "Materials" : "Canvas"}
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          size="sm"
+                          variant={layout === "split" ? "default" : "ghost"}
+                          onClick={() => setLayout("split")}
+                          title="Split screen (side by side)"
+                        >
+                          <Columns2 className="size-4" />
+                          Split
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={layout === "layered" ? "default" : "ghost"}
+                          onClick={() => setLayout("layered")}
+                          title="Layered windows (one floating on top of the other)"
+                        >
+                          <Layers className="size-4" />
+                          Layered
+                        </Button>
+                      </>
+                    )}
+                    {canManage ? (
+                      <FormativeCheckButton classId={classId} sectionId={active?.id ?? null} />
+                    ) : null}
+                    {canManage ? (
+                      <Button
+                        size="sm"
+                        variant={mirror.mirrorOn ? "default" : "outline"}
+                        aria-pressed={mirror.mirrorOn}
+                        onClick={() => mirror.setMirrorOn(!mirror.mirrorOn)}
+                        title={
+                          mirror.mirrorOn
+                            ? "Stop mirroring — students get their screens back"
+                            : "Mirror this lesson workspace live to students"
+                        }
+                      >
+                        {mirror.mirrorOn ? (
+                          <MonitorOff className="size-4" />
                         ) : (
-                          <>
+                          <MonitorPlay className="size-4" />
+                        )}
+                        {mirror.mirrorOn ? "Stop mirroring" : "Mirror to students"}
+                      </Button>
+                    ) : null}
+                  </>
+                )}
+                <Button
+                  data-mirror-exit
+                  size="sm"
+                  variant="secondary"
+                  onClick={togglePresentation}
+                  title="Exit full screen (Esc)"
+                >
+                  <Minimize className="size-4" />
+                  Exit full screen
+                </Button>
+              </div>
+            ) : null}
+            {mirror.receiving ? (
+              <div
+                className="fixed inset-0 z-[75] cursor-default touch-none overscroll-none"
+                aria-label="Teacher screen mirroring is active. Exit the lesson workspace to regain control."
+                onContextMenu={(event) => event.preventDefault()}
+                onPointerDown={(event) => event.preventDefault()}
+                onWheel={(event) => event.preventDefault()}
+              />
+            ) : null}
+            {effectiveLayout === "layered" ? (
+              (() => {
+                const r = floatRect ?? { x: 24, y: 20, w: 520, h: 380 };
+                const minW = Math.max(320, Math.min(r.w, 480));
+                const frontStyle: React.CSSProperties =
+                  isPhone || floatState === "max"
+                    ? { left: 0, top: 0, width: "100%", height: "100%" }
+                    : floatState === "min"
+                      ? {
+                          // Park the minimised window as a clearly visible pill
+                          // centred along the bottom edge of the screen so it is
+                          // never lost; clicking it restores the window.
+                          left: "50%",
+                          transform: "translateX(-50%)",
+                          top: Math.max(0, (areaSize.h || BAR_H) - BAR_H - 12),
+                          width: minW,
+                          height: BAR_H,
+                        }
+                      : { left: r.x, top: r.y, width: r.w, height: r.h };
+                const backStyle: React.CSSProperties = { left: 0, top: 0, right: 0, bottom: 0 };
+                const paneWrapper = (pane: "canvas" | "doc") => {
+                  const isFront = frontPane === pane;
+                  return {
+                    className: `absolute flex min-h-0 flex-col overflow-hidden ${
+                      isFront
+                        ? `z-30 rounded-lg border-2 bg-background shadow-2xl ${
+                            floatDragging ? "border-primary" : "border-border"
+                          }`
+                        : "z-0"
+                    }`,
+                    style: isFront ? { ...frontStyle, zIndex: 30 } : backStyle,
+                  };
+                };
+                const canvasWrap = paneWrapper("canvas");
+                const docWrap = paneWrapper("doc");
+                // Minimising must never scroll the resource back to the top, so the
+                // pane keeps its full size and stays laid out — it is simply hidden
+                // and clipped by the collapsed bar.
+                const contentStyle = (pane: "canvas" | "doc"): React.CSSProperties =>
+                  frontPane === pane
+                    ? !isPhone && floatState === "min"
+                      ? {
+                          paddingTop: BAR_H,
+                          position: "absolute",
+                          left: 0,
+                          top: 0,
+                          width: Math.max(minW, r.w),
+                          height: Math.max(240, r.h),
+                          visibility: "hidden",
+                          pointerEvents: "none",
+                        }
+                      : { paddingTop: BAR_H }
+                    : {};
+                return (
+                  <div
+                    ref={rowRef}
+                    className={`relative min-w-0 lg:h-full lg:min-h-0 lg:flex-1 ${
+                      isPhone ? "min-h-0 flex-1" : "min-h-[80vh]"
+                    }`}
+                  >
+                    {/* Both panes stay mounted; only their position changes when
+                      swapping, so scroll / canvas position never resets. */}
+                    <div className={canvasWrap.className} style={canvasWrap.style}>
+                      <div className="min-h-0 flex-1" style={contentStyle("canvas")}>
+                        {canvasNode}
+                      </div>
+                    </div>
+                    <div className={docWrap.className} style={docWrap.style}>
+                      <div className="min-h-0 flex-1" style={contentStyle("doc")}>
+                        {docNode}
+                      </div>
+                    </div>
+
+                    {/* Keeps drags alive over embedded documents / iframes */}
+                    {floatDragging ? (
+                      <div className="absolute inset-0 z-40 cursor-grabbing" />
+                    ) : null}
+
+                    {/* Window chrome sits above the front pane so the pane itself
+                      never has to be re-mounted while dragging or swapping. */}
+                    <div className="pointer-events-none absolute z-50" style={frontStyle}>
+                      <div
+                        onPointerDown={(event) => {
+                          if (isPhone) return;
+                          if (floatState === "min") return;
+                          if ((event.target as HTMLElement).closest("button")) return;
+                          startFloatDrag(event, "move");
+                        }}
+                        onClick={() => {
+                          if (isPhone) return;
+                          if (floatState === "min") setFloatState("window");
+                        }}
+                        onDoubleClick={() => {
+                          if (isPhone) return;
+                          if (floatState === "min") return;
+                          setFloatState(floatState === "max" ? "window" : "max");
+                        }}
+                        style={{ height: BAR_H }}
+                        className={`pointer-events-auto flex touch-none select-none items-center gap-1 rounded-t-lg border-b px-2 ${
+                          !isPhone && floatState === "min"
+                            ? "cursor-pointer rounded-lg border-2 border-primary bg-primary/10 shadow-xl ring-2 ring-primary/30"
+                            : `bg-muted/80 ${isPhone ? "" : "cursor-grab active:cursor-grabbing"}`
+                        }`}
+                        title={
+                          isPhone
+                            ? undefined
+                            : floatState === "min"
+                              ? "Window minimised — click here to bring it back"
+                              : "Drag anywhere on this bar to move the window; double-click to maximise"
+                        }
+                      >
+                        {isPhone ? null : floatState === "min" ? (
+                          <ChevronUp className="size-3.5 shrink-0 text-primary" />
+                        ) : (
+                          <Move className="size-3.5 text-muted-foreground" />
+                        )}
+                        <span className="truncate text-xs font-medium">
+                          {frontPane === "canvas" ? "Lesson canvas" : "Lesson Materials"}
+                          {!isPhone && floatState === "min" ? " — minimised, click to restore" : ""}
+                        </span>
+                        <div className="ml-auto flex items-center gap-1">
+                          {isPhone ? (
                             <Button
-                              size="icon"
-                              variant="ghost"
-                              className="size-6"
-                              title="Swap which window is on top"
-                              aria-label="Swap which window is on top"
+                              size="sm"
+                              variant="secondary"
+                              className="h-7 px-2 text-xs"
                               onClick={() =>
                                 setFrontPane(frontPane === "canvas" ? "doc" : "canvas")
                               }
                             >
                               <ArrowLeftRight className="size-3.5" />
+                              {frontPane === "canvas" ? "Materials" : "Canvas"}
                             </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="size-6"
-                              title={floatState === "min" ? "Restore window" : "Minimise window"}
-                              aria-label={
-                                floatState === "min" ? "Restore window" : "Minimise window"
-                              }
-                              onClick={() =>
-                                setFloatState(floatState === "min" ? "window" : "min")
-                              }
-                            >
-                              {floatState === "min" ? (
-                                <ChevronDown className="size-3.5" />
-                              ) : (
-                                <Minus className="size-3.5" />
-                              )}
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="size-6"
-                              title={floatState === "max" ? "Restore window" : "Maximise window"}
-                              aria-label={
-                                floatState === "max" ? "Restore window" : "Maximise window"
-                              }
-                              onClick={() =>
-                                setFloatState(floatState === "max" ? "window" : "max")
-                              }
-                            >
-                              {floatState === "max" ? (
-                                <Minimize className="size-3.5" />
-                              ) : (
-                                <Maximize className="size-3.5" />
-                              )}
-                            </Button>
-                          </>
-                        )}
+                          ) : (
+                            <>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="size-6"
+                                title="Swap which window is on top"
+                                aria-label="Swap which window is on top"
+                                onClick={() =>
+                                  setFrontPane(frontPane === "canvas" ? "doc" : "canvas")
+                                }
+                              >
+                                <ArrowLeftRight className="size-3.5" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="size-6"
+                                title={floatState === "min" ? "Restore window" : "Minimise window"}
+                                aria-label={
+                                  floatState === "min" ? "Restore window" : "Minimise window"
+                                }
+                                onClick={() =>
+                                  setFloatState(floatState === "min" ? "window" : "min")
+                                }
+                              >
+                                {floatState === "min" ? (
+                                  <ChevronDown className="size-3.5" />
+                                ) : (
+                                  <Minus className="size-3.5" />
+                                )}
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="size-6"
+                                title={floatState === "max" ? "Restore window" : "Maximise window"}
+                                aria-label={
+                                  floatState === "max" ? "Restore window" : "Maximise window"
+                                }
+                                onClick={() =>
+                                  setFloatState(floatState === "max" ? "window" : "max")
+                                }
+                              >
+                                {floatState === "max" ? (
+                                  <Minimize className="size-3.5" />
+                                ) : (
+                                  <Maximize className="size-3.5" />
+                                )}
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </div>
+
+                      {!isPhone && floatState === "window" ? (
+                        <>
+                          {/* Every edge and corner resizes, with generous hit areas */}
+                          <div
+                            onPointerDown={(event) => startFloatDrag(event, "n")}
+                            className="pointer-events-auto absolute left-0 top-0 h-2 w-full touch-none cursor-ns-resize"
+                            title="Drag to change the window height"
+                          />
+                          <div
+                            onPointerDown={(event) => startFloatDrag(event, "s")}
+                            className="pointer-events-auto absolute bottom-0 left-0 h-2.5 w-full touch-none cursor-ns-resize"
+                            title="Drag to change the window height"
+                          />
+                          <div
+                            onPointerDown={(event) => startFloatDrag(event, "w")}
+                            className="pointer-events-auto absolute left-0 top-0 h-full w-2.5 touch-none cursor-ew-resize"
+                            title="Drag to change the window width"
+                          />
+                          <div
+                            onPointerDown={(event) => startFloatDrag(event, "e")}
+                            className="pointer-events-auto absolute right-0 top-0 h-full w-2.5 touch-none cursor-ew-resize"
+                            title="Drag to change the window width"
+                          />
+                          <div
+                            onPointerDown={(event) => startFloatDrag(event, "nw")}
+                            className="pointer-events-auto absolute left-0 top-0 size-6 touch-none cursor-nwse-resize"
+                            title="Drag to stretch this window"
+                          />
+                          <div
+                            onPointerDown={(event) => startFloatDrag(event, "ne")}
+                            className="pointer-events-auto absolute right-0 top-0 size-6 touch-none cursor-nesw-resize"
+                            title="Drag to stretch this window"
+                          />
+                          <div
+                            onPointerDown={(event) => startFloatDrag(event, "sw")}
+                            className="pointer-events-auto absolute bottom-0 left-0 size-8 touch-none cursor-nesw-resize rounded-tr border-r border-t bg-muted/80"
+                            title="Drag to stretch this window"
+                          />
+                          <div
+                            onPointerDown={(event) => startFloatDrag(event, "se")}
+                            className="pointer-events-auto absolute bottom-0 right-0 size-8 touch-none cursor-nwse-resize rounded-tl border-l border-t bg-muted/80"
+                            title="Drag to stretch this window"
+                          />
+                        </>
+                      ) : null}
                     </div>
-
-                    {!isPhone && floatState === "window" ? (
-                      <>
-                        {/* Every edge and corner resizes, with generous hit areas */}
-                        <div
-                          onPointerDown={(event) => startFloatDrag(event, "n")}
-                          className="pointer-events-auto absolute left-0 top-0 h-2 w-full touch-none cursor-ns-resize"
-                          title="Drag to change the window height"
-                        />
-                        <div
-                          onPointerDown={(event) => startFloatDrag(event, "s")}
-                          className="pointer-events-auto absolute bottom-0 left-0 h-2.5 w-full touch-none cursor-ns-resize"
-                          title="Drag to change the window height"
-                        />
-                        <div
-                          onPointerDown={(event) => startFloatDrag(event, "w")}
-                          className="pointer-events-auto absolute left-0 top-0 h-full w-2.5 touch-none cursor-ew-resize"
-                          title="Drag to change the window width"
-                        />
-                        <div
-                          onPointerDown={(event) => startFloatDrag(event, "e")}
-                          className="pointer-events-auto absolute right-0 top-0 h-full w-2.5 touch-none cursor-ew-resize"
-                          title="Drag to change the window width"
-                        />
-                        <div
-                          onPointerDown={(event) => startFloatDrag(event, "nw")}
-                          className="pointer-events-auto absolute left-0 top-0 size-6 touch-none cursor-nwse-resize"
-                          title="Drag to stretch this window"
-                        />
-                        <div
-                          onPointerDown={(event) => startFloatDrag(event, "ne")}
-                          className="pointer-events-auto absolute right-0 top-0 size-6 touch-none cursor-nesw-resize"
-                          title="Drag to stretch this window"
-                        />
-                        <div
-                          onPointerDown={(event) => startFloatDrag(event, "sw")}
-                          className="pointer-events-auto absolute bottom-0 left-0 size-8 touch-none cursor-nesw-resize rounded-tr border-r border-t bg-muted/80"
-                          title="Drag to stretch this window"
-                        />
-                        <div
-                          onPointerDown={(event) => startFloatDrag(event, "se")}
-                          className="pointer-events-auto absolute bottom-0 right-0 size-8 touch-none cursor-nwse-resize rounded-tl border-l border-t bg-muted/80"
-                          title="Drag to stretch this window"
-                        />
-                      </>
-                    ) : null}
                   </div>
-                </div>
-              );
-            })()
-          ) : (
-
-          <div
-            ref={rowRef}
-            className="flex min-w-0 flex-col gap-2 lg:h-full lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-0"
-          >
-            {/* Lesson canvas — resizable pane */}
-            <div
-              className={`lg:h-full lg:min-h-0 ${paneMode === "doc" ? "hidden" : "min-h-[70vh] lg:min-h-0"}`}
-              style={canvasStyle}
-            >
-              {canvasNode}
-            </div>
-
-            {/* Drag handle + minimise / maximise pane controls */}
-            <div
-              role="separator"
-              aria-orientation="vertical"
-              onPointerDown={(event) => {
-                if ((event.target as HTMLElement).closest("button")) return;
-                startDrag(event);
-              }}
-              onDoubleClick={() => setPaneMode("split")}
-              className="group hidden w-5 shrink-0 cursor-col-resize flex-col items-center justify-center gap-1 lg:flex"
-              title="Drag to resize, double-click to reset"
-            >
-              <button
-                type="button"
-                aria-label={paneMode === "canvas" ? "Back to split screen" : "Expand lesson canvas"}
-                title={paneMode === "canvas" ? "Back to split screen" : "Expand lesson canvas"}
-                onClick={() => setPaneMode(paneMode === "canvas" ? "split" : "canvas")}
-                className="rounded border bg-background p-0.5 text-muted-foreground hover:text-primary"
-              >
-                {paneMode === "canvas" ? (
-                  <ChevronRight className="size-3" />
-                ) : (
-                  <ChevronLeft className="size-3" />
-                )}
-              </button>
+                );
+              })()
+            ) : (
               <div
-                className="h-10 w-1 rounded-full bg-border transition-colors group-hover:bg-primary"
-              />
-              <button
-                type="button"
-                aria-label={paneMode === "doc" ? "Back to split screen" : "Expand document"}
-                title={paneMode === "doc" ? "Back to split screen" : "Expand document"}
-                onClick={() => setPaneMode(paneMode === "doc" ? "split" : "doc")}
-                className="rounded border bg-background p-0.5 text-muted-foreground hover:text-primary"
+                ref={rowRef}
+                className="flex min-w-0 flex-col gap-2 lg:h-full lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-0"
               >
-                {paneMode === "doc" ? (
-                  <ChevronLeft className="size-3" />
-                ) : (
-                  <ChevronRight className="size-3" />
-                )}
-              </button>
-            </div>
+                {/* Lesson canvas — resizable pane */}
+                <div
+                  className={`lg:h-full lg:min-h-0 ${paneMode === "doc" ? "hidden" : "min-h-[70vh] lg:min-h-0"}`}
+                  style={canvasStyle}
+                >
+                  {canvasNode}
+                </div>
 
-            {/* Document — resizable pane */}
-            <div
-              className={`flex flex-col lg:min-h-0 ${
-                paneMode === "canvas" ? "hidden" : "min-h-[70vh] lg:min-h-0"
-              } lg:h-full`}
-              style={docStyle}
-            >
-              {docNode}
-            </div>
-          </div>
-          )}
-
-
-          <div className="shrink-0 lg:ml-2 lg:h-full lg:min-h-0">
-            {tutorOpen ? (
-              <div className="flex h-full min-h-[420px] flex-col lg:w-[340px]">
-                <div className="relative h-full min-h-0 flex-1">
-                  <LessonTutorBar
-                    classId={classId}
-                    sectionId={active.id}
-                    concept={mirror.liveReceiving ? null : concept}
-                    onConceptHandled={() => setConcept(null)}
-                    turns={
-                      mirror.liveReceiving && mirroredTutorTurns
-                        ? mirroredTutorTurns
-                        : tutorTurns
+                {/* Drag handle + minimise / maximise pane controls */}
+                <div
+                  role="separator"
+                  aria-orientation="vertical"
+                  onPointerDown={(event) => {
+                    if ((event.target as HTMLElement).closest("button")) return;
+                    startDrag(event);
+                  }}
+                  onDoubleClick={() => setPaneMode("split")}
+                  className="group hidden w-5 shrink-0 cursor-col-resize flex-col items-center justify-center gap-1 lg:flex"
+                  title="Drag to resize, double-click to reset"
+                >
+                  <button
+                    type="button"
+                    aria-label={
+                      paneMode === "canvas" ? "Back to split screen" : "Expand lesson canvas"
                     }
-                    onTurnsChange={setTutorTurns}
-                    draft={tutorDraft}
-                    onDraftChange={setTutorDraft}
-                    pending={mirror.liveReceiving ? tutorPending : false}
-                    onPendingChange={setTutorPending}
-                    readOnly={mirror.liveReceiving}
-                  />
-
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="absolute right-1 top-1 z-10 size-7"
-                    title="Collapse AI tutor"
-                    aria-label="Collapse AI tutor"
-                    onClick={() => setTutorOpen(false)}
+                    title={paneMode === "canvas" ? "Back to split screen" : "Expand lesson canvas"}
+                    onClick={() => setPaneMode(paneMode === "canvas" ? "split" : "canvas")}
+                    className="rounded border bg-background p-0.5 text-muted-foreground hover:text-primary"
                   >
-                    <PanelRightClose className="size-4" />
-                  </Button>
+                    {paneMode === "canvas" ? (
+                      <ChevronRight className="size-3" />
+                    ) : (
+                      <ChevronLeft className="size-3" />
+                    )}
+                  </button>
+                  <div className="h-10 w-1 rounded-full bg-border transition-colors group-hover:bg-primary" />
+                  <button
+                    type="button"
+                    aria-label={paneMode === "doc" ? "Back to split screen" : "Expand document"}
+                    title={paneMode === "doc" ? "Back to split screen" : "Expand document"}
+                    onClick={() => setPaneMode(paneMode === "doc" ? "split" : "doc")}
+                    className="rounded border bg-background p-0.5 text-muted-foreground hover:text-primary"
+                  >
+                    {paneMode === "doc" ? (
+                      <ChevronLeft className="size-3" />
+                    ) : (
+                      <ChevronRight className="size-3" />
+                    )}
+                  </button>
+                </div>
+
+                {/* Document — resizable pane */}
+                <div
+                  className={`flex flex-col lg:min-h-0 ${
+                    paneMode === "canvas" ? "hidden" : "min-h-[70vh] lg:min-h-0"
+                  } lg:h-full`}
+                  style={docStyle}
+                >
+                  {docNode}
                 </div>
               </div>
-            ) : (
-              <Button
-                size="icon"
-                variant="outline"
-                className="lg:mt-1"
-                title="Open AI tutor"
-                aria-label="Open AI tutor"
-                onClick={() => setTutorOpen(true)}
-              >
-                <PanelRightOpen className="size-4" />
-              </Button>
             )}
+
+            <div className="shrink-0 lg:ml-2 lg:h-full lg:min-h-0">
+              {tutorOpen ? (
+                <div className="flex h-full min-h-[420px] flex-col lg:w-[340px]">
+                  <div className="relative h-full min-h-0 flex-1">
+                    <LessonTutorBar
+                      classId={classId}
+                      sectionId={active.id}
+                      concept={mirror.liveReceiving ? null : concept}
+                      onConceptHandled={() => setConcept(null)}
+                      turns={
+                        mirror.liveReceiving && mirroredTutorTurns ? mirroredTutorTurns : tutorTurns
+                      }
+                      onTurnsChange={setTutorTurns}
+                      draft={tutorDraft}
+                      onDraftChange={setTutorDraft}
+                      pending={mirror.liveReceiving ? tutorPending : false}
+                      onPendingChange={setTutorPending}
+                      readOnly={mirror.liveReceiving}
+                    />
+
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="absolute right-1 top-1 z-10 size-7"
+                      title="Collapse AI tutor"
+                      aria-label="Collapse AI tutor"
+                      onClick={() => setTutorOpen(false)}
+                    >
+                      <PanelRightClose className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="lg:mt-1"
+                  title="Open AI tutor"
+                  aria-label="Open AI tutor"
+                  onClick={() => setTutorOpen(true)}
+                >
+                  <PanelRightOpen className="size-4" />
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
     </LessonMirrorContext.Provider>
   );
 }

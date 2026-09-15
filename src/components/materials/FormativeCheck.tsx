@@ -783,10 +783,13 @@ export function FormativeCheckPanel({
     // Students get a blocking screen; the teacher's card floats in the middle so
     // they can keep teaching — drawing, highlighting and scrolling — behind it.
     <div
+      // Sits above a mirrored screen and stays usable: the quick check is never
+      // part of the shared screen, and students can always answer it.
+      data-mirror-exit
       className={
         student
-          ? "pointer-events-auto fixed inset-0 z-[70] flex flex-col bg-foreground/40 p-3 backdrop-blur-sm sm:p-4"
-          : "pointer-events-none fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4"
+          ? "pointer-events-auto fixed inset-0 z-[90] flex flex-col bg-foreground/40 p-3 backdrop-blur-sm sm:p-4"
+          : "pointer-events-none fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-4"
       }
     >
       {student && boardOn ? (

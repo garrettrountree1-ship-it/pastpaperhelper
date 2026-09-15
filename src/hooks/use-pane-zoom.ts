@@ -68,6 +68,9 @@ export function usePaneZoom({
 
     const touches = new Map<number, Point>();
     let lastSingle: Point | null = null;
+    // True while the single finger rests on an active drawing surface (pen,
+    // eraser, highlighter) — that finger draws instead of scrolling.
+    let singleDraws = false;
     let pinch: {
       distance: number;
       zoom: number;
@@ -95,22 +98,44 @@ export function usePaneZoom({
         scrollTop: el.scrollTop,
       };
       lastSingle = null;
+      singleDraws = false;
+    };
+
+    // Drawing layers mark themselves with touch-action: none while a pen,
+    // highlighter or eraser tool is active. Anything else scrolls the pane.
+    const isDrawingTarget = (event: PointerEvent) => {
+      let node = event.target as HTMLElement | null;
+      while (node && node !== el) {
+        const style = getComputedStyle(node);
+        if (style.touchAction === "none" && style.pointerEvents !== "none") return true;
+        node = node.parentElement;
+      }
+      return false;
     };
 
     const onPointerDown = (event: PointerEvent) => {
       if (event.pointerType !== "touch") return;
       touches.set(event.pointerId, localPoint(event));
-      // One finger stays available for drawing, erasing and dragging tools.
       if (touches.size >= 2) beginPinch();
-      else lastSingle = localPoint(event);
+      else {
+        lastSingle = localPoint(event);
+        singleDraws = isDrawingTarget(event);
+      }
     };
 
     const onPointerMove = (event: PointerEvent) => {
       if (event.pointerType !== "touch" || !touches.has(event.pointerId)) return;
       const nextPoint = localPoint(event);
       touches.set(event.pointerId, nextPoint);
-      // Single-finger moves belong to whatever tool is active; leave them alone.
       if (touches.size < 2) {
+        // One finger on a drawing tool keeps drawing; anywhere else it scrolls.
+        if (singleDraws || !lastSingle) {
+          lastSingle = nextPoint;
+          return;
+        }
+        event.preventDefault();
+        el.scrollLeft -= nextPoint.x - lastSingle.x;
+        el.scrollTop -= nextPoint.y - lastSingle.y;
         lastSingle = nextPoint;
         return;
       }
@@ -138,6 +163,7 @@ export function usePaneZoom({
       if (event.pointerType !== "touch") return;
       touches.delete(event.pointerId);
       pinch = null;
+      singleDraws = false;
       const remaining = pair()[0];
       lastSingle = remaining ?? null;
     };

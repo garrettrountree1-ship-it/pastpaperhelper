@@ -22,6 +22,10 @@ import { usePaneZoom } from "@/hooks/use-pane-zoom";
 type TextRun = { x: number; y: number; w: number; h: number; s: string };
 type PageText = { w: number; h: number; runs: TextRun[] };
 
+// Keep a usable writing margin visible beside PDF pages at the normal 100%
+// setting instead of only revealing it after the teacher zooms out.
+const PAGE_WITH_WRITING_MARGIN = 0.75;
+
 /**
  * Renders every page of a PDF as an image so the document simply scrolls in the
  * pane — no dark browser PDF chrome, no thumbnail sidebar. Rendered pages are
@@ -217,10 +221,17 @@ export function PdfDocView({
         ref={scrollRef}
         className="min-h-0 flex-1 space-y-3 overflow-auto rounded-md bg-muted/30 p-2"
       >
-        {pages.map((src, index) => (
-          <div key={index} style={{ width: `${Math.max(1, zoom) * 100}%` }}>
+        {pages.map((src, index) => {
+          const surfaceScale = Math.max(1, zoom);
+          const pageFraction = Math.min(
+            1,
+            (zoom * PAGE_WITH_WRITING_MARGIN) / surfaceScale,
+          );
+
+          return (
+          <div key={index} style={{ width: `${surfaceScale * 100}%` }}>
             <DocMarkupSurface
-              pageFraction={Math.min(1, zoom)}
+              pageFraction={pageFraction}
               ratio={ratios[index] ?? 1.414}
               tool={effTool}
               penColor={markup.penColor}
@@ -247,7 +258,8 @@ export function PdfDocView({
               ) : null}
             </DocMarkupSurface>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

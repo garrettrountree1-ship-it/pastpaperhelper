@@ -16,7 +16,7 @@ import {
   Type,
   Volume2,
 } from "lucide-react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { FreeCanvas, type CanvasMode } from "@/components/materials/FreeCanvas";
@@ -33,8 +33,7 @@ import {
 } from "@/lib/notes.functions";
 import { collectSummaryVisuals } from "@/lib/summary-visuals";
 import { blobToBase64, startVoiceRecording } from "@/lib/voice-recorder";
-
-
+import { usePaneZoom } from "@/hooks/use-pane-zoom";
 
 const PEN_COLORS = ["#111827", "#dc2626", "#2563eb", "#16a34a", "#ea580c", "#7c3aed"];
 /** Highlighter colours for the canvas. */
@@ -74,7 +73,6 @@ function withPositions(blocks: NoteBlock[]): NoteBlock[] {
   });
 }
 
-
 export function NotesCanvas({
   classId,
   sectionId,
@@ -106,7 +104,6 @@ export function NotesCanvas({
   const recorder = useRef<Awaited<ReturnType<typeof startVoiceRecording>> | null>(null);
   const [recording, setRecording] = useState<"dictate" | "note" | null>(null);
   const [busyVoice, setBusyVoice] = useState(false);
-
 
   const [blocks, setBlocks] = useState<NoteBlock[]>(withPositions(initialBlocks));
   const [summary, setSummary] = useState(initialSummary ?? "");
@@ -171,7 +168,6 @@ export function NotesCanvas({
     queryFn: () => signPaths({ data: { paths: mediaPaths } }),
     enabled: mediaPaths.length > 0,
   });
-
 
   const summaryMutation = useMutation({
     mutationFn: async () => {
@@ -250,7 +246,6 @@ export function NotesCanvas({
     void writeCachedJson(draftKey, next);
   }
 
-
   /**
    * Adds a picture to the sheet. Pasted pictures land exactly where the pointer
    * last sat; the toolbar button falls back to the top of the visible sheet.
@@ -273,7 +268,6 @@ export function NotesCanvas({
       { id: crypto.randomUUID(), type: "image", path, caption: file.name, x, y, w: 360 },
     ]);
   }
-
 
   /**
    * Voice notes. "dictate" turns speech into a text box on the canvas;
@@ -308,7 +302,16 @@ export function NotesCanvas({
         }
         update([
           ...blocks,
-          { id: crypto.randomUUID(), type: "text", text, x: 40, y: top, w: 420, size: 15, box: true },
+          {
+            id: crypto.randomUUID(),
+            type: "text",
+            text,
+            x: 40,
+            y: top,
+            w: 420,
+            size: 15,
+            box: true,
+          },
         ]);
         toast.success("Voice added as text.");
         return;
@@ -349,7 +352,6 @@ export function NotesCanvas({
       setBusyVoice(false);
     }
   }
-
 
   /** Where the pointer last rested on the sheet, in sheet coordinates. */
   const pointerAt = useRef<{ x: number; y: number } | null>(null);
@@ -393,63 +395,16 @@ export function NotesCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canEdit, tab, blocks, sectionId]);
 
-  // Zooming must not move the page: remember where the anchor point sits and
-  // re-apply the equivalent scroll offset once the new scale has rendered.
-  const pendingScroll = useRef<{ x: number; y: number } | null>(null);
-
-  function applyZoom(
-    nextOf: (current: number) => number,
-    anchor?: { x: number; y: number },
-  ) {
-    setZoom((current) => {
-      const next = Math.min(2.5, Math.max(0.5, Number(nextOf(current).toFixed(3))));
-      const el = scrollRef.current;
-      if (el && next !== current) {
-        const ax = anchor?.x ?? el.clientWidth / 2;
-        const ay = anchor?.y ?? el.clientHeight / 2;
-        const k = next / current;
-        pendingScroll.current = {
-          x: (el.scrollLeft + ax) * k - ax,
-          y: (el.scrollTop + ay) * k - ay,
-        };
-      }
-      return next;
-    });
-  }
-
-  useLayoutEffect(() => {
-    const el = scrollRef.current;
-    const target = pendingScroll.current;
-    pendingScroll.current = null;
-    if (!el || !target) return;
-    el.scrollLeft = Math.max(0, target.x);
-    el.scrollTop = Math.max(0, target.y);
-  }, [zoom]);
-
-  // Ctrl/⌘ + wheel (and trackpad pinch) zooms only this canvas pane.
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el || tab !== "notes") return;
-    const onWheel = (event: WheelEvent) => {
-      if (!event.ctrlKey && !event.metaKey) return;
-      event.preventDefault();
-      const dy = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
-      const rect = el.getBoundingClientRect();
-      applyZoom((value) => value * Math.exp(-dy * 0.0015), {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top,
-      });
-    };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab]);
-
-
+  const { applyZoom } = usePaneZoom({
+    scrollRef,
+    zoom,
+    setZoom,
+    max: 2.5,
+    enabled: tab === "notes",
+  });
 
   return (
     <div className="flex h-full min-h-0 flex-col rounded-lg border bg-card" onPaste={handlePaste}>
-
       <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
         <Button
           size="sm"
@@ -506,7 +461,6 @@ export function NotesCanvas({
         ) : null}
       </div>
 
-
       {canEdit && tab === "notes" ? (
         <div className="flex flex-wrap items-center gap-2 border-b px-3 py-1.5">
           <Button
@@ -518,11 +472,19 @@ export function NotesCanvas({
             <MousePointer2 className="size-4" />
             Arrow
           </Button>
-          <Button size="sm" variant={mode === "type" ? "default" : "outline"} onClick={() => setMode("type")}>
+          <Button
+            size="sm"
+            variant={mode === "type" ? "default" : "outline"}
+            onClick={() => setMode("type")}
+          >
             <Type className="size-4" />
             Type
           </Button>
-          <Button size="sm" variant={mode === "draw" ? "default" : "outline"} onClick={() => setMode("draw")}>
+          <Button
+            size="sm"
+            variant={mode === "draw" ? "default" : "outline"}
+            onClick={() => setMode("draw")}
+          >
             <PenLine className="size-4" />
             Draw
           </Button>
@@ -534,7 +496,11 @@ export function NotesCanvas({
             <Highlighter className="size-4" />
             Highlight
           </Button>
-          <Button size="sm" variant={mode === "erase" ? "default" : "outline"} onClick={() => setMode("erase")}>
+          <Button
+            size="sm"
+            variant={mode === "erase" ? "default" : "outline"}
+            onClick={() => setMode("erase")}
+          >
             <Eraser className="size-4" />
             Erase
           </Button>
@@ -612,8 +578,6 @@ export function NotesCanvas({
             <span className="text-xs text-muted-foreground">Processing audio…</span>
           ) : null}
 
-
-
           <input
             ref={fileInput}
             type="file"
@@ -637,12 +601,12 @@ export function NotesCanvas({
             {mode === "highlight"
               ? "Drag across typed text or anywhere to highlight."
               : mode === "draw"
-              ? "Draw anywhere on the sheet."
-              : mode === "erase"
-                ? "Click or drag across a stroke to erase it."
-                : mode === "select"
-                  ? "Click text or a picture to move it, drag a corner to resize, or use the bin to delete."
-                  : "Click anywhere to type · paste images straight in"}
+                ? "Draw anywhere on the sheet."
+                : mode === "erase"
+                  ? "Click or drag across a stroke to erase it."
+                  : mode === "select"
+                    ? "Click text or a picture to move it, drag a corner to resize, or use the bin to delete."
+                    : "Click anywhere to type · paste images straight in"}
           </span>
         </div>
       ) : null}
@@ -652,7 +616,6 @@ export function NotesCanvas({
           ref={scrollRef}
           className="min-h-0 flex-1 overflow-auto [overflow-anchor:none] [overscroll-behavior:contain]"
         >
-
           <FreeCanvas
             blocks={blocks}
             canEdit={canEdit}
@@ -670,7 +633,6 @@ export function NotesCanvas({
           />
         </div>
       ) : (
-
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           {canEdit ? (
             <Button

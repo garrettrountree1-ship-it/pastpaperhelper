@@ -8,7 +8,6 @@ import { textShortcutOf } from "@/lib/text-shortcuts";
 import { RichTextEditable } from "@/components/materials/RichTextEditable";
 import type { NoteBlock } from "@/lib/notes.functions";
 
-
 /**
  * "select" is the arrow: click things to pick them up, move them, resize them or
  * delete them, without ever starting a new text box by accident.
@@ -35,7 +34,6 @@ export const TEXT_COLORS: string[] = [
   "#7c3aed",
 ];
 
-
 /** Distance from a point to a segment, for eraser hit-testing. */
 function distToSegment(
   p: { x: number; y: number },
@@ -45,7 +43,8 @@ function distToSegment(
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const lenSq = dx * dx + dy * dy;
-  const t = lenSq === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq));
+  const t =
+    lenSq === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq));
   const cx = a.x + t * dx;
   const cy = a.y + t * dy;
   return Math.hypot(p.x - cx, p.y - cy);
@@ -95,7 +94,9 @@ function ClickableText({ text, onConcept }: { text: string; onConcept: (value: s
 function pathFrom(points: Array<{ x: number; y: number }>) {
   if (points.length === 0) return "";
   return points
-    .map((point, index) => `${index === 0 ? "M" : "L"}${Math.round(point.x)} ${Math.round(point.y)}`)
+    .map(
+      (point, index) => `${index === 0 ? "M" : "L"}${Math.round(point.x)} ${Math.round(point.y)}`,
+    )
     .join(" ");
 }
 
@@ -138,9 +139,6 @@ export function FreeCanvas({
   const drawing = useRef(false);
   const { undo, redo } = useUndoHistory(blocks, onChange);
 
-
-
-
   const contentBottom = blocks.reduce((max, block) => {
     if (block.type === "ink") return Math.max(max, block.bottom ?? 0);
     const height = block.type === "image" ? (block.h ?? 300) : 200;
@@ -150,9 +148,7 @@ export function FreeCanvas({
   // A monotonic document extent behaves like a word processor: reaching the
   // bottom appends one more viewport, while scrolling upward never changes the
   // document or scrollbar size.
-  const [documentHeight, setDocumentHeight] = useState(() =>
-    Math.max(1800, contentBottom + 700),
-  );
+  const [documentHeight, setDocumentHeight] = useState(() => Math.max(1800, contentBottom + 700));
 
   useEffect(() => {
     setDocumentHeight((current) => Math.max(current, contentBottom + 700, 1800));
@@ -193,9 +189,7 @@ export function FreeCanvas({
       if (remaining > Math.min(400, pane.clientHeight * 0.5)) return;
 
       queued = true;
-      setDocumentHeight((current) =>
-        current + Math.max(900, Math.ceil(pane.clientHeight / zoom)),
-      );
+      setDocumentHeight((current) => current + Math.max(900, Math.ceil(pane.clientHeight / zoom)));
       requestAnimationFrame(() => {
         queued = false;
         previousTop = pane.scrollTop;
@@ -209,9 +203,6 @@ export function FreeCanvas({
 
   const height = Math.max(documentHeight, contentBottom + 700);
 
-
-
-
   // Pointer positions arrive in screen pixels; the sheet may be zoomed, so
   // convert back into unscaled canvas coordinates.
   function point(event: { clientX: number; clientY: number }) {
@@ -221,13 +212,11 @@ export function FreeCanvas({
     return { x: (event.clientX - rect.left) / zoom, y: (event.clientY - rect.top) / zoom };
   }
 
-
   function patch(id: string, changes: Record<string, unknown>) {
     onChange(
       blocks.map((block) => (block.id === id ? ({ ...block, ...changes } as NoteBlock) : block)),
     );
   }
-
 
   function remove(id: string) {
     onChange(blocks.filter((block) => block.id !== id));
@@ -322,7 +311,6 @@ export function FreeCanvas({
       patch(id, changes);
     };
 
-
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
@@ -406,21 +394,16 @@ export function FreeCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canEdit, selectedId, blocks, undo, redo]);
 
-
-
-
-
   const erasing = useRef(false);
 
   function eraseAt(at: { x: number; y: number }) {
-    const next = blocks.filter(
-      (block) => block.type !== "ink" || !strokeHit(block, at),
-    );
+    const next = blocks.filter((block) => block.type !== "ink" || !strokeHit(block, at));
     if (next.length !== blocks.length) onChange(next);
   }
 
   function startInk(event: React.PointerEvent) {
     if (!canEdit || (mode !== "draw" && mode !== "highlight" && mode !== "erase")) return;
+    if (event.pointerType === "touch") return;
     event.preventDefault();
     (event.target as Element).setPointerCapture?.(event.pointerId);
     if (mode === "erase") {
@@ -433,6 +416,7 @@ export function FreeCanvas({
   }
 
   function moveInk(event: React.PointerEvent) {
+    if (event.pointerType === "touch") return;
     if (erasing.current) {
       eraseAt(point(event));
       return;
@@ -487,7 +471,6 @@ export function FreeCanvas({
     ]);
   }
 
-
   const inks = blocks.filter((b): b is Extract<NoteBlock, { type: "ink" }> => b.type === "ink");
 
   // The stroke being drawn right now travels too, so students watch the pen
@@ -506,41 +489,66 @@ export function FreeCanvas({
 
   return (
     <div style={{ height: height * zoom, overflow: "hidden", overflowAnchor: "none" }}>
-    <div
-      ref={surfaceRef}
-      onClick={surfaceClick}
-      onPointerMove={(event) => onPointerAt?.(point(event))}
-      className="relative bg-white"
-      style={{
-        height,
-        width: `${100 / zoom}%`,
-        transform: `scale(${zoom})`,
-        transformOrigin: "0 0",
-      }}
-    >
-
-      {/* Ink layer: captures the pen everywhere while in draw mode. */}
-      <svg
-        className="absolute inset-0 h-full w-full"
+      <div
+        ref={surfaceRef}
+        onClick={surfaceClick}
+        onPointerMove={(event) => onPointerAt?.(point(event))}
+        className="relative bg-white"
         style={{
-          pointerEvents:
-            canEdit && (mode === "draw" || mode === "highlight" || mode === "erase")
-              ? "auto"
-              : "none",
-          touchAction: "none",
-          zIndex: 20,
-          cursor: canEdit && mode === "erase" ? "crosshair" : undefined,
+          height,
+          width: `${100 / zoom}%`,
+          transform: `scale(${zoom})`,
+          transformOrigin: "0 0",
         }}
-        onPointerDown={startInk}
-        onPointerMove={moveInk}
-        onPointerUp={endInk}
-        onPointerLeave={endInk}
-        onPointerCancel={endInk}
       >
-        {/* Highlighter blends with the text underneath so it stays readable. */}
-        <g style={{ mixBlendMode: "multiply" }}>
+        {/* Ink layer: captures the pen everywhere while in draw mode. */}
+        <svg
+          className="absolute inset-0 h-full w-full"
+          style={{
+            pointerEvents:
+              canEdit && (mode === "draw" || mode === "highlight" || mode === "erase")
+                ? "auto"
+                : "none",
+            touchAction: "none",
+            zIndex: 20,
+            cursor: canEdit && mode === "erase" ? "crosshair" : undefined,
+          }}
+          onPointerDown={startInk}
+          onPointerMove={moveInk}
+          onPointerUp={endInk}
+          onPointerLeave={endInk}
+          onPointerCancel={endInk}
+        >
+          {/* Highlighter blends with the text underneath so it stays readable. */}
+          <g style={{ mixBlendMode: "multiply" }}>
+            {inks
+              .filter((ink) => ink.highlight)
+              .map((ink) => (
+                <path
+                  key={ink.id}
+                  d={ink.d}
+                  fill="none"
+                  stroke={ink.color}
+                  strokeWidth={ink.width}
+                  strokeOpacity={0.4}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              ))}
+            {shownLive?.highlight ? (
+              <path
+                d={pathFrom(shownLive.points)}
+                fill="none"
+                stroke={shownLive.color}
+                strokeWidth={shownLive.width}
+                strokeOpacity={0.4}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ) : null}
+          </g>
           {inks
-            .filter((ink) => ink.highlight)
+            .filter((ink) => !ink.highlight)
             .map((ink) => (
               <path
                 key={ink.id}
@@ -548,353 +556,323 @@ export function FreeCanvas({
                 fill="none"
                 stroke={ink.color}
                 strokeWidth={ink.width}
-                strokeOpacity={0.4}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
             ))}
-          {shownLive?.highlight ? (
+          {shownLive && !shownLive.highlight ? (
             <path
               d={pathFrom(shownLive.points)}
               fill="none"
               stroke={shownLive.color}
               strokeWidth={shownLive.width}
-              strokeOpacity={0.4}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
           ) : null}
-        </g>
-        {inks
-          .filter((ink) => !ink.highlight)
-          .map((ink) => (
-            <path
-              key={ink.id}
-              d={ink.d}
-              fill="none"
-              stroke={ink.color}
-              strokeWidth={ink.width}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          ))}
-        {shownLive && !shownLive.highlight ? (
-          <path
-            d={pathFrom(shownLive.points)}
-            fill="none"
-            stroke={shownLive.color}
-            strokeWidth={shownLive.width}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        ) : null}
-      </svg>
+        </svg>
 
-      {blocks.map((block) => {
-        if (block.type === "ink") return null;
+        {blocks.map((block) => {
+          if (block.type === "ink") return null;
 
-        if (block.type === "audio") {
+          if (block.type === "audio") {
+            return (
+              <AudioPin
+                key={block.id}
+                block={block}
+                url={imageUrls?.[block.path]}
+                canEdit={canEdit}
+                selected={selectedId === block.id}
+                onSelect={() => setSelectedId(block.id)}
+                onMove={(event) => startMove(block.id, event)}
+                onDelete={() => remove(block.id)}
+              />
+            );
+          }
+
+          const style = {
+            left: block.x ?? 24,
+            top: block.y ?? 24,
+            width: block.w ?? 480,
+          } as React.CSSProperties;
+
+          if (block.type === "text") {
+            const isSelectedText = selectedId === block.id;
+            const textStyle: React.CSSProperties = {
+              fontSize: block.size ?? 15,
+              lineHeight: 1.5,
+              // Bold / italic / underline live inline on the highlighted words
+              // only — never on the whole text box.
+              color: block.color ?? undefined,
+              textAlign: block.align ?? "left",
+            };
+
+            return (
+              <div
+                key={block.id}
+                onPointerDown={
+                  canEdit
+                    ? (event) => {
+                        setSelectedId(block.id);
+                        startMoveAnywhere(block.id, event);
+                      }
+                    : undefined
+                }
+                className={`group absolute ${canEdit ? "cursor-grab active:cursor-grabbing" : ""} ${block.box ? "rounded-md border border-border bg-background/70 p-2 shadow-sm" : ""}`}
+                style={style}
+              >
+                {canEdit ? (
+                  <>
+                    {/* Wide grab bar across the top: easy to click and drag. */}
+                    <div
+                      onPointerDown={(event) => {
+                        setSelectedId(block.id);
+                        startMove(block.id, event);
+                      }}
+                      title="Drag to move this text"
+                      aria-label="Move text"
+                      className={`absolute -top-7 -left-2 z-30 flex h-7 w-[calc(100%+1rem)] touch-none cursor-grab items-center justify-center rounded-t-md border border-border bg-muted transition-opacity active:cursor-grabbing ${
+                        isSelectedText ? "opacity-100" : "opacity-60 group-hover:opacity-100"
+                      }`}
+                    >
+                      <GripVertical className="size-4 rotate-90 text-muted-foreground" />
+                    </div>
+                    {/* Left edge strip: another easy place to grab and drag. */}
+                    <div
+                      onPointerDown={(event) => {
+                        setSelectedId(block.id);
+                        startMove(block.id, event);
+                      }}
+                      title="Drag to move this text"
+                      aria-label="Move text"
+                      className={`absolute -left-3 top-0 z-30 h-full w-3 touch-none cursor-grab rounded-l-md bg-muted transition-opacity active:cursor-grabbing ${
+                        isSelectedText ? "opacity-100" : "opacity-0 group-hover:opacity-70"
+                      }`}
+                    />
+
+                    {isSelectedText ? (
+                      <div
+                        className="absolute -top-9 left-0 z-40 flex items-center gap-1 rounded-md border bg-background px-1 py-0.5 shadow-sm"
+                        onPointerDown={(event) => event.stopPropagation()}
+                      >
+                        <select
+                          value={block.size ?? 15}
+                          onChange={(event) =>
+                            patch(block.id, { size: Number(event.target.value) })
+                          }
+                          className="h-6 rounded border bg-background px-1 text-xs"
+                          aria-label="Font size"
+                        >
+                          {[12, 14, 15, 18, 22, 28, 36, 48].map((size) => (
+                            <option key={size} value={size}>
+                              {size}
+                            </option>
+                          ))}
+                        </select>
+                        {(
+                          [
+                            ["bold", "B", "font-bold"],
+                            ["italic", "I", "italic"],
+                            ["underline", "U", "underline"],
+                          ] as const
+                        ).map(([key, label, cls]) => (
+                          <button
+                            key={key}
+                            type="button"
+                            // Keep the text selection alive, then format just it.
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => formatSelection(key)}
+                            title={`${label} — highlighted text, or the text you type next`}
+                            className={`size-6 rounded text-xs ${cls} hover:bg-muted`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+
+                        {(["left", "center", "right"] as const).map((align) => (
+                          <button
+                            key={align}
+                            type="button"
+                            onClick={() => patch(block.id, { align })}
+                            aria-label={`Align ${align}`}
+                            className={`size-6 rounded text-[10px] uppercase ${
+                              (block.align ?? "left") === align
+                                ? "bg-primary text-primary-foreground"
+                                : "hover:bg-muted"
+                            }`}
+                          >
+                            {align[0]}
+                          </button>
+                        ))}
+                        {TEXT_COLORS.map((value) => (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => patch(block.id, { color: value })}
+                            aria-label={`Text color ${value}`}
+                            className={`size-5 rounded-full border ${
+                              (block.color ?? TEXT_COLORS[0]) === value ? "ring-2 ring-ring" : ""
+                            }`}
+                            style={{ backgroundColor: value }}
+                          />
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => patch(block.id, { box: !block.box })}
+                          aria-pressed={Boolean(block.box)}
+                          className={`size-6 rounded text-[10px] uppercase ${
+                            block.box ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                          }`}
+                          aria-label="Toggle text box border"
+                        >
+                          ▢
+                        </button>
+                        <button
+                          type="button"
+                          onPointerDown={(event) => startMove(block.id, event)}
+                          className="cursor-grab rounded p-0.5 text-muted-foreground hover:bg-muted"
+                          aria-label="Move text"
+                        >
+                          <GripVertical className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => remove(block.id)}
+                          className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-destructive"
+                          aria-label="Delete text"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                    ) : null}
+                    <RichTextEditable
+                      html={block.html ?? escapeHtml(block.text ?? "")}
+                      autoFocus={focusId === block.id}
+                      onChange={({ html, text }) => patch(block.id, { html, text })}
+                      onFocus={() => {
+                        setSelectedId(block.id);
+                        if (focusId === block.id) setFocusId(null);
+                      }}
+                      onBlur={() => {
+                        if (!block.box && !block.text.trim()) remove(block.id);
+                      }}
+                      onUndo={undo}
+                      onRedo={redo}
+                      placeholder="Type here…"
+                      className="w-full border-0 bg-transparent p-1 text-foreground"
+                      style={{ ...textStyle, minHeight: 28 }}
+                    />
+                    <span
+                      onPointerDown={(event) => startResize(block.id, event)}
+                      className={`absolute -right-2 bottom-0 size-5 touch-none cursor-ew-resize rounded-sm border border-border bg-muted transition-opacity ${
+                        isSelectedText ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                      }`}
+                    />
+                  </>
+                ) : block.html ? (
+                  <div style={textStyle} dangerouslySetInnerHTML={{ __html: block.html }} />
+                ) : (
+                  <div style={textStyle}>
+                    <ClickableText text={block.text} onConcept={onConcept} />
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          const url = imageUrls?.[block.path];
+          const isSelected = selectedId === block.id;
           return (
-            <AudioPin
+            <figure
               key={block.id}
-              block={block}
-              url={imageUrls?.[block.path]}
-              canEdit={canEdit}
-              selected={selectedId === block.id}
-              onSelect={() => setSelectedId(block.id)}
-              onMove={(event) => startMove(block.id, event)}
-              onDelete={() => remove(block.id)}
-            />
-          );
-        }
-
-        const style = {
-          left: block.x ?? 24,
-          top: block.y ?? 24,
-          width: block.w ?? 480,
-        } as React.CSSProperties;
-
-
-        if (block.type === "text") {
-          const isSelectedText = selectedId === block.id;
-          const textStyle: React.CSSProperties = {
-            fontSize: block.size ?? 15,
-            lineHeight: 1.5,
-            // Bold / italic / underline live inline on the highlighted words
-            // only — never on the whole text box.
-            color: block.color ?? undefined,
-            textAlign: block.align ?? "left",
-          };
-
-          return (
-            <div
-              key={block.id}
-              onPointerDown={
-                canEdit
-                  ? (event) => {
-                      setSelectedId(block.id);
-                      startMoveAnywhere(block.id, event);
-                    }
-                  : undefined
-              }
-              className={`group absolute ${canEdit ? "cursor-grab active:cursor-grabbing" : ""} ${block.box ? "rounded-md border border-border bg-background/70 p-2 shadow-sm" : ""}`}
-              style={style}
+              className={`group absolute ${isSelected ? "z-30" : ""}`}
+              style={{
+                ...style,
+                transform: block.rot ? `rotate(${block.rot}deg)` : undefined,
+              }}
+              onPointerDown={(event) => {
+                if (!canEdit) return;
+                // Clicking a picture always selects it (so Delete removes it),
+                // and only drags it while the pointer is in typing mode.
+                setSelectedId(block.id);
+                if (mode === "type" || mode === "select") startMove(block.id, event);
+              }}
             >
-
+              {url ? (
+                <img
+                  src={url}
+                  alt={block.caption ?? "Lesson note image"}
+                  draggable={false}
+                  className={`w-full select-none rounded-md ${
+                    canEdit && (mode === "type" || mode === "select") ? "cursor-move" : ""
+                  } ${isSelected ? "ring-2 ring-primary" : ""}`}
+                  style={{ height: block.h ?? "auto" }}
+                />
+              ) : (
+                <div className="h-40 animate-pulse rounded-md border bg-muted" />
+              )}
               {canEdit ? (
                 <>
-                  {/* Wide grab bar across the top: easy to click and drag. */}
-                  <div
-                    onPointerDown={(event) => {
-                      setSelectedId(block.id);
-                      startMove(block.id, event);
+                  <button
+                    type="button"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      remove(block.id);
                     }}
-                    title="Drag to move this text"
-                    aria-label="Move text"
-                    className={`absolute -top-7 -left-2 z-30 flex h-7 w-[calc(100%+1rem)] touch-none cursor-grab items-center justify-center rounded-t-md border border-border bg-muted transition-opacity active:cursor-grabbing ${
-                      isSelectedText ? "opacity-100" : "opacity-60 group-hover:opacity-100"
-                    }`}
-                  >
-                    <GripVertical className="size-4 rotate-90 text-muted-foreground" />
-                  </div>
-                  {/* Left edge strip: another easy place to grab and drag. */}
-                  <div
-                    onPointerDown={(event) => {
-                      setSelectedId(block.id);
-                      startMove(block.id, event);
-                    }}
-                    title="Drag to move this text"
-                    aria-label="Move text"
-                    className={`absolute -left-3 top-0 z-30 h-full w-3 touch-none cursor-grab rounded-l-md bg-muted transition-opacity active:cursor-grabbing ${
-                      isSelectedText ? "opacity-100" : "opacity-0 group-hover:opacity-70"
-                    }`}
-                  />
-
-                  {isSelectedText ? (
-                    <div
-                      className="absolute -top-9 left-0 z-40 flex items-center gap-1 rounded-md border bg-background px-1 py-0.5 shadow-sm"
-                      onPointerDown={(event) => event.stopPropagation()}
-                    >
-                      <select
-                        value={block.size ?? 15}
-                        onChange={(event) => patch(block.id, { size: Number(event.target.value) })}
-                        className="h-6 rounded border bg-background px-1 text-xs"
-                        aria-label="Font size"
-                      >
-                        {[12, 14, 15, 18, 22, 28, 36, 48].map((size) => (
-                          <option key={size} value={size}>
-                            {size}
-                          </option>
-                        ))}
-                      </select>
-                      {(
-                        [
-                          ["bold", "B", "font-bold"],
-                          ["italic", "I", "italic"],
-                          ["underline", "U", "underline"],
-                        ] as const
-                      ).map(([key, label, cls]) => (
-                        <button
-                          key={key}
-                          type="button"
-                          // Keep the text selection alive, then format just it.
-                          onMouseDown={(event) => event.preventDefault()}
-                          onClick={() => formatSelection(key)}
-                          title={`${label} — highlighted text, or the text you type next`}
-                          className={`size-6 rounded text-xs ${cls} hover:bg-muted`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-
-                      {(["left", "center", "right"] as const).map((align) => (
-                        <button
-                          key={align}
-                          type="button"
-                          onClick={() => patch(block.id, { align })}
-                          aria-label={`Align ${align}`}
-                          className={`size-6 rounded text-[10px] uppercase ${
-                            (block.align ?? "left") === align
-                              ? "bg-primary text-primary-foreground"
-                              : "hover:bg-muted"
-                          }`}
-                        >
-                          {align[0]}
-                        </button>
-                      ))}
-                      {TEXT_COLORS.map((value) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => patch(block.id, { color: value })}
-                          aria-label={`Text color ${value}`}
-                          className={`size-5 rounded-full border ${
-                            (block.color ?? TEXT_COLORS[0]) === value ? "ring-2 ring-ring" : ""
-                          }`}
-                          style={{ backgroundColor: value }}
-                        />
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => patch(block.id, { box: !block.box })}
-                        aria-pressed={Boolean(block.box)}
-                        className={`size-6 rounded text-[10px] uppercase ${
-                          block.box ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-                        }`}
-                        aria-label="Toggle text box border"
-                      >
-                        ▢
-                      </button>
-                      <button
-                        type="button"
-                        onPointerDown={(event) => startMove(block.id, event)}
-                        className="cursor-grab rounded p-0.5 text-muted-foreground hover:bg-muted"
-                        aria-label="Move text"
-                      >
-                        <GripVertical className="size-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => remove(block.id)}
-                        className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-destructive"
-                        aria-label="Delete text"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
-                    </div>
-                  ) : null}
-                  <RichTextEditable
-                    html={block.html ?? escapeHtml(block.text ?? "")}
-                    autoFocus={focusId === block.id}
-                    onChange={({ html, text }) => patch(block.id, { html, text })}
-                    onFocus={() => {
-                      setSelectedId(block.id);
-                      if (focusId === block.id) setFocusId(null);
-                    }}
-                    onBlur={() => {
-                      if (!block.box && !block.text.trim()) remove(block.id);
-                    }}
-                    onUndo={undo}
-                    onRedo={redo}
-                    placeholder="Type here…"
-                    className="w-full border-0 bg-transparent p-1 text-foreground"
-                    style={{ ...textStyle, minHeight: 28 }}
-                  />
-                  <span
-                    onPointerDown={(event) => startResize(block.id, event)}
-                    className={`absolute -right-2 bottom-0 size-5 touch-none cursor-ew-resize rounded-sm border border-border bg-muted transition-opacity ${
-                      isSelectedText ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                    }`}
-                  />
-
-                </>
-              ) : block.html ? (
-                <div style={textStyle} dangerouslySetInnerHTML={{ __html: block.html }} />
-              ) : (
-                <div style={textStyle}>
-                  <ClickableText text={block.text} onConcept={onConcept} />
-                </div>
-              )}
-
-            </div>
-          );
-        }
-
-
-        const url = imageUrls?.[block.path];
-        const isSelected = selectedId === block.id;
-        return (
-          <figure
-            key={block.id}
-            className={`group absolute ${isSelected ? "z-30" : ""}`}
-            style={{
-              ...style,
-              transform: block.rot ? `rotate(${block.rot}deg)` : undefined,
-            }}
-            onPointerDown={(event) => {
-              if (!canEdit) return;
-              // Clicking a picture always selects it (so Delete removes it),
-              // and only drags it while the pointer is in typing mode.
-              setSelectedId(block.id);
-              if (mode === "type" || mode === "select") startMove(block.id, event);
-            }}
-          >
-            {url ? (
-              <img
-                src={url}
-                alt={block.caption ?? "Lesson note image"}
-                draggable={false}
-                className={`w-full select-none rounded-md ${
-                  canEdit && (mode === "type" || mode === "select") ? "cursor-move" : ""
-                } ${isSelected ? "ring-2 ring-primary" : ""}`}
-                style={{ height: block.h ?? "auto" }}
-              />
-            ) : (
-              <div className="h-40 animate-pulse rounded-md border bg-muted" />
-            )}
-            {canEdit ? (
-              <>
-                <button
-                  type="button"
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    remove(block.id);
-                  }}
-                  className={`absolute -right-2 -top-2 rounded-full border bg-background p-1 text-muted-foreground shadow-sm transition-opacity hover:text-destructive ${
-                    isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                  }`}
-                  aria-label="Delete image"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onPointerDown={(event) => startRotate(block.id, event)}
-                  onDoubleClick={(event) => {
-                    event.stopPropagation();
-                    patch(block.id, { rot: (((block.rot ?? 0) + 90) % 360) });
-                  }}
-                  className={`absolute -top-8 left-1/2 -translate-x-1/2 cursor-grab rounded-full border bg-background p-1 text-muted-foreground shadow-sm transition-opacity hover:text-primary ${
-                    isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                  }`}
-                  aria-label="Rotate image"
-                  title="Drag to rotate (Shift snaps to 15°), double-click for 90°"
-                >
-                  <RotateCw className="size-3.5" />
-                </button>
-                {(
-                  [
-                    ["nw", "-left-1.5 -top-1.5 cursor-nwse-resize"],
-                    ["ne", "-right-1.5 -top-1.5 cursor-nesw-resize"],
-                    ["sw", "-left-1.5 -bottom-1.5 cursor-nesw-resize"],
-                    ["se", "-right-1.5 -bottom-1.5 cursor-nwse-resize"],
-                  ] as const
-                ).map(([corner, cls]) => (
-                  <span
-                    key={corner}
-                    onPointerDown={(event) => {
-                      setSelectedId(block.id);
-                      startResize(block.id, event, corner);
-                    }}
-                    className={`absolute size-3 rounded-sm border border-primary bg-background transition-opacity ${cls} ${
+                    className={`absolute -right-2 -top-2 rounded-full border bg-background p-1 text-muted-foreground shadow-sm transition-opacity hover:text-destructive ${
                       isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                     }`}
-                  />
-                ))}
-              </>
-            ) : null}
-          </figure>
-        );
+                    aria-label="Delete image"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onPointerDown={(event) => startRotate(block.id, event)}
+                    onDoubleClick={(event) => {
+                      event.stopPropagation();
+                      patch(block.id, { rot: ((block.rot ?? 0) + 90) % 360 });
+                    }}
+                    className={`absolute -top-8 left-1/2 -translate-x-1/2 cursor-grab rounded-full border bg-background p-1 text-muted-foreground shadow-sm transition-opacity hover:text-primary ${
+                      isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                    }`}
+                    aria-label="Rotate image"
+                    title="Drag to rotate (Shift snaps to 15°), double-click for 90°"
+                  >
+                    <RotateCw className="size-3.5" />
+                  </button>
+                  {(
+                    [
+                      ["nw", "-left-1.5 -top-1.5 cursor-nwse-resize"],
+                      ["ne", "-right-1.5 -top-1.5 cursor-nesw-resize"],
+                      ["sw", "-left-1.5 -bottom-1.5 cursor-nesw-resize"],
+                      ["se", "-right-1.5 -bottom-1.5 cursor-nwse-resize"],
+                    ] as const
+                  ).map(([corner, cls]) => (
+                    <span
+                      key={corner}
+                      onPointerDown={(event) => {
+                        setSelectedId(block.id);
+                        startResize(block.id, event, corner);
+                      }}
+                      className={`absolute size-3 rounded-sm border border-primary bg-background transition-opacity ${cls} ${
+                        isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                      }`}
+                    />
+                  ))}
+                </>
+              ) : null}
+            </figure>
+          );
+        })}
 
-      })}
-
-      {canEdit && blocks.length === 0 ? (
-        <p className="pointer-events-none absolute left-6 top-6 text-sm text-muted-foreground">
-          Click anywhere to type. Switch to Draw to write with a pen. Paste images straight in.
-        </p>
-      ) : null}
-    </div>
+        {canEdit && blocks.length === 0 ? (
+          <p className="pointer-events-none absolute left-6 top-6 text-sm text-muted-foreground">
+            Click anywhere to type. Switch to Draw to write with a pen. Paste images straight in.
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }

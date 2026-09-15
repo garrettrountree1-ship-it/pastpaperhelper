@@ -219,7 +219,7 @@ export function PdfDocView({
       </div>
       <div
         ref={scrollRef}
-        className="min-h-0 flex-1 space-y-3 overflow-scroll overscroll-contain rounded-md bg-muted/30 p-2"
+        className="min-h-0 flex-1 space-y-3 overflow-auto overscroll-contain rounded-md bg-muted/30 p-2"
       >
         {pages.map((src, index) => {
           const surfaceScale = Math.max(1, zoom);

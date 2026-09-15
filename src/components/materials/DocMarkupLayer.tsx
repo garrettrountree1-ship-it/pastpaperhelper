@@ -138,7 +138,14 @@ export function DocMarkupToolbar({
   );
 }
 
-/** Wraps any rendered page/document and overlays the markup layer on top. */
+/**
+ * Wraps any rendered page/document and overlays the markup layer on top.
+ *
+ * When the page is zoomed out it only fills part of the pane, so the leftover
+ * room to its right becomes plain white writing space covered by the very same
+ * markup layer — a line can run straight off the page and carry on beside it,
+ * and pictures can be pasted there too.
+ */
 export function DocMarkupSurface({
   ratio,
   tool,
@@ -146,6 +153,7 @@ export function DocMarkupSurface({
   highlightColor,
   value,
   onChange,
+  pageFraction = 1,
   children,
 }: {
   /** height / width of the wrapped content. */
@@ -155,6 +163,8 @@ export function DocMarkupSurface({
   highlightColor?: string | undefined;
   value: SlideAnnotation;
   onChange: (next: SlideAnnotation) => void;
+  /** How much of the available width the page itself takes (1 = all of it). */
+  pageFraction?: number;
   children: React.ReactNode;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -172,16 +182,26 @@ export function DocMarkupSurface({
     return () => observer.disconnect();
   }, []);
 
-  const scale = width > 0 ? width / MARKUP_WIDTH : 1;
-
+  const fraction = Math.min(1, Math.max(0.05, pageFraction));
+  // Markup width covers the page plus the blank space beside it.
+  const surfaceWidth = Math.round(MARKUP_WIDTH / fraction);
+  const scale = width > 0 ? width / surfaceWidth : 1;
   const markupHeight = Math.max(1, Math.round(MARKUP_WIDTH * ratio));
 
   return (
-    <div ref={hostRef} className="relative">
-      {children}
+    <div ref={hostRef} className="relative flex items-stretch">
+      <div className="relative shrink-0" style={{ width: `${fraction * 100}%` }}>
+        {children}
+      </div>
+      {fraction < 1 ? (
+        <div
+          aria-label="Extra writing space"
+          className="min-w-0 flex-1 rounded-md border border-dashed bg-white"
+        />
+      ) : null}
       {/* Highlighter marks sit here, beside the page, so the colour blends with
           the words underneath instead of coming out almost invisible. */}
-      <HighlightLayer width={MARKUP_WIDTH} height={markupHeight} strokes={value.strokes} />
+      <HighlightLayer width={surfaceWidth} height={markupHeight} strokes={value.strokes} />
       <div
         className="absolute left-0 top-0"
         style={{
@@ -191,7 +211,7 @@ export function DocMarkupSurface({
         }}
       >
         <SlideAnnotations
-          width={MARKUP_WIDTH}
+          width={surfaceWidth}
           height={markupHeight}
           tool={tool}
           color={penColor}

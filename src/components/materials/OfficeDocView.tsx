@@ -594,6 +594,11 @@ function SlidePage({
    * the meantime, so viewers never see re-laid-out PowerPoint text.
    */
   hideRebuilt?: boolean | undefined;
+  /**
+   * How much of the pane width the slide fills when zoomed out. The leftover
+   * room becomes plain white writing space beside the slide.
+   */
+  slideFraction?: number | undefined;
 }) {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);

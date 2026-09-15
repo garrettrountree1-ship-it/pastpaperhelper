@@ -211,17 +211,23 @@ export function usePaneZoom({
     // page); only whole-page pinch zoom is blocked, since we handle pinch here.
     el.style.touchAction = "pan-x pan-y";
     el.addEventListener("wheel", onWheel, { passive: false });
-    el.addEventListener("pointerdown", onPointerDown, true);
-    el.addEventListener("pointermove", onPointerMove, true);
-    el.addEventListener("pointerup", endPointer, true);
-    el.addEventListener("pointercancel", endPointer, true);
+    el.addEventListener("touchstart", onTouchStart, { passive: false, capture: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
+    el.addEventListener("touchend", onTouchEnd, true);
+    el.addEventListener("touchcancel", onTouchEnd, true);
+    el.addEventListener("gesturestart", onGestureStart as EventListener, { passive: false });
+    el.addEventListener("gesturechange", onGestureChange as EventListener, { passive: false });
+    el.addEventListener("gestureend", onGestureEnd as EventListener, { passive: false });
     return () => {
       el.style.touchAction = previousTouchAction;
       el.removeEventListener("wheel", onWheel);
-      el.removeEventListener("pointerdown", onPointerDown, true);
-      el.removeEventListener("pointermove", onPointerMove, true);
-      el.removeEventListener("pointerup", endPointer, true);
-      el.removeEventListener("pointercancel", endPointer, true);
+      el.removeEventListener("touchstart", onTouchStart, true);
+      el.removeEventListener("touchmove", onTouchMove, true);
+      el.removeEventListener("touchend", onTouchEnd, true);
+      el.removeEventListener("touchcancel", onTouchEnd, true);
+      el.removeEventListener("gesturestart", onGestureStart as EventListener);
+      el.removeEventListener("gesturechange", onGestureChange as EventListener);
+      el.removeEventListener("gestureend", onGestureEnd as EventListener);
     };
   }, [applyZoom, enabled, max, min, scrollRef, setZoom]);
 

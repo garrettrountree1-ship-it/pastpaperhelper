@@ -10,7 +10,7 @@ import {
   SquarePen,
   Type,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { readableTextColor } from "@/lib/color-contrast";
 

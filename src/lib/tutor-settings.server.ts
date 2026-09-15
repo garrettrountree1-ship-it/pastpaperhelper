@@ -25,6 +25,8 @@ export type EffectiveTutorSettings = {
   maxAttempts: number;
   /** Maximum attempts on multiple-choice questions; 0 means "same as maxAttempts". */
   maxChoiceAttempts: number;
+  /** Grade typed calculation answers by their verified final value only. */
+  checkFinalNumericOnly: boolean;
   /** Exam conditions: no hints, no step-by-step help. */
   examMode: boolean;
   /** Times the whole paper may be handed in; 0 means unlimited. */
@@ -32,7 +34,15 @@ export type EffectiveTutorSettings = {
 };
 
 export const CLASS_SETTINGS_FIELDS =
-  "tutor_language, tutor_level, protect_questions, keyword_translation, student_can_change_level, vocab_translation, vocab_language, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions";
+  "tutor_language, tutor_level, protect_questions, keyword_translation, student_can_change_level, vocab_translation, vocab_language, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, check_final_numeric_only, exam_mode, max_paper_submissions";
+const LEGACY_CLASS_SETTINGS_FIELDS = CLASS_SETTINGS_FIELDS.replace(
+  ", check_final_numeric_only",
+  "",
+);
+
+function isMissingFastCheckColumn(error: { message?: string } | null | undefined) {
+  return /check_final_numeric_only/i.test(error?.message ?? "");
+}
 
 /** Class defaults with the per-student override applied. */
 export async function effectiveTutorSettings(
@@ -40,7 +50,7 @@ export async function effectiveTutorSettings(
   classId: string,
   studentId: string | null,
 ): Promise<EffectiveTutorSettings> {
-  const [{ data: klass }, override] = await Promise.all([
+  let [classResult, override] = await Promise.all([
     db.from("classes").select(CLASS_SETTINGS_FIELDS).eq("id", classId).maybeSingle(),
     studentId
       ? db
@@ -51,6 +61,14 @@ export async function effectiveTutorSettings(
           .maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
+  if (isMissingFastCheckColumn(classResult.error)) {
+    classResult = await db
+      .from("classes")
+      .select(LEGACY_CLASS_SETTINGS_FIELDS)
+      .eq("id", classId)
+      .maybeSingle();
+  }
+  const klass = classResult.data;
   const row = override?.data ?? null;
   const level = row?.tutor_level ?? klass?.tutor_level ?? DEFAULT_TUTOR_LEVEL;
   const language = row?.tutor_language ?? klass?.tutor_language ?? DEFAULT_TUTOR_LANGUAGE;
@@ -69,6 +87,7 @@ export async function effectiveTutorSettings(
     allowSteps: klass?.allow_steps !== false,
     maxAttempts: Math.max(0, Number(klass?.max_answer_attempts ?? 0) || 0),
     maxChoiceAttempts: Math.max(0, Number(klass?.max_choice_attempts ?? 1) || 0),
+    checkFinalNumericOnly: Boolean(klass?.check_final_numeric_only),
     examMode: Boolean(klass?.exam_mode),
     maxPaperSubmissions: Math.max(0, Number(klass?.max_paper_submissions ?? 0) || 0),
   };
@@ -85,13 +104,23 @@ export async function tutorSettingsForAssignment(
   assignmentId: string,
   studentId: string | null,
 ): Promise<EffectiveTutorSettings> {
-  const { data: assignment } = await db
+  let assignmentResult = await db
     .from("assignments")
     .select(
-      "class_id, keyword_translation, vocab_translation, vocab_language, protect_questions, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions",
+      "class_id, keyword_translation, vocab_translation, vocab_language, protect_questions, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, check_final_numeric_only, exam_mode, max_paper_submissions",
     )
     .eq("id", assignmentId)
     .maybeSingle();
+  if (isMissingFastCheckColumn(assignmentResult.error)) {
+    assignmentResult = await db
+      .from("assignments")
+      .select(
+        "class_id, keyword_translation, vocab_translation, vocab_language, protect_questions, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions",
+      )
+      .eq("id", assignmentId)
+      .maybeSingle();
+  }
+  const assignment = assignmentResult.data;
   if (!assignment?.class_id) {
     return {
       language: DEFAULT_TUTOR_LANGUAGE,
@@ -105,18 +134,19 @@ export async function tutorSettingsForAssignment(
       allowSteps: true,
       maxAttempts: 0,
       maxChoiceAttempts: 1,
+      checkFinalNumericOnly: false,
       examMode: false,
       maxPaperSubmissions: 0,
     };
   }
 
-  const [base, studentOverride, classOverride] = await Promise.all([
+  let [base, studentOverride, classOverride] = await Promise.all([
     effectiveTutorSettings(db, assignment.class_id, studentId),
     studentId
       ? db
           .from("student_assignment_settings")
           .select(
-            "keyword_translation, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions",
+            "keyword_translation, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, check_final_numeric_only, exam_mode, max_paper_submissions",
           )
           .eq("assignment_id", assignmentId)
           .eq("student_id", studentId)
@@ -131,6 +161,18 @@ export async function tutorSettingsForAssignment(
           .maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
+  if (isMissingFastCheckColumn(studentOverride?.error)) {
+    studentOverride = studentId
+      ? await db
+          .from("student_assignment_settings")
+          .select(
+            "keyword_translation, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions",
+          )
+          .eq("assignment_id", assignmentId)
+          .eq("student_id", studentId)
+          .maybeSingle()
+      : { data: null };
+  }
 
   const chain = [
     studentOverride?.data?.keyword_translation,
@@ -159,6 +201,11 @@ export async function tutorSettingsForAssignment(
   const maxChoiceAttempts =
     pickNumber(studentOverride?.data?.max_choice_attempts, assignment.max_choice_attempts) ??
     base.maxChoiceAttempts;
+  const checkFinalNumericOnly =
+    pickBool(
+      studentOverride?.data?.check_final_numeric_only,
+      assignment.check_final_numeric_only,
+    ) ?? base.checkFinalNumericOnly;
   const examMode =
     pickBool(studentOverride?.data?.exam_mode, assignment.exam_mode) ?? base.examMode;
   const maxPaperSubmissions =
@@ -173,6 +220,7 @@ export async function tutorSettingsForAssignment(
     allowSteps: examMode ? false : allowSteps,
     maxAttempts: Math.max(0, maxAttempts || 0),
     maxChoiceAttempts: Math.max(0, maxChoiceAttempts || 0),
+    checkFinalNumericOnly,
     examMode,
     maxPaperSubmissions: Math.max(0, maxPaperSubmissions || 0),
     // Copying question wording is always blocked on the student homework portal.

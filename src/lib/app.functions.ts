@@ -7,6 +7,13 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { LOCKED_MESSAGE } from "@/lib/integrity";
 import { attemptsAllowed, isMultipleChoice } from "@/lib/multiple-choice";
+import {
+  extractChoiceAnswer,
+  extractFinalNumber,
+  looksNumericalQuestion,
+  markTypedChoice,
+  markTypedFinalNumber,
+} from "@/lib/deterministic-marking";
 import { cleanMathText } from "@/lib/math-text";
 import { isDemoEmail } from "@/lib/demo";
 import { isIbdp } from "@/lib/curricula";
@@ -26,6 +33,10 @@ import {
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
+}
+
+function isMissingDeterministicAnswerColumn(error: { message?: string } | null | undefined) {
+  return /(?:expected_answer|numerical_answer)/i.test(error?.message ?? "");
 }
 
 function decodeBase64(base64: string): Uint8Array {
@@ -442,6 +453,8 @@ export const createAssignment = createServerFn({ method: "POST" })
             tagLabel: z.string().max(12).default(""),
             tagImage: z.string().max(200000).default(""),
             multipleChoice: z.boolean().nullable().default(null),
+            expectedAnswer: z.string().max(200).default(""),
+            numericalAnswer: z.boolean().default(false),
           }),
         ),
       })
@@ -490,6 +503,11 @@ export const createAssignment = createServerFn({ method: "POST" })
         tag_label: q.tagLabel ?? "",
         tag_image: q.tagImage ?? "",
         multiple_choice: q.multipleChoice ?? null,
+        expected_answer:
+          q.expectedAnswer.trim() ||
+          extractChoiceAnswer(q.markScheme) ||
+          (q.numericalAnswer ? extractFinalNumber(q.markScheme) || "" : ""),
+        numerical_answer: q.numericalAnswer || looksNumericalQuestion(q.questionText, q.markScheme),
       })),
     );
     if (qError) throw new Error(qError.message);
@@ -515,13 +533,31 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    const { data: questions, error: qError } = await supabase
+    let questionResult = await supabase
       .from("questions")
       .select(
-        "id, question_text, mark_scheme, marks, position, image_paths, answer_image_paths, source_page_path, answer_source_page_path, tag_label, tag_image, multiple_choice",
+        "id, question_text, mark_scheme, marks, position, image_paths, answer_image_paths, source_page_path, answer_source_page_path, tag_label, tag_image, multiple_choice, expected_answer, numerical_answer",
       )
       .eq("assignment_id", data.assignmentId)
       .order("position");
+    let questions = questionResult.data;
+    let qError = questionResult.error;
+    if (isMissingDeterministicAnswerColumn(qError)) {
+      const legacyResult = await supabase
+        .from("questions")
+        .select(
+          "id, question_text, mark_scheme, marks, position, image_paths, answer_image_paths, source_page_path, answer_source_page_path, tag_label, tag_image, multiple_choice",
+        )
+        .eq("assignment_id", data.assignmentId)
+        .order("position");
+      questions =
+        legacyResult.data?.map((question) => ({
+          ...question,
+          expected_answer: "",
+          numerical_answer: false,
+        })) ?? null;
+      qError = legacyResult.error;
+    }
     if (qError) throw new Error(qError.message);
 
     return {
@@ -549,10 +585,21 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
           tagImage: q.tag_image ?? "",
           multipleChoice: ((q as { multiple_choice?: boolean | null }).multiple_choice ?? null) as
             boolean | null,
-          autoMultipleChoice: isMultipleChoice(
-            (q as { multiple_choice?: boolean | null }).multiple_choice,
-            (q as { mark_scheme?: string | null }).mark_scheme,
-          ),
+          expectedAnswer:
+            q.expected_answer?.trim() ||
+            extractChoiceAnswer(q.mark_scheme) ||
+            (looksNumericalQuestion(q.question_text, q.mark_scheme)
+              ? extractFinalNumber(q.mark_scheme) || ""
+              : ""),
+          numericalAnswer:
+            Boolean(q.numerical_answer) || looksNumericalQuestion(q.question_text, q.mark_scheme),
+          autoMultipleChoice:
+            isMultipleChoice(
+              (q as { multiple_choice?: boolean | null }).multiple_choice,
+              (q as { mark_scheme?: string | null }).mark_scheme,
+            ) ||
+            ((q as { multiple_choice?: boolean | null }).multiple_choice == null &&
+              /^[A-E]$/i.test(q.expected_answer?.trim() || "")),
         })),
       ),
     };
@@ -825,6 +872,8 @@ export const updateAssignment = createServerFn({ method: "POST" })
             tagLabel: z.string().max(12).default(""),
             tagImage: z.string().max(200000).default(""),
             multipleChoice: z.boolean().nullable().default(null),
+            expectedAnswer: z.string().max(200).default(""),
+            numericalAnswer: z.boolean().default(false),
           }),
         ),
       })
@@ -874,6 +923,11 @@ export const updateAssignment = createServerFn({ method: "POST" })
         tag_label: q.tagLabel ?? "",
         tag_image: q.tagImage ?? "",
         multiple_choice: q.multipleChoice ?? null,
+        expected_answer:
+          q.expectedAnswer.trim() ||
+          extractChoiceAnswer(q.markScheme) ||
+          (q.numericalAnswer ? extractFinalNumber(q.markScheme) || "" : ""),
+        numerical_answer: q.numericalAnswer || looksNumericalQuestion(q.questionText, q.markScheme),
       };
       if (q.id && existingIds.has(q.id)) {
         const { error } = await supabase.from("questions").update(payload).eq("id", q.id);
@@ -2040,13 +2094,23 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     if (!allowed) throw new Error("This assignment is not available to you.");
 
     const db = await admin();
-    const { data: question, error: qError } = await db
+    let questionResult = await db
       .from("questions")
       .select(
-        "id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position, multiple_choice",
+        "id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position, multiple_choice, expected_answer, numerical_answer",
       )
       .eq("id", data.questionId)
       .single();
+    if (isMissingDeterministicAnswerColumn(questionResult.error)) {
+      questionResult = await db
+        .from("questions")
+        .select(
+          "id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position, multiple_choice",
+        )
+        .eq("id", data.questionId)
+        .single();
+    }
+    const { data: question, error: qError } = questionResult;
     if (qError) throw new Error(qError.message);
     if (question.assignment_id !== data.assignmentId) throw new Error("Question mismatch.");
 
@@ -2060,12 +2124,14 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     // Scaffolding: teachers can cap how many tries a question allows.
     const { tutorSettingsForAssignment } = await import("./tutor-settings.server");
     const scaffolding = await tutorSettingsForAssignment(db, data.assignmentId, userId);
+    const choiceOverride = (question as { multiple_choice?: boolean | null }).multiple_choice;
+    const storedAnswer = String(question.expected_answer ?? "").trim();
+    const multipleChoice =
+      isMultipleChoice(choiceOverride, question.mark_scheme as string | null) ||
+      (choiceOverride == null && /^[A-E]$/i.test(storedAnswer));
     // Multiple-choice questions can be guessed, so they carry their own smaller cap.
     const questionAttemptLimit = attemptsAllowed({
-      multipleChoice: isMultipleChoice(
-        (question as { multiple_choice?: boolean | null }).multiple_choice,
-        question.mark_scheme as string | null,
-      ),
+      multipleChoice,
       maxAttempts: scaffolding.maxAttempts,
       maxChoiceAttempts: scaffolding.maxChoiceAttempts,
     });
@@ -2105,28 +2171,48 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     const guardSubmission = await ensureSubmission(db, data.assignmentId, userId);
     if (guardSubmission.locked_at) throw new Error(LOCKED_MESSAGE);
 
+    // Typed MCQ and opted-in final-value answers are simple comparisons. Keep
+    // photo/sketch submissions on the multimodal route so handwriting is read.
+    const expectedAnswer =
+      storedAnswer ||
+      (multipleChoice ? (extractChoiceAnswer(question.mark_scheme)?.toUpperCase() ?? "") : "");
+    const deterministicResult =
+      imagePaths.length === 0 && expectedAnswer
+        ? multipleChoice
+          ? markTypedChoice(data.answerText, expectedAnswer, question.marks)
+          : scaffolding.checkFinalNumericOnly && Boolean(question.numerical_answer)
+            ? markTypedFinalNumber(data.answerText, expectedAnswer, question.marks)
+            : null
+        : null;
+
     /* ---- academic integrity: reject copied AI / web / peer answers ---- */
     // Student answers are never compared with each other — peer comparison
     // false-flagged honest work, so only AI-text and photo checks run.
-    const [{ detectAiAnswer }, { checkHandDrawnPhotos }] = await Promise.all([
-      import("./ai-detect.server"),
-      import("./photo-authenticity.server"),
-    ]);
-    const [detection, photoCheck] = await Promise.all([
-      detectAiAnswer({
-        question: question.question_text,
-        answer: data.answerText,
-        marks: question.marks,
-      }),
-      // Work drawn on the app's own writing pad is the student's own hand — it
-      // is digital ink on a white sheet, so it never goes to the photo check.
-      checkHandDrawnPhotos(
-        await signWorkImages(
-          db,
-          imagePaths.filter((path) => !path.endsWith("working-pad.png")),
-        ),
-      ),
-    ]);
+    // Sign student work once and reuse the URLs for both authenticity and marking.
+    const imageUrls = await signWorkImages(db, imagePaths);
+    const authenticityUrls = imageUrls.filter(
+      (_, index) => !imagePaths[index]?.endsWith("working-pad.png"),
+    );
+    const [detection, photoCheck] = deterministicResult
+      ? [
+          { isAi: false, confidence: 0, reason: "" },
+          { ok: true, confidence: 0, reason: "" },
+        ]
+      : await (async () => {
+          const [{ detectAiAnswer }, { checkHandDrawnPhotos }] = await Promise.all([
+            import("./ai-detect.server"),
+            import("./photo-authenticity.server"),
+          ]);
+          return Promise.all([
+            detectAiAnswer({
+              question: question.question_text,
+              answer: data.answerText,
+              marks: question.marks,
+            }),
+            // Sketchpad ink belongs to the student and skips photo-authenticity checking.
+            checkHandDrawnPhotos(authenticityUrls),
+          ]);
+        })();
     const violation = photoCheck.ok
       ? detection.isAi
         ? detection
@@ -2163,33 +2249,39 @@ export const gradeAnswer = createServerFn({ method: "POST" })
       );
     }
 
-    const imageUrls = await signWorkImages(db, imagePaths);
-
     // Mark against the exact printed answer-key cut for this question. Recover
     // the cut when extraction never saved one, so every question is marked from
     // the picture rather than only the transcribed text.
     const { recoverAnswerCrops } = await import("./answer-crop.server");
-    const markSchemePaths = await recoverAnswerCrops({
-      id: question.id,
-      position: question.position,
-      question_text: question.question_text,
-      mark_scheme: question.mark_scheme,
-      image_paths: (question.image_paths ?? []) as string[],
-      answer_image_paths: (question.answer_image_paths ?? []) as string[],
-    });
+    const [markSchemePaths, questionImageUrls] = deterministicResult
+      ? [[], []]
+      : await Promise.all([
+          recoverAnswerCrops({
+            id: question.id,
+            position: question.position,
+            question_text: question.question_text,
+            mark_scheme: question.mark_scheme,
+            image_paths: (question.image_paths ?? []) as string[],
+            answer_image_paths: (question.answer_image_paths ?? []) as string[],
+          }),
+          signPaperPages(db, question.image_paths ?? []),
+        ]);
 
     const { markStudentAnswer } = await import("./marking.server");
-    const result = await markStudentAnswer({
-      curriculum: assignment.curriculum,
-      subject: assignment.subject,
-      question: question.question_text,
-      markScheme: question.mark_scheme,
-      marks: question.marks,
-      answer: data.answerText,
-      imageUrls,
-      questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
-      markSchemeImageUrls: await signPaperPages(db, markSchemePaths),
-    });
+    const result =
+      deterministicResult ??
+      (await markStudentAnswer({
+        curriculum: assignment.curriculum,
+        subject: assignment.subject,
+        question: question.question_text,
+        markScheme: question.mark_scheme,
+        marks: question.marks,
+        answer: data.answerText,
+        imageUrls,
+        questionImageUrls,
+        markSchemeImageUrls: await signPaperPages(db, markSchemePaths),
+        finalNumericOnly: scaffolding.checkFinalNumericOnly && Boolean(question.numerical_answer),
+      }));
 
     const submission = await ensureSubmission(db, data.assignmentId, userId);
     const { data: existing } = await db
@@ -2382,6 +2474,8 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
           answerImageUrls: await signPaperPages(db, answerPaths),
           sourcePagePath,
           answerSourcePagePath: answerSourcePagePath ?? sourcePagePath,
+          expectedAnswer: q.expectedAnswer ?? "",
+          numericalAnswer: Boolean(q.numericalAnswer),
         };
       }),
     );
@@ -2712,13 +2806,23 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
     if (!allowed) throw new Error("You don't teach this assignment.");
 
     const db = await admin();
-    const { data: question, error: qError } = await db
+    let questionResult = await db
       .from("questions")
       .select(
-        "id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position, multiple_choice",
+        "id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position, multiple_choice, expected_answer, numerical_answer",
       )
       .eq("id", data.questionId)
       .single();
+    if (isMissingDeterministicAnswerColumn(questionResult.error)) {
+      questionResult = await db
+        .from("questions")
+        .select(
+          "id, question_text, mark_scheme, marks, assignment_id, image_paths, answer_image_paths, position, multiple_choice",
+        )
+        .eq("id", data.questionId)
+        .single();
+    }
+    const { data: question, error: qError } = questionResult;
     if (qError) throw new Error(qError.message);
     if (question.assignment_id !== data.assignmentId) throw new Error("Question mismatch.");
 
@@ -2728,6 +2832,9 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       .eq("id", data.assignmentId)
       .single();
     const assignment = assignmentRow!;
+    const { tutorSettingsForAssignment: previewSettingsForAssignment } =
+      await import("./tutor-settings.server");
+    const previewScaffolding = await previewSettingsForAssignment(db, data.assignmentId, null);
     const { data: previewClass } = await db
       .from("classes")
       .select("ai_warning_limit")
@@ -2767,18 +2874,37 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       answer_image_paths: (question.answer_image_paths ?? []) as string[],
     });
 
+    const previewExpected =
+      String(question.expected_answer ?? "").trim() ||
+      extractChoiceAnswer(question.mark_scheme) ||
+      "";
+    const previewMultipleChoice =
+      isMultipleChoice(question.multiple_choice, question.mark_scheme) ||
+      (question.multiple_choice == null && /^[A-E]$/i.test(previewExpected));
+    const previewDeterministic =
+      previewImages.length === 0 && previewExpected
+        ? previewMultipleChoice
+          ? markTypedChoice(data.answerText, previewExpected, question.marks)
+          : previewScaffolding.checkFinalNumericOnly && Boolean(question.numerical_answer)
+            ? markTypedFinalNumber(data.answerText, previewExpected, question.marks)
+            : null
+        : null;
     const { markStudentAnswer } = await import("./marking.server");
-    const result = await markStudentAnswer({
-      curriculum: assignment.curriculum,
-      subject: assignment.subject,
-      question: question.question_text,
-      markScheme: question.mark_scheme,
-      marks: question.marks,
-      answer: data.answerText,
-      imageUrls: previewImages,
-      questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
-      markSchemeImageUrls: await signPaperPages(db, previewMarkSchemePaths),
-    });
+    const result =
+      previewDeterministic ??
+      (await markStudentAnswer({
+        curriculum: assignment.curriculum,
+        subject: assignment.subject,
+        question: question.question_text,
+        markScheme: question.mark_scheme,
+        marks: question.marks,
+        answer: data.answerText,
+        imageUrls: previewImages,
+        questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
+        markSchemeImageUrls: await signPaperPages(db, previewMarkSchemePaths),
+        finalNumericOnly:
+          previewScaffolding.checkFinalNumericOnly && Boolean(question.numerical_answer),
+      }));
 
     return {
       verdict: result.verdict,

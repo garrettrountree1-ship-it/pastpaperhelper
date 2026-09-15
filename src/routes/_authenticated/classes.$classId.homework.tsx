@@ -689,9 +689,6 @@ function AssignmentDialog({
               : ""),
           numericalAnswer:
             Boolean(q.numericalAnswer) || looksNumericalQuestion(q.questionText, q.markScheme),
-          multipleChoice: null,
-          expectedAnswer: q.expectedAnswer ?? "",
-          numericalAnswer: Boolean(q.numericalAnswer),
         })),
       );
       toast.success(`${result.questions.length} questions read from your files`);

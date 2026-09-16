@@ -183,8 +183,8 @@ export type Database = {
           allow_hint: boolean | null
           allow_steps: boolean | null
           archived_at: string | null
-          class_id: string
           check_final_numeric_only: boolean | null
+          class_id: string
           created_at: string
           created_by: string
           curriculum: string
@@ -210,8 +210,8 @@ export type Database = {
           allow_hint?: boolean | null
           allow_steps?: boolean | null
           archived_at?: string | null
-          class_id: string
           check_final_numeric_only?: boolean | null
+          class_id: string
           created_at?: string
           created_by: string
           curriculum?: string
@@ -237,8 +237,8 @@ export type Database = {
           allow_hint?: boolean | null
           allow_steps?: boolean | null
           archived_at?: string | null
-          class_id?: string
           check_final_numeric_only?: boolean | null
+          class_id?: string
           created_at?: string
           created_by?: string
           curriculum?: string
@@ -1223,13 +1223,13 @@ export type Database = {
           assignment_id: string
           created_at: string
           credited_all_at: string | null
+          expected_answer: string
           id: string
           image_paths: string[]
           keyword_glossary: Json
           mark_scheme: string
           marks: number
           multiple_choice: boolean | null
-          expected_answer: string
           numerical_answer: boolean
           photo_mode: string
           position: number
@@ -1244,13 +1244,13 @@ export type Database = {
           assignment_id: string
           created_at?: string
           credited_all_at?: string | null
+          expected_answer?: string
           id?: string
           image_paths?: string[]
           keyword_glossary?: Json
           mark_scheme: string
           marks?: number
           multiple_choice?: boolean | null
-          expected_answer?: string
           numerical_answer?: boolean
           photo_mode?: string
           position?: number
@@ -1265,13 +1265,13 @@ export type Database = {
           assignment_id?: string
           created_at?: string
           credited_all_at?: string | null
+          expected_answer?: string
           id?: string
           image_paths?: string[]
           keyword_glossary?: Json
           mark_scheme?: string
           marks?: number
           multiple_choice?: boolean | null
-          expected_answer?: string
           numerical_answer?: boolean
           photo_mode?: string
           position?: number

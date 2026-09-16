@@ -2233,27 +2233,42 @@ export const gradeAnswer = createServerFn({ method: "POST" })
         : null
       : { reason: photoCheck.reason, confidence: photoCheck.confidence };
     if (violation) {
-      const strikes = (guardSubmission.ai_flag_count ?? 0) + 1;
-      await db.from("integrity_flags").insert({
-        submission_id: guardSubmission.id,
-        question_id: data.questionId,
-        reason: violation.reason,
-        excerpt: data.answerText.slice(0, 600),
-        confidence: violation.confidence,
-      });
+      const excerpt =
+        data.answerText.trim().slice(0, 600) ||
+        `Attached work: ${imagePaths.join("|")}`.slice(0, 600);
+      const { data: duplicateFlag } = await db
+        .from("integrity_flags")
+        .select("id")
+        .eq("submission_id", guardSubmission.id)
+        .eq("question_id", data.questionId)
+        .eq("excerpt", excerpt)
+        .limit(1)
+        .maybeSingle();
+      const strikes = (guardSubmission.ai_flag_count ?? 0) + (duplicateFlag ? 0 : 1);
+      if (!duplicateFlag) {
+        await db.from("integrity_flags").insert({
+          submission_id: guardSubmission.id,
+          question_id: data.questionId,
+          reason: violation.reason,
+          excerpt,
+          confidence: violation.confidence,
+        });
+      }
       const locked = strikes > warningLimit;
-      await db
-        .from("submissions")
-        .update({
-          ai_flag_count: strikes,
-          ...(locked
-            ? {
-                locked_at: new Date().toISOString(),
-                locked_reason: `Answer ${strikes} was detected as AI-generated, copied or plagiarised (class limit: ${warningLimit} warning${warningLimit === 1 ? "" : "s"}).`,
-              }
-            : {}),
-        })
-        .eq("id", guardSubmission.id);
+      if (!duplicateFlag) {
+        await db
+          .from("submissions")
+          .update({
+            ai_flag_count: strikes,
+            ...(locked
+              ? {
+                  locked_at: new Date().toISOString(),
+                  locked_reason: `Answer ${strikes} was detected as AI-generated, copied or plagiarised (class limit: ${warningLimit} warning${warningLimit === 1 ? "" : "s"}).`,
+                }
+              : {}),
+          })
+          .eq("id", guardSubmission.id);
+      }
       if (locked) {
         await recalcSubmission(db, guardSubmission.id);
         throw new Error(LOCKED_MESSAGE);
@@ -2586,7 +2601,9 @@ export const sendTutorMessage = createServerFn({ method: "POST" })
       markBreakdown: Array.isArray(answer.mark_breakdown)
         ? (answer.mark_breakdown as Array<{ point: string; marks: number; awarded: boolean }>)
         : [],
-      history: (history ?? []).map((m) => ({
+      // Keep recent context verbatim. The current marks and answer above retain
+      // the important learning state without repeatedly sending an unbounded chat.
+      history: (history ?? []).slice(-10).map((m) => ({
         role: m.role === "tutor" ? ("tutor" as const) : ("student" as const),
         content: m.content,
       })),

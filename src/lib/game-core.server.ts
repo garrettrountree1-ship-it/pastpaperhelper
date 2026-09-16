@@ -4,6 +4,8 @@
  * component.
  */
 import { DAILY_TOKEN_CAP, uniqueAlias } from "./game-alias";
+import { markTypedChoice } from "./deterministic-marking";
+import { looksMultipleChoice } from "./multiple-choice";
 
 export async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -176,15 +178,20 @@ export async function gradeGameAnswer(
     .eq("id", classId)
     .single();
 
-  const result = await markStudentAnswer({
-    curriculum: klass?.curriculum ?? "IGCSE",
-    subject: klass?.subject ?? "",
-    question: question.question_text,
-    markScheme: question.mark_scheme,
-    marks: question.marks,
-    answer: answerText,
-    questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
-  });
+  const instantResult = looksMultipleChoice(question.mark_scheme)
+    ? markTypedChoice(answerText, question.mark_scheme, question.marks)
+    : null;
+  const result =
+    instantResult ??
+    (await markStudentAnswer({
+      curriculum: klass?.curriculum ?? "IGCSE",
+      subject: klass?.subject ?? "",
+      question: question.question_text,
+      markScheme: question.mark_scheme,
+      marks: question.marks,
+      answer: answerText,
+      questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
+    }));
 
   return {
     correct: result.verdict === "correct",

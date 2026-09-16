@@ -62,11 +62,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { downloadXlsx } from "@/lib/xlsx-export";
-import {
-  extractChoiceAnswer,
-  extractFinalNumber,
-  looksNumericalQuestion,
-} from "@/lib/deterministic-marking";
+import { extractChoiceAnswer, looksNumericalQuestion } from "@/lib/deterministic-marking";
 import {
   Table,
   TableBody,
@@ -1385,9 +1381,11 @@ function AssignmentDialog({
                             </SelectContent>
                           </Select>
                           <p className="text-xs text-muted-foreground">
-                            AI marking uses this question&apos;s saved mark-scheme block, not the
-                            whole answer document. Photos and sketchpad work still use AI to read
-                            the student&apos;s writing.
+                            A calculation can be checked instantly from one typed final value when
+                            final-number checking is enabled. If that setting is off, or the student
+                            includes working, a photo, or a sketch, AI marks the response against
+                            this question&apos;s saved mark-scheme block so method and partial marks
+                            can still be awarded.
                           </p>
                         </div>
                       </div>

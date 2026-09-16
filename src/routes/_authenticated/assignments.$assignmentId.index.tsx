@@ -289,6 +289,7 @@ type Question = {
   answerImageUrls?: string[];
   /** The teacher gave the whole class full marks for this question. */
   creditedAll?: boolean;
+  answerCheckMode?: "final-number" | "full-working" | null;
 
   photoMode?: PhotoMode;
 };
@@ -484,6 +485,7 @@ function QuestionCard({
             : null
         }
         creditedAll={question.creditedAll ?? false}
+        answerCheckMode={question.answerCheckMode ?? null}
         result={
           question.creditedAll
             ? {

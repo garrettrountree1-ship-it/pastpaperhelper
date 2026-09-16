@@ -5,6 +5,8 @@ import { cleanMathText } from "@/lib/math-text";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
+import { markTypedChoice } from "@/lib/deterministic-marking";
+import { looksMultipleChoice } from "@/lib/multiple-choice";
 
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -667,21 +669,30 @@ async function gradeAttempt(db: AnyDb, attemptId: string) {
     }
 
     try {
-      const result = await markStudentAnswer({
-        curriculum:
-          (quiz as { classes?: { curriculum?: string } | null })?.classes?.curriculum ?? "IGCSE",
-        subject: quiz?.subject ?? "",
-        question: question.question_text,
-        markScheme: question.mark_scheme,
-        marks: question.marks,
-        answer: answer.answer_text,
-        imageUrls: await signWorkImages(db, answer.image_paths ?? []),
-        questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
-        markSchemeImageUrls: await signPaperPages(
-          db,
-          (question as { answer_image_paths?: string[] | null }).answer_image_paths ?? [],
-        ),
-      });
+      const expectedChoice = looksMultipleChoice(question.mark_scheme)
+        ? question.mark_scheme
+        : null;
+      const instantResult =
+        expectedChoice && (answer.image_paths ?? []).length === 0
+          ? markTypedChoice(answer.answer_text, expectedChoice, question.marks)
+          : null;
+      const result =
+        instantResult ??
+        (await markStudentAnswer({
+          curriculum:
+            (quiz as { classes?: { curriculum?: string } | null })?.classes?.curriculum ?? "IGCSE",
+          subject: quiz?.subject ?? "",
+          question: question.question_text,
+          markScheme: question.mark_scheme,
+          marks: question.marks,
+          answer: answer.answer_text,
+          imageUrls: await signWorkImages(db, answer.image_paths ?? []),
+          questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
+          markSchemeImageUrls: await signPaperPages(
+            db,
+            (question as { answer_image_paths?: string[] | null }).answer_image_paths ?? [],
+          ),
+        }));
       awardedTotal += result.awardedMarks;
       await db
         .from("quiz_answers")

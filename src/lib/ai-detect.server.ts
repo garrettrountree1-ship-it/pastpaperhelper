@@ -23,12 +23,6 @@ const HARD_PATTERNS: RegExp[] = [
   /\bi am an ai\b/i,
   /\bchatgpt\b/i,
   /\bopenai\b/i,
-  /\bas requested,? here\b/i,
-  /\bhere'?s (a|the) (step-by-step|breakdown)\b/i,
-  /\bi hope this helps\b/i,
-  /\blet me know if you (need|have) (any )?(more|other|further)\b/i,
-  /\bwould you like me to\b/i,
-  /\b(sure|certainly|of course)[,!]\s+(here|i)\b/i,
 ];
 
 /**
@@ -37,6 +31,12 @@ const HARD_PATTERNS: RegExp[] = [
  * exam conditions. Each one is a signal, not a verdict.
  */
 const STYLE_PATTERNS: RegExp[] = [
+  /\bas requested,? here\b/i,
+  /\bhere'?s (a|the) (step-by-step|breakdown)\b/i,
+  /\bi hope this helps\b/i,
+  /\blet me know if you (need|have) (any )?(more|other|further)\b/i,
+  /\bwould you like me to\b/i,
+  /\b(sure|certainly|of course)[,!]\s+(here|i)\b/i,
   /\bthe (quantit(y|ies)|number|amount) of \w+ (is|are|could|can|would) \w+/i,
   /\bcould be (inferred|deduced|determined|calculated|obtained|derived)\b/i,
   /\bcan be (inferred|deduced|determined|obtained|derived)\b/i,
@@ -130,8 +130,10 @@ export async function detectAiAnswer(input: {
     };
   }
 
-  // Only substantial prose blocks are examined at all.
-  if (words < 25) return { isAi: false, confidence: 0, reason: "" };
+  // Extended-response questions naturally require more prose. Scale the gate
+  // with available marks instead of treating every answer over 25 words alike.
+  const minimumWords = Math.max(25, Math.min(80, input.marks * 10));
+  if (words < minimumWords) return { isAi: false, confidence: 0, reason: "" };
 
   const style = styleScore(answer);
   // Weak surface evidence: accept without troubling the model.
@@ -160,8 +162,7 @@ export async function detectAiAnswer(input: {
       // Both the surface markers and the model must be strongly convinced.
       isAi: parsed.isAi && confidence >= 0.85,
       confidence,
-      reason:
-        parsed.reason.trim() || "The answer does not read as the student's own writing.",
+      reason: parsed.reason.trim() || "The answer does not read as the student's own writing.",
     };
   } catch {
     // Model unavailable: never flag on surface markers alone.

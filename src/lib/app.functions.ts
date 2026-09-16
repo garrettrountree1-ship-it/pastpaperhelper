@@ -9,7 +9,7 @@ import { LOCKED_MESSAGE } from "@/lib/integrity";
 import { attemptsAllowed, isMultipleChoice } from "@/lib/multiple-choice";
 import {
   extractChoiceAnswer,
-  extractFinalNumber,
+  isFinalValueOnlyAnswer,
   looksNumericalQuestion,
   markTypedChoice,
   markTypedFinalNumber,
@@ -503,10 +503,7 @@ export const createAssignment = createServerFn({ method: "POST" })
         tag_label: q.tagLabel ?? "",
         tag_image: q.tagImage ?? "",
         multiple_choice: q.multipleChoice ?? null,
-        expected_answer:
-          q.expectedAnswer.trim() ||
-          extractChoiceAnswer(q.markScheme) ||
-          (q.numericalAnswer ? extractFinalNumber(q.markScheme) || "" : ""),
+        expected_answer: q.expectedAnswer.trim() || extractChoiceAnswer(q.markScheme) || "",
         numerical_answer: q.numericalAnswer || looksNumericalQuestion(q.questionText, q.markScheme),
       })),
     );
@@ -585,12 +582,7 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
           tagImage: q.tag_image ?? "",
           multipleChoice: ((q as { multiple_choice?: boolean | null }).multiple_choice ?? null) as
             boolean | null,
-          expectedAnswer:
-            q.expected_answer?.trim() ||
-            extractChoiceAnswer(q.mark_scheme) ||
-            (looksNumericalQuestion(q.question_text, q.mark_scheme)
-              ? extractFinalNumber(q.mark_scheme) || ""
-              : ""),
+          expectedAnswer: q.expected_answer?.trim() || extractChoiceAnswer(q.mark_scheme) || "",
           numericalAnswer:
             Boolean(q.numerical_answer) || looksNumericalQuestion(q.question_text, q.mark_scheme),
           autoMultipleChoice:
@@ -923,10 +915,7 @@ export const updateAssignment = createServerFn({ method: "POST" })
         tag_label: q.tagLabel ?? "",
         tag_image: q.tagImage ?? "",
         multiple_choice: q.multipleChoice ?? null,
-        expected_answer:
-          q.expectedAnswer.trim() ||
-          extractChoiceAnswer(q.markScheme) ||
-          (q.numericalAnswer ? extractFinalNumber(q.markScheme) || "" : ""),
+        expected_answer: q.expectedAnswer.trim() || extractChoiceAnswer(q.markScheme) || "",
         numerical_answer: q.numericalAnswer || looksNumericalQuestion(q.questionText, q.markScheme),
       };
       if (q.id && existingIds.has(q.id)) {
@@ -2196,11 +2185,16 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     const expectedAnswer =
       storedAnswer ||
       (multipleChoice ? (extractChoiceAnswer(question.mark_scheme)?.toUpperCase() ?? "") : "");
+    const finalValueOnlySubmission =
+      scaffolding.checkFinalNumericOnly &&
+      Boolean(question.numerical_answer) &&
+      imagePaths.length === 0 &&
+      isFinalValueOnlyAnswer(data.answerText);
     const deterministicResult =
       imagePaths.length === 0 && expectedAnswer
         ? multipleChoice
           ? markTypedChoice(data.answerText, expectedAnswer, question.marks)
-          : scaffolding.checkFinalNumericOnly && Boolean(question.numerical_answer)
+          : finalValueOnlySubmission
             ? markTypedFinalNumber(data.answerText, expectedAnswer, question.marks)
             : null
         : null;
@@ -2300,7 +2294,9 @@ export const gradeAnswer = createServerFn({ method: "POST" })
         imageUrls,
         questionImageUrls,
         markSchemeImageUrls: await signPaperPages(db, markSchemePaths),
-        finalNumericOnly: scaffolding.checkFinalNumericOnly && Boolean(question.numerical_answer),
+        // Typed final values use code above. Any submitted working is marked
+        // against this question's saved mark-scheme block so method marks count.
+        finalNumericOnly: false,
         expectedAnswer,
       }));
 
@@ -2902,11 +2898,16 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
     const previewMultipleChoice =
       isMultipleChoice(question.multiple_choice, question.mark_scheme) ||
       (question.multiple_choice == null && /^[A-E]$/i.test(previewExpected));
+    const previewFinalValueOnly =
+      previewScaffolding.checkFinalNumericOnly &&
+      Boolean(question.numerical_answer) &&
+      previewImages.length === 0 &&
+      isFinalValueOnlyAnswer(data.answerText);
     const previewDeterministic =
       previewImages.length === 0 && previewExpected
         ? previewMultipleChoice
           ? markTypedChoice(data.answerText, previewExpected, question.marks)
-          : previewScaffolding.checkFinalNumericOnly && Boolean(question.numerical_answer)
+          : previewFinalValueOnly
             ? markTypedFinalNumber(data.answerText, previewExpected, question.marks)
             : null
         : null;
@@ -2923,8 +2924,7 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
         imageUrls: previewImages,
         questionImageUrls: await signPaperPages(db, question.image_paths ?? []),
         markSchemeImageUrls: await signPaperPages(db, previewMarkSchemePaths),
-        finalNumericOnly:
-          previewScaffolding.checkFinalNumericOnly && Boolean(question.numerical_answer),
+        finalNumericOnly: false,
         expectedAnswer: previewExpected,
       }));
 

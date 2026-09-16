@@ -4,6 +4,7 @@ import { describe, test } from "node:test";
 import {
   extractChoiceAnswer,
   extractFinalNumber,
+  isFinalValueOnlyAnswer,
   markTypedChoice,
   markTypedFinalNumber,
 } from "./deterministic-marking.ts";
@@ -28,5 +29,14 @@ describe("deterministic answer marking", () => {
     assert.equal(markTypedFinalNumber("3.4", "3.2 to 3.5", 2)?.awardedMarks, 2);
     assert.equal(markTypedFinalNumber("3.5", "[3.2, 3.5]", 2)?.awardedMarks, 2);
     assert.equal(markTypedFinalNumber("3.6", "3.2 to 3.5", 2)?.awardedMarks, 0);
+  });
+
+  test("distinguishes a final value from calculation working", () => {
+    assert.equal(isFinalValueOnlyAnswer("3.42 mol dm⁻³"), true);
+    assert.equal(isFinalValueOnlyAnswer("answer = 3.42"), true);
+    assert.equal(isFinalValueOnlyAnswer("7 - 4 = 3"), false);
+    assert.equal(isFinalValueOnlyAnswer("2 × 5 = 10"), false);
+    assert.equal(isFinalValueOnlyAnswer("2\n5\n10"), false);
+    assert.equal(isFinalValueOnlyAnswer("I substituted into the formula and got 3.42"), false);
   });
 });

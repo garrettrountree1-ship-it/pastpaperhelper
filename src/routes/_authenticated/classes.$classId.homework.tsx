@@ -62,6 +62,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { downloadXlsx } from "@/lib/xlsx-export";
+import { extractChoiceAnswer, looksNumericalQuestion } from "@/lib/deterministic-marking";
 import {
   extractChoiceAnswer,
   extractFinalNumber,
@@ -681,12 +682,7 @@ function AssignmentDialog({
           tagLabel: "",
           tagImage: "",
           multipleChoice: extractChoiceAnswer(q.expectedAnswer || q.markScheme) ? true : null,
-          expectedAnswer:
-            q.expectedAnswer?.trim() ||
-            extractChoiceAnswer(q.markScheme) ||
-            (looksNumericalQuestion(q.questionText, q.markScheme)
-              ? extractFinalNumber(q.markScheme) || ""
-              : ""),
+          expectedAnswer: q.expectedAnswer?.trim() || extractChoiceAnswer(q.markScheme) || "",
           numericalAnswer:
             Boolean(q.numericalAnswer) || looksNumericalQuestion(q.questionText, q.markScheme),
         })),
@@ -1385,12 +1381,14 @@ function AssignmentDialog({
                                 Calculation — follow final-number setting
                               </SelectItem>
                               <SelectItem value="ai">
-                                Use AI to follow the full answer key
+                                Use AI to follow this question&apos;s mark scheme
                               </SelectItem>
                             </SelectContent>
                           </Select>
                           <p className="text-xs text-muted-foreground">
-                            Photos and sketchpad answers still use AI to read student writing.
+                            AI marking uses this question&apos;s saved mark-scheme block, not the
+                            whole answer document. Photos and sketchpad work still use AI to read
+                            the student&apos;s writing.
                           </p>
                         </div>
                       </div>

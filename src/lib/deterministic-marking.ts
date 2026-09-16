@@ -29,6 +29,27 @@ export function looksNumericalQuestion(question: string, markScheme: string): bo
   return extractFinalNumber(markScheme) !== null;
 }
 
+/** True only for a short final value, not calculation steps or several numbers. */
+export function isFinalValueOnlyAnswer(answer: string): boolean {
+  const text = answer.trim();
+  if (!text || text.includes("\n")) return false;
+  const withoutMarks = text
+    .replace(/[⁻⁺]/g, (value) => (value === "⁻" ? "-" : "+"))
+    .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g, (value) => "0123456789"["⁰¹²³⁴⁵⁶⁷⁸⁹".indexOf(value)]!)
+    // Unit powers such as dm⁻³ describe the unit, not another submitted value.
+    .replace(/([a-zA-Zµμ])\s*[-+]\d+\b/g, "$1");
+  const numbers = [...withoutMarks.matchAll(NUMBER_TOKEN)];
+  if (numbers.length !== 1) return false;
+  const match = numbers[0]!;
+  const start = match.index ?? 0;
+  const before = withoutMarks.slice(0, start).trim();
+  const after = withoutMarks.slice(start + match[0].length).trim();
+  const allowedPrefix =
+    /^(?:(?:the\s+)?(?:final\s+)?(?:answer|value)\s*(?:is|=|:)?|[a-zA-Z]{1,3}\s*=)?$/i;
+  const unitOnly = /^(?:[a-zA-Zµμ°/%][a-zA-Zµμ°/%·^\s-]*)?$/;
+  return allowedPrefix.test(before) && unitOnly.test(after);
+}
+
 function parseNumber(value: string): number | null {
   const normal = value
     .replace(/,/g, "")

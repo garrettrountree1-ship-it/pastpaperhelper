@@ -224,9 +224,14 @@ export function QuestionExperience({
           </h2>
           {answerCheckMode ? (
             <Badge variant="outline" className="mt-2">
+              {answerCheckMode === "final-number" ? (
+                <CheckCircle2 className="size-3.5" />
+              ) : (
+                <CircleDashed className="size-3.5" />
+              )}
               {answerCheckMode === "final-number"
-                ? "Final value is marked — working is optional"
-                : "Show your working — method marks are available"}
+                ? "Enter one final numerical answer — working is optional, but can earn partial credit"
+                : "Show your working — method marks and the final answer are checked"}
             </Badge>
           ) : null}
         </div>

@@ -100,11 +100,6 @@ export function markTypedFinalNumber(
   if (!expectedToken) return null;
   const official = parseNumber(expectedToken);
   if (official === null) return null;
-  const expectedToken = finalStudentNumber(expected);
-  if (!submittedToken || !expectedToken) return null;
-  const submitted = parseNumber(submittedToken);
-  const official = parseNumber(expectedToken);
-  if (submitted === null || official === null) return null;
   // A tiny floating-point allowance makes equivalent scientific notation safe
   // without accepting materially different rounded answers.
   const tolerance = Math.max(1e-12, Math.abs(official) * 1e-12);

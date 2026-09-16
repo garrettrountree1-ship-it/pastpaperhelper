@@ -1339,13 +1339,11 @@ function AssignmentDialog({
                         <div className="space-y-1">
                           <Label htmlFor={`expected-${index}`}>
                             Correct letter, final number, or accepted range
-                            Correct letter or final number
                           </Label>
                           <Input
                             id={`expected-${index}`}
                             value={question.expectedAnswer}
                             placeholder="e.g. B, 3.42, or 3.2 to 3.5"
-                            placeholder="e.g. B or 3.42 × 10⁻³"
                             onChange={(event) =>
                               update_(index, { expectedAnswer: event.target.value })
                             }
@@ -1365,9 +1363,6 @@ function AssignmentDialog({
                                 : question.numericalAnswer
                                   ? "numeric"
                                   : "ai"
-                                  : question.multipleChoice === false
-                                    ? "rubric"
-                                    : "auto"
                             }
                             onValueChange={(value) => {
                               if (value === "choice") {
@@ -1376,10 +1371,6 @@ function AssignmentDialog({
                                 update_(index, { multipleChoice: false, numericalAnswer: true });
                               } else {
                                 update_(index, { multipleChoice: false, numericalAnswer: false });
-                              } else if (value === "rubric") {
-                                update_(index, { multipleChoice: false, numericalAnswer: false });
-                              } else {
-                                update_(index, { multipleChoice: null, numericalAnswer: false });
                               }
                             }}
                           >
@@ -1387,7 +1378,6 @@ function AssignmentDialog({
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="auto">Auto-detect from answer key</SelectItem>
                               <SelectItem value="choice">
                                 Multiple choice — check typed letter instantly
                               </SelectItem>
@@ -1396,8 +1386,6 @@ function AssignmentDialog({
                               </SelectItem>
                               <SelectItem value="ai">
                                 Use AI to follow the full answer key
-                              <SelectItem value="rubric">
-                                Written/working — check full mark scheme
                               </SelectItem>
                             </SelectContent>
                           </Select>

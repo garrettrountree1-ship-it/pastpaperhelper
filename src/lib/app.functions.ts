@@ -2195,6 +2195,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     // photo/sketch submissions on the multimodal route so handwriting is read.
     const expectedAnswer =
       storedAnswer ||
+      String(question.expected_answer ?? "").trim() ||
       (multipleChoice ? (extractChoiceAnswer(question.mark_scheme)?.toUpperCase() ?? "") : "");
     const deterministicResult =
       imagePaths.length === 0 && expectedAnswer
@@ -2902,6 +2903,10 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
     const previewMultipleChoice =
       isMultipleChoice(question.multiple_choice, question.mark_scheme) ||
       (question.multiple_choice == null && /^[A-E]$/i.test(previewExpected));
+    const previewMultipleChoice = isMultipleChoice(question.multiple_choice, question.mark_scheme);
+    const previewExpected =
+      String(question.expected_answer ?? "").trim() ||
+      (previewMultipleChoice ? (extractChoiceAnswer(question.mark_scheme) ?? "") : "");
     const previewDeterministic =
       previewImages.length === 0 && previewExpected
         ? previewMultipleChoice

@@ -183,6 +183,7 @@ export type Database = {
           allow_hint: boolean | null
           allow_steps: boolean | null
           archived_at: string | null
+          check_final_numeric_only: boolean | null
           class_id: string
           check_final_numeric_only: boolean | null
           created_at: string
@@ -210,6 +211,7 @@ export type Database = {
           allow_hint?: boolean | null
           allow_steps?: boolean | null
           archived_at?: string | null
+          check_final_numeric_only?: boolean | null
           class_id: string
           check_final_numeric_only?: boolean | null
           created_at?: string
@@ -237,6 +239,7 @@ export type Database = {
           allow_hint?: boolean | null
           allow_steps?: boolean | null
           archived_at?: string | null
+          check_final_numeric_only?: boolean | null
           class_id?: string
           check_final_numeric_only?: boolean | null
           created_at?: string
@@ -1223,6 +1226,7 @@ export type Database = {
           assignment_id: string
           created_at: string
           credited_all_at: string | null
+          expected_answer: string
           id: string
           image_paths: string[]
           keyword_glossary: Json
@@ -1244,6 +1248,7 @@ export type Database = {
           assignment_id: string
           created_at?: string
           credited_all_at?: string | null
+          expected_answer?: string
           id?: string
           image_paths?: string[]
           keyword_glossary?: Json
@@ -1265,6 +1270,7 @@ export type Database = {
           assignment_id?: string
           created_at?: string
           credited_all_at?: string | null
+          expected_answer?: string
           id?: string
           image_paths?: string[]
           keyword_glossary?: Json

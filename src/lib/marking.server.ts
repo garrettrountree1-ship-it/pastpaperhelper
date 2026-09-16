@@ -45,8 +45,6 @@ type MarkInput = {
   markSchemeImageUrls?: string[];
   /** Ignore working and assess only the final numerical value (photos still require vision). */
   finalNumericOnly?: boolean;
-  /** Teacher-verified final value or inclusive range used in final-number-only mode. */
-  expectedAnswer?: string;
 };
 
 export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
@@ -87,7 +85,7 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     "Answers may include photos of handwritten maths working, graphs or diagrams; read the images and credit correct working shown there.",
     "When the answer is a photo of handwritten calculation working, mark it step by step: award each method/substitution mark that is correct even if the final answer is wrong, so partial credit is normal. If a diagram or drawing is photographed, judge the drawing itself against the mark scheme (labels, lines, shading, plotted points) rather than expecting typed words.",
     input.finalNumericOnly
-      ? "For numerical questions, ignore the method and compare the final value only. Accept equivalent scientific notation and any value inside a teacher-provided inclusive range. Follow any precision or unit requirement explicitly printed in the official answer."
+      ? "For numerical questions, ignore the method and compare the final value only. Accept equivalent scientific notation. Follow any precision or unit requirement explicitly printed in the official answer."
       : "For calculations, follow the printed rubric exactly: inspect the working step by step, award its M/A/B marks independently, and do not invent full credit for a bare final value when the rubric requires method marks.",
     "If a photo is unreadable or shows no relevant working, say so plainly without revealing the answer.",
     "Split the mark scheme into its individual marking points exactly as written (each M1/A1/B1 or bullet worth its stated marks) and return them in markPoints with marks for that point and awarded true/false. The sum of the marks of awarded points MUST equal awardedMarks.",

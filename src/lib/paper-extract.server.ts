@@ -868,6 +868,7 @@ async function runDetail(
         ...(typeof item["numericalAnswer"] === "boolean"
           ? { numericalAnswer: item["numericalAnswer"] }
           : {}),
+        numericalAnswer: item["numericalAnswer"] === true,
         marks: Math.max(1, Math.round(Number(item["marks"]) || match?.marks || 1)),
         pages,
         crops: parseCropList(item["crops"] ?? item["crop"], pages),

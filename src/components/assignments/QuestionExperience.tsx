@@ -1,5 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
-import { Camera, CheckCircle2, CircleDashed, Sparkles, X, XCircle } from "lucide-react";
+import {
+  Calculator,
+  Camera,
+  CheckCircle2,
+  ChevronDown,
+  CircleDashed,
+  Sparkles,
+  X,
+  XCircle,
+} from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
@@ -196,6 +205,9 @@ export function QuestionExperience({
   const bulletTarget = photoOnly ? 0 : bulletTargetFor(question.marks, requiresPhoto);
   const hasWrittenAnswer = stripBullets(draft).trim().length > 0;
   const outOfTries = maxAttempts > 0 && attempts >= maxAttempts;
+  const hasFullCredit =
+    creditedAll ||
+    Boolean(result && question.marks > 0 && Number(result.awardedMarks) >= question.marks);
 
   // The writing pad keeps its own picture inside the pad, so it never shows here.
   const attachedPhotos = useMemo(
@@ -212,7 +224,7 @@ export function QuestionExperience({
     if (bulletTarget > 0 && !locked && !readOnly && draft.trim().length === 0) {
       onDraftChange(normaliseBullets("", bulletTarget));
     }
-  }, [bulletTarget, locked, draft, onDraftChange]);
+  }, [bulletTarget, locked, readOnly, draft, onDraftChange]);
 
   return (
     <section className="paper p-6">
@@ -222,23 +234,26 @@ export function QuestionExperience({
             Question {questionLabel(question.question_text, index)}{" "}
             <QuestionTagBadge label={question.tagLabel} image={question.tagImage} />
           </h2>
-          {answerCheckMode ? (
-            <Badge variant="outline" className="mt-2">
-              {answerCheckMode === "final-number" ? (
-                <CheckCircle2 className="size-3.5" />
-              ) : (
-                <CircleDashed className="size-3.5" />
-              )}
-              {answerCheckMode === "final-number"
-                ? "Enter one final numerical answer — working is optional, but can earn partial credit"
-                : "Show your working — method marks and the final answer are checked"}
+          {answerCheckMode === "final-number" ? (
+            <Badge
+              variant="outline"
+              className="mt-2 border-primary/40 bg-primary/5 text-foreground"
+              title="One typed final value can be checked instantly. Add working if you want method or partial marks."
+            >
+              <Calculator className="size-3.5 text-primary" />
+              Final numerical answer only
             </Badge>
           ) : null}
         </div>
-        <Badge variant="secondary">
-          {result ? `${result.awardedMarks}/` : ""}
-          {question.marks} marks
-        </Badge>
+        <div className="flex items-center gap-2">
+          {hasFullCredit ? (
+            <CheckCircle2 className="size-6 shrink-0 text-emerald-600" aria-label="Full credit" />
+          ) : null}
+          <Badge variant="secondary">
+            {result ? `${result.awardedMarks}/` : ""}
+            {question.marks} marks
+          </Badge>
+        </div>
       </div>
 
       <div className="mt-3 flex gap-3">
@@ -307,315 +322,339 @@ export function QuestionExperience({
             </div>
           ) : null}
 
-          {markSchemeImageUrls.length > 0 ? (
-            <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
-              <p className="text-sm font-medium">Mark scheme</p>
-              {/* Answers are only ever shown as the picture cut from the printed
-              mark scheme — never as retyped text. */}
-              <QuestionSnipStack
-                urls={markSchemeImageUrls}
-                answers
-                alt="Official answer as printed in the mark scheme"
-                className="mt-2"
-              />
-              {answerAction ? (
-                <div className="mt-3 flex flex-wrap gap-2">{answerAction}</div>
-              ) : null}
-            </div>
-          ) : null}
-
-          <div className="mt-4 space-y-3">
-            {readOnly ? null : (
-              <p className="text-xs text-muted-foreground">
-                Answer whichever way suits you: type it below, upload or take a photo of your paper,
-                or write it on the pad.{" "}
-                {requiresPhoto
-                  ? "For this one, working on paper usually earns the most method marks."
+          <details className="group mt-4 rounded-xl border border-border bg-background/40">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+              <span className="flex min-w-0 items-center gap-2 font-medium">
+                <ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" />
+                {readOnly ? "Student answer and feedback" : "Your answer and feedback"}
+              </span>
+              <span className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+                {hasWrittenAnswer ? "Typed" : null}
+                {submittedPhotoUrls.length > 0 || attachedPhotos.length > 0
+                  ? `${submittedPhotoUrls.length + attachedPhotos.length} image${submittedPhotoUrls.length + attachedPhotos.length === 1 ? "" : "s"}`
                   : null}
-              </p>
-            )}
-
-            <details className="rounded-lg border border-dashed border-border p-3">
-              <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">
-                {readOnly ? "Typed answer" : "Type your answer"}
-              </summary>
-              <div className="mt-2 space-y-3">
-                <Textarea
-                  value={draft}
-                  onChange={(event) => {
-                    if (readOnly) return;
-                    if (answerGuard.flagged) answerGuard.clearFlag();
-                    onDraftChange(
-                      bulletTarget > 0
-                        ? normaliseBullets(event.target.value, bulletTarget)
-                        : event.target.value,
-                    );
-                  }}
-                  {...(readOnly ? {} : answerGuard.guardProps)}
-                  readOnly={readOnly}
-                  disabled={locked && !readOnly}
-                  placeholder={
-                    readOnly
-                      ? "This student hasn't typed an answer here yet."
-                      : requiresPhoto
-                        ? "Type your answer or describe your working (a photo or pad sketch can be added below)"
-                        : "Write your answer in English"
-                  }
-                  rows={Math.max(4, bulletTarget + 1)}
-                />
-                {bulletTarget > 0 && !readOnly ? (
-                  <p className="text-xs text-muted-foreground">
-                    {bulletTarget} marks means {bulletTarget} separate points — write one point on
-                    each bullet. The bullets stay put; add extra lines if you need them.
-                  </p>
+                {result ? (
+                  <Badge variant={hasFullCredit ? "default" : "secondary"}>
+                    {result.awardedMarks}/{question.marks}
+                  </Badge>
                 ) : null}
-
-                {answerGuard.flagged ? (
-                  <p className="text-sm text-destructive">{NO_PASTE_MESSAGE}</p>
-                ) : null}
-
-                {draft && !isEnglishOnly(draft) ? (
-                  <p className="text-sm text-destructive">{ENGLISH_ONLY_MESSAGE}</p>
-                ) : null}
-              </div>
-            </details>
-
-            {/* Photo and pad sections stay folded away until they're needed. */}
-            <details
-              open={attachedPhotos.length > 0 || submittedPhotoUrls.length > 0 || requiresPhoto}
-              className="rounded-lg border border-dashed border-border p-3"
-            >
-              <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">
-                <Camera className="size-4" />
-                {readOnly ? "Photos and working handed in" : "Photo of your working or diagram"}
-                {requiresPhoto && !readOnly ? (
-                  <Badge variant="secondary">recommended here</Badge>
-                ) : null}
-              </summary>
-              {readOnly ? (
-                submittedPhotoUrls.length === 0 ? (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    No photos or drawings handed in for this question yet.
-                  </p>
-                ) : null
-              ) : (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Photograph your own hand-written or hand-drawn work, or take one with your device
-                  camera. Diagrams or images copied from websites, textbooks, screenshots or apps
-                  are rejected as plagiarism. This is optional if you typed your answer.
-                </p>
-              )}
-              {readOnly ? null : (
-                <Input
-                  id={`photo-${question.id}`}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="mt-2"
-                  disabled={locked}
-                  onChange={(event) => onPhotosChange(event.target.files)}
-                />
-              )}
-              {onAddDrawing && !readOnly ? (
-                <div className="mt-2">
-                  <CameraCapture disabled={locked} onCapture={onAddDrawing} />
+              </span>
+            </summary>
+            <div className="border-t border-border px-4 pb-4">
+              {markSchemeImageUrls.length > 0 ? (
+                <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
+                  <p className="text-sm font-medium">Mark scheme</p>
+                  {/* Answers are only ever shown as the picture cut from the printed
+              mark scheme — never as retyped text. */}
+                  <QuestionSnipStack
+                    urls={markSchemeImageUrls}
+                    answers
+                    alt="Official answer as printed in the mark scheme"
+                    className="mt-2"
+                  />
+                  {answerAction ? (
+                    <div className="mt-3 flex flex-wrap gap-2">{answerAction}</div>
+                  ) : null}
                 </div>
               ) : null}
-              {attachedPhotos.length > 0 ? (
-                <>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {attachedPhotos.length} photo{attachedPhotos.length === 1 ? "" : "s"} ready —
-                    they&apos;ll be marked with your answer.
+
+              <div className="mt-4 space-y-3">
+                {readOnly ? null : (
+                  <p className="text-xs text-muted-foreground">
+                    Answer whichever way suits you: type it below, upload or take a photo of your
+                    paper, or write it on the pad.{" "}
+                    {requiresPhoto
+                      ? "For this one, working on paper usually earns the most method marks."
+                      : null}
                   </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {attachedPhotos.map((item) => (
-                      <div key={item.key} className="relative">
-                        <img
-                          src={item.url}
-                          alt={item.name}
-                          loading="lazy"
+                )}
+
+                <details className="rounded-lg border border-dashed border-border p-3">
+                  <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                    {readOnly ? "Typed answer" : "Type your answer"}
+                  </summary>
+                  <div className="mt-2 space-y-3">
+                    <Textarea
+                      value={draft}
+                      onChange={(event) => {
+                        if (readOnly) return;
+                        if (answerGuard.flagged) answerGuard.clearFlag();
+                        onDraftChange(
+                          bulletTarget > 0
+                            ? normaliseBullets(event.target.value, bulletTarget)
+                            : event.target.value,
+                        );
+                      }}
+                      {...(readOnly ? {} : answerGuard.guardProps)}
+                      readOnly={readOnly}
+                      disabled={locked && !readOnly}
+                      placeholder={
+                        readOnly
+                          ? "This student hasn't typed an answer here yet."
+                          : requiresPhoto
+                            ? "Type your answer or describe your working (a photo or pad sketch can be added below)"
+                            : "Write your answer in English"
+                      }
+                      rows={Math.max(4, bulletTarget + 1)}
+                    />
+                    {bulletTarget > 0 && !readOnly ? (
+                      <p className="text-xs text-muted-foreground">
+                        {bulletTarget} marks means {bulletTarget} separate points — write one point
+                        on each bullet. The bullets stay put; add extra lines if you need them.
+                      </p>
+                    ) : null}
+
+                    {answerGuard.flagged ? (
+                      <p className="text-sm text-destructive">{NO_PASTE_MESSAGE}</p>
+                    ) : null}
+
+                    {draft && !isEnglishOnly(draft) ? (
+                      <p className="text-sm text-destructive">{ENGLISH_ONLY_MESSAGE}</p>
+                    ) : null}
+                  </div>
+                </details>
+
+                {/* Photo and pad sections stay folded away until they're needed. */}
+                <details className="rounded-lg border border-dashed border-border p-3">
+                  <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                    <Camera className="size-4" />
+                    {readOnly ? "Photos and working handed in" : "Photo of your working or diagram"}
+                    {requiresPhoto && !readOnly ? (
+                      <Badge variant="secondary">recommended here</Badge>
+                    ) : null}
+                  </summary>
+                  {readOnly ? (
+                    submittedPhotoUrls.length === 0 ? (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        No photos or drawings handed in for this question yet.
+                      </p>
+                    ) : null
+                  ) : (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Photograph your own hand-written or hand-drawn work, or take one with your
+                      device camera. Diagrams or images copied from websites, textbooks, screenshots
+                      or apps are rejected as plagiarism. This is optional if you typed your answer.
+                    </p>
+                  )}
+                  {readOnly ? null : (
+                    <Input
+                      id={`photo-${question.id}`}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="mt-2"
+                      disabled={locked}
+                      onChange={(event) => onPhotosChange(event.target.files)}
+                    />
+                  )}
+                  {onAddDrawing && !readOnly ? (
+                    <div className="mt-2">
+                      <CameraCapture disabled={locked} onCapture={onAddDrawing} />
+                    </div>
+                  ) : null}
+                  {attachedPhotos.length > 0 ? (
+                    <>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {attachedPhotos.length} photo{attachedPhotos.length === 1 ? "" : "s"} ready
+                        — they&apos;ll be marked with your answer.
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {attachedPhotos.map((item) => (
+                          <div key={item.key} className="relative">
+                            <img
+                              src={item.url}
+                              alt={item.name}
+                              loading="lazy"
+                              className="size-20 rounded-lg border border-border object-cover"
+                            />
+                            {onRemovePhoto && !locked ? (
+                              <button
+                                type="button"
+                                aria-label={`Remove ${item.name}`}
+                                title="Remove this photo"
+                                onClick={() => onRemovePhoto(item.name)}
+                                className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm hover:text-destructive"
+                              >
+                                <X className="size-3.5" />
+                              </button>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
+                  {submittedPhotoUrls.length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {submittedPhotoUrls.map((url, photoIndex) => (
+                        <StudentWorkPhoto
+                          key={`${photoIndex}-${url.slice(-12)}`}
+                          url={url}
+                          alt="Uploaded working"
                           className="size-20 rounded-lg border border-border object-cover"
                         />
-                        {onRemovePhoto && !locked ? (
-                          <button
-                            type="button"
-                            aria-label={`Remove ${item.name}`}
-                            title="Remove this photo"
-                            onClick={() => onRemovePhoto(item.name)}
-                            className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm hover:text-destructive"
-                          >
-                            <X className="size-3.5" />
-                          </button>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : null}
-              {submittedPhotoUrls.length > 0 ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {submittedPhotoUrls.map((url, photoIndex) => (
-                    <StudentWorkPhoto
-                      key={`${photoIndex}-${url.slice(-12)}`}
-                      url={url}
-                      alt="Uploaded working"
-                      className="size-20 rounded-lg border border-border object-cover"
-                    />
-                  ))}
-                </div>
-              ) : null}
-              {requiresPhoto && !readOnly && answerCheckMode !== "final-number" ? (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Show your full drawing or working — marks are given for the method as well as the
-                  final answer.
-                </p>
-              ) : null}
-            </details>
+                      ))}
+                    </div>
+                  ) : null}
+                  {requiresPhoto && !readOnly && answerCheckMode !== "final-number" ? (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Show your full drawing or working — marks are given for the method as well as
+                      the final answer.
+                    </p>
+                  ) : null}
+                </details>
 
-            {onAddDrawing && !readOnly ? (
-              <details className="rounded-lg border border-dashed border-border p-3">
-                <summary className="cursor-pointer text-sm font-medium">
-                  Draw your answer on the pad
-                </summary>
-                <div className="mt-3">
-                  <DrawingPad disabled={locked} backgroundUrls={snipUrls} onAttach={onAddDrawing} />
-                </div>
-              </details>
-            ) : null}
+                {onAddDrawing && !readOnly ? (
+                  <details className="rounded-lg border border-dashed border-border p-3">
+                    <summary className="cursor-pointer text-sm font-medium">
+                      Draw your answer on the pad
+                    </summary>
+                    <div className="mt-3">
+                      <DrawingPad
+                        disabled={locked}
+                        backgroundUrls={snipUrls}
+                        onAttach={onAddDrawing}
+                      />
+                    </div>
+                  </details>
+                ) : null}
 
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs text-muted-foreground">
-                {maxAttempts > 0
-                  ? `${attempts} of ${maxAttempts} ${maxAttempts === 1 ? "try" : "tries"} used`
-                  : attempts > 0
-                    ? `${attempts} attempt${attempts === 1 ? "" : "s"}`
-                    : ""}
-              </span>
-              {readOnly ? null : (
-                <Button
-                  onClick={onCheck}
-                  disabled={
-                    locked ||
-                    creditedAll ||
-                    outOfTries ||
-                    checking ||
-                    (!hasWrittenAnswer && photoCount === 0) ||
-                    !isEnglishOnly(draft)
-                  }
-                >
-                  {creditedAll
-                    ? "Full marks given"
-                    : locked
-                      ? "Locked"
-                      : outOfTries
-                        ? "No tries left"
-                        : checking
-                          ? "Marking..."
-                          : result
-                            ? "Re-check answer"
-                            : "Check answer"}
-                </Button>
-              )}
-            </div>
-            {checkError ? <p className="text-sm text-destructive">{checkError}</p> : null}
-          </div>
-
-          {result ? (
-            <div className="mt-5 rounded-lg border border-border bg-secondary/40 p-4">
-              <div className="flex items-center gap-2">
-                {verdict === "correct" ? (
-                  <CheckCircle2 className="size-5 text-primary" />
-                ) : verdict === "partial" ? (
-                  <CircleDashed className="size-5 text-accent-foreground" />
-                ) : (
-                  <XCircle className="size-5 text-destructive" />
-                )}
-                <span className="font-display text-lg">
-                  {verdict === "partial"
-                    ? "Partly right"
-                    : verdict === "correct"
-                      ? "Correct"
-                      : "Not yet"}
-                </span>
-              </div>
-              {result.feedback ? (
-                <TutorText className="mt-2 space-y-1 text-sm" text={result.feedback} />
-              ) : null}
-              {verdict !== "correct" && !readOnly ? (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Edit your answer above and press “Re-check answer” to try again.
-                </p>
-              ) : null}
-
-              {thread.length > 0 ? (
-                <div className="mt-4 space-y-3">
-                  {thread.map((message, messageIndex) => (
-                    <div
-                      key={message.id ?? `${message.role}-${messageIndex}`}
-                      className={
-                        message.role === "tutor"
-                          ? "rounded-lg bg-background p-3 text-sm"
-                          : "rounded-lg bg-primary/10 p-3 text-sm"
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs text-muted-foreground">
+                    {maxAttempts > 0
+                      ? `${attempts} of ${maxAttempts} ${maxAttempts === 1 ? "try" : "tries"} used`
+                      : attempts > 0
+                        ? `${attempts} attempt${attempts === 1 ? "" : "s"}`
+                        : ""}
+                  </span>
+                  {readOnly ? null : (
+                    <Button
+                      onClick={onCheck}
+                      disabled={
+                        locked ||
+                        creditedAll ||
+                        outOfTries ||
+                        checking ||
+                        (!hasWrittenAnswer && photoCount === 0) ||
+                        !isEnglishOnly(draft)
                       }
                     >
-                      <p className="mb-1 flex items-center gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-                        {message.role === "tutor" ? <Sparkles className="size-3" /> : null}
-                        {message.role === "tutor" ? "Tutor" : "You"}
-                      </p>
-                      {message.role === "tutor" ? (
-                        <p className="whitespace-pre-wrap">{cleanTutorText(message.content)}</p>
-                      ) : (
-                        <p className="whitespace-pre-wrap">{message.content}</p>
-                      )}
+                      {creditedAll
+                        ? "Full marks given"
+                        : locked
+                          ? "Locked"
+                          : outOfTries
+                            ? "No tries left"
+                            : checking
+                              ? "Marking..."
+                              : result
+                                ? "Re-check answer"
+                                : "Check answer"}
+                    </Button>
+                  )}
+                </div>
+                {checkError ? <p className="text-sm text-destructive">{checkError}</p> : null}
+              </div>
+
+              {result ? (
+                <div className="mt-5 rounded-lg border border-border bg-secondary/40 p-4">
+                  <div className="flex items-center gap-2">
+                    {verdict === "correct" ? (
+                      <CheckCircle2 className="size-5 text-primary" />
+                    ) : verdict === "partial" ? (
+                      <CircleDashed className="size-5 text-accent-foreground" />
+                    ) : (
+                      <XCircle className="size-5 text-destructive" />
+                    )}
+                    <span className="font-display text-lg">
+                      {verdict === "partial"
+                        ? "Partly right"
+                        : verdict === "correct"
+                          ? "Correct"
+                          : "Not yet"}
+                    </span>
+                  </div>
+                  {result.feedback ? (
+                    <TutorText className="mt-2 space-y-1 text-sm" text={result.feedback} />
+                  ) : null}
+                  {verdict !== "correct" && !readOnly ? (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Edit your answer above and press “Re-check answer” to try again.
+                    </p>
+                  ) : null}
+
+                  {thread.length > 0 ? (
+                    <div className="mt-4 space-y-3">
+                      {thread.map((message, messageIndex) => (
+                        <div
+                          key={message.id ?? `${message.role}-${messageIndex}`}
+                          className={
+                            message.role === "tutor"
+                              ? "rounded-lg bg-background p-3 text-sm"
+                              : "rounded-lg bg-primary/10 p-3 text-sm"
+                          }
+                        >
+                          <p className="mb-1 flex items-center gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+                            {message.role === "tutor" ? <Sparkles className="size-3" /> : null}
+                            {message.role === "tutor" ? "Tutor" : "You"}
+                          </p>
+                          {message.role === "tutor" ? (
+                            <p className="whitespace-pre-wrap">{cleanTutorText(message.content)}</p>
+                          ) : (
+                            <p className="whitespace-pre-wrap">{message.content}</p>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  ) : null}
+
+                  {readOnly ? null : (
+                    <div className="mt-4 space-y-2">
+                      <Label
+                        htmlFor={`ask-${question.id}`}
+                        className="text-xs uppercase tracking-wide text-muted-foreground"
+                      >
+                        Ask the AI tutor
+                      </Label>
+                      <div className="flex items-end gap-2">
+                        <Textarea
+                          id={`ask-${question.id}`}
+                          value={reply}
+                          onChange={(event) => {
+                            if (tutorGuard.flagged) tutorGuard.clearFlag();
+                            onReplyChange(event.target.value);
+                          }}
+                          {...tutorGuard.guardProps}
+                          disabled={locked}
+                          placeholder="Reply to the tutor, or ask a follow-up question — as many as you need"
+                          rows={2}
+                        />
+
+                        <Button
+                          variant="secondary"
+                          onClick={onSend}
+                          disabled={locked || !reply.trim() || tutoring || !isEnglishOnly(reply)}
+                        >
+                          {tutoring ? "Thinking..." : "Send"}
+                        </Button>
+                      </div>
+                      {tutorGuard.flagged ? (
+                        <p className="text-sm text-destructive">{NO_PASTE_MESSAGE}</p>
+                      ) : null}
+                      {reply && !isEnglishOnly(reply) ? (
+                        <p className="text-sm text-destructive">
+                          Please ask your question in English.
+                        </p>
+                      ) : null}
+                      {tutorError ? <p className="text-sm text-destructive">{tutorError}</p> : null}
+                      <p className="text-xs text-muted-foreground">
+                        The tutor never gives the answer, and your teacher can see these questions.
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : null}
-
-              {readOnly ? null : (
-                <div className="mt-4 space-y-2">
-                  <Label
-                    htmlFor={`ask-${question.id}`}
-                    className="text-xs uppercase tracking-wide text-muted-foreground"
-                  >
-                    Ask the AI tutor
-                  </Label>
-                  <div className="flex items-end gap-2">
-                    <Textarea
-                      id={`ask-${question.id}`}
-                      value={reply}
-                      onChange={(event) => {
-                        if (tutorGuard.flagged) tutorGuard.clearFlag();
-                        onReplyChange(event.target.value);
-                      }}
-                      {...tutorGuard.guardProps}
-                      disabled={locked}
-                      placeholder="Reply to the tutor, or ask a follow-up question — as many as you need"
-                      rows={2}
-                    />
-
-                    <Button
-                      variant="secondary"
-                      onClick={onSend}
-                      disabled={locked || !reply.trim() || tutoring || !isEnglishOnly(reply)}
-                    >
-                      {tutoring ? "Thinking..." : "Send"}
-                    </Button>
-                  </div>
-                  {tutorGuard.flagged ? (
-                    <p className="text-sm text-destructive">{NO_PASTE_MESSAGE}</p>
-                  ) : null}
-                  {reply && !isEnglishOnly(reply) ? (
-                    <p className="text-sm text-destructive">Please ask your question in English.</p>
-                  ) : null}
-                  {tutorError ? <p className="text-sm text-destructive">{tutorError}</p> : null}
-                  <p className="text-xs text-muted-foreground">
-                    The tutor never gives the answer, and your teacher can see these questions.
-                  </p>
-                </div>
-              )}
             </div>
-          ) : null}
+          </details>
         </div>
 
         <div className="flex flex-col items-center gap-2 pt-1">

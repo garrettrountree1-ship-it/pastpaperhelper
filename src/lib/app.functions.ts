@@ -2055,7 +2055,7 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
             (q as { multiple_choice?: boolean | null }).multiple_choice,
             (q as { mark_scheme?: string | null }).mark_scheme,
           ),
-          answerCheckMode: Boolean((q as { numerical_answer?: boolean | null }).numerical_answer)
+          answerCheckMode: (q as { numerical_answer?: boolean | null }).numerical_answer
             ? tutorSettings.checkFinalNumericOnly
               ? ("final-number" as const)
               : ("full-working" as const)
@@ -2693,13 +2693,31 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
       .eq("id", assignment.class_id)
       .maybeSingle();
     const previewClassIsIbdp = isIbdp((klass as { curriculum?: string | null } | null)?.curriculum);
-    const { data: allPreviewQuestions } = await db
+    const previewQuestionsResult = await db
       .from("questions")
       .select(
-        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image, multiple_choice",
+        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image, multiple_choice, numerical_answer",
       )
       .eq("assignment_id", data.assignmentId)
       .order("position");
+    let allPreviewQuestions = previewQuestionsResult.data;
+    if (
+      previewQuestionsResult.error &&
+      isMissingDeterministicAnswerColumn(previewQuestionsResult.error)
+    ) {
+      const legacyPreviewQuestions = await db
+        .from("questions")
+        .select(
+          "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image, multiple_choice",
+        )
+        .eq("assignment_id", data.assignmentId)
+        .order("position");
+      allPreviewQuestions =
+        legacyPreviewQuestions.data?.map((question) => ({
+          ...question,
+          numerical_answer: false,
+        })) ?? null;
+    }
 
     // Roster, so the teacher can preview the exact settings each student sees.
     const { data: memberRows } = await db
@@ -2800,6 +2818,11 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
             (q as { multiple_choice?: boolean | null }).multiple_choice,
             (q as { mark_scheme?: string | null }).mark_scheme,
           ),
+          answerCheckMode: (q as { numerical_answer?: boolean | null }).numerical_answer
+            ? tutorSettings.checkFinalNumericOnly
+              ? ("final-number" as const)
+              : ("full-working" as const)
+            : null,
         })),
       ),
     };
@@ -3731,13 +3754,31 @@ export const getStudentHomeworkView = createServerFn({ method: "POST" })
 
     const access = await studentAccess(db, data.assignmentId, data.studentId);
 
-    const { data: allQuestions } = await db
+    const studentQuestionsResult = await db
       .from("questions")
       .select(
-        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image, credited_all_at, multiple_choice",
+        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image, credited_all_at, multiple_choice, numerical_answer",
       )
       .eq("assignment_id", data.assignmentId)
       .order("position");
+    let allQuestions = studentQuestionsResult.data;
+    if (
+      studentQuestionsResult.error &&
+      isMissingDeterministicAnswerColumn(studentQuestionsResult.error)
+    ) {
+      const legacyStudentQuestions = await db
+        .from("questions")
+        .select(
+          "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image, credited_all_at, multiple_choice",
+        )
+        .eq("assignment_id", data.assignmentId)
+        .order("position");
+      allQuestions =
+        legacyStudentQuestions.data?.map((question) => ({
+          ...question,
+          numerical_answer: false,
+        })) ?? null;
+    }
 
     const { data: exemptions } = await db
       .from("question_exclusions")
@@ -3861,6 +3902,11 @@ export const getStudentHomeworkView = createServerFn({ method: "POST" })
             (q as { multiple_choice?: boolean | null }).multiple_choice,
             (q as { mark_scheme?: string | null }).mark_scheme,
           ),
+          answerCheckMode: (q as { numerical_answer?: boolean | null }).numerical_answer
+            ? tutorSettings.checkFinalNumericOnly
+              ? ("final-number" as const)
+              : ("full-working" as const)
+            : null,
           creditedAll: Boolean((q as { credited_all_at?: string | null }).credited_all_at),
         })),
       ),

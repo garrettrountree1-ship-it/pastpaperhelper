@@ -87,6 +87,7 @@ type Question = {
   image_paths?: string[];
   markScheme?: string | null;
   photoMode?: PhotoMode;
+  answerCheckMode?: "final-number" | "full-working" | null;
 };
 
 /** Each past-paper page appears once, above the questions it introduces. */
@@ -446,6 +447,7 @@ function PreviewQuestion({
         reader.readAsDataURL(file);
       }}
       result={result ?? null}
+      answerCheckMode={question.answerCheckMode ?? null}
       attempts={attempts}
       checking={check.isPending}
       checkError={check.isError ? (check.error as Error).message : undefined}
@@ -595,6 +597,7 @@ function StudentWorkView({
                   : null
               }
               creditedAll={(question as { creditedAll?: boolean }).creditedAll ?? false}
+              answerCheckMode={question.answerCheckMode ?? null}
               result={
                 (question as { creditedAll?: boolean }).creditedAll
                   ? {

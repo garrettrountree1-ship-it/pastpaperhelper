@@ -1,5 +1,6 @@
 import { unzipSync } from "fflate";
 import { cleanMathText } from "@/lib/math-text";
+import { extractChoiceAnswer, looksNumericalQuestion } from "@/lib/deterministic-marking";
 
 import { TUTOR_MODEL } from "./ai-gateway.server";
 
@@ -17,6 +18,9 @@ export type ExtractedQuestion = {
   questionText: string;
   markScheme: string;
   marks: number;
+  /** OCR-derived fast-check answer. It is always shown to the teacher for verification. */
+  expectedAnswer?: string;
+  numericalAnswer?: boolean;
   /** 1-based page numbers of the uploaded paper this part appears on. */
   pages: number[];
   /** Region(s) of the page(s) to show the student, in reading order. */
@@ -110,6 +114,7 @@ const DETAIL_SYSTEM = [
   "NEVER use LaTeX or markdown: no $ or $$ delimiters, no \\\\frac, \\\\text, \\\\times, ^{ }, _{ }, no ** bold. Write maths in plain text with real Unicode characters instead — nuclide symbols as ²³⁵₉₂U, indices as m², formulae as H₂O, and fractions as (y - b)/m, with °C, °F, ×, ÷, ≤, ≥, ≈, →, π, Δ, Ω, µ, ± typed directly.",
   "markScheme: the official marking points for that exact part, verbatim where possible, with accepted alternatives and mark allocation. The mark scheme may sit far away from the question in the upload, or immediately under it — search the whole document for it.",
   'For multiple choice, the mark scheme is the correct option letter plus a one-line reason, e.g. "C (1 mark) — ...".',
+  "expectedAnswer: for multiple choice, return only its correct option letter. For a calculation, read the marking logic and return the actual final result that answers the question, exactly as printed, including its sign, scientific notation and unit. Do NOT take the last number in the block: ignore question labels, mark totals, M1/A1/B1 codes, precision instructions and intermediate working. Otherwise return an empty string. numericalAnswer: true only when expectedAnswer is a calculation result. These fields are shown to the teacher for verification and used for fast code checking.",
   "If no mark scheme is supplied anywhere for that part, write a concise expected answer with marking points instead.",
   "marks: the integer marks for that part (default 1).",
   "Return one item per requested label, in the same order, and never skip a label.",
@@ -128,7 +133,16 @@ const DETAIL_SYSTEM = [
 
   "Symbols and units MUST be reproduced as real Unicode characters exactly as printed: \u00b0C, \u00b0F, \u00b5, \u03a9, \u00b1, \u00d7, \u00f7, \u2264, \u2265, \u2248, \u2192, \u21cc, \u221a, \u03b1\u03b2\u03b3\u03bb\u03c0\u0394\u03b8, subscripts/superscripts (H\u2082O, cm\u00b3, m s\u207b\u00b2, 10\u2076).",
   'Never write symbols as words, ASCII stand-ins or escapes: no "degrees C", "deg C", "oC", "^oC", "ohms", "micro", "+/-", "\\\\u00b0", "&deg;", "?C". Write 25 \u00b0C, 4.7 k\u03a9, 3 \u00b5A.',
-  'Reply with JSON only: {"questions":[{"extractionKey":"q001","label":"1(a)","questionText":"...","markScheme":"...","marks":2,"pages":[3,4],"crops":[{"page":3,"top":0.62,"bottom":0.97},{"page":4,"top":0.05,"bottom":0.3}],"answerCrops":[{"sheet":"answer","page":2,"top":0.31,"bottom":0.4}]}]}',
+  'Reply with JSON only: {"questions":[{"extractionKey":"q001","label":"1(a)","questionText":"...","markScheme":"...","expectedAnswer":"3.42 × 10⁻³ mol","numericalAnswer":true,"marks":2,"pages":[3,4],"crops":[{"page":3,"top":0.62,"bottom":0.97},{"page":4,"top":0.05,"bottom":0.3}],"answerCrops":[{"sheet":"answer","page":2,"top":0.31,"bottom":0.4}]}]}',
+].join(" ");
+
+const ANSWER_VALUE_AUDIT_SYSTEM = [
+  "You read only the specified official mark-scheme block for each requested question.",
+  "Use the supplied answerCrops page and top/bottom coordinates as a strict rectangle. Ignore every number outside that rectangle.",
+  "For a calculation, identify the actual final result that answers the question by following the equations and marking-point meaning inside the block. Never choose a number merely because it is last.",
+  "Never mistake a question number, part label, page number, mark allocation, M1/A1/B1 code, significant-figures instruction, intermediate substitution, or a value from an adjacent row for the answer.",
+  "For multiple choice, return only the correct option letter. For a calculation, return only the final numerical result exactly as printed, including sign, exponent, unit, or an explicitly accepted range. For other questions return an empty answer.",
+  'Reply with JSON only: {"items":[{"extractionKey":"q001","expectedAnswer":"3.42 × 10⁻³","numericalAnswer":true,"confidence":0.98}]}',
 ].join(" ");
 
 const CROP_AUDIT_SYSTEM = [
@@ -855,6 +869,10 @@ async function runDetail(
         label,
         questionText: scrubIdentifiers(normaliseSymbols(questionText)),
         markScheme: normaliseSymbols(String(item["markScheme"] ?? "").trim()),
+        expectedAnswer: normaliseSymbols(String(item["expectedAnswer"] ?? "").trim()),
+        ...(typeof item["numericalAnswer"] === "boolean"
+          ? { numericalAnswer: item["numericalAnswer"] }
+          : {}),
         marks: Math.max(1, Math.round(Number(item["marks"]) || match?.marks || 1)),
         pages,
         crops: parseCropList(item["crops"] ?? item["crop"], pages),
@@ -870,18 +888,78 @@ async function runDetail(
 
   if (details.length === 0) return details;
   try {
-    const audited = await runCropAudit(key, header, documents, details);
-    return details.map((detail) => ({
-      ...detail,
-      // An omitted audit row is not evidence that a valid first-pass crop is
-      // unsafe. Only replace a crop when the audit explicitly reports the item.
-      crops: audited.has(detail.key.toLowerCase())
-        ? (audited.get(detail.key.toLowerCase()) ?? null)
-        : detail.crops,
-    }));
+    const [audited, answers] = await Promise.all([
+      runCropAudit(key, header, documents, details).catch(() => new Map()),
+      runAnswerValueAudit(key, header, documents, details).catch(() => new Map()),
+    ]);
+    return details.map((detail) => {
+      const lookup = detail.key.toLowerCase();
+      const auditedAnswer = answers.get(lookup);
+      const calculation =
+        detail.numericalAnswer || looksNumericalQuestion(detail.questionText, detail.markScheme);
+      return {
+        ...detail,
+        // An omitted audit row is not evidence that a valid first-pass crop is
+        // unsafe. Only replace a crop when the audit explicitly reports the item.
+        crops: audited.has(lookup) ? (audited.get(lookup) ?? null) : detail.crops,
+        ...(auditedAnswer ??
+          (calculation && (detail.answerCrops?.length ?? 0) > 0
+            ? { expectedAnswer: "", numericalAnswer: true }
+            : {})),
+      };
+    });
   } catch {
     return details;
   }
+}
+
+async function runAnswerValueAudit(
+  key: string,
+  header: string,
+  documents: Array<Record<string, unknown>>,
+  details: DetailResult[],
+) {
+  const candidates = details.filter(
+    (item) =>
+      (item.answerCrops?.length ?? 0) > 0 &&
+      (item.numericalAnswer ||
+        looksNumericalQuestion(item.questionText, item.markScheme) ||
+        extractChoiceAnswer(item.expectedAnswer || item.markScheme)),
+  );
+  const results = new Map<string, { expectedAnswer: string; numericalAnswer: boolean }>();
+  if (candidates.length === 0) return results;
+  const request = candidates
+    .map((item) => {
+      const blocks = (item.answerCrops ?? [])
+        .map(
+          (crop) =>
+            `${crop.sheet === "answer" ? "ANSWER PAGE" : "PAGE"} ${crop.page}, vertical ${crop.top.toFixed(4)} to ${crop.bottom.toFixed(4)}`,
+        )
+        .join("; ");
+      return `- ${item.key}: ${item.questionText.slice(0, 220)}\n  Read ONLY: ${blocks}`;
+    })
+    .join("\n");
+  const text = await callGateway(key, ANSWER_VALUE_AUDIT_SYSTEM, [
+    { type: "text", text: `${header}\n\n${request}` },
+    ...documents,
+  ]);
+  const parsed = parseJson(text);
+  const rows = Array.isArray(parsed["items"]) ? (parsed["items"] as unknown[]) : [];
+  for (const raw of rows) {
+    const row = raw as Record<string, unknown>;
+    const itemKey = String(row["extractionKey"] ?? "")
+      .trim()
+      .toLowerCase();
+    if (!itemKey || !candidates.some((item) => item.key.toLowerCase() === itemKey)) continue;
+    const confidence = Number(row["confidence"] ?? 0);
+    const expectedAnswer = normaliseSymbols(String(row["expectedAnswer"] ?? "").trim());
+    if (confidence < 0.75 || !expectedAnswer) continue;
+    results.set(itemKey, {
+      expectedAnswer,
+      numericalAnswer: row["numericalAnswer"] === true,
+    });
+  }
+  return results;
 }
 
 async function runCropAudit(
@@ -1065,6 +1143,9 @@ function dedupe(items: Array<ExtractedQuestion | DetailResult>): ExtractedQuesti
       questionText: item.questionText,
       markScheme: item.markScheme,
       marks: item.marks,
+      expectedAnswer: item.expectedAnswer?.trim() || extractChoiceAnswer(item.markScheme) || "",
+      numericalAnswer:
+        item.numericalAnswer || looksNumericalQuestion(item.questionText, item.markScheme),
       pages: item.pages,
       crops: item.crops ?? null,
       answerCrops: item.answerCrops ?? null,

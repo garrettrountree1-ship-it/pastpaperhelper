@@ -35,6 +35,7 @@ type Row = {
   allowSteps: boolean | null;
   maxAttempts: number | null;
   maxChoiceAttempts: number | null;
+  checkFinalNumericOnly: boolean | null;
   examMode: boolean | null;
   maxPaperSubmissions: number | null;
 };
@@ -262,6 +263,23 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label>Check final numerical value only</Label>
+                  <Select
+                    value={data.klass.checkFinalNumericOnly ? "on" : "off"}
+                    onValueChange={(value) =>
+                      classMutation.mutate({ checkFinalNumericOnly: value === "on" })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="on">On — final number only</SelectItem>
+                      <SelectItem value="off">Off — check calculation steps</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label>Take it like a real paper</Label>
                   <Select
                     value={data.klass.examMode ? "on" : "off"}
@@ -289,6 +307,12 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                 </div>
               </div>
               <p className="mt-3 text-xs text-muted-foreground">
+                Final numerical value only uses fast code checking for typed calculation answers;
+                working is not marked. Photos and sketchpad answers are still read by AI. Hints, the
+                AI tutor and step-by-step help remain available. When off, the full answer-key
+                rubric and calculation working are checked.
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
                 Real paper: the student works through the whole paper and can only hand it in once
                 every question is finished. Hints and step-by-step help are switched off. Hand-ins
                 per paper applies only when this is on.
@@ -309,6 +333,8 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                       maxAttempts: assignment.maxAttempts ?? data.klass.maxAttempts,
                       maxChoiceAttempts:
                         assignment.maxChoiceAttempts ?? data.klass.maxChoiceAttempts,
+                      checkFinalNumericOnly:
+                        assignment.checkFinalNumericOnly ?? data.klass.checkFinalNumericOnly,
                       examMode: assignment.examMode ?? data.klass.examMode,
                       maxPaperSubmissions:
                         assignment.maxPaperSubmissions ?? data.klass.maxPaperSubmissions,
@@ -369,6 +395,21 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                                 assignmentMutation.mutate({
                                   assignmentId: assignment.id,
                                   maxChoiceAttempts: value,
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">
+                              Final number only
+                            </Label>
+                            <OnOffSelect
+                              value={assignment.checkFinalNumericOnly}
+                              inheritLabel={`Class default (${data.klass.checkFinalNumericOnly ? "on" : "off"})`}
+                              onChange={(value) =>
+                                assignmentMutation.mutate({
+                                  assignmentId: assignment.id,
+                                  checkFinalNumericOnly: value,
                                 })
                               }
                             />
@@ -457,6 +498,17 @@ export function ScaffoldingOptionsDialog({ classId }: { classId: string }) {
                                             assignmentId: assignment.id,
                                             studentId: student.id,
                                             maxAttempts: value,
+                                          })
+                                        }
+                                      />
+                                      <OnOffSelect
+                                        value={override?.checkFinalNumericOnly ?? null}
+                                        inheritLabel={`Final number only: same as homework (${effective.checkFinalNumericOnly ? "on" : "off"})`}
+                                        onChange={(value) =>
+                                          studentMutation.mutate({
+                                            assignmentId: assignment.id,
+                                            studentId: student.id,
+                                            checkFinalNumericOnly: value,
                                           })
                                         }
                                       />

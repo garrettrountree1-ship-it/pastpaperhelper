@@ -62,6 +62,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { downloadXlsx } from "@/lib/xlsx-export";
+import { extractChoiceAnswer, looksNumericalQuestion } from "@/lib/deterministic-marking";
 import {
   Table,
   TableBody,
@@ -149,6 +150,9 @@ type QuestionDraft = {
   tagImage: string;
   /** null lets the app work it out from the printed answer. */
   multipleChoice: boolean | null;
+  /** Teacher-verified answer used by the instant code checker. */
+  expectedAnswer: string;
+  numericalAnswer: boolean;
 };
 
 const emptyQuestion = (): QuestionDraft => ({
@@ -165,6 +169,8 @@ const emptyQuestion = (): QuestionDraft => ({
   tagLabel: "",
   tagImage: "",
   multipleChoice: null,
+  expectedAnswer: "",
+  numericalAnswer: false,
 });
 
 function PendingClassPage() {
@@ -631,6 +637,7 @@ function AssignmentDialog({
             answerImageUrls: q.answerImageUrls ?? [],
             sourcePagePath: q.sourcePagePath ?? "",
             answerSourcePagePath: q.answerSourcePagePath ?? "",
+            multipleChoice: q.multipleChoice ?? (q.autoMultipleChoice ? true : null),
           }))
         : [emptyQuestion()],
     );
@@ -669,7 +676,10 @@ function AssignmentDialog({
           answerSourcePagePath: q.answerSourcePagePath ?? "",
           tagLabel: "",
           tagImage: "",
-          multipleChoice: null,
+          multipleChoice: extractChoiceAnswer(q.expectedAnswer || q.markScheme) ? true : null,
+          expectedAnswer: q.expectedAnswer?.trim() || extractChoiceAnswer(q.markScheme) || "",
+          numericalAnswer:
+            Boolean(q.numericalAnswer) || looksNumericalQuestion(q.questionText, q.markScheme),
         })),
       );
       toast.success(`${result.questions.length} questions read from your files`);
@@ -737,6 +747,8 @@ function AssignmentDialog({
         tagLabel: q.tagLabel ?? "",
         tagImage: q.tagImage ?? "",
         multipleChoice: q.multipleChoice ?? null,
+        expectedAnswer: q.expectedAnswer.trim(),
+        numericalAnswer: q.numericalAnswer,
       }));
       if (editing) {
         return update({
@@ -1308,31 +1320,73 @@ function AssignmentDialog({
                       />
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor={`mc-${index}`}>Multiple choice</Label>
-                      <Select
-                        value={
-                          question.multipleChoice === null
-                            ? "auto"
-                            : question.multipleChoice
-                              ? "yes"
-                              : "no"
-                        }
-                        onValueChange={(value) =>
-                          update_(index, {
-                            multipleChoice: value === "auto" ? null : value === "yes",
-                          })
-                        }
-                      >
-                        <SelectTrigger id={`mc-${index}`} className="w-44">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="auto">Work it out</SelectItem>
-                          <SelectItem value="yes">Yes — fewer tries</SelectItem>
-                          <SelectItem value="no">No</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="rounded-md border border-border bg-secondary/20 p-3">
+                      <p className="font-medium">Answer checking setup</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Filled automatically from the answer-key picture. Confirm both fields before
+                        publishing so students are marked correctly.
+                      </p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <Label htmlFor={`expected-${index}`}>
+                            Correct letter, final number, or accepted range
+                          </Label>
+                          <Input
+                            id={`expected-${index}`}
+                            value={question.expectedAnswer}
+                            placeholder="e.g. B, 3.42, or 3.2 to 3.5"
+                            onChange={(event) =>
+                              update_(index, { expectedAnswer: event.target.value })
+                            }
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Correct this value if the mark-scheme picture was read incorrectly.
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor={`checking-${index}`}>
+                            How should this answer be checked?
+                          </Label>
+                          <Select
+                            value={
+                              question.multipleChoice
+                                ? "choice"
+                                : question.numericalAnswer
+                                  ? "numeric"
+                                  : "ai"
+                            }
+                            onValueChange={(value) => {
+                              if (value === "choice") {
+                                update_(index, { multipleChoice: true, numericalAnswer: false });
+                              } else if (value === "numeric") {
+                                update_(index, { multipleChoice: false, numericalAnswer: true });
+                              } else {
+                                update_(index, { multipleChoice: false, numericalAnswer: false });
+                              }
+                            }}
+                          >
+                            <SelectTrigger id={`checking-${index}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="choice">
+                                Multiple choice — check typed letter instantly
+                              </SelectItem>
+                              <SelectItem value="numeric">
+                                Calculation — follow final-number setting
+                              </SelectItem>
+                              <SelectItem value="ai">
+                                Use AI to follow this question&apos;s mark scheme
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">
+                            AI marking uses this question&apos;s saved mark-scheme block, not the
+                            whole answer document. Photos and sketchpad work still use AI to read
+                            the student&apos;s writing.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

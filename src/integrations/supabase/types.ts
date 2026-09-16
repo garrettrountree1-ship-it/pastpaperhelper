@@ -183,6 +183,7 @@ export type Database = {
           allow_hint: boolean | null
           allow_steps: boolean | null
           archived_at: string | null
+          check_final_numeric_only: boolean | null
           class_id: string
           created_at: string
           created_by: string
@@ -209,6 +210,7 @@ export type Database = {
           allow_hint?: boolean | null
           allow_steps?: boolean | null
           archived_at?: string | null
+          check_final_numeric_only?: boolean | null
           class_id: string
           created_at?: string
           created_by: string
@@ -235,6 +237,7 @@ export type Database = {
           allow_hint?: boolean | null
           allow_steps?: boolean | null
           archived_at?: string | null
+          check_final_numeric_only?: boolean | null
           class_id?: string
           created_at?: string
           created_by?: string
@@ -583,6 +586,7 @@ export type Database = {
           ai_warning_limit: number
           allow_hint: boolean
           allow_steps: boolean
+          check_final_numeric_only: boolean
           created_at: string
           curriculum: string
           exam_mode: boolean
@@ -608,6 +612,7 @@ export type Database = {
           ai_warning_limit?: number
           allow_hint?: boolean
           allow_steps?: boolean
+          check_final_numeric_only?: boolean
           created_at?: string
           curriculum?: string
           exam_mode?: boolean
@@ -633,6 +638,7 @@ export type Database = {
           ai_warning_limit?: number
           allow_hint?: boolean
           allow_steps?: boolean
+          check_final_numeric_only?: boolean
           created_at?: string
           curriculum?: string
           exam_mode?: boolean
@@ -1217,12 +1223,14 @@ export type Database = {
           assignment_id: string
           created_at: string
           credited_all_at: string | null
+          expected_answer: string
           id: string
           image_paths: string[]
           keyword_glossary: Json
           mark_scheme: string
           marks: number
           multiple_choice: boolean | null
+          numerical_answer: boolean
           photo_mode: string
           position: number
           question_text: string
@@ -1236,12 +1244,14 @@ export type Database = {
           assignment_id: string
           created_at?: string
           credited_all_at?: string | null
+          expected_answer?: string
           id?: string
           image_paths?: string[]
           keyword_glossary?: Json
           mark_scheme: string
           marks?: number
           multiple_choice?: boolean | null
+          numerical_answer?: boolean
           photo_mode?: string
           position?: number
           question_text: string
@@ -1255,12 +1265,14 @@ export type Database = {
           assignment_id?: string
           created_at?: string
           credited_all_at?: string | null
+          expected_answer?: string
           id?: string
           image_paths?: string[]
           keyword_glossary?: Json
           mark_scheme?: string
           marks?: number
           multiple_choice?: boolean | null
+          numerical_answer?: boolean
           photo_mode?: string
           position?: number
           question_text?: string
@@ -1478,6 +1490,7 @@ export type Database = {
           allow_hint: boolean | null
           allow_steps: boolean | null
           assignment_id: string
+          check_final_numeric_only: boolean | null
           created_at: string
           due_at: string | null
           exam_mode: boolean | null
@@ -1497,6 +1510,7 @@ export type Database = {
           allow_hint?: boolean | null
           allow_steps?: boolean | null
           assignment_id: string
+          check_final_numeric_only?: boolean | null
           created_at?: string
           due_at?: string | null
           exam_mode?: boolean | null
@@ -1516,6 +1530,7 @@ export type Database = {
           allow_hint?: boolean | null
           allow_steps?: boolean | null
           assignment_id?: string
+          check_final_numeric_only?: boolean | null
           created_at?: string
           due_at?: string | null
           exam_mode?: boolean | null

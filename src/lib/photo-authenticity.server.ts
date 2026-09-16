@@ -5,12 +5,14 @@ import { gatewayModel } from "./ai-gateway.server";
 
 export type PhotoCheck = { ok: boolean; reason: string; confidence: number };
 
-const schema = z.object({
+const imageResultSchema = z.object({
+  index: z.coerce.number().int().nonnegative(),
   handDrawn: z.coerce.boolean(),
   kind: z.string().default(""),
   confidence: z.coerce.number().default(0),
   reason: z.string().default(""),
 });
+const schema = z.object({ images: z.array(imageResultSchema) });
 
 /**
  * Homework photos must be photographs of the student's own hand-written or
@@ -22,36 +24,49 @@ export async function checkHandDrawnPhotos(imageUrls: string[]): Promise<PhotoCh
   if (imageUrls.length === 0) return { ok: true, reason: "", confidence: 0 };
 
   const system = [
-    "You inspect an image a school student uploaded as their homework answer.",
+    "You inspect one or more images a school student uploaded as their homework answer.",
     "Only a photograph of the student's OWN hand-written or hand-drawn work is allowed: pen or pencil on paper, in an exercise book, on graph paper, on a mini-whiteboard, or chalk/marker on a board, photographed with a phone or camera.",
     "Everything else is not allowed, including: a computer-drawn or vector diagram; a figure saved or screenshotted from a website, textbook, PDF, slide or app; clip-art; a typed or word-processed document; a printed sheet with no handwriting on it; an AI-generated image; a photo of a screen or monitor; a photo of someone else's printed answer.",
     "Tell-tale signs of a computer-generated image: perfectly uniform line weight, perfect circles and geometry, flat pure-white or transparent background with no paper texture, no shadows, no page edges, crisp anti-aliased typeset labels, browser or app chrome, watermarks, cursors, scrollbars.",
     "Tell-tale signs of genuine hand-drawn work: visible paper texture, ruled or squared lines, uneven pen strokes, smudges or eraser marks, handwriting, camera shadow or perspective, page edges, a desk or hand in frame.",
     "Judge the image itself, not whether the work is correct. A blurry or messy hand-drawn photo is still allowed.",
-    'Reply with ONLY raw JSON: {"handDrawn":boolean,"kind":"short label such as hand-drawn on paper, computer diagram, screenshot, printed page, photo of screen","confidence":0-1,"reason":"one short sentence for the student"}',
+    'Return one result for every attached image, in the same order. Reply with ONLY raw JSON: {"images":[{"index":0,"handDrawn":boolean,"kind":"short label such as hand-drawn on paper, computer diagram, screenshot, printed page, photo of screen","confidence":0-1,"reason":"one short sentence for the student"}]}',
   ].join(" ");
 
-  const asImage = (url: string) =>
-    ({ type: "image" as const, image: url.startsWith("data:") ? url : new URL(url) });
+  const asImage = (url: string) => ({
+    type: "image" as const,
+    image: url.startsWith("data:") ? url : new URL(url),
+  });
 
-  for (const url of imageUrls) {
-    try {
-      const { text } = await generateText({
-        model: gatewayModel(),
-        system,
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text" as const, text: "Is this a photo of hand-drawn or hand-written work?" },
-              asImage(url),
-            ],
-          },
-        ],
-      });
-      const start = text.indexOf("{");
-      const end = text.lastIndexOf("}");
-      const parsed = schema.parse(JSON.parse(text.slice(start >= 0 ? start : 0, end + 1)));
+  try {
+    const { text } = await generateText({
+      model: gatewayModel(),
+      system,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text" as const,
+              text: `Inspect all ${imageUrls.length} attached images. Return exactly ${imageUrls.length} indexed results.`,
+            },
+            ...imageUrls.map(asImage),
+          ],
+        },
+      ],
+    });
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    const parsed = schema.parse(JSON.parse(text.slice(start >= 0 ? start : 0, end + 1)));
+    if (parsed.images.length !== imageUrls.length) {
+      return { ok: true, reason: "", confidence: 0 };
+    }
+    const ordered = [...parsed.images].sort((a, b) => a.index - b.index);
+    if (ordered.some((item, index) => item.index !== index)) {
+      return { ok: true, reason: "", confidence: 0 };
+    }
+    for (const result of ordered) {
+      const parsed = result;
       const confidence = Math.max(0, Math.min(1, parsed.confidence));
       // Uploads must show positive evidence of hand-drawn work: an unsure
       // verdict is rejected too, so only clear handwriting/paper passes.
@@ -66,10 +81,10 @@ export async function checkHandDrawnPhotos(imageUrls: string[]): Promise<PhotoCh
             : `Only photos of your own hand-drawn or hand-written work are accepted. This upload looks like ${kind || "a computer-generated or copied image"}, not something you drew by hand.`,
         };
       }
-    } catch {
-      // Never block honest work when the check itself fails.
-      return { ok: true, reason: "", confidence: 0 };
     }
+  } catch {
+    // Never block honest work when the check itself fails.
+    return { ok: true, reason: "", confidence: 0 };
   }
 
   return { ok: true, reason: "", confidence: 0 };

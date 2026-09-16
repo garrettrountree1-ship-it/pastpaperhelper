@@ -23,4 +23,10 @@ describe("deterministic answer marking", () => {
     assert.equal(markTypedFinalNumber("0.00342", "3.42 × 10⁻³", 3)?.awardedMarks, 3);
     assert.equal(markTypedFinalNumber("0.0034", "3.42e-3", 3)?.awardedMarks, 0);
   });
+
+  test("final-number checking accepts inclusive teacher-entered ranges", () => {
+    assert.equal(markTypedFinalNumber("3.4", "3.2 to 3.5", 2)?.awardedMarks, 2);
+    assert.equal(markTypedFinalNumber("3.5", "[3.2, 3.5]", 2)?.awardedMarks, 2);
+    assert.equal(markTypedFinalNumber("3.6", "3.2 to 3.5", 2)?.awardedMarks, 0);
+  });
 });

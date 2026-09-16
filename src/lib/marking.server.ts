@@ -70,7 +70,7 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
       ? `The student also attached ${images.length} photo(s) of handwritten working or a diagram. Read them carefully — that working is part of the answer.`
       : "",
     input.finalNumericOnly
-      ? "FINAL-NUMBER-ONLY MODE: read the student's final numerical value, including from handwriting, and compare only that value with the official final value. Do not assess or award method/working marks separately. Award all available marks for a matching value and no marks otherwise."
+      ? `FINAL-NUMBER-ONLY MODE: read the student's final numerical value, including from handwriting, and compare only that value with the teacher-verified accepted answer ${JSON.stringify(input.expectedAnswer || input.markScheme)}. A range written as "minimum to maximum" is inclusive. Do not assess or award method/working marks separately. Award all available marks for a matching value and no marks otherwise.`
       : "FULL-RUBRIC MODE: assess every calculation step against the printed mark scheme. Award method and accuracy marks separately; a bare final answer earns only the marks the printed rubric allows.",
     "Respond with ONLY a JSON object (no markdown fences, no commentary) of exactly this shape:",
     `{"verdict":"correct|partial|incorrect","awardedMarks":number,"feedback":"string","explanation":"string","leadingQuestion":"string","markPoints":[{"point":"string","marks":number,"awarded":true}]}`,

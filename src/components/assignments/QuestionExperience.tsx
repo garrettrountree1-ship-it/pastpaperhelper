@@ -100,6 +100,7 @@ export function QuestionExperience({
   snipUrls = [],
   readOnly = false,
   creditedAll = false,
+  answerCheckMode = null,
 }: {
   question: {
     id: string;
@@ -167,6 +168,8 @@ export function QuestionExperience({
   readOnly?: boolean;
   /** The teacher gave the whole class full marks for this question. */
   creditedAll?: boolean;
+  /** Teacher-selected calculation marking rule, shown clearly to the student. */
+  answerCheckMode?: "final-number" | "full-working" | null;
 }) {
   const verdict = result?.verdict ?? null;
   const glossary = useQuery({
@@ -214,10 +217,19 @@ export function QuestionExperience({
   return (
     <section className="paper p-6">
       <div className="flex items-start justify-between gap-4">
-        <h2 className="font-display text-xl">
-          Question {questionLabel(question.question_text, index)}{" "}
-          <QuestionTagBadge label={question.tagLabel} image={question.tagImage} />
-        </h2>
+        <div>
+          <h2 className="font-display text-xl">
+            Question {questionLabel(question.question_text, index)}{" "}
+            <QuestionTagBadge label={question.tagLabel} image={question.tagImage} />
+          </h2>
+          {answerCheckMode ? (
+            <Badge variant="outline" className="mt-2">
+              {answerCheckMode === "final-number"
+                ? "Final value is marked — working is optional"
+                : "Show your working — method marks are available"}
+            </Badge>
+          ) : null}
+        </div>
         <Badge variant="secondary">
           {result ? `${result.awardedMarks}/` : ""}
           {question.marks} marks
@@ -447,7 +459,7 @@ export function QuestionExperience({
                   ))}
                 </div>
               ) : null}
-              {requiresPhoto && !readOnly ? (
+              {requiresPhoto && !readOnly && answerCheckMode !== "final-number" ? (
                 <p className="mt-2 text-xs text-muted-foreground">
                   Show your full drawing or working — marks are given for the method as well as the
                   final answer.

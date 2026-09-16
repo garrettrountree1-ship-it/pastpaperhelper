@@ -1912,13 +1912,28 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     const access = await studentAccess(db, data.assignmentId, userId);
 
     // Mark schemes are only sent once the teacher reveals them.
-    const { data: allQuestions } = await db
+    let workspaceQuestionResult = await db
       .from("questions")
       .select(
-        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image, credited_all_at, multiple_choice",
+        "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image, credited_all_at, multiple_choice, numerical_answer",
       )
       .eq("assignment_id", data.assignmentId)
       .order("position");
+    let allQuestions = workspaceQuestionResult.data;
+    if (isMissingDeterministicAnswerColumn(workspaceQuestionResult.error)) {
+      const legacyQuestions = await db
+        .from("questions")
+        .select(
+          "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image, credited_all_at, multiple_choice",
+        )
+        .eq("assignment_id", data.assignmentId)
+        .order("position");
+      allQuestions =
+        legacyQuestions.data?.map((question) => ({
+          ...question,
+          numerical_answer: false,
+        })) ?? null;
+    }
 
     const { data: exemptions } = await db
       .from("question_exclusions")
@@ -2051,6 +2066,11 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
             (q as { multiple_choice?: boolean | null }).multiple_choice,
             (q as { mark_scheme?: string | null }).mark_scheme,
           ),
+          answerCheckMode: Boolean((q as { numerical_answer?: boolean | null }).numerical_answer)
+            ? tutorSettings.checkFinalNumericOnly
+              ? ("final-number" as const)
+              : ("full-working" as const)
+            : null,
           creditedAll: Boolean((q as { credited_all_at?: string | null }).credited_all_at),
         })),
       ),
@@ -2174,6 +2194,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
     // Typed MCQ and opted-in final-value answers are simple comparisons. Keep
     // photo/sketch submissions on the multimodal route so handwriting is read.
     const expectedAnswer =
+      storedAnswer ||
       String(question.expected_answer ?? "").trim() ||
       (multipleChoice ? (extractChoiceAnswer(question.mark_scheme)?.toUpperCase() ?? "") : "");
     const deterministicResult =
@@ -2281,6 +2302,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
         questionImageUrls,
         markSchemeImageUrls: await signPaperPages(db, markSchemePaths),
         finalNumericOnly: scaffolding.checkFinalNumericOnly && Boolean(question.numerical_answer),
+        expectedAnswer,
       }));
 
     const submission = await ensureSubmission(db, data.assignmentId, userId);
@@ -2874,6 +2896,13 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       answer_image_paths: (question.answer_image_paths ?? []) as string[],
     });
 
+    const previewExpected =
+      String(question.expected_answer ?? "").trim() ||
+      extractChoiceAnswer(question.mark_scheme) ||
+      "";
+    const previewMultipleChoice =
+      isMultipleChoice(question.multiple_choice, question.mark_scheme) ||
+      (question.multiple_choice == null && /^[A-E]$/i.test(previewExpected));
     const previewMultipleChoice = isMultipleChoice(question.multiple_choice, question.mark_scheme);
     const previewExpected =
       String(question.expected_answer ?? "").trim() ||
@@ -2901,6 +2930,7 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
         markSchemeImageUrls: await signPaperPages(db, previewMarkSchemePaths),
         finalNumericOnly:
           previewScaffolding.checkFinalNumericOnly && Boolean(question.numerical_answer),
+        expectedAnswer: previewExpected,
       }));
 
     return {

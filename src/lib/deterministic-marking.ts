@@ -42,6 +42,21 @@ function finalStudentNumber(answer: string): string | null {
   return extractFinalNumber(answer);
 }
 
+function expectedNumberRange(expected: string): { min: number; max: number } | null {
+  const text = expected.trim();
+  const bracketed = /^\[\s*(.+?)\s*,\s*(.+?)\s*\]$/.exec(text);
+  const worded = /^(.+?)\s+(?:to|through)\s+(.+)$/i.exec(text);
+  const parts = bracketed ?? worded;
+  if (!parts) return null;
+  const first = extractFinalNumber(parts[1]);
+  const second = extractFinalNumber(parts[2]);
+  if (!first || !second) return null;
+  const a = parseNumber(first);
+  const b = parseNumber(second);
+  if (a === null || b === null) return null;
+  return { min: Math.min(a, b), max: Math.max(a, b) };
+}
+
 function deterministicResult(correct: boolean, marks: number): MarkResult {
   return {
     verdict: correct ? "correct" : "incorrect",
@@ -70,6 +85,21 @@ export function markTypedFinalNumber(
   marks: number,
 ): MarkResult | null {
   const submittedToken = finalStudentNumber(answer);
+  if (!submittedToken) return null;
+  const submitted = parseNumber(submittedToken);
+  if (submitted === null) return null;
+  const range = expectedNumberRange(expected);
+  if (range) {
+    const tolerance = Math.max(1e-12, Math.max(Math.abs(range.min), Math.abs(range.max)) * 1e-12);
+    return deterministicResult(
+      submitted >= range.min - tolerance && submitted <= range.max + tolerance,
+      marks,
+    );
+  }
+  const expectedToken = finalStudentNumber(expected);
+  if (!expectedToken) return null;
+  const official = parseNumber(expectedToken);
+  if (official === null) return null;
   const expectedToken = finalStudentNumber(expected);
   if (!submittedToken || !expectedToken) return null;
   const submitted = parseNumber(submittedToken);

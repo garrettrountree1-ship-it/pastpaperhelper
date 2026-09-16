@@ -1338,11 +1338,13 @@ function AssignmentDialog({
                       <div className="mt-3 grid gap-3 sm:grid-cols-2">
                         <div className="space-y-1">
                           <Label htmlFor={`expected-${index}`}>
+                            Correct letter, final number, or accepted range
                             Correct letter or final number
                           </Label>
                           <Input
                             id={`expected-${index}`}
                             value={question.expectedAnswer}
+                            placeholder="e.g. B, 3.42, or 3.2 to 3.5"
                             placeholder="e.g. B or 3.42 × 10⁻³"
                             onChange={(event) =>
                               update_(index, { expectedAnswer: event.target.value })
@@ -1362,6 +1364,7 @@ function AssignmentDialog({
                                 ? "choice"
                                 : question.numericalAnswer
                                   ? "numeric"
+                                  : "ai"
                                   : question.multipleChoice === false
                                     ? "rubric"
                                     : "auto"
@@ -1371,6 +1374,8 @@ function AssignmentDialog({
                                 update_(index, { multipleChoice: true, numericalAnswer: false });
                               } else if (value === "numeric") {
                                 update_(index, { multipleChoice: false, numericalAnswer: true });
+                              } else {
+                                update_(index, { multipleChoice: false, numericalAnswer: false });
                               } else if (value === "rubric") {
                                 update_(index, { multipleChoice: false, numericalAnswer: false });
                               } else {
@@ -1389,6 +1394,8 @@ function AssignmentDialog({
                               <SelectItem value="numeric">
                                 Calculation — follow final-number setting
                               </SelectItem>
+                              <SelectItem value="ai">
+                                Use AI to follow the full answer key
                               <SelectItem value="rubric">
                                 Written/working — check full mark scheme
                               </SelectItem>

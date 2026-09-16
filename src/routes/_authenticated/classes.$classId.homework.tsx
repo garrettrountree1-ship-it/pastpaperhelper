@@ -64,6 +64,11 @@ import { Switch } from "@/components/ui/switch";
 import { downloadXlsx } from "@/lib/xlsx-export";
 import { extractChoiceAnswer, looksNumericalQuestion } from "@/lib/deterministic-marking";
 import {
+  extractChoiceAnswer,
+  extractFinalNumber,
+  looksNumericalQuestion,
+} from "@/lib/deterministic-marking";
+import {
   Table,
   TableBody,
   TableCell,

@@ -8,11 +8,16 @@ async function admin() {
   return supabaseAdmin as unknown as any;
 }
 
+function isMissingFastCheckColumn(error: { message?: string } | null | undefined) {
+  return /check_final_numeric_only/i.test(error?.message ?? "");
+}
+
 export type ScaffoldOverride = {
   allowHint: boolean | null;
   allowSteps: boolean | null;
   maxAttempts: number | null;
   maxChoiceAttempts: number | null;
+  checkFinalNumericOnly: boolean | null;
   examMode: boolean | null;
   maxPaperSubmissions: number | null;
 };
@@ -22,6 +27,7 @@ const overrideInput = {
   allowSteps: z.boolean().nullable().optional(),
   maxAttempts: z.number().int().min(0).max(20).nullable().optional(),
   maxChoiceAttempts: z.number().int().min(0).max(20).nullable().optional(),
+  checkFinalNumericOnly: z.boolean().nullable().optional(),
   examMode: z.boolean().nullable().optional(),
   maxPaperSubmissions: z.number().int().min(0).max(20).nullable().optional(),
 };
@@ -39,29 +45,55 @@ export const getClassScaffolding = createServerFn({ method: "POST" })
     if (!isTeacher) throw new Error("You do not teach this class.");
 
     const db = await admin();
-    const [{ data: klass }, { data: assignments }, { data: members }] = await Promise.all([
+    let [classResult, assignmentResult, memberResult] = await Promise.all([
       db
         .from("classes")
         .select(
-          "allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions",
+          "allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, check_final_numeric_only, exam_mode, max_paper_submissions",
         )
         .eq("id", data.classId)
         .single(),
       db
         .from("assignments")
         .select(
-          "id, title, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions, archived_at",
+          "id, title, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, check_final_numeric_only, exam_mode, max_paper_submissions, archived_at",
         )
         .eq("class_id", data.classId)
         .is("archived_at", null)
         .order("created_at", { ascending: false }),
       db.from("class_members").select("student_id").eq("class_id", data.classId),
     ]);
+    // Database migrations and edge deployments are not atomic. Keep all older
+    // scaffolding controls usable while the new optional column reaches PostgREST.
+    if (isMissingFastCheckColumn(classResult.error)) {
+      [classResult, assignmentResult] = await Promise.all([
+        db
+          .from("classes")
+          .select(
+            "allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions",
+          )
+          .eq("id", data.classId)
+          .single(),
+        db
+          .from("assignments")
+          .select(
+            "id, title, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions, archived_at",
+          )
+          .eq("class_id", data.classId)
+          .is("archived_at", null)
+          .order("created_at", { ascending: false }),
+      ]);
+    }
+    if (classResult.error) throw new Error(classResult.error.message);
+    if (assignmentResult.error) throw new Error(assignmentResult.error.message);
+    const klass = classResult.data;
+    const assignments = assignmentResult.data;
+    const members = memberResult.data;
 
     const studentIds = (members ?? []).map((m: any) => m.student_id as string);
     const assignmentIds = (assignments ?? []).map((a: any) => a.id as string);
 
-    const [{ data: profiles }, { data: overrides }] = await Promise.all([
+    let [profileResult, overrideResult] = await Promise.all([
       studentIds.length
         ? db.from("profiles").select("id, full_name, email").in("id", studentIds)
         : Promise.resolve({ data: [] as any[] }),
@@ -69,11 +101,25 @@ export const getClassScaffolding = createServerFn({ method: "POST" })
         ? db
             .from("student_assignment_settings")
             .select(
-              "assignment_id, student_id, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions",
+              "assignment_id, student_id, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, check_final_numeric_only, exam_mode, max_paper_submissions",
             )
             .in("assignment_id", assignmentIds)
         : Promise.resolve({ data: [] as any[] }),
     ]);
+    if (isMissingFastCheckColumn(overrideResult.error)) {
+      overrideResult = assignmentIds.length
+        ? await db
+            .from("student_assignment_settings")
+            .select(
+              "assignment_id, student_id, allow_hint, allow_steps, max_answer_attempts, max_choice_attempts, exam_mode, max_paper_submissions",
+            )
+            .in("assignment_id", assignmentIds)
+        : { data: [] as any[], error: null };
+    }
+    if (profileResult.error) throw new Error(profileResult.error.message);
+    if (overrideResult.error) throw new Error(overrideResult.error.message);
+    const profiles = profileResult.data;
+    const overrides = overrideResult.data;
 
     const students = (profiles ?? [])
       .map((p: any) => ({
@@ -88,6 +134,7 @@ export const getClassScaffolding = createServerFn({ method: "POST" })
         allowSteps: klass?.allow_steps !== false,
         maxAttempts: Number(klass?.max_answer_attempts ?? 0) || 0,
         maxChoiceAttempts: Number(klass?.max_choice_attempts ?? 1) || 0,
+        checkFinalNumericOnly: Boolean(klass?.check_final_numeric_only),
         examMode: Boolean(klass?.exam_mode),
         maxPaperSubmissions: Number(klass?.max_paper_submissions ?? 0) || 0,
       },
@@ -99,6 +146,7 @@ export const getClassScaffolding = createServerFn({ method: "POST" })
         allowSteps: (a.allow_steps ?? null) as boolean | null,
         maxAttempts: (a.max_answer_attempts ?? null) as number | null,
         maxChoiceAttempts: (a.max_choice_attempts ?? null) as number | null,
+        checkFinalNumericOnly: (a.check_final_numeric_only ?? null) as boolean | null,
         examMode: (a.exam_mode ?? null) as boolean | null,
         maxPaperSubmissions: (a.max_paper_submissions ?? null) as number | null,
       })),
@@ -109,6 +157,7 @@ export const getClassScaffolding = createServerFn({ method: "POST" })
         allowSteps: (o.allow_steps ?? null) as boolean | null,
         maxAttempts: (o.max_answer_attempts ?? null) as number | null,
         maxChoiceAttempts: (o.max_choice_attempts ?? null) as number | null,
+        checkFinalNumericOnly: (o.check_final_numeric_only ?? null) as boolean | null,
         examMode: (o.exam_mode ?? null) as boolean | null,
         maxPaperSubmissions: (o.max_paper_submissions ?? null) as number | null,
       })),
@@ -126,6 +175,7 @@ export const setClassScaffolding = createServerFn({ method: "POST" })
         allowSteps: z.boolean().optional(),
         maxAttempts: z.number().int().min(0).max(20).optional(),
         maxChoiceAttempts: z.number().int().min(0).max(20).optional(),
+        checkFinalNumericOnly: z.boolean().optional(),
         examMode: z.boolean().optional(),
         maxPaperSubmissions: z.number().int().min(0).max(20).optional(),
       })
@@ -144,6 +194,8 @@ export const setClassScaffolding = createServerFn({ method: "POST" })
     if (data.allowSteps !== undefined) patch["allow_steps"] = data.allowSteps;
     if (data.maxAttempts !== undefined) patch["max_answer_attempts"] = data.maxAttempts;
     if (data.maxChoiceAttempts !== undefined) patch["max_choice_attempts"] = data.maxChoiceAttempts;
+    if (data.checkFinalNumericOnly !== undefined)
+      patch["check_final_numeric_only"] = data.checkFinalNumericOnly;
     if (data.examMode !== undefined) patch["exam_mode"] = data.examMode;
     if (data.maxPaperSubmissions !== undefined)
       patch["max_paper_submissions"] = data.maxPaperSubmissions;
@@ -174,6 +226,8 @@ export const setAssignmentScaffolding = createServerFn({ method: "POST" })
     if (data.allowSteps !== undefined) patch["allow_steps"] = data.allowSteps;
     if (data.maxAttempts !== undefined) patch["max_answer_attempts"] = data.maxAttempts;
     if (data.maxChoiceAttempts !== undefined) patch["max_choice_attempts"] = data.maxChoiceAttempts;
+    if (data.checkFinalNumericOnly !== undefined)
+      patch["check_final_numeric_only"] = data.checkFinalNumericOnly;
     if (data.examMode !== undefined) patch["exam_mode"] = data.examMode;
     if (data.maxPaperSubmissions !== undefined)
       patch["max_paper_submissions"] = data.maxPaperSubmissions;
@@ -215,6 +269,8 @@ export const setStudentScaffolding = createServerFn({ method: "POST" })
     if (data.allowSteps !== undefined) patch["allow_steps"] = data.allowSteps;
     if (data.maxAttempts !== undefined) patch["max_answer_attempts"] = data.maxAttempts;
     if (data.maxChoiceAttempts !== undefined) patch["max_choice_attempts"] = data.maxChoiceAttempts;
+    if (data.checkFinalNumericOnly !== undefined)
+      patch["check_final_numeric_only"] = data.checkFinalNumericOnly;
     if (data.examMode !== undefined) patch["exam_mode"] = data.examMode;
     if (data.maxPaperSubmissions !== undefined)
       patch["max_paper_submissions"] = data.maxPaperSubmissions;

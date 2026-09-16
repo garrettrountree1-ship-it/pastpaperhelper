@@ -8,13 +8,17 @@
  * for these questions are a bare option letter ("A", "1 = C", "Answer: B").
  */
 
-const CHOICE_ANSWER = /^(?:[^a-z0-9]*(?:q(?:uestion)?\s*)?\d{0,3}[^a-z0-9]*)?([a-e])[^a-z0-9]*$/i;
+import { extractChoiceAnswer } from "./deterministic-marking";
 
 /** True when the printed answer is nothing but an option letter. */
 export function looksMultipleChoice(markScheme: string | null | undefined): boolean {
   const text = (markScheme ?? "").replace(/\s+/g, " ").trim();
-  if (!text || text.length > 24) return false;
-  return CHOICE_ANSWER.test(text);
+  if (!text || text.length > 240) return false;
+  const startsWithPrintedChoice =
+    /^(?:(?:answer|option)\s*[:=]?\s*|\d{1,3}\s*[=:]\s*)?[a-e](?:\s*(?:\(\s*1\s*marks?\s*\)|[-–—:]|$))/i.test(
+      text,
+    );
+  return startsWithPrintedChoice && extractChoiceAnswer(text) !== null;
 }
 
 /** The teacher's per-question choice wins; null means "work it out". */

@@ -67,6 +67,7 @@ export function DrawingPad({
   /** Top-left of the picture when a resize starts, so the opposite corner stays put. */
   const resizeOrigin = useRef({ x: 0, y: 0 });
   const dprRef = useRef(1);
+  const bitmapSizeRef = useRef({ width: 0, height: 0 });
   // Where the student has dragged the question picture to. Only the picture
   // moves — their writing stays exactly where they put it.
   const offsetRef = useRef({ x: 0, y: 0 });
@@ -255,15 +256,36 @@ export function DrawingPad({
     if (!canvas) return;
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
+      if (rect.width <= 0 || rect.height <= 0) return;
+      // Very dense phone/tablet screens otherwise create enormous bitmaps on a
+      // long sheet. 2× remains crisp for handwriting without exhausting memory.
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const width = Math.round(rect.width * dpr);
+      const height = Math.round(rect.height * dpr);
+      if (
+        bitmapSizeRef.current.width === width &&
+        bitmapSizeRef.current.height === height &&
+        dprRef.current === dpr
+      ) {
+        return;
+      }
       dprRef.current = dpr;
-      canvas.width = Math.round(rect.width * dpr);
-      canvas.height = Math.round(rect.height * dpr);
+      bitmapSizeRef.current = { width, height };
+      canvas.width = width;
+      canvas.height = height;
       redraw();
     };
     resize();
+    const observer =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => resize());
+    observer?.observe(canvas);
     window.addEventListener("resize", resize);
-    return () => window.removeEventListener("resize", resize);
+    window.visualViewport?.addEventListener("resize", resize);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", resize);
+      window.visualViewport?.removeEventListener("resize", resize);
+    };
   }, [full, sheetHeight]);
 
   // Start the long sheet as soon as full screen opens.
@@ -571,7 +593,7 @@ export function DrawingPad({
   return (
     <div
       className={
-        "fixed inset-0 z-50 flex h-[100dvh] max-h-[100dvh] w-screen select-none flex-col overflow-hidden bg-background p-2 sm:p-3 [-webkit-touch-callout:none] [-webkit-user-select:none]"
+        "fixed inset-0 z-50 flex h-[100dvh] max-h-[100dvh] w-full max-w-full select-none flex-col overflow-hidden bg-background p-1.5 sm:p-3 [-webkit-touch-callout:none] [-webkit-user-select:none]"
       }
       onCopy={(event) => event.preventDefault()}
       onCut={(event) => event.preventDefault()}
@@ -584,13 +606,13 @@ export function DrawingPad({
           Write your working here
         </p>
       </div>
-      <p className="mt-1 hidden shrink-0 text-xs text-muted-foreground sm:block">
+      <p className="mt-1 hidden shrink-0 text-xs text-muted-foreground sm:block [@media(max-height:600px)]:hidden">
         {
           "The question is printed underneath. In Write mode every touch draws, even over the picture. Switch to Move picture to tap the picture, drag it anywhere, or pull a blue corner square to make it bigger or smaller — then switch back to Write. Scroll down for as much space as you need. Minimise & save keeps your sheet, then press Check answer."
         }
       </p>
 
-      <div className="mt-2 flex shrink-0 flex-wrap items-center gap-1.5">
+      <div className="mt-2 flex max-w-full shrink-0 flex-nowrap items-center gap-1.5 overflow-x-auto overscroll-x-contain pb-1">
         {PEN_COLORS.map((pen) => (
           <button
             key={pen.value}
@@ -600,16 +622,16 @@ export function DrawingPad({
             aria-pressed={color === pen.value}
             disabled={disabled}
             onClick={() => setColor(pen.value)}
-            className={`size-6 rounded-full border-2 transition-transform ${
+            className={`size-6 shrink-0 rounded-full border-2 transition-transform ${
               color === pen.value ? "scale-110 border-foreground" : "border-border"
             }`}
             style={{ backgroundColor: pen.value }}
           />
         ))}
         <>
-          <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+          <span className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden />
 
-          <div className="inline-flex items-center rounded-lg border border-border p-1">
+          <div className="inline-flex shrink-0 items-center rounded-lg border border-border p-1">
             <Button
               type="button"
               size="sm"
@@ -649,7 +671,7 @@ export function DrawingPad({
           >
             <ImageMinus className="size-4" />
           </Button>
-          <span className="w-12 text-center text-xs text-muted-foreground">
+          <span className="w-12 shrink-0 text-center text-xs text-muted-foreground">
             {Math.round(photoScale * 100)}%
           </span>
           <Button
@@ -673,7 +695,7 @@ export function DrawingPad({
       <div
         ref={scrollRef}
         onScroll={updateSheet}
-        className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        className="mt-1 min-h-0 w-full max-w-full flex-1 overflow-y-auto overscroll-contain sm:mt-2"
       >
         <canvas
           ref={canvasRef}
@@ -683,7 +705,7 @@ export function DrawingPad({
           onPointerLeave={end}
           onPointerCancel={end}
           style={{ height: sheetHeight ? `${sheetHeight}px` : "100%" }}
-          className={`w-full touch-none rounded-md border border-border bg-white ${
+          className={`block w-full max-w-full touch-none rounded-md border border-border bg-white ${
             hoverCorner
               ? {
                   nw: "cursor-nwse-resize",
@@ -698,8 +720,8 @@ export function DrawingPad({
         />
       </div>
 
-      <div className="mt-2 flex shrink-0 flex-wrap items-center gap-2">
-        <Button type="button" size="sm" onClick={minimise}>
+      <div className="mt-1 flex max-w-full shrink-0 flex-nowrap items-center gap-2 overflow-x-auto overscroll-x-contain pb-0.5 sm:mt-2">
+        <Button type="button" size="sm" onClick={minimise} className="shrink-0">
           <Minimize className="size-4" />
           Minimise &amp; save
         </Button>
@@ -707,6 +729,7 @@ export function DrawingPad({
           type="button"
           size="sm"
           variant="outline"
+          className="shrink-0"
           disabled={disabled || !hasInk}
           onClick={() => {
             strokesRef.current.pop();
@@ -723,6 +746,7 @@ export function DrawingPad({
           type="button"
           size="sm"
           variant="ghost"
+          className="shrink-0"
           disabled={disabled || !hasInk}
           onClick={() => {
             strokesRef.current = [];
@@ -736,7 +760,7 @@ export function DrawingPad({
           Clear
         </Button>
         {hasInk ? (
-          <span className="self-center text-xs text-muted-foreground">
+          <span className="shrink-0 self-center text-xs text-muted-foreground">
             {saved
               ? "Your working is saved on the pad — press Check answer when ready."
               : "Saving your working…"}

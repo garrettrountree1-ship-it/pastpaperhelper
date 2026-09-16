@@ -62,7 +62,6 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { downloadXlsx } from "@/lib/xlsx-export";
-import { extractChoiceAnswer, looksNumericalQuestion } from "@/lib/deterministic-marking";
 import {
   extractChoiceAnswer,
   extractFinalNumber,

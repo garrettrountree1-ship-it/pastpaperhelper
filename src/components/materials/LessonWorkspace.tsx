@@ -468,7 +468,7 @@ export function LessonWorkspace({
   useEffect(() => {
     if (
       canManage &&
-      !sections.isLoading &&
+      sections.isSuccess &&
       list.length === 0 &&
       !autoCreated.current &&
       !createMutation.isPending
@@ -477,7 +477,7 @@ export function LessonWorkspace({
       createMutation.mutate("Section 1");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canManage, sections.isLoading, list.length]);
+  }, [canManage, sections.isSuccess, list.length]);
 
   const docUrl = useQuery({
     queryKey: ["material-url", material?.id],
@@ -816,7 +816,22 @@ export function LessonWorkspace({
           />
         ) : null}
 
-        {!active ? (
+        {sections.isError ? (
+          <div className="flex flex-1 items-center justify-center p-8 text-center">
+            <div className="paper max-w-md space-y-3 p-6">
+              <p className="font-medium">The lesson workspace could not be loaded.</p>
+              <p className="text-sm text-muted-foreground">
+                {(sections.error as Error).message || "Please try again."}
+              </p>
+              <div className="flex justify-center gap-2">
+                <Button variant="outline" onClick={onBack}>
+                  Close
+                </Button>
+                <Button onClick={() => sections.refetch()}>Try again</Button>
+              </div>
+            </div>
+          </div>
+        ) : !active ? (
           <div className="flex flex-1 items-center justify-center p-8 text-center text-muted-foreground">
             {canManage ? (
               <div className="w-full max-w-5xl space-y-2">

@@ -505,9 +505,12 @@ export function useMirrorScroll(
      * zoom), so the teacher's position is copied across pixel for pixel.
      */
     exact?: boolean;
+    /** Browser-local position restored when this lesson window is reopened. */
+    storageKey?: string;
   },
 ) {
   const exact = options?.exact ?? false;
+  const storageKey = options?.storageKey ?? key;
   const { sending, receiving, publish, received } = useLessonMirror();
 
   // Document panes mount their scroller only after the file has finished
@@ -524,10 +527,49 @@ export function useMirrorScroll(
   useEffect(() => {
     if (!el) return;
     let frame = 0;
+    let restored = false;
+    let restoreTimer: ReturnType<typeof window.setInterval> | null = null;
+    try {
+      const saved = window.localStorage.getItem(`lesson-scroll:${storageKey}`);
+      if (saved) {
+        const position = JSON.parse(saved) as { top: number; left: number };
+        const startedAt = Date.now();
+        const restore = () => {
+          const target = scrollTargetOf(el);
+          target.scrollTop = position.top;
+          target.scrollLeft = position.left;
+          const canReachPosition =
+            target.scrollHeight - target.clientHeight >= position.top &&
+            target.scrollWidth - target.clientWidth >= position.left;
+          if (canReachPosition || Date.now() - startedAt > 5000) {
+            restored = true;
+            if (restoreTimer) window.clearInterval(restoreTimer);
+            restoreTimer = null;
+          }
+        };
+        restore();
+        if (!restored) restoreTimer = window.setInterval(restore, 100);
+      } else {
+        restored = true;
+      }
+    } catch {
+      // Storage can be unavailable in privacy-restricted browsers.
+      restored = true;
+    }
     const report = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         const target = scrollTargetOf(el);
+        if (restored || target.scrollTop !== 0 || target.scrollLeft !== 0) {
+          try {
+            window.localStorage.setItem(
+              `lesson-scroll:${storageKey}`,
+              JSON.stringify({ top: target.scrollTop, left: target.scrollLeft }),
+            );
+          } catch {
+            // Live mirroring continues even when browser storage is unavailable.
+          }
+        }
         publish(key, {
           top: target.scrollTop,
           left: target.scrollLeft,
@@ -546,11 +588,12 @@ export function useMirrorScroll(
     document.addEventListener("scroll", report, { capture: true, passive: true });
     return () => {
       cancelAnimationFrame(frame);
+      if (restoreTimer) window.clearInterval(restoreTimer);
       window.clearInterval(heartbeat);
       el.removeEventListener("scroll", report);
       document.removeEventListener("scroll", report, { capture: true } as never);
     };
-  }, [publish, key, el]);
+  }, [publish, key, storageKey, el]);
 
   const incoming = received[key] as
     | {

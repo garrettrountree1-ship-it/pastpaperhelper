@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Json } from "@/integrations/supabase/types";
 import { teachesClass } from "@/lib/teach-access";
 import { assertClassTeacher, assertUnitTeacher } from "@/lib/materials.server";
 import { lessonTutorReply, summariseTeacherNotes } from "@/lib/notes.server";

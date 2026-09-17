@@ -17,8 +17,10 @@ import { VocabSheet } from "@/components/assignments/VocabSheet";
 import { StudentTutorControls } from "@/components/assignments/StudentTutorControls";
 import { useActiveTime } from "@/hooks/use-active-time";
 import { useContentProtection } from "@/hooks/use-content-protection";
-import { QuestionExperience } from "@/components/assignments/QuestionExperience";
-import { StudentPaperMode } from "@/components/assignments/ContinuousPaperMode";
+import {
+  ContinuousStudentPaperMode,
+  QuestionExperience,
+} from "@/components/assignments/QuestionExperience";
 import { PAD_FILE_NAME } from "@/components/assignments/DrawingPad";
 import { parseSnipBand } from "@/components/assignments/QuestionSnip";
 import {
@@ -294,7 +296,7 @@ function AssignmentPage() {
                   protection.concealed ? "pointer-events-none blur-lg" : ""
                 }`}
               >
-                <StudentPaperMode
+                <ContinuousStudentPaperMode
                   assignmentId={assignmentId}
                   questions={data.questions.map((question) => ({
                     ...question,

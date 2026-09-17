@@ -31,13 +31,43 @@ import {
   statusLabels,
   type AssignmentStatusKey,
 } from "@/lib/assignment-status";
-import { createClass, joinClass, listStudentWork, listTeacherClasses } from "@/lib/app.functions";
+import {
+  createClass,
+  getAssignmentWorkspace,
+  joinClass,
+  listStudentWork,
+  listTeacherClasses,
+} from "@/lib/app.functions";
 import { formatDueDate } from "@/lib/datetime";
 
 /** Student homework list for one class. */
 export function StudentClassHomework({ classId }: { classId: string }) {
   const work = useQuery({ queryKey: ["student-work"], queryFn: useServerFn(listStudentWork) });
+  const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<"all" | AssignmentStatusKey>("all");
+
+  const warmHomework = (assignmentId: string) => {
+    void queryClient
+      .prefetchQuery({
+        queryKey: ["workspace", assignmentId],
+        queryFn: () => getAssignmentWorkspace({ data: { assignmentId } }),
+        staleTime: 30 * 60 * 1000,
+        gcTime: 8 * 60 * 60 * 1000,
+      })
+      .then(() => {
+        const cached = queryClient.getQueryData<{
+          questions: Array<{ imageUrls?: string[] }>;
+        }>(["workspace", assignmentId]);
+        // Start the actual picture downloads while the student is hovering or
+        // pressing the homework, not after the destination has rendered.
+        cached?.questions
+          .flatMap((question) => question.imageUrls ?? [])
+          .forEach((url) => {
+            const image = new Image();
+            image.src = url;
+          });
+      });
+  };
 
   const classAssignments = (work.data?.assignments ?? []).filter((a) => a.classId === classId);
   const classes = (work.data?.classes ?? []).filter((klass) => klass.id === classId);
@@ -79,7 +109,6 @@ export function StudentClassHomework({ classId }: { classId: string }) {
             })}
           </div>
           {classes.map((klass) => {
-
             const items = (work.data?.assignments ?? [])
               .filter((a) => a.classId === klass.id)
               .filter((a) => (statusFilter === "all" ? true : assignmentStatus(a) === statusFilter))
@@ -111,6 +140,10 @@ export function StudentClassHomework({ classId }: { classId: string }) {
                         key={assignment.id}
                         to="/assignments/$assignmentId"
                         params={{ assignmentId: assignment.id }}
+                        preload="intent"
+                        onMouseEnter={() => warmHomework(assignment.id)}
+                        onFocus={() => warmHomework(assignment.id)}
+                        onPointerDown={() => warmHomework(assignment.id)}
                         className="flex flex-wrap items-center justify-between gap-4 py-4 transition-colors hover:text-primary"
                       >
                         <div>
@@ -126,12 +159,15 @@ export function StudentClassHomework({ classId }: { classId: string }) {
                           </p>
                         </div>
                         <div className="flex items-center gap-3">
-                          {assignment.awardedMarks !== null && assignment.status !== "not_started" ? (
+                          {assignment.awardedMarks !== null &&
+                          assignment.status !== "not_started" ? (
                             <span className="font-display text-lg">
                               {assignment.awardedMarks}/{assignment.totalMarks}
                             </span>
                           ) : null}
-                          <Badge variant={assignment.status === "submitted" ? "default" : "secondary"}>
+                          <Badge
+                            variant={assignment.status === "submitted" ? "default" : "secondary"}
+                          >
                             {assignment.status === "submitted"
                               ? "Submitted"
                               : assignment.status === "in_progress"
@@ -151,4 +187,3 @@ export function StudentClassHomework({ classId }: { classId: string }) {
     </div>
   );
 }
-

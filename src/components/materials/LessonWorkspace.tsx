@@ -310,22 +310,19 @@ export function LessonWorkspace({
   }, [presenting]);
 
   // A mirrored student screen is a passive display. Capture every interaction
-  // before canvas, document, iframe or scrolling tools can react. Escape and
-  // the dedicated exit button remain available.
+  // before canvas, document, iframe or scrolling tools can react. Only a
+  // formative response sent by the teacher remains interactive.
   useEffect(() => {
     if (!mirror.receiving) return;
-    const isExit = (target: EventTarget | null) =>
-      target instanceof Element && Boolean(target.closest("[data-mirror-exit]"));
+    const isFormativeResponse = (target: EventTarget | null) =>
+      target instanceof Element && Boolean(target.closest("[data-formative-response]"));
     const blockKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") return;
-      // Typing in a quick check (or another allowed control) still works while
-      // the teacher's screen is being shared.
-      if (isExit(event.target) || isExit(document.activeElement)) return;
+      if (isFormativeResponse(event.target) || isFormativeResponse(document.activeElement)) return;
       event.preventDefault();
       event.stopImmediatePropagation();
     };
     const blockInteraction = (event: Event) => {
-      if (isExit(event.target)) return;
+      if (isFormativeResponse(event.target)) return;
       event.preventDefault();
       event.stopImmediatePropagation();
     };
@@ -399,6 +396,7 @@ export function LessonWorkspace({
   // Which lesson page and which resource the teacher is showing, plus how the
   // two windows are arranged, all travel with the mirrored screen.
   useMirrorFieldWith(mirror, "workspace.section", activeId, setActiveId);
+  useMirrorFieldWith(mirror, "workspace.unitId", unit.id, () => {});
   useMirrorFieldWith(mirror, "workspace.doc", currentDocId, setDocOverride);
   useMirrorFieldWith(mirror, "workspace.layout", layout, setLayout);
   useMirrorFieldWith(mirror, "workspace.pane", paneMode, setPaneMode);

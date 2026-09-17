@@ -34,6 +34,11 @@ import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { questionBody, questionLabel } from "@/lib/question-label";
 import { QuestionTagBadge } from "@/components/assignments/QuestionTagBadge";
 
+// Re-export through the established assignment experience module so the
+// student route does not compete with the legacy PaperMode import during
+// rolling branch merges.
+export { StudentPaperMode as ContinuousStudentPaperMode } from "@/components/assignments/ContinuousPaperMode";
+
 /** Blocks paste, drag-drop and autofill-style bulk insertion into answer inputs. */
 function useOriginalTypingGuard() {
   const [flagged, setFlagged] = useState(false);

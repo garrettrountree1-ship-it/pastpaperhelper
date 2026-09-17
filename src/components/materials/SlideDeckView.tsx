@@ -4,6 +4,7 @@ import { OfficeDocView } from "@/components/materials/OfficeDocView";
 import { PowerPointView } from "@/components/materials/PowerPointView";
 import { Button } from "@/components/ui/button";
 import { useLessonMirror, useMirrorField } from "@/lib/lesson-mirror";
+import type { DocumentWork } from "@/lib/document-work";
 
 /**
  * Slide decks can be read two ways, and teachers and students both get the
@@ -19,6 +20,8 @@ export function SlideDeckView({
   canPrepareShared = false,
   canDownload = true,
   canAnnotate = true,
+  sectionId,
+  initialWork,
 }: {
   url: string;
   title: string;
@@ -28,6 +31,8 @@ export function SlideDeckView({
   canDownload?: boolean;
   /** Only teachers draw, highlight or add text boxes on the slides. */
   canAnnotate?: boolean;
+  sectionId?: string;
+  initialWork?: DocumentWork;
 }) {
   const [mode, setMode] = useState<"original" | "scroll">("original");
   const mirror = useLessonMirror();
@@ -69,6 +74,9 @@ export function SlideDeckView({
             title={title}
             canDownload={canDownload}
             canAnnotate={canAnnotate}
+            sectionId={sectionId}
+            materialId={materialId!}
+            initialWork={initialWork}
             {...(cacheKey ? { markupKey: cacheKey } : {})}
           />
         ) : (
@@ -79,6 +87,8 @@ export function SlideDeckView({
             canDownload={canDownload}
             canPrepareShared={canPrepareShared}
             canAnnotate={canAnnotate}
+            sectionId={sectionId}
+            initialWork={initialWork}
             {...(cacheKey ? { cacheKey } : {})}
             {...(materialId ? { materialId } : {})}
           />

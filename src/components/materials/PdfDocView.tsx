@@ -17,6 +17,8 @@ import {
 } from "@/lib/doc-cache";
 import { useMirrorField, useMirrorScroll } from "@/lib/lesson-mirror";
 import { usePaneZoom } from "@/hooks/use-pane-zoom";
+import { type DocumentWork, useDocumentWorkSaver } from "@/lib/document-work";
+import type { SlideAnnotation } from "@/components/materials/SlideAnnotations";
 
 /** One selectable word/run from the PDF, in rendered page pixels. */
 type TextRun = { x: number; y: number; w: number; h: number; s: string };
@@ -38,6 +40,9 @@ export function PdfDocView({
   cacheKey,
   canDownload = true,
   canAnnotate = true,
+  sectionId,
+  materialId,
+  initialWork,
 }: {
   url: string;
   title: string;
@@ -45,6 +50,9 @@ export function PdfDocView({
   canDownload?: boolean;
   /** Only teachers draw or highlight; students get a clean viewer. */
   canAnnotate?: boolean;
+  sectionId?: string;
+  materialId?: string;
+  initialWork?: DocumentWork;
 }) {
   const [pages, setPages] = useState<string[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -53,7 +61,15 @@ export function PdfDocView({
   const token = useRef(0);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const key = cacheKey ?? title;
-  const markup = useDocMarkup(`pdf-annotations:${key}`);
+  const queueSave = useDocumentWorkSaver({
+    sectionId,
+    materialId,
+    enabled: canAnnotate && Boolean(sectionId && materialId),
+  });
+  const markup = useDocMarkup(`pdf-annotations:${key}`, {
+    initialNotes: initialWork?.["annotations"] as Record<number, SlideAnnotation> | undefined,
+    onNotesChange: (annotations) => queueSave({ annotations }),
+  });
   // Students never get the markup tools — their viewer stays in select mode.
   const effTool = canAnnotate ? markup.tool : "none";
   useMirrorField(`pdf.zoom:${key}`, zoom, setZoom);

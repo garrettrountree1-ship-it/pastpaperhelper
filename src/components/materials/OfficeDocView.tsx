@@ -38,6 +38,7 @@ import { buildOfficeRender, fetchSharedRender, saveSharedRender } from "@/lib/of
 import { type PptxDeck, type PptxShape } from "@/lib/pptx-render";
 import { pdfToSlideImages } from "@/lib/slide-images";
 import { getSlidePdfUrl, prepareSlidePdf } from "@/lib/slide-pdf.functions";
+import { type DocumentWork, useDocumentWorkSaver } from "@/lib/document-work";
 
 /** A teacher's change to one slide element: retyped text, or a moved/resized box. */
 export type ShapeEdit = { text?: string; x?: number; y?: number; w?: number; h?: number };
@@ -60,6 +61,8 @@ export function OfficeDocView({
   canPrepareShared = false,
   canDownload = true,
   canAnnotate = true,
+  sectionId,
+  initialWork,
 }: {
   url: string;
   title: string;
@@ -72,6 +75,8 @@ export function OfficeDocView({
   canDownload?: boolean;
   /** Only teachers draw, highlight, add text boxes or edit slide text. */
   canAnnotate?: boolean;
+  sectionId?: string;
+  initialWork?: DocumentWork;
 }) {
   const [zoom, setZoom] = useState(1);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
@@ -103,6 +108,11 @@ export function OfficeDocView({
   const [highlightColor, setHighlightColor] = useState(HIGHLIGHT_SWATCHES[0]!);
   const [notes, setNotes] = useState<Record<number, SlideAnnotation>>({});
   const [edits, setEdits] = useState<Record<string, ShapeEdit>>({});
+  const queueSave = useDocumentWorkSaver({
+    sectionId,
+    materialId,
+    enabled: canAnnotate && Boolean(sectionId && materialId),
+  });
   const [currentSlide, setCurrentSlide] = useState(0);
   // Marks and retyped text are always live for students; zoom and scrolling only
   // follow the teacher while mirroring is on.
@@ -134,19 +144,28 @@ export function OfficeDocView({
     let cancelled = false;
     void (async () => {
       const saved = await readCachedJson<Record<number, SlideAnnotation>>(notesKey);
-      if (!cancelled) setNotes(saved ?? {});
+      if (!cancelled)
+        setNotes(
+          (initialWork?.["annotations"] as Record<number, SlideAnnotation> | undefined) ??
+            saved ??
+            {},
+        );
       const savedEdits = await readCachedJson<Record<string, ShapeEdit>>(editsKey);
-      if (!cancelled) setEdits(savedEdits ?? {});
+      if (!cancelled)
+        setEdits(
+          (initialWork?.["edits"] as Record<string, ShapeEdit> | undefined) ?? savedEdits ?? {},
+        );
     })();
     return () => {
       cancelled = true;
     };
-  }, [notesKey, editsKey, scopeReady]);
+  }, [notesKey, editsKey, scopeReady, initialWork]);
 
   function updateNotes(index: number, next: SlideAnnotation) {
     setNotes((current) => {
       const merged = { ...current, [index]: next };
       void writeCachedJson(notesKey, merged);
+      queueSave({ annotations: merged, edits });
       return merged;
     });
   }
@@ -158,6 +177,7 @@ export function OfficeDocView({
       const id = `${slideIndex}:${shapeIndex}`;
       const merged = { ...current, [id]: { ...current[id], ...patch } };
       void writeCachedJson(editsKey, merged);
+      queueSave({ annotations: notes, edits: merged });
       return merged;
     });
   }

@@ -7,6 +7,12 @@ import { assertClassTeacher, assertUnitTeacher } from "@/lib/materials.server";
 import { lessonTutorReply, summariseTeacherNotes } from "@/lib/notes.server";
 import { effectiveTutorSettings } from "@/lib/tutor-settings.server";
 
+const documentWorkSchema = z.record(z.string(), z.unknown()).superRefine((value, context) => {
+  if (JSON.stringify(value).length > 12_000_000) {
+    context.addIssue({ code: "custom", message: "Document work is too large to save." });
+  }
+});
+
 const blockSchema = z.union([
   z.object({
     id: z.string().max(60),
@@ -25,7 +31,6 @@ const blockSchema = z.union([
     align: z.enum(["left", "center", "right"]).optional(),
     box: z.boolean().optional(),
   }),
-
 
   z.object({
     id: z.string().max(60),
@@ -61,8 +66,6 @@ const blockSchema = z.union([
   }),
 ]);
 
-
-
 export type NoteBlock = z.infer<typeof blockSchema>;
 
 /** Sections (lesson pages) inside one unit, newest plan order first. */
@@ -73,7 +76,7 @@ export const listSections = createServerFn({ method: "GET" })
     const { data: rows, error } = await context.supabase
       .from("unit_sections")
       .select(
-        "id, unit_id, class_id, title, position, notes_blocks, notes_text, ai_summary, ai_summary_updated_at, material_id, planned_start, planned_end, planned_classes, updated_at",
+        "id, unit_id, class_id, title, position, notes_blocks, notes_text, document_work, ai_summary, ai_summary_updated_at, material_id, planned_start, planned_end, planned_classes, updated_at",
       )
       .eq("unit_id", data.unitId)
       .order("position", { ascending: true })
@@ -204,7 +207,6 @@ export const saveSectionNotes = createServerFn({ method: "POST" })
       .join("\n")
       .trim();
 
-
     const { error } = await supabase
       .from("unit_sections")
       .update({
@@ -215,6 +217,55 @@ export const saveSectionNotes = createServerFn({ method: "POST" })
       .eq("id", data.sectionId);
     if (error) throw new Error(error.message);
     return { ok: true, notesText };
+  });
+
+/** Saves the teacher's drawing, text boxes, pictures and editable slide text. */
+export const saveSectionDocumentWork = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        sectionId: z.string().uuid(),
+        materialId: z.string().uuid(),
+        work: documentWorkSchema,
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: section } = await supabase
+      .from("unit_sections")
+      .select("class_id, material_id, document_work")
+      .eq("id", data.sectionId)
+      .maybeSingle();
+    if (!section) throw new Error("Section not found.");
+    await assertClassTeacher(supabase, section.class_id, userId);
+    if (section.material_id !== data.materialId) throw new Error("Document is no longer attached.");
+
+    const current =
+      section.document_work &&
+      typeof section.document_work === "object" &&
+      !Array.isArray(section.document_work)
+        ? section.document_work
+        : {};
+    const previousMaterialWork =
+      current[data.materialId] &&
+      typeof current[data.materialId] === "object" &&
+      !Array.isArray(current[data.materialId])
+        ? current[data.materialId]
+        : {};
+    const { error } = await supabase
+      .from("unit_sections")
+      .update({
+        document_work: {
+          ...current,
+          [data.materialId]: { ...previousMaterialWork, ...data.work },
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.sectionId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 /**
@@ -285,7 +336,6 @@ export const generateSectionSummary = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { summary };
   });
-
 
 /** Short-lived signed URLs for canvas images (class-materials bucket). */
 export const signNotePaths = createServerFn({ method: "POST" })

@@ -18,6 +18,7 @@ import { StudentTutorControls } from "@/components/assignments/StudentTutorContr
 import { useActiveTime } from "@/hooks/use-active-time";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
+import { StudentPaperMode } from "@/components/assignments/PaperMode";
 import { PAD_FILE_NAME } from "@/components/assignments/DrawingPad";
 import { parseSnipBand } from "@/components/assignments/QuestionSnip";
 import {
@@ -80,6 +81,12 @@ export const Route = createFileRoute("/_authenticated/assignments/$assignmentId/
 
 function AssignmentPage() {
   const { assignmentId } = Route.useParams();
+  const [viewMode, setViewMode] = useState<"questions" | "paper">(() => {
+    if (typeof window === "undefined") return "questions";
+    return window.localStorage.getItem(`homework-view:${assignmentId}`) === "paper"
+      ? "paper"
+      : "questions";
+  });
   const queryClient = useQueryClient();
   const queryKey = ["workspace", assignmentId];
   const workspace = useQuery({
@@ -119,7 +126,7 @@ function AssignmentPage() {
   return (
     <div className="min-h-screen">
       <AppHeader role="student" />
-      <main className="mx-auto max-w-3xl px-4 py-8">
+      <main className={`mx-auto px-4 py-8 ${viewMode === "paper" ? "max-w-7xl" : "max-w-3xl"}`}>
         <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">
           ← Your homework
         </Link>
@@ -159,6 +166,28 @@ function AssignmentPage() {
                 {data.submission.locked_at ? (
                   <Badge variant="destructive">Locked · fail</Badge>
                 ) : null}
+              </div>
+              <div className="mt-4 inline-flex rounded-lg border bg-muted/40 p-1">
+                <Button
+                  size="sm"
+                  variant={viewMode === "questions" ? "default" : "ghost"}
+                  onClick={() => {
+                    setViewMode("questions");
+                    window.localStorage.setItem(`homework-view:${assignmentId}`, "questions");
+                  }}
+                >
+                  Question view
+                </Button>
+                <Button
+                  size="sm"
+                  variant={viewMode === "paper" ? "default" : "ghost"}
+                  onClick={() => {
+                    setViewMode("paper");
+                    window.localStorage.setItem(`homework-view:${assignmentId}`, "paper");
+                  }}
+                >
+                  Paper mode
+                </Button>
               </div>
               {Number(data.submission.penalty_percent ?? 0) > 0 ? (
                 <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm">
@@ -222,7 +251,7 @@ function AssignmentPage() {
             ) : null}
 
             <div
-              className={`mt-8 space-y-6 ${protection.protectedClassName} ${
+              className={`${viewMode === "paper" ? "hidden" : "mt-8 space-y-6"} ${protection.protectedClassName} ${
                 protection.concealed ? "pointer-events-none blur-lg" : ""
               }`}
             >
@@ -263,6 +292,28 @@ function AssignmentPage() {
                 </div>
               ))}
             </div>
+
+            {viewMode === "paper" ? (
+              <div
+                className={`mt-6 ${protection.protectedClassName} ${
+                  protection.concealed ? "pointer-events-none blur-lg" : ""
+                }`}
+              >
+                <StudentPaperMode
+                  assignmentId={assignmentId}
+                  questions={data.questions.map((question) => ({
+                    ...question,
+                    imageUrls: snipsFor(question),
+                  }))}
+                  answers={data.answers}
+                  locked={Boolean(data.submission.locked_at) || data.assignment.pastDue}
+                  settings={settings}
+                  revealOnFullMarks={Boolean(data.assignment.revealOnFullMarks)}
+                  markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
+                  queryKey={queryKey}
+                />
+              </div>
+            ) : null}
 
             <div className="mt-8 flex justify-end">
               <Button

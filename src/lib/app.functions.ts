@@ -2043,6 +2043,7 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
         dueOverridden: access.dueOverridden,
         pastDue: access.pastDue,
         markSchemeRevealed: access.markSchemeRevealed,
+        revealOnFullMarks: access.revealOnFullMarks,
         classId: assignment.class_id,
         className: klass?.name ?? "",
       },

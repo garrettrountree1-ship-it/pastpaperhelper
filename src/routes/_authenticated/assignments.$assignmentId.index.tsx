@@ -18,7 +18,7 @@ import { StudentTutorControls } from "@/components/assignments/StudentTutorContr
 import { useActiveTime } from "@/hooks/use-active-time";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
-import { StudentPaperMode } from "@/components/assignments/PaperMode";
+import { StudentPaperMode } from "@/components/assignments/ContinuousPaperMode";
 import { PAD_FILE_NAME } from "@/components/assignments/DrawingPad";
 import { parseSnipBand } from "@/components/assignments/QuestionSnip";
 import {

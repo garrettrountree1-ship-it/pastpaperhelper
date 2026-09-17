@@ -528,7 +528,7 @@ export function useMirrorScroll(
     if (!el) return;
     let frame = 0;
     let restored = false;
-    let restoreTimer: ReturnType<typeof window.setInterval> | null = null;
+    let restoreTimer: number | null = null;
     try {
       const saved = window.localStorage.getItem(`lesson-scroll:${storageKey}`);
       if (saved) {

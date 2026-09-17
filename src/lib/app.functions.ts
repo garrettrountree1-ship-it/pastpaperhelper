@@ -2055,11 +2055,15 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
             (q as { multiple_choice?: boolean | null }).multiple_choice,
             (q as { mark_scheme?: string | null }).mark_scheme,
           ),
-          answerCheckMode: (q as { numerical_answer?: boolean | null }).numerical_answer
-            ? tutorSettings.checkFinalNumericOnly
-              ? ("final-number" as const)
-              : ("full-working" as const)
-            : null,
+          answerCheckMode:
+            !isMultipleChoice(
+              (q as { multiple_choice?: boolean | null }).multiple_choice,
+              (q as { mark_scheme?: string | null }).mark_scheme,
+            ) && (q as { numerical_answer?: boolean | null }).numerical_answer
+              ? tutorSettings.checkFinalNumericOnly
+                ? ("final-number" as const)
+                : ("full-working" as const)
+              : null,
           creditedAll: Boolean((q as { credited_all_at?: string | null }).credited_all_at),
         })),
       ),
@@ -2818,11 +2822,15 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
             (q as { multiple_choice?: boolean | null }).multiple_choice,
             (q as { mark_scheme?: string | null }).mark_scheme,
           ),
-          answerCheckMode: (q as { numerical_answer?: boolean | null }).numerical_answer
-            ? tutorSettings.checkFinalNumericOnly
-              ? ("final-number" as const)
-              : ("full-working" as const)
-            : null,
+          answerCheckMode:
+            !isMultipleChoice(
+              (q as { multiple_choice?: boolean | null }).multiple_choice,
+              (q as { mark_scheme?: string | null }).mark_scheme,
+            ) && (q as { numerical_answer?: boolean | null }).numerical_answer
+              ? tutorSettings.checkFinalNumericOnly
+                ? ("final-number" as const)
+                : ("full-working" as const)
+              : null,
         })),
       ),
     };
@@ -3902,11 +3910,15 @@ export const getStudentHomeworkView = createServerFn({ method: "POST" })
             (q as { multiple_choice?: boolean | null }).multiple_choice,
             (q as { mark_scheme?: string | null }).mark_scheme,
           ),
-          answerCheckMode: (q as { numerical_answer?: boolean | null }).numerical_answer
-            ? tutorSettings.checkFinalNumericOnly
-              ? ("final-number" as const)
-              : ("full-working" as const)
-            : null,
+          answerCheckMode:
+            !isMultipleChoice(
+              (q as { multiple_choice?: boolean | null }).multiple_choice,
+              (q as { mark_scheme?: string | null }).mark_scheme,
+            ) && (q as { numerical_answer?: boolean | null }).numerical_answer
+              ? tutorSettings.checkFinalNumericOnly
+                ? ("final-number" as const)
+                : ("full-working" as const)
+              : null,
           creditedAll: Boolean((q as { credited_all_at?: string | null }).credited_all_at),
         })),
       ),

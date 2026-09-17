@@ -43,7 +43,6 @@ export function LessonTutorBar({
   pending: pendingProp,
   onPendingChange,
   readOnly = false,
-
 }: {
   classId: string;
   sectionId: string | null;
@@ -69,7 +68,8 @@ export function LessonTutorBar({
   const draft = draftProp ?? localDraft;
   const setDraft = onDraftChange ?? setLocalDraft;
   const scrollRef = useRef<HTMLDivElement | null>(null);
-
+  const scrollStorageKey = `lesson-scroll:tutor:${classId}:${sectionId ?? "none"}`;
+  const mounted = useRef(false);
 
   const send = useMutation({
     mutationFn: async (input: { question: string; concept?: string }) => {
@@ -114,9 +114,35 @@ export function LessonTutorBar({
   const waiting = send.isPending || pendingProp === true;
 
   useEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+    try {
+      const saved = window.localStorage.getItem(scrollStorageKey);
+      if (saved) element.scrollTop = Number(saved) || 0;
+    } catch {
+      // Storage is optional.
+    }
+    const remember = () => {
+      try {
+        window.localStorage.setItem(scrollStorageKey, String(element.scrollTop));
+      } catch {
+        // Storage is optional.
+      }
+    };
+    element.addEventListener("scroll", remember, { passive: true });
+    return () => {
+      remember();
+      element.removeEventListener("scroll", remember);
+    };
+  }, [scrollStorageKey]);
+
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [turns, waiting]);
-
 
   return (
     <aside className="flex h-full min-h-0 flex-col rounded-lg border bg-card">
@@ -184,7 +210,6 @@ export function LessonTutorBar({
           Ask the tutor
         </Button>
       </div>
-
     </aside>
   );
 }

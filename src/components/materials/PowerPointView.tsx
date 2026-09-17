@@ -9,6 +9,8 @@ import {
 import { HighlightLayer, SlideAnnotations } from "@/components/materials/SlideAnnotations";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { type DocumentWork, useDocumentWorkSaver } from "@/lib/document-work";
+import type { SlideAnnotation } from "@/components/materials/SlideAnnotations";
 
 /**
  * Displays the untouched uploaded presentation through Microsoft's PowerPoint
@@ -24,6 +26,9 @@ export function PowerPointView({
   canDownload = true,
   markupKey,
   canAnnotate = true,
+  sectionId,
+  materialId,
+  initialWork,
 }: {
   url: string;
   title: string;
@@ -32,6 +37,9 @@ export function PowerPointView({
   markupKey?: string;
   /** Only teachers draw or add text boxes; students get a clean viewer. */
   canAnnotate?: boolean;
+  sectionId?: string;
+  materialId?: string;
+  initialWork?: DocumentWork;
 }) {
   const [loaded, setLoaded] = useState(false);
   const [viewerVersion, setViewerVersion] = useState(0);
@@ -40,7 +48,16 @@ export function PowerPointView({
     [url],
   );
 
-  const markup = useDocMarkup(`pptx-original-annotations:${markupKey ?? title}`);
+  const queueSave = useDocumentWorkSaver({
+    sectionId,
+    materialId,
+    enabled: canAnnotate && Boolean(sectionId && materialId),
+  });
+  const markup = useDocMarkup(`pptx-original-annotations:${markupKey ?? title}`, {
+    initialNotes: initialWork?.["originalAnnotations"] as
+      Record<number, SlideAnnotation> | undefined,
+    onNotesChange: (originalAnnotations) => queueSave({ originalAnnotations }),
+  });
   const effTool = canAnnotate ? markup.tool : "none";
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [box, setBox] = useState({ width: 0, height: 0 });
@@ -149,7 +166,6 @@ export function PowerPointView({
             hideHighlights
           />
         </div>
-
       </div>
     </div>
   );

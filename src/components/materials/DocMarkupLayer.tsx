@@ -28,7 +28,13 @@ export const MARKUP_WIDTH = 1000;
  * (or per document, for a flowing Word file) and kept locally so they are still
  * there next lesson.
  */
-export function useDocMarkup(baseKey: string) {
+export function useDocMarkup(
+  baseKey: string,
+  options?: {
+    initialNotes?: Record<number, SlideAnnotation>;
+    onNotesChange?: (notes: Record<number, SlideAnnotation>) => void;
+  },
+) {
   const [tool, setTool] = useState<SlideTool>("none");
   const [penColor, setPenColor] = useState(SWATCHES[0]!);
   const [highlightColor, setHighlightColor] = useState(HIGHLIGHT_SWATCHES[0]!);
@@ -42,12 +48,12 @@ export function useDocMarkup(baseKey: string) {
     let cancelled = false;
     void (async () => {
       const saved = await readCachedJson<Record<number, SlideAnnotation>>(storageKey);
-      if (!cancelled) setNotes(saved ?? {});
+      if (!cancelled) setNotes(options?.initialNotes ?? saved ?? {});
     })();
     return () => {
       cancelled = true;
     };
-  }, [storageKey, ready]);
+  }, [storageKey, ready, options?.initialNotes]);
 
   // Marks the teacher makes on the document appear live on student screens,
   // whether or not the teacher is mirroring their whole view.
@@ -61,6 +67,7 @@ export function useDocMarkup(baseKey: string) {
     setNotes((current) => {
       const merged = { ...current, [index]: next };
       void writeCachedJson(storageKey, merged);
+      options?.onNotesChange?.(merged);
       return merged;
     });
   }

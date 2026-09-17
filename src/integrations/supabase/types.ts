@@ -1150,6 +1150,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          document_work: Json
           id: string
           question_id: string
           student_id: string
@@ -1157,6 +1158,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          document_work?: Json
           id?: string
           question_id: string
           student_id: string
@@ -1164,6 +1166,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          document_work?: Json
           id?: string
           question_id?: string
           student_id?: string

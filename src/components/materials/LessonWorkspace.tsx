@@ -386,6 +386,11 @@ export function LessonWorkspace({
   const active = list.find((section) => section.id === activeId) ?? list[0] ?? null;
   const currentDocId = docOverride ?? active?.material_id ?? null;
   const material = unit.materials.find((m) => m.id === currentDocId) ?? null;
+  const documentWork =
+    material && active?.document_work && typeof active.document_work === "object"
+      ? ((active.document_work as Record<string, unknown>)[material.id] as
+          Record<string, unknown> | undefined)
+      : undefined;
 
   useEffect(() => {
     if (!activeId && list.length > 0) setActiveId(list[0]!.id);
@@ -559,6 +564,8 @@ export function LessonWorkspace({
             canPrepareShared={canManage}
             canDownload={canManage || material.allow_download !== false}
             canAnnotate={canManage}
+            sectionId={active!.id}
+            initialWork={documentWork}
           />
         ) : docFormat(material.storage_path ?? material.title) === "docx" ? (
           <OfficeDocView
@@ -571,6 +578,8 @@ export function LessonWorkspace({
             canDownload={canManage || material.allow_download !== false}
             canAnnotate={canManage}
             format="docx"
+            sectionId={active!.id}
+            initialWork={documentWork}
           />
         ) : (
           <PdfDocView
@@ -580,6 +589,9 @@ export function LessonWorkspace({
             canDownload={canManage || material.allow_download !== false}
             canAnnotate={canManage}
             cacheKey={`material:${material.id}`}
+            sectionId={active!.id}
+            materialId={material.id}
+            initialWork={documentWork}
           />
         )}
       </div>

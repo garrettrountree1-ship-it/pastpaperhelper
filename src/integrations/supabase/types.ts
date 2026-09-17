@@ -1785,6 +1785,7 @@ export type Database = {
           class_id: string
           created_at: string
           created_by: string
+          document_work: Json
           id: string
           material_id: string | null
           notes_blocks: Json
@@ -1803,6 +1804,7 @@ export type Database = {
           class_id: string
           created_at?: string
           created_by: string
+          document_work?: Json
           id?: string
           material_id?: string | null
           notes_blocks?: Json
@@ -1821,6 +1823,7 @@ export type Database = {
           class_id?: string
           created_at?: string
           created_by?: string
+          document_work?: Json
           id?: string
           material_id?: string | null
           notes_blocks?: Json

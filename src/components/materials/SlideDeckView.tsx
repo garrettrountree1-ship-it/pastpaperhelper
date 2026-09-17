@@ -31,8 +31,8 @@ export function SlideDeckView({
   canDownload?: boolean;
   /** Only teachers draw, highlight or add text boxes on the slides. */
   canAnnotate?: boolean;
-  sectionId?: string;
-  initialWork?: DocumentWork;
+  sectionId?: string | undefined;
+  initialWork?: DocumentWork | undefined;
 }) {
   const [mode, setMode] = useState<"original" | "scroll">("original");
   const mirror = useLessonMirror();

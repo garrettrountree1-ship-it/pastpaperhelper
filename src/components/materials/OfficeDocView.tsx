@@ -69,14 +69,15 @@ export function OfficeDocView({
   format: "pptx" | "docx";
   cacheKey?: string;
   /** Enables the shared, prepared-once render stored alongside the file. */
-  materialId?: string;
+  materialId?: string | undefined;
+
   /** Teachers may store the prepared render for everyone else. */
   canPrepareShared?: boolean;
   canDownload?: boolean;
   /** Only teachers draw, highlight, add text boxes or edit slide text. */
   canAnnotate?: boolean;
-  sectionId?: string;
-  initialWork?: DocumentWork;
+  sectionId?: string | undefined;
+  initialWork?: DocumentWork | undefined;
 }) {
   const [zoom, setZoom] = useState(1);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");

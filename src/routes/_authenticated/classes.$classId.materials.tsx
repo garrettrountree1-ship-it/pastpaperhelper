@@ -4,9 +4,10 @@ import { SectionShell, SectionTabsMobile } from "@/components/SectionShell";
 import { MaterialsSection } from "@/components/materials/MaterialsSection";
 
 export const Route = createFileRoute("/_authenticated/classes/$classId/materials")({
-  validateSearch: (search: Record<string, unknown>): { mirrorUnit?: string } => ({
-    mirrorUnit: typeof search.mirrorUnit === "string" ? search.mirrorUnit : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { mirrorUnit?: string | undefined } => {
+    const mirrorUnit = search["mirrorUnit"];
+    return { mirrorUnit: typeof mirrorUnit === "string" ? mirrorUnit : undefined };
+  },
   head: () => ({
     meta: [
       { title: "Class materials · PastPaperHelper.AI" },

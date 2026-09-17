@@ -11,8 +11,8 @@ export function useDocumentWorkSaver({
   materialId,
   enabled,
 }: {
-  sectionId?: string;
-  materialId?: string;
+  sectionId?: string | undefined;
+  materialId?: string | undefined;
   enabled: boolean;
 }) {
   const save = useServerFn(saveSectionDocumentWork);

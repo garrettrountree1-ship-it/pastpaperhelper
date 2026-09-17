@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Json } from "@/integrations/supabase/types";
 import { teachesClass } from "@/lib/teach-access";
 import { assertClassTeacher, assertUnitTeacher } from "@/lib/materials.server";
 import { lessonTutorReply, summariseTeacherNotes } from "@/lib/notes.server";
@@ -100,7 +101,7 @@ export const listSections = createServerFn({ method: "GET" })
         .eq("unit_id", data.unitId)
         .order("position", { ascending: true })
         .order("created_at", { ascending: true });
-      rows = legacyResult.data;
+      rows = legacyResult.data?.map((row) => ({ ...row, document_work: {} })) ?? null;
       error = legacyResult.error;
     }
     if (error) throw new Error(error.message);
@@ -265,17 +266,16 @@ export const saveSectionDocumentWork = createServerFn({ method: "POST" })
     await assertClassTeacher(supabase, section.class_id, userId);
     if (section.material_id !== data.materialId) throw new Error("Document is no longer attached.");
 
-    const current =
+    const current: Record<string, Json | undefined> =
       section.document_work &&
       typeof section.document_work === "object" &&
       !Array.isArray(section.document_work)
         ? section.document_work
         : {};
-    const previousMaterialWork =
-      current[data.materialId] &&
-      typeof current[data.materialId] === "object" &&
-      !Array.isArray(current[data.materialId])
-        ? current[data.materialId]
+    const previousMaterial = current[data.materialId];
+    const previousMaterialWork: Record<string, Json | undefined> =
+      previousMaterial && typeof previousMaterial === "object" && !Array.isArray(previousMaterial)
+        ? previousMaterial
         : {};
     const { error } = await supabase
       .from("unit_sections")
@@ -283,7 +283,7 @@ export const saveSectionDocumentWork = createServerFn({ method: "POST" })
         document_work: {
           ...current,
           [data.materialId]: { ...previousMaterialWork, ...data.work },
-        },
+        } as Json,
         updated_at: new Date().toISOString(),
       })
       .eq("id", data.sectionId);

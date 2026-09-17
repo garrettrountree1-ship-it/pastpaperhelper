@@ -68,22 +68,45 @@ const blockSchema = z.union([
 
 export type NoteBlock = z.infer<typeof blockSchema>;
 
+const sectionColumns =
+  "id, unit_id, class_id, title, position, notes_blocks, notes_text, document_work, ai_summary, ai_summary_updated_at, material_id, planned_start, planned_end, planned_classes, updated_at";
+const legacySectionColumns =
+  "id, unit_id, class_id, title, position, notes_blocks, notes_text, ai_summary, ai_summary_updated_at, material_id, planned_start, planned_end, planned_classes, updated_at";
+
+function isMissingDocumentWorkColumn(error: { message?: string } | null) {
+  return Boolean(error?.message?.includes("document_work"));
+}
+
 /** Sections (lesson pages) inside one unit, newest plan order first. */
 export const listSections = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ unitId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { data: rows, error } = await context.supabase
+    let { data: rows, error } = await context.supabase
       .from("unit_sections")
-      .select(
-        "id, unit_id, class_id, title, position, notes_blocks, notes_text, document_work, ai_summary, ai_summary_updated_at, material_id, planned_start, planned_end, planned_classes, updated_at",
-      )
+      .select(sectionColumns)
       .eq("unit_id", data.unitId)
       .order("position", { ascending: true })
       .order("created_at", { ascending: true });
+
+    // Deployments can briefly serve the new application before the database
+    // migration has reached PostgREST's schema cache. Do not turn that window
+    // into an unusable, permanently-loading lesson workspace: annotations are
+    // optional, so load the lesson without them until the column is available.
+    if (isMissingDocumentWorkColumn(error)) {
+      const legacyResult = await context.supabase
+        .from("unit_sections")
+        .select(legacySectionColumns)
+        .eq("unit_id", data.unitId)
+        .order("position", { ascending: true })
+        .order("created_at", { ascending: true });
+      rows = legacyResult.data;
+      error = legacyResult.error;
+    }
     if (error) throw new Error(error.message);
     return (rows ?? []).map((row) => ({
       ...row,
+      document_work: "document_work" in row ? row.document_work : {},
       notes_blocks: Array.isArray(row.notes_blocks) ? (row.notes_blocks as NoteBlock[]) : [],
     }));
   });

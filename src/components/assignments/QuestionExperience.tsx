@@ -219,6 +219,7 @@ export function QuestionExperience({
     [photoFiles],
   );
   const submittedPhotoUrls = photoUrls.filter((url) => !url.includes(PAD_FILE_NAME));
+  const paperModeUrls = hasFullCredit ? photoUrls.filter((url) => url.includes(PAD_FILE_NAME)) : [];
 
   // Seed the marks checklist so the student sees how many points are expected.
   useEffect(() => {
@@ -357,6 +358,25 @@ export function QuestionExperience({
                   {answerAction ? (
                     <div className="mt-3 flex flex-wrap gap-2">{answerAction}</div>
                   ) : null}
+                </div>
+              ) : null}
+
+              {paperModeUrls.length > 0 ? (
+                <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
+                  <p className="text-sm font-medium">Paper mode answer</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Saved from the continuous paper when this question was marked.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {paperModeUrls.map((url) => (
+                      <StudentWorkPhoto
+                        key={url}
+                        url={url}
+                        alt="Paper mode answer"
+                        className="h-32 w-48 rounded-lg border border-border object-contain"
+                      />
+                    ))}
+                  </div>
                 </div>
               ) : null}
 

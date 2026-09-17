@@ -149,7 +149,7 @@ export function LessonWorkspace({
   // "split" shows both panes; "canvas"/"doc" give one pane the full width.
   const [paneMode, setPaneMode] = useState<"split" | "canvas" | "doc">("split");
   // Side-by-side columns, or layered (one window floating on top).
-  const [layout, setLayout] = useState<"split" | "layered">("split");
+  const [layout, setLayout] = useState<"split" | "layered">("layered");
   // Phones only ever get the layered, full-screen window.
   const effectiveLayout = isPhone ? "layered" : layout;
   const canvasSize = paneMode === "canvas" ? "100%" : paneMode === "doc" ? "0%" : `${split}%`;
@@ -162,7 +162,7 @@ export function LessonWorkspace({
   // one is in front never resets scroll position or canvas view). One wrapper
   // is positioned as a floating window that can be moved / resized in pixels.
   const [frontPane, setFrontPane] = useState<"canvas" | "doc">("canvas");
-  const [floatState, setFloatState] = useState<"window" | "min" | "max">("window");
+  const [floatState, setFloatState] = useState<"window" | "min" | "max">("min");
   const [areaSize, setAreaSize] = useState({ w: 0, h: 0 });
   const [floatRect, setFloatRect] = useState<{ x: number; y: number; w: number; h: number } | null>(
     null,
@@ -310,22 +310,19 @@ export function LessonWorkspace({
   }, [presenting]);
 
   // A mirrored student screen is a passive display. Capture every interaction
-  // before canvas, document, iframe or scrolling tools can react. Escape and
-  // the dedicated exit button remain available.
+  // before canvas, document, iframe or scrolling tools can react. Only a
+  // formative response sent by the teacher remains interactive.
   useEffect(() => {
     if (!mirror.receiving) return;
-    const isExit = (target: EventTarget | null) =>
-      target instanceof Element && Boolean(target.closest("[data-mirror-exit]"));
+    const isFormativeResponse = (target: EventTarget | null) =>
+      target instanceof Element && Boolean(target.closest("[data-formative-response]"));
     const blockKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") return;
-      // Typing in a quick check (or another allowed control) still works while
-      // the teacher's screen is being shared.
-      if (isExit(event.target) || isExit(document.activeElement)) return;
+      if (isFormativeResponse(event.target) || isFormativeResponse(document.activeElement)) return;
       event.preventDefault();
       event.stopImmediatePropagation();
     };
     const blockInteraction = (event: Event) => {
-      if (isExit(event.target)) return;
+      if (isFormativeResponse(event.target)) return;
       event.preventDefault();
       event.stopImmediatePropagation();
     };
@@ -399,6 +396,7 @@ export function LessonWorkspace({
   // Which lesson page and which resource the teacher is showing, plus how the
   // two windows are arranged, all travel with the mirrored screen.
   useMirrorFieldWith(mirror, "workspace.section", activeId, setActiveId);
+  useMirrorFieldWith(mirror, "workspace.unitId", unit.id, () => {});
   useMirrorFieldWith(mirror, "workspace.doc", currentDocId, setDocOverride);
   useMirrorFieldWith(mirror, "workspace.layout", layout, setLayout);
   useMirrorFieldWith(mirror, "workspace.pane", paneMode, setPaneMode);
@@ -468,7 +466,7 @@ export function LessonWorkspace({
   useEffect(() => {
     if (
       canManage &&
-      !sections.isLoading &&
+      sections.isSuccess &&
       list.length === 0 &&
       !autoCreated.current &&
       !createMutation.isPending
@@ -477,7 +475,7 @@ export function LessonWorkspace({
       createMutation.mutate("Section 1");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canManage, sections.isLoading, list.length]);
+  }, [canManage, sections.isSuccess, list.length]);
 
   const docUrl = useQuery({
     queryKey: ["material-url", material?.id],
@@ -816,7 +814,22 @@ export function LessonWorkspace({
           />
         ) : null}
 
-        {!active ? (
+        {sections.isError ? (
+          <div className="flex flex-1 items-center justify-center p-8 text-center">
+            <div className="paper max-w-md space-y-3 p-6">
+              <p className="font-medium">The lesson workspace could not be loaded.</p>
+              <p className="text-sm text-muted-foreground">
+                {(sections.error as Error).message || "Please try again."}
+              </p>
+              <div className="flex justify-center gap-2">
+                <Button variant="outline" onClick={onBack}>
+                  Close
+                </Button>
+                <Button onClick={() => sections.refetch()}>Try again</Button>
+              </div>
+            </div>
+          </div>
+        ) : !active ? (
           <div className="flex flex-1 items-center justify-center p-8 text-center text-muted-foreground">
             {canManage ? (
               <div className="w-full max-w-5xl space-y-2">
@@ -920,9 +933,9 @@ export function LessonWorkspace({
             {effectiveLayout === "layered" ? (
               (() => {
                 const r = floatRect ?? { x: 24, y: 20, w: 520, h: 380 };
-                const minW = Math.max(320, Math.min(r.w, 480));
+                const minW = Math.max(220, Math.min(r.w, 480, Math.max(220, areaSize.w - 24)));
                 const frontStyle: React.CSSProperties =
-                  isPhone || floatState === "max"
+                  floatState === "max"
                     ? { left: 0, top: 0, width: "100%", height: "100%" }
                     : floatState === "min"
                       ? {
@@ -957,7 +970,7 @@ export function LessonWorkspace({
                 // and clipped by the collapsed bar.
                 const contentStyle = (pane: "canvas" | "doc"): React.CSSProperties =>
                   frontPane === pane
-                    ? !isPhone && floatState === "min"
+                    ? floatState === "min"
                       ? {
                           paddingTop: BAR_H,
                           position: "absolute",
@@ -1006,8 +1019,7 @@ export function LessonWorkspace({
                           startFloatDrag(event, "move");
                         }}
                         onClick={() => {
-                          if (isPhone) return;
-                          if (floatState === "min") setFloatState("window");
+                          if (floatState === "min") setFloatState(isPhone ? "max" : "window");
                         }}
                         onDoubleClick={() => {
                           if (isPhone) return;
@@ -1016,40 +1028,58 @@ export function LessonWorkspace({
                         }}
                         style={{ height: BAR_H }}
                         className={`pointer-events-auto flex touch-none select-none items-center gap-1 rounded-t-lg border-b px-2 ${
-                          !isPhone && floatState === "min"
+                          floatState === "min"
                             ? "cursor-pointer rounded-lg border-2 border-primary bg-primary/10 shadow-xl ring-2 ring-primary/30"
                             : `bg-muted/80 ${isPhone ? "" : "cursor-grab active:cursor-grabbing"}`
                         }`}
                         title={
-                          isPhone
-                            ? undefined
-                            : floatState === "min"
-                              ? "Window minimised — click here to bring it back"
+                          floatState === "min"
+                            ? "Window minimised — click here to bring it back"
+                            : isPhone
+                              ? undefined
                               : "Drag anywhere on this bar to move the window; double-click to maximise"
                         }
                       >
-                        {isPhone ? null : floatState === "min" ? (
+                        {floatState === "min" ? (
                           <ChevronUp className="size-3.5 shrink-0 text-primary" />
-                        ) : (
+                        ) : isPhone ? null : (
                           <Move className="size-3.5 text-muted-foreground" />
                         )}
                         <span className="truncate text-xs font-medium">
                           {frontPane === "canvas" ? "Lesson canvas" : "Lesson Materials"}
-                          {!isPhone && floatState === "min" ? " — minimised, click to restore" : ""}
+                          {floatState === "min" ? " — minimised, tap to restore" : ""}
                         </span>
                         <div className="ml-auto flex items-center gap-1">
                           {isPhone ? (
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              className="h-7 px-2 text-xs"
-                              onClick={() =>
-                                setFrontPane(frontPane === "canvas" ? "doc" : "canvas")
-                              }
-                            >
-                              <ArrowLeftRight className="size-3.5" />
-                              {frontPane === "canvas" ? "Materials" : "Canvas"}
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="h-7 px-2 text-xs"
+                                onClick={() =>
+                                  setFrontPane(frontPane === "canvas" ? "doc" : "canvas")
+                                }
+                              >
+                                <ArrowLeftRight className="size-3.5" />
+                                Swap
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="size-6"
+                                title={floatState === "min" ? "Maximise window" : "Minimise window"}
+                                aria-label={
+                                  floatState === "min" ? "Maximise window" : "Minimise window"
+                                }
+                                onClick={() => setFloatState(floatState === "min" ? "max" : "min")}
+                              >
+                                {floatState === "min" ? (
+                                  <Maximize className="size-3.5" />
+                                ) : (
+                                  <Minus className="size-3.5" />
+                                )}
+                              </Button>
+                            </>
                           ) : (
                             <>
                               <Button

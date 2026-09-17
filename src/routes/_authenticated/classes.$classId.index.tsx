@@ -7,7 +7,12 @@ import { BookOpen, ChevronDown, Gamepad2, NotebookPen, Timer, Users } from "luci
 import { AppHeader } from "@/components/AppHeader";
 import { CoteacherPanel } from "@/components/classes/CoteacherPanel";
 import { FormativeReviewButton } from "@/components/materials/FormativeCheck";
-import { ClassBulletinBoard, ClassBulletinPanel, ClassBulletinPopup } from "@/components/messaging/ClassBulletin";
+import { ClassLessonMirror } from "@/components/materials/ClassLessonMirror";
+import {
+  ClassBulletinBoard,
+  ClassBulletinPanel,
+  ClassBulletinPopup,
+} from "@/components/messaging/ClassBulletin";
 import { RemoveStudentButton } from "@/components/classes/RemoveStudentButton";
 import { useMyClasses } from "@/components/SectionShell";
 import { Button } from "@/components/ui/button";
@@ -65,6 +70,7 @@ function ClassHome() {
 
   return (
     <div className="min-h-screen">
+      <ClassLessonMirror classId={classId} isStudent={role === "student"} />
       <AppHeader role={role} />
       <main className="mx-auto max-w-6xl px-4 py-8">
         <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">
@@ -128,9 +134,6 @@ function ClassHome() {
                 <ClassBulletinPopup classId={classId} />
               </>
             )}
-
-
-
           </>
         )}
       </main>

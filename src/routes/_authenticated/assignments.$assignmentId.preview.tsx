@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { VocabSheet } from "@/components/assignments/VocabSheet";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
+import { PreviewPaperMode } from "@/components/assignments/PaperMode";
 import { parseSnipBand } from "@/components/assignments/QuestionSnip";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { Badge } from "@/components/ui/badge";
@@ -111,6 +112,7 @@ function PreviewPage() {
   const { assignmentId } = Route.useParams();
   const [flags, setFlags] = useState(0);
   const [studentId, setStudentId] = useState<string>("class");
+  const [viewMode, setViewMode] = useState<"questions" | "paper">("questions");
   const viewingStudent = studentId !== "class";
   const preview = useQuery({
     queryKey: ["assignment-preview", assignmentId, studentId],
@@ -133,7 +135,7 @@ function PreviewPage() {
   return (
     <div className="min-h-screen">
       <AppHeader role="teacher" />
-      <main className="mx-auto max-w-3xl px-4 py-8">
+      <main className={`mx-auto px-4 py-8 ${viewMode === "paper" ? "max-w-7xl" : "max-w-3xl"}`}>
         {data ? (
           <Link
             to="/classes/$classId/homework"
@@ -226,6 +228,24 @@ function PreviewPage() {
                   <Badge variant="destructive">Past due · closed for students</Badge>
                 ) : null}
               </div>
+              {!viewingStudent ? (
+                <div className="mt-4 inline-flex rounded-lg border bg-muted/40 p-1">
+                  <Button
+                    size="sm"
+                    variant={viewMode === "questions" ? "default" : "ghost"}
+                    onClick={() => setViewMode("questions")}
+                  >
+                    Question view
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={viewMode === "paper" ? "default" : "ghost"}
+                    onClick={() => setViewMode("paper")}
+                  >
+                    Paper mode
+                  </Button>
+                </div>
+              ) : null}
               {flags > 0 && !viewingStudent ? (
                 <p className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                   {flags >= 4
@@ -245,7 +265,7 @@ function PreviewPage() {
             ) : (
               <>
                 <div
-                  className={`mt-8 space-y-6 ${protection.protectedClassName} ${
+                  className={`${viewMode === "paper" ? "hidden" : "mt-8 space-y-6"} ${protection.protectedClassName} ${
                     protection.concealed ? "pointer-events-none blur-lg" : ""
                   }`}
                 >
@@ -283,6 +303,21 @@ function PreviewPage() {
                     </div>
                   ))}
                 </div>
+
+                {viewMode === "paper" ? (
+                  <div className={`mt-6 ${protection.protectedClassName}`}>
+                    <PreviewPaperMode
+                      assignmentId={assignmentId}
+                      questions={data.questions.map((question) => ({
+                        ...question,
+                        imageUrls: (question.imageUrls ?? []).filter((url) => parseSnipBand(url)),
+                      }))}
+                      settings={settings}
+                      revealOnFullMarks={Boolean(data.assignment.revealOnFullMarks)}
+                      markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
+                    />
+                  </div>
+                ) : null}
 
                 <p className="mt-8 text-center text-xs text-muted-foreground">
                   This is your test view — try any question and the AI marks it exactly as it would

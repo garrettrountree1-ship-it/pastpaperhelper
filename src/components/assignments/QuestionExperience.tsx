@@ -117,6 +117,7 @@ export function QuestionExperience({
     marks: number;
     tagLabel?: string | null;
     tagImage?: string | null;
+    multipleChoice?: boolean;
   };
 
   index: number;
@@ -234,15 +235,16 @@ export function QuestionExperience({
             Question {questionLabel(question.question_text, index)}{" "}
             <QuestionTagBadge label={question.tagLabel} image={question.tagImage} />
           </h2>
-          {answerCheckMode === "final-number" ? (
-            <Badge
-              variant="outline"
-              className="mt-2 border-primary/40 bg-primary/5 text-foreground"
-              title="One typed final value can be checked instantly. Add working if you want method or partial marks."
-            >
-              <Calculator className="size-3.5 text-primary" />
-              Final numerical answer only
-            </Badge>
+          {answerCheckMode === "final-number" && !question.multipleChoice ? (
+            <div className="mt-2 flex max-w-xl items-start gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50/80 px-3 py-2 text-emerald-950 shadow-sm dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-50">
+              <Calculator className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <div className="text-xs leading-relaxed">
+                <p className="font-semibold">A correct final number earns full credit</p>
+                <p className="text-emerald-800 dark:text-emerald-200">
+                  You can enter just your answer, or show all your working to earn partial credit.
+                </p>
+              </div>
+            </div>
           ) : null}
         </div>
         <div className="flex items-center gap-2">

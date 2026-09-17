@@ -10,7 +10,6 @@ import { attemptsAllowed, isMultipleChoice } from "@/lib/multiple-choice";
 import {
   extractChoiceAnswer,
   isFinalValueOnlyAnswer,
-  looksNumericalQuestion,
   markTypedChoice,
   markTypedFinalNumber,
 } from "@/lib/deterministic-marking";
@@ -504,7 +503,9 @@ export const createAssignment = createServerFn({ method: "POST" })
         tag_image: q.tagImage ?? "",
         multiple_choice: q.multipleChoice ?? null,
         expected_answer: q.expectedAnswer.trim() || extractChoiceAnswer(q.markScheme) || "",
-        numerical_answer: q.numericalAnswer || looksNumericalQuestion(q.questionText, q.markScheme),
+        // Extraction suggests an initial mode in the editor, but the teacher's
+        // explicit selection is authoritative when the assignment is saved.
+        numerical_answer: q.numericalAnswer,
       })),
     );
     if (qError) throw new Error(qError.message);
@@ -583,8 +584,9 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
           multipleChoice: ((q as { multiple_choice?: boolean | null }).multiple_choice ?? null) as
             boolean | null,
           expectedAnswer: q.expected_answer?.trim() || extractChoiceAnswer(q.mark_scheme) || "",
-          numericalAnswer:
-            Boolean(q.numerical_answer) || looksNumericalQuestion(q.question_text, q.mark_scheme),
+          // Do not re-infer this from the wording: false is the teacher's saved
+          // choice for AI marking, not a missing value.
+          numericalAnswer: Boolean(q.numerical_answer),
           autoMultipleChoice:
             isMultipleChoice(
               (q as { multiple_choice?: boolean | null }).multiple_choice,
@@ -916,7 +918,9 @@ export const updateAssignment = createServerFn({ method: "POST" })
         tag_image: q.tagImage ?? "",
         multiple_choice: q.multipleChoice ?? null,
         expected_answer: q.expectedAnswer.trim() || extractChoiceAnswer(q.markScheme) || "",
-        numerical_answer: q.numericalAnswer || looksNumericalQuestion(q.questionText, q.markScheme),
+        // Preserve every manual transition between choice, calculation, and AI
+        // modes. Re-inferring here would turn AI mode back into calculation.
+        numerical_answer: q.numericalAnswer,
       };
       if (q.id && existingIds.has(q.id)) {
         const { error } = await supabase.from("questions").update(payload).eq("id", q.id);

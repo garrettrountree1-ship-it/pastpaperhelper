@@ -283,7 +283,7 @@ export const saveSectionDocumentWork = createServerFn({ method: "POST" })
         document_work: {
           ...current,
           [data.materialId]: { ...previousMaterialWork, ...data.work },
-        },
+        } as Json,
         updated_at: new Date().toISOString(),
       })
       .eq("id", data.sectionId);

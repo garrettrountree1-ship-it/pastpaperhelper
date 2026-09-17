@@ -21,6 +21,7 @@ import { questionPagesOnly } from "@/lib/answer-key";
 
 type Point = { x: number; y: number };
 type Stroke = { color: string; width: number; points: Point[]; erase?: boolean };
+type PaperTool = "pen" | "eraser" | "text";
 type PaperQuestion = {
   id: string;
   position: number;
@@ -65,7 +66,7 @@ function PaperAnswerArea({
   lined: boolean;
   answerHeight: number;
   backgroundUrls: string[];
-  tool: "pen" | "eraser" | "text";
+  tool: PaperTool;
   color: string;
   questionContent: ReactNode;
   onTextChange: (text: string) => void;
@@ -360,7 +361,7 @@ function ContinuousPaper({
   const exporters = useRef<Record<string, () => Promise<File>>>({});
   const undoers = useRef<Record<string, () => void>>({});
   const [marking, setMarking] = useState<string | null>(null);
-  const [tool, setTool] = useState<"pen" | "eraser" | "text">("pen");
+  const [tool, setTool] = useState<PaperTool>("pen");
   const [color, setColor] = useState(COLORS[0]!);
   const [zoom, setZoom] = useState(1);
   const selectedQuestion = questions.find((question) => question.id === selected) ?? questions[0];

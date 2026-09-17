@@ -100,7 +100,7 @@ export const listSections = createServerFn({ method: "GET" })
         .eq("unit_id", data.unitId)
         .order("position", { ascending: true })
         .order("created_at", { ascending: true });
-      rows = legacyResult.data?.map((row) => ({ ...row, document_work: {} }));
+      rows = legacyResult.data?.map((row) => ({ ...row, document_work: {} })) ?? null;
       error = legacyResult.error;
     }
     if (error) throw new Error(error.message);
@@ -265,7 +265,7 @@ export const saveSectionDocumentWork = createServerFn({ method: "POST" })
     await assertClassTeacher(supabase, section.class_id, userId);
     if (section.material_id !== data.materialId) throw new Error("Document is no longer attached.");
 
-    const current =
+    const current: Record<string, Json> =
       section.document_work &&
       typeof section.document_work === "object" &&
       !Array.isArray(section.document_work)

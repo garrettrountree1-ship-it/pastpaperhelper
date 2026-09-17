@@ -686,6 +686,33 @@ export function StudentPaperMode({
   );
 }
 
+/** Teacher's read-only view of the same continuous paper and per-question credit. */
+export function ReadOnlyPaperMode({
+  assignmentId,
+  questions,
+  answers,
+}: {
+  assignmentId: string;
+  questions: PaperQuestion[];
+  answers: PaperAnswer[];
+}) {
+  return (
+    <ContinuousPaper
+      assignmentId={`teacher:${assignmentId}`}
+      questions={questions}
+      answers={answers}
+      locked
+      allowHint={false}
+      allowSteps={false}
+      revealOnFullMarks={false}
+      markSchemeRevealed={false}
+      onMark={async () => {
+        throw new Error("This student view is read-only.");
+      }}
+    />
+  );
+}
+
 export function PreviewPaperMode({
   assignmentId,
   questions,
@@ -729,33 +756,6 @@ export function PreviewPaperMode({
             priorFlags: 0,
           },
         });
-      }}
-    />
-  );
-}
-
-/** Teacher's read-only view of the same continuous paper and per-question credit. */
-export function ReadOnlyPaperMode({
-  assignmentId,
-  questions,
-  answers,
-}: {
-  assignmentId: string;
-  questions: PaperQuestion[];
-  answers: PaperAnswer[];
-}) {
-  return (
-    <ContinuousPaper
-      assignmentId={`teacher:${assignmentId}`}
-      questions={questions}
-      answers={answers}
-      locked
-      allowHint={false}
-      allowSteps={false}
-      revealOnFullMarks={false}
-      markSchemeRevealed={false}
-      onMark={async () => {
-        throw new Error("This student view is read-only.");
       }}
     />
   );

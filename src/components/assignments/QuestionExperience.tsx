@@ -34,6 +34,11 @@ import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { questionBody, questionLabel } from "@/lib/question-label";
 import { QuestionTagBadge } from "@/components/assignments/QuestionTagBadge";
 
+// Re-export through the established assignment experience module so the
+// student route does not compete with the legacy PaperMode import during
+// rolling branch merges.
+export { StudentPaperMode as ContinuousStudentPaperMode } from "@/components/assignments/ContinuousPaperMode";
+
 /** Blocks paste, drag-drop and autofill-style bulk insertion into answer inputs. */
 function useOriginalTypingGuard() {
   const [flagged, setFlagged] = useState(false);
@@ -219,6 +224,7 @@ export function QuestionExperience({
     [photoFiles],
   );
   const submittedPhotoUrls = photoUrls.filter((url) => !url.includes(PAD_FILE_NAME));
+  const paperModeUrls = photoUrls.filter((url) => url.includes(PAD_FILE_NAME));
 
   // Seed the marks checklist so the student sees how many points are expected.
   useEffect(() => {
@@ -324,7 +330,10 @@ export function QuestionExperience({
             </div>
           ) : null}
 
-          <details className="group mt-4 rounded-xl border border-border bg-background/40">
+          <details
+            open={readOnly || undefined}
+            className="group mt-4 rounded-xl border border-border bg-background/40"
+          >
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
               <span className="flex min-w-0 items-center gap-2 font-medium">
                 <ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" />
@@ -360,6 +369,25 @@ export function QuestionExperience({
                 </div>
               ) : null}
 
+              {paperModeUrls.length > 0 ? (
+                <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
+                  <p className="text-sm font-medium">Paper mode answer</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Saved from the continuous paper when this question was marked.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {paperModeUrls.map((url) => (
+                      <StudentWorkPhoto
+                        key={url}
+                        url={url}
+                        alt="Paper mode answer"
+                        className="h-32 w-48 rounded-lg border border-border object-contain"
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="mt-4 space-y-3">
                 {readOnly ? null : (
                   <p className="text-xs text-muted-foreground">
@@ -371,7 +399,10 @@ export function QuestionExperience({
                   </p>
                 )}
 
-                <details className="rounded-lg border border-dashed border-border p-3">
+                <details
+                  open={readOnly || undefined}
+                  className="rounded-lg border border-dashed border-border p-3"
+                >
                   <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">
                     {readOnly ? "Typed answer" : "Type your answer"}
                   </summary>

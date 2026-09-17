@@ -785,7 +785,7 @@ export function FormativeCheckPanel({
     <div
       // Sits above a mirrored screen and stays usable: the quick check is never
       // part of the shared screen, and students can always answer it.
-      data-mirror-exit
+      data-formative-response
       className={
         student
           ? "pointer-events-auto fixed inset-0 z-[90] flex flex-col bg-foreground/40 p-3 backdrop-blur-sm sm:p-4"

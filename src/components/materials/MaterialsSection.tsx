@@ -105,9 +105,11 @@ function formatSize(bytes: number | null) {
 export function MaterialsSection({
   classId,
   role,
+  mirrorUnitId,
 }: {
   classId: string;
   role: "teacher" | "student";
+  mirrorUnitId?: string;
 }) {
   const classes = useQuery({
     queryKey: ["material-classes"],
@@ -128,12 +130,24 @@ export function MaterialsSection({
         </p>
       </div>
 
-      <UnitList classId={classId} canManage={role === "teacher" && Boolean(selected?.canManage)} />
+      <UnitList
+        classId={classId}
+        canManage={role === "teacher" && Boolean(selected?.canManage)}
+        mirrorUnitId={mirrorUnitId}
+      />
     </div>
   );
 }
 
-function UnitList({ classId, canManage }: { classId: string; canManage: boolean }) {
+function UnitList({
+  classId,
+  canManage,
+  mirrorUnitId,
+}: {
+  classId: string;
+  canManage: boolean;
+  mirrorUnitId?: string;
+}) {
   const queryClient = useQueryClient();
   const fetchUnits = useServerFn(listUnits);
   const units = useQuery({
@@ -201,6 +215,12 @@ function UnitList({ classId, canManage }: { classId: string; canManage: boolean 
   useEffect(() => {
     setOrderedIds(null);
   }, [units.data]);
+
+  useEffect(() => {
+    if (!canManage && mirrorUnitId && units.data?.some((unit) => unit.id === mirrorUnitId)) {
+      setOpenUnitId(mirrorUnitId);
+    }
+  }, [canManage, mirrorUnitId, units.data]);
 
   if (units.isLoading) return <Skeleton className="h-40 w-full" />;
 

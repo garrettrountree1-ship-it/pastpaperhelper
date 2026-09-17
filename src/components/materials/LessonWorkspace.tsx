@@ -310,22 +310,19 @@ export function LessonWorkspace({
   }, [presenting]);
 
   // A mirrored student screen is a passive display. Capture every interaction
-  // before canvas, document, iframe or scrolling tools can react. Escape and
-  // the dedicated exit button remain available.
+  // before canvas, document, iframe or scrolling tools can react. Only a
+  // formative response sent by the teacher remains interactive.
   useEffect(() => {
     if (!mirror.receiving) return;
-    const isExit = (target: EventTarget | null) =>
-      target instanceof Element && Boolean(target.closest("[data-mirror-exit]"));
+    const isFormativeResponse = (target: EventTarget | null) =>
+      target instanceof Element && Boolean(target.closest("[data-formative-response]"));
     const blockKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") return;
-      // Typing in a quick check (or another allowed control) still works while
-      // the teacher's screen is being shared.
-      if (isExit(event.target) || isExit(document.activeElement)) return;
+      if (isFormativeResponse(event.target) || isFormativeResponse(document.activeElement)) return;
       event.preventDefault();
       event.stopImmediatePropagation();
     };
     const blockInteraction = (event: Event) => {
-      if (isExit(event.target)) return;
+      if (isFormativeResponse(event.target)) return;
       event.preventDefault();
       event.stopImmediatePropagation();
     };
@@ -399,6 +396,7 @@ export function LessonWorkspace({
   // Which lesson page and which resource the teacher is showing, plus how the
   // two windows are arranged, all travel with the mirrored screen.
   useMirrorFieldWith(mirror, "workspace.section", activeId, setActiveId);
+  useMirrorFieldWith(mirror, "workspace.unitId", unit.id, () => {});
   useMirrorFieldWith(mirror, "workspace.doc", currentDocId, setDocOverride);
   useMirrorFieldWith(mirror, "workspace.layout", layout, setLayout);
   useMirrorFieldWith(mirror, "workspace.pane", paneMode, setPaneMode);
@@ -468,7 +466,7 @@ export function LessonWorkspace({
   useEffect(() => {
     if (
       canManage &&
-      !sections.isLoading &&
+      sections.isSuccess &&
       list.length === 0 &&
       !autoCreated.current &&
       !createMutation.isPending
@@ -477,7 +475,7 @@ export function LessonWorkspace({
       createMutation.mutate("Section 1");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canManage, sections.isLoading, list.length]);
+  }, [canManage, sections.isSuccess, list.length]);
 
   const docUrl = useQuery({
     queryKey: ["material-url", material?.id],
@@ -816,7 +814,22 @@ export function LessonWorkspace({
           />
         ) : null}
 
-        {!active ? (
+        {sections.isError ? (
+          <div className="flex flex-1 items-center justify-center p-8 text-center">
+            <div className="paper max-w-md space-y-3 p-6">
+              <p className="font-medium">The lesson workspace could not be loaded.</p>
+              <p className="text-sm text-muted-foreground">
+                {(sections.error as Error).message || "Please try again."}
+              </p>
+              <div className="flex justify-center gap-2">
+                <Button variant="outline" onClick={onBack}>
+                  Close
+                </Button>
+                <Button onClick={() => sections.refetch()}>Try again</Button>
+              </div>
+            </div>
+          </div>
+        ) : !active ? (
           <div className="flex flex-1 items-center justify-center p-8 text-center text-muted-foreground">
             {canManage ? (
               <div className="w-full max-w-5xl space-y-2">

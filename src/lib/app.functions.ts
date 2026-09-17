@@ -2019,6 +2019,18 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
         ? (q.answer_image_paths ?? [])
         : (recovered.get(q.id) ?? []);
 
+    // Sign every paper page in one storage request. Previously each question
+    // made its own request (and revealed answers made another), so a 20-question
+    // homework could wait on dozens of round trips before anything rendered.
+    const questionPaperPaths = (questions ?? []).map((q) => q.image_paths ?? []);
+    const answerPaperPaths = (questions ?? []).map((q) =>
+      revealsQuestion(q.id) ? answerPathsFor(q) : [],
+    );
+    const paperPathGroups = [...questionPaperPaths, ...answerPaperPaths];
+    const signedGroups = await signPaperPageGroups(db, paperPathGroups);
+    const signedQuestionPages = signedGroups.slice(0, questionPaperPaths.length);
+    const signedAnswerPages = signedGroups.slice(questionPaperPaths.length);
+
     return {
       tutorSettings,
       assignment: {
@@ -2035,43 +2047,39 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
         classId: assignment.class_id,
         className: klass?.name ?? "",
       },
-      questions: await Promise.all(
-        (questions ?? []).map(async (q) => ({
-          id: q.id,
-          position: q.position,
-          question_text: q.question_text,
-          marks: q.marks,
-          image_paths: q.image_paths,
-          // Released answers are always the teacher-checked page cut, never AI-extracted text.
-          markScheme: null,
-          answerImagePaths: revealsQuestion(q.id) ? answerPathsFor(q) : [],
-          answerImageUrls: revealsQuestion(q.id)
-            ? await signPaperPages(await admin(), answerPathsFor(q))
-            : [],
-          photoMode: resolvePhotoMode({
-            student: access.studentPhotoMode,
-            question: q.photo_mode as string | null,
-            assignment: access.assignmentPhotoMode,
-          }),
-          imageUrls: await signPaperPages(db, q.image_paths ?? []),
-          tagLabel: q.tag_label ?? "",
-          tagImage: q.tag_image ?? "",
-          multipleChoice: isMultipleChoice(
+      questions: (questions ?? []).map((q, index) => ({
+        id: q.id,
+        position: q.position,
+        question_text: q.question_text,
+        marks: q.marks,
+        image_paths: q.image_paths,
+        // Released answers are always the teacher-checked page cut, never AI-extracted text.
+        markScheme: null,
+        answerImagePaths: revealsQuestion(q.id) ? answerPathsFor(q) : [],
+        answerImageUrls: signedAnswerPages[index] ?? [],
+        photoMode: resolvePhotoMode({
+          student: access.studentPhotoMode,
+          question: q.photo_mode as string | null,
+          assignment: access.assignmentPhotoMode,
+        }),
+        imageUrls: signedQuestionPages[index] ?? [],
+        tagLabel: q.tag_label ?? "",
+        tagImage: q.tag_image ?? "",
+        multipleChoice: isMultipleChoice(
+          (q as { multiple_choice?: boolean | null }).multiple_choice,
+          (q as { mark_scheme?: string | null }).mark_scheme,
+        ),
+        answerCheckMode:
+          !isMultipleChoice(
             (q as { multiple_choice?: boolean | null }).multiple_choice,
             (q as { mark_scheme?: string | null }).mark_scheme,
-          ),
-          answerCheckMode:
-            !isMultipleChoice(
-              (q as { multiple_choice?: boolean | null }).multiple_choice,
-              (q as { mark_scheme?: string | null }).mark_scheme,
-            ) && (q as { numerical_answer?: boolean | null }).numerical_answer
-              ? tutorSettings.checkFinalNumericOnly
-                ? ("final-number" as const)
-                : ("full-working" as const)
-              : null,
-          creditedAll: Boolean((q as { credited_all_at?: string | null }).credited_all_at),
-        })),
-      ),
+          ) && (q as { numerical_answer?: boolean | null }).numerical_answer
+            ? tutorSettings.checkFinalNumericOnly
+              ? ("final-number" as const)
+              : ("full-working" as const)
+            : null,
+        creditedAll: Boolean((q as { credited_all_at?: string | null }).credited_all_at),
+      })),
 
       submission,
       answers: answersWithImages,
@@ -3166,6 +3174,33 @@ async function signPaperPages(db: AnyClient, paths: string[]) {
   return (data ?? [])
     .map((item, index) => (item.signedUrl ? `${item.signedUrl}${parts[index]?.hash ?? ""}` : null))
     .filter((url): url is string => Boolean(url));
+}
+
+/** Signs unique source pages once, then restores each question's crop fragment. */
+async function signPaperPageGroups(db: AnyClient, groups: string[][]) {
+  const parts = groups.map((paths) =>
+    paths.map((path) => {
+      const at = path.indexOf("#");
+      return at === -1 ? { path, hash: "" } : { path: path.slice(0, at), hash: path.slice(at) };
+    }),
+  );
+  const uniquePaths = [...new Set(parts.flat().map((part) => part.path))];
+  if (uniquePaths.length === 0) return groups.map(() => [] as string[]);
+
+  const { data } = await db.storage.from("paper-pages").createSignedUrls(uniquePaths, 60 * 60 * 8);
+  const urlsByPath = new Map<string, string>();
+  (data ?? []).forEach((item, index) => {
+    if (item.signedUrl) urlsByPath.set(uniquePaths[index]!, item.signedUrl);
+  });
+
+  return parts.map((group) =>
+    group
+      .map((part) => {
+        const url = urlsByPath.get(part.path);
+        return url ? `${url}${part.hash}` : null;
+      })
+      .filter((url): url is string => Boolean(url)),
+  );
 }
 
 async function signWorkImages(db: AnyClient, paths: string[]) {

@@ -301,6 +301,9 @@ function AssignmentPage() {
                   revealOnFullMarks={Boolean(data.assignment.revealOnFullMarks)}
                   markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
                   queryKey={queryKey}
+                  classId={data.assignment.classId}
+                  className={data.assignment.className}
+                  assignmentTitle={data.assignment.title}
                 />
               </div>
             ) : null}

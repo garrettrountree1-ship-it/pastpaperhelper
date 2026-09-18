@@ -18,8 +18,15 @@ import {
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
-import { QuestionHelpButtons } from "@/components/assignments/QuestionHelpDialog";
+import {
+  HELP_PILL,
+  HELP_PILL_DOT,
+  HELP_PILL_LABEL,
+  QuestionHelpButtons,
+  TeacherIcon,
+} from "@/components/assignments/QuestionHelpDialog";
 import { PAD_FILE_NAME } from "@/components/assignments/DrawingPad";
+import { MessageTeacherDialog } from "@/components/messaging/MessageTeacherDialog";
 import {
   mergeSnipPieces,
   parseSnipBand,
@@ -560,6 +567,7 @@ function ContinuousPaper({
   allowSteps,
   revealOnFullMarks,
   markSchemeRevealed,
+  teacherMessage,
   onMark,
 }: {
   assignmentId: string;
@@ -570,6 +578,7 @@ function ContinuousPaper({
   allowSteps: boolean;
   revealOnFullMarks: boolean;
   markSchemeRevealed: boolean;
+  teacherMessage?: { classId: string; className: string; assignmentTitle: string };
   onMark: (question: PaperQuestion, text: string, file?: File) => Promise<PaperResult>;
 }) {
   const [selected, setSelected] = useState(questions[0]?.id ?? "");
@@ -946,6 +955,33 @@ function ContinuousPaper({
               allowHint={allowHint}
               allowSteps={allowSteps}
             />
+            {teacherMessage ? (
+              <MessageTeacherDialog
+                classId={teacherMessage.classId}
+                className={teacherMessage.className}
+                preset={{
+                  assignmentId,
+                  questionId: selectedQuestion.id,
+                  topic: `${teacherMessage.assignmentTitle} · Question ${
+                    labels[questions.indexOf(selectedQuestion)] ??
+                    questions.indexOf(selectedQuestion) + 1
+                  }`,
+                }}
+                trigger={
+                  <button
+                    type="button"
+                    title="Ask the teacher"
+                    aria-label="Ask the teacher"
+                    className={`${HELP_PILL} w-full border-primary/50 bg-primary/10 hover:bg-primary/20`}
+                  >
+                    <span className={`${HELP_PILL_DOT} bg-primary text-primary-foreground`}>
+                      <TeacherIcon className="size-3.5" />
+                    </span>
+                    <span className={`${HELP_PILL_LABEL} text-foreground`}>Ask the teacher</span>
+                  </button>
+                }
+              />
+            ) : null}
             {(markSchemeRevealed ||
               (revealOnFullMarks &&
                 (selectedResult?.verdict === "correct" ||
@@ -974,6 +1010,9 @@ export function StudentPaperMode({
   revealOnFullMarks,
   markSchemeRevealed,
   queryKey,
+  classId,
+  className,
+  assignmentTitle,
 }: {
   assignmentId: string;
   questions: PaperQuestion[];
@@ -983,6 +1022,9 @@ export function StudentPaperMode({
   revealOnFullMarks: boolean;
   markSchemeRevealed: boolean;
   queryKey: string[];
+  classId: string;
+  className: string;
+  assignmentTitle: string;
 }) {
   const grade = useServerFn(gradeAnswer);
   const queryClient = useQueryClient();
@@ -996,6 +1038,7 @@ export function StudentPaperMode({
       allowSteps={settings?.allowSteps !== false}
       revealOnFullMarks={revealOnFullMarks}
       markSchemeRevealed={markSchemeRevealed}
+      teacherMessage={{ classId, className, assignmentTitle }}
       onMark={async (question, text, file) => {
         const { data } = await supabase.auth.getUser();
         if (!data.user) throw new Error("Please sign in again.");

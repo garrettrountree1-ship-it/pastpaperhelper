@@ -29,3 +29,25 @@ test("fills in missing labels from the question above", () => {
 test("numbers an unlabelled paper in order", () => {
   assert.deepEqual(resolveQuestionLabels(["State one", "Explain"]), ["1", "2"]);
 });
+
+test("repairs legacy running numbers placed before dotted sub-parts", () => {
+  assert.deepEqual(
+    resolveQuestionLabels([
+      "4 A standalone question",
+      "5 A shared stem\n\n(a.ii) Calculate the amount",
+      "6 (b.i) (b.i) Sketch the curve",
+      "7 (b.ii) Explain the change",
+      "8 A new standalone question",
+    ]),
+    ["4", "5(aii)", "5(bi)", "5(bii)", "6"],
+  );
+});
+
+test("does not fold a genuine next main question into the previous sub-parts", () => {
+  assert.deepEqual(resolveQuestionLabels(["1(b) Explain", "2(a) Calculate"]), ["1(b)", "2(a)"]);
+});
+
+test("parses dotted sub-parts without losing letter or roman numbering", () => {
+  assert.equal(questionLabel("6 (b.ii) Explain", 5), "6(bii)");
+  assert.deepEqual(parseLabelString("6(b.ii)"), { main: 6, parts: ["b", "ii"] });
+});

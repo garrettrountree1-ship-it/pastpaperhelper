@@ -7,22 +7,49 @@ import { cleanMathText } from "@/lib/math-text";
  */
 const ROMAN = "i{1,3}|iv|v|vi{1,3}|ix|x";
 const HEAD = new RegExp(`^\\s*\\(?(\\d{1,3})\\)?\\s*[.)]?\\s*`, "i");
-const PAREN_PART = new RegExp(`^\\s*\\(\\s*(${ROMAN}|[a-z](?:${ROMAN})?)\\s*\\)`, "i");
-const COMPACT_PART = new RegExp(`^\\s*([a-z])(?:\\s*\\(?(${ROMAN})\\)?)?(?=\\s|[.):-]|$)`, "i");
+const PAREN_PART = new RegExp(
+  `^\\s*\\(\\s*(${ROMAN}|[a-z](?:[.]?(?:${ROMAN}))?)\\s*\\)`,
+  "i",
+);
+const COMPACT_PART = new RegExp(`^\\s*([a-z])(?:\\s*\\(?(${ROMAN})\\)?)?(?=\\s|[.):-]|$)`);
 
 type Parsed = { label: string; rest: string };
 
 /** Papers (and re-labelling) sometimes repeat a part: "13(g) (g) State ..." -> one (g). */
 function dropRepeats(parts: string[]): string[] {
-  return parts.filter((part, index) => index === 0 || part !== parts[index - 1]);
+  const adjacent = parts.filter((part, index) => index === 0 || part !== parts[index - 1]);
+  if (adjacent.length % 2 === 0) {
+    const middle = adjacent.length / 2;
+    if (adjacent.slice(0, middle).join(".") === adjacent.slice(middle).join(".")) {
+      return adjacent.slice(0, middle);
+    }
+  }
+  return adjacent;
 }
 
 /** Split compact printed parts such as "aii" into letter "a" + roman "ii". */
 function tokenParts(token: string): string[] {
-  const value = token.toLowerCase();
+  const value = token.toLowerCase().replace(/[.]/g, "");
   if (new RegExp(`^(?:${ROMAN})$`, "i").test(value)) return [value];
   const compact = new RegExp(`^([a-z])(${ROMAN})$`, "i").exec(value);
   return compact?.[1] && compact[2] ? [compact[1], compact[2]] : [value];
+}
+
+/**
+ * Older extractions sometimes stored a running position before the real
+ * sub-part, for example `6 (b.ii) ...` or `5 ...\n(a.ii) ...`. Recover that
+ * printed part so an entire assignment can still display as 5(a)(ii),
+ * 5(b)(i), 5(b)(ii), then 6.
+ */
+function embeddedParts(questionText: string): string[] {
+  const parsed = parseOnce(questionText ?? "");
+  if (!parsed) return [];
+  const existing = parseLabelString(parsed.label).parts;
+  const body = parsed.rest;
+  const match = /(?:^|\n)\s*\(\s*([a-z][.]?(?:[ivx]+)?)\s*\)(?=\s|[.):-]|$)/im.exec(body);
+  if (!match?.[1]) return existing;
+  const found = tokenParts(match[1]);
+  return existing.length > 0 ? existing : found;
 }
 
 /** Match compact labels printed on papers: 1(ai), 1(aii), 1(biii). */
@@ -214,11 +241,48 @@ function leadingPartsOnly(questionText: string): string[] {
 export function resolveQuestionLabels(questionTexts: string[]): string[] {
   const labels: string[] = [];
   let previous: string | null = null;
+  let legacyMultipartMain: number | null = null;
   questionTexts.forEach((text, index) => {
     const printed = printedLabel(text);
+    const printedParts = printed ? parseLabelString(printed).parts : [];
+    const recoveredParts = printedParts.length > 0 ? printedParts : embeddedParts(text);
+    if (recoveredParts.length > 0) {
+      const printedMain = printed ? parseLabelString(printed).main : null;
+      const previousParsed = previous ? parseLabelString(previous) : null;
+      const bodyAfterPrinted = parseOnce(text)?.rest ?? "";
+      const repeatedPart = leadingPartsOnly(bodyAfterPrinted);
+      const legacyRunningPrefix =
+        printedParts.length > 0 &&
+        previousParsed?.parts.length &&
+        printedMain !== null &&
+        previousParsed.main !== null &&
+        (legacyMultipartMain !== null || repeatedPart.length > 0 || printedMain > previousParsed.main + 1);
+      const main =
+        legacyRunningPrefix
+          ? (legacyMultipartMain ?? previousParsed.main)
+          : printedParts.length > 0
+          ? printedMain
+          : previousParsed?.parts.length
+            ? previousParsed.main
+            : (printedMain ?? (previousParsed?.main ?? index) + 1);
+      const label = formatLabel(main, recoveredParts);
+      labels.push(label);
+      previous = label;
+      if (printedParts.length === 0 && recoveredParts.length > 0) legacyMultipartMain = main;
+      return;
+    }
     if (printed) {
-      labels.push(printed);
-      previous = printed;
+      const printedMain = parseLabelString(printed).main;
+      const previousParsed = previous ? parseLabelString(previous) : null;
+      const label =
+        legacyMultipartMain !== null
+          ? formatLabel(legacyMultipartMain + 1, [])
+          : previousParsed?.parts.length && previousParsed.main !== null
+          ? formatLabel(previousParsed.main + 1, [])
+          : formatLabel(printedMain, []);
+      labels.push(label);
+      previous = label;
+      legacyMultipartMain = null;
       return;
     }
     const parts = leadingPartsOnly(text);

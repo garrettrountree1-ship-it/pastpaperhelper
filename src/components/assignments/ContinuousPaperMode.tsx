@@ -1191,14 +1191,18 @@ export function PreviewPaperMode({
   settings,
   revealOnFullMarks,
   markSchemeRevealed,
+  answers = [],
+  onResult,
 }: {
   assignmentId: string;
   questions: PaperQuestion[];
   settings: { allowHint?: boolean; allowSteps?: boolean } | undefined;
   revealOnFullMarks: boolean;
   markSchemeRevealed: boolean;
+  /** Marks already earned in the other view of this same test session. */
+  answers?: PaperAnswer[];
+  onResult?: (questionId: string, result: PaperResult & { answerText: string }) => void;
 }) {
-  const [answers] = useState<PaperAnswer[]>([]);
   return (
     <ContinuousPaper
       assignmentId={`preview:${assignmentId}`}

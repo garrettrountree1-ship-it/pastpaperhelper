@@ -441,10 +441,12 @@ function PaperAnswerArea({
       {textBoxes.map((box) => (
         <div
           key={box.id}
-          className="absolute z-20 flex min-w-44 items-start rounded-md border bg-white/95 shadow-sm"
+          className="absolute z-20 flex items-stretch rounded-md border bg-white/95 shadow-sm"
           style={{
             left: `${(box.x / Math.max(1, canvasSize.width)) * 100}%`,
             top: `${(box.y / Math.max(1, canvasSize.height)) * 100}%`,
+            width: `${((box.width ?? 260) / Math.max(1, canvasSize.width)) * 100}%`,
+            height: `${((box.height ?? 84) / Math.max(1, canvasSize.height)) * 100}%`,
           }}
           onPointerDown={(event) => event.stopPropagation()}
         >

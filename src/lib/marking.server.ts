@@ -1,7 +1,7 @@
 import { generateText, streamText } from "ai";
 import { z } from "zod";
 
-import { gatewayModel, gatewayResponsesModel } from "./ai-gateway.server";
+import { gatewayModel } from "./ai-gateway.server";
 
 export type MarkPoint = { point: string; marks: number; awarded: boolean };
 
@@ -119,16 +119,12 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     // Reasoning marks can take longer than a normal request, so consume the
     // streamed response server-side instead of holding one silent request open.
     const result = streamText({
-      model: gatewayResponsesModel(),
+      model: gatewayModel(),
       system,
       messages: [{ role: "user", content }],
       providerOptions: {
-        openai: {
-          forceReasoning: true,
+        lovable: {
           reasoningEffort: "medium",
-          reasoningSummary: "auto",
-          store: false,
-          include: ["reasoning.encrypted_content"],
         },
       },
     });

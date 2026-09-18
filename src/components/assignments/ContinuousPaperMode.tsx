@@ -18,11 +18,11 @@ import {
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
-import { QuestionHelpButtons } from "@/components/assignments/QuestionHelpDialog";
 import {
   HELP_PILL,
   HELP_PILL_DOT,
   HELP_PILL_LABEL,
+  QuestionHelpButtons,
   TeacherIcon,
 } from "@/components/assignments/QuestionHelpDialog";
 import { PAD_FILE_NAME } from "@/components/assignments/DrawingPad";

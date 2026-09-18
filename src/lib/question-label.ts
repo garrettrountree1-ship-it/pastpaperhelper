@@ -175,3 +175,63 @@ export function nextLabelAfter(label: string): string {
   if (/^\d+$/.test(last)) return formatLabel(main, [...rest, String(Number(last) + 1)]);
   return formatLabel(main, parts);
 }
+
+/** The label printed on the paper, or null when the wording carries none. */
+export function printedLabel(questionText: string): string | null {
+  return parseOnce(questionText ?? "")?.label ?? null;
+}
+
+/** Part labels printed without their main number: "(b)", "b)", "(ii)". */
+function leadingPartsOnly(questionText: string): string[] {
+  let rest = (questionText ?? "").trim();
+  const parts: string[] = [];
+  for (;;) {
+    const paren = PAREN_PART.exec(rest);
+    if (paren?.[1]) {
+      parts.push(...tokenParts(paren[1]));
+      rest = rest.slice(paren[0].length);
+      continue;
+    }
+    if (parts.length === 0) {
+      const compact = /^\s*([a-z])\s*\)/i.exec(rest);
+      if (compact?.[1]) {
+        parts.push(compact[1].toLowerCase());
+        rest = rest.slice(compact[0].length);
+        continue;
+      }
+    }
+    break;
+  }
+  return dropRepeats(parts);
+}
+
+/**
+ * Works out the label of every question in a paper, in order. Printed labels
+ * win. A question without one continues the paper's own numbering: a part-only
+ * label such as "(c)" keeps the previous main number, and wording with no label
+ * at all follows on from the question above it (1(b) -> 1(c), 4 -> 5).
+ */
+export function resolveQuestionLabels(questionTexts: string[]): string[] {
+  const labels: string[] = [];
+  let previous: string | null = null;
+  questionTexts.forEach((text, index) => {
+    const printed = printedLabel(text);
+    if (printed) {
+      labels.push(printed);
+      previous = printed;
+      return;
+    }
+    const parts = leadingPartsOnly(text);
+    const previousMain = previous ? parseLabelString(previous).main : null;
+    if (parts.length > 0 && previousMain !== null) {
+      const label = formatLabel(previousMain, parts);
+      labels.push(label);
+      previous = label;
+      return;
+    }
+    const label = previous ? nextLabelAfter(previous) : String(index + 1);
+    labels.push(label);
+    previous = label;
+  });
+  return labels;
+}

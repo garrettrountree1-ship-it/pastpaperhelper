@@ -15,7 +15,7 @@ import {
   Undo2,
   XCircle,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { QuestionHelpButtons } from "@/components/assignments/QuestionHelpDialog";
@@ -33,7 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { gradeAnswer, previewGradeAnswer } from "@/lib/app.functions";
 import { questionPagesOnly } from "@/lib/answer-key";
 import { NO_PASTE_MESSAGE } from "@/lib/integrity";
-import { questionLabel } from "@/lib/question-label";
+import { resolveQuestionLabels } from "@/lib/question-label";
 
 type Point = { x: number; y: number };
 type Stroke = { color: string; width: number; points: Point[]; erase?: boolean };
@@ -105,6 +105,9 @@ function PaperAnswerArea({
   const [text, setText] = useState(initialText);
   const [height, setHeight] = useState(answerHeight);
   const [textBoxes, setTextBoxes] = useState<PaperTextBox[]>([]);
+  // Text boxes are stored in the drawing's own coordinates, so where the student
+  // drops them is exactly where they appear in the marked picture.
+  const [canvasSize, setCanvasSize] = useState({ width: 1, height: 1 });
   const textBoxesRef = useRef(textBoxes);
   textBoxesRef.current = textBoxes;
   const textRef = useRef(text);
@@ -179,6 +182,7 @@ function PaperAnswerArea({
       if (canvas.width === width && canvas.height === height) return;
       canvas.width = width;
       canvas.height = height;
+      setCanvasSize({ width, height });
       redraw();
     };
     resize();
@@ -236,8 +240,24 @@ function PaperAnswerArea({
       context.drawImage(source, 0, 0);
       context.fillStyle = "#111827";
       context.font = "18px sans-serif";
+      // Everything the student put on this question — pen strokes, typed lines and
+      // every placed text box — is drawn into the one picture that gets marked.
       for (const box of textBoxesRef.current) {
-        context.fillText(box.text, box.x + 8, box.y + 24, Math.max(40, output.width - box.x - 16));
+        const maxWidth = Math.max(80, output.width - box.x - 24);
+        let y = box.y + 24;
+        for (const paragraph of box.text.split(/\n/)) {
+          let line = "";
+          for (const word of paragraph.split(/\s+/)) {
+            const candidate = `${line}${word} `;
+            if (line && context.measureText(candidate).width > maxWidth) {
+              context.fillText(line, box.x + 8, y);
+              line = `${word} `;
+              y += 24;
+            } else line = candidate;
+          }
+          context.fillText(line, box.x + 8, y);
+          y += 24;
+        }
       }
       if (textRef.current.trim()) {
         context.fillStyle = "#111827";
@@ -354,6 +374,7 @@ function PaperAnswerArea({
               ...currentBoxes,
               { id: crypto.randomUUID(), x: location.x, y: location.y, text: "" },
             ]);
+            window.setTimeout(persist);
             return;
           }
           event.currentTarget.setPointerCapture(event.pointerId);
@@ -382,8 +403,11 @@ function PaperAnswerArea({
       {textBoxes.map((box) => (
         <div
           key={box.id}
-          className="absolute z-20 flex min-w-40 items-center rounded-md border bg-white shadow-sm"
-          style={{ left: box.x, top: box.y }}
+          className="absolute z-20 flex min-w-44 items-start rounded-md border bg-white/95 shadow-sm"
+          style={{
+            left: `${(box.x / Math.max(1, canvasSize.width)) * 100}%`,
+            top: `${(box.y / Math.max(1, canvasSize.height)) * 100}%`,
+          }}
           onPointerDown={(event) => event.stopPropagation()}
         >
           <button
@@ -393,6 +417,9 @@ function PaperAnswerArea({
             onPointerDown={(event) => {
               event.preventDefault();
               event.currentTarget.setPointerCapture(event.pointerId);
+              const rect = canvasRef.current?.getBoundingClientRect();
+              const scaleX = rect ? canvasSize.width / Math.max(1, rect.width) : 1;
+              const scaleY = rect ? canvasSize.height / Math.max(1, rect.height) : 1;
               const origin = { x: event.clientX, y: event.clientY, boxX: box.x, boxY: box.y };
               const moveBox = (moveEvent: PointerEvent) =>
                 setTextBoxes((currentBoxes) =>
@@ -400,8 +427,8 @@ function PaperAnswerArea({
                     item.id === box.id
                       ? {
                           ...item,
-                          x: Math.max(0, origin.boxX + moveEvent.clientX - origin.x),
-                          y: Math.max(0, origin.boxY + moveEvent.clientY - origin.y),
+                          x: Math.max(0, origin.boxX + (moveEvent.clientX - origin.x) * scaleX),
+                          y: Math.max(0, origin.boxY + (moveEvent.clientY - origin.y) * scaleY),
                         }
                       : item,
                   ),
@@ -417,12 +444,13 @@ function PaperAnswerArea({
           >
             <Move className="size-4" />
           </button>
-          <Input
+          <Textarea
             autoFocus={!box.text}
             value={box.text}
             disabled={disabled}
+            rows={1}
             aria-label="Movable answer text"
-            className="border-0 shadow-none focus-visible:ring-0"
+            className="min-h-9 resize-y border-0 px-1 py-2 shadow-none focus-visible:ring-0"
             onPaste={(event) => {
               event.preventDefault();
               toast.error(NO_PASTE_MESSAGE);
@@ -565,6 +593,11 @@ function ContinuousPaper({
   const [tool, setTool] = useState<PaperTool>("pen");
   const [color, setColor] = useState(COLORS[0]!);
   const [zoom, setZoom] = useState(1);
+  // Every view of a paper shows the paper's own numbering (1a, 1b, 1b(ii) …).
+  const labels = useMemo(
+    () => resolveQuestionLabels(questions.map((question) => question.question_text)),
+    [questions],
+  );
   const selectedQuestion = questions.find((question) => question.id === selected) ?? questions[0];
   const selectedResult = selectedQuestion ? results[selectedQuestion.id] : undefined;
   const selectedAnswer = selectedQuestion
@@ -667,7 +700,13 @@ function ContinuousPaper({
             );
             const answerHeight = multipleChoice || savedPaperUrls.length > 0 ? 0 : 220;
 
-            const label = questionLabel(question.question_text, index);
+            const label = labels[index] ?? String(index + 1);
+            const fullCredit =
+              Number(question.marks) > 0 &&
+              Number(result?.awardedMarks ?? 0) >= Number(question.marks);
+            const showAnswerHere =
+              (markSchemeRevealed || (revealOnFullMarks && fullCredit)) &&
+              (question.answerImageUrls?.length ?? 0) > 0;
             return (
               <section
                 key={question.id}
@@ -719,6 +758,12 @@ function ContinuousPaper({
                     undoers.current[question.id] = undo;
                   }}
                 />
+                {showAnswerHere ? (
+                  <div className="border-t bg-primary/5 p-4">
+                    <PaperMarkScheme urls={question.answerImageUrls ?? []} />
+                  </div>
+                ) : null}
+
               </section>
             );
           })}
@@ -733,7 +778,7 @@ function ContinuousPaper({
         <div className="grid grid-cols-4 gap-1 lg:grid-cols-3">
           {questions.map((question, index) => {
             const result = results[question.id];
-            const label = questionLabel(question.question_text, index);
+            const label = labels[index] ?? String(index + 1);
             return (
               <Button
                 key={question.id}
@@ -763,8 +808,9 @@ function ContinuousPaper({
           <div className="mt-4 space-y-3 border-t pt-4">
             <p className="font-medium">
               Paper Q
-              {questionLabel(selectedQuestion.question_text, questions.indexOf(selectedQuestion))} ·{" "}
-              {selectedQuestion.marks} marks
+              {labels[questions.indexOf(selectedQuestion)] ??
+                questions.indexOf(selectedQuestion) + 1}{" "}
+              · {selectedQuestion.marks} marks
             </p>
             {selectedQuestion.multipleChoice ||
             selectedQuestion.answerCheckMode === "final-number" ? (

@@ -106,6 +106,7 @@ import {
   parseLabelString,
   questionBody,
   questionLabel,
+  resolveQuestionLabels,
   setQuestionLabel,
   shiftLetter,
 } from "@/lib/question-label";
@@ -1058,7 +1059,9 @@ function AssignmentDialog({
                 <div className="rounded-xl border border-border p-4">
                   <div className="flex items-center justify-between gap-2">
                     {(() => {
-                      const label = questionLabel(question.questionText, index);
+                      const label =
+                        resolveQuestionLabels(questions.map((q) => q.questionText))[index] ??
+                        questionLabel(question.questionText, index);
                       const draft = labelDrafts[index];
                       const commit = () => {
                         const next = (draft ?? "").trim();
@@ -1563,7 +1566,10 @@ function QuestionControlsDialog({
             <p className="text-sm text-muted-foreground">This assignment has no questions.</p>
           ) : (
             controls.data.questions.map((question, index) => {
-              const label = questionLabel(question.questionText, index);
+              const label =
+                resolveQuestionLabels(
+                  (controls.data?.questions ?? []).map((q) => q.questionText),
+                )[index] ?? questionLabel(question.questionText, index);
               const excludedCount = (controls.data?.exclusions ?? []).filter(
                 (e) => e.questionId === question.id,
               ).length;

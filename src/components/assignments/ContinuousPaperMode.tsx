@@ -83,6 +83,7 @@ function PaperAnswerArea({
   onSelect,
   registerExport,
   registerUndo,
+  registerClear,
 }: {
   storageKey: string;
   initialText: string;
@@ -97,6 +98,8 @@ function PaperAnswerArea({
   onSelect: () => void;
   registerExport: (exporter: () => Promise<File>) => void;
   registerUndo: (undo: () => void) => void;
+  /** Wipes every stroke, text box and typed line for this question. */
+  registerClear: (clear: () => void) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -197,6 +200,21 @@ function PaperAnswerArea({
       redraw();
       persist();
     });
+    registerClear(() => {
+      strokes.current = [];
+      current.current = null;
+      setTextBoxes([]);
+      textBoxesRef.current = [];
+      setText("");
+      textRef.current = "";
+      onTextChange("");
+      redraw();
+      try {
+        window.localStorage.removeItem(storageKey);
+      } catch {
+        // Nothing to clean up when browser storage is unavailable.
+      }
+    });
     registerExport(async () => {
       const source = canvasRef.current;
       if (!source) throw new Error("The paper is not ready yet.");
@@ -283,7 +301,8 @@ function PaperAnswerArea({
       );
       return new File([blob], PAD_FILE_NAME, { type: "image/png" });
     });
-  }, [backgroundUrls, height, registerExport, registerUndo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backgroundUrls, height, registerExport, registerUndo, registerClear]);
 
   const startResize = (event: React.PointerEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -589,6 +608,7 @@ function ContinuousPaper({
   }, [answers]);
   const exporters = useRef<Record<string, () => Promise<File>>>({});
   const undoers = useRef<Record<string, () => void>>({});
+  const clearers = useRef<Record<string, () => void>>({});
   const [marking, setMarking] = useState<string | null>(null);
   const [tool, setTool] = useState<PaperTool>("pen");
   const [color, setColor] = useState(COLORS[0]!);
@@ -757,6 +777,9 @@ function ContinuousPaper({
                   registerUndo={(undo) => {
                     undoers.current[question.id] = undo;
                   }}
+                  registerClear={(clear) => {
+                    clearers.current[question.id] = clear;
+                  }}
                 />
                 {showAnswerHere ? (
                   <div className="border-t bg-primary/5 p-4">
@@ -793,7 +816,10 @@ function ContinuousPaper({
                 }}
               >
                 {result?.verdict === "correct" ? (
-                  <CheckCircle2 className="size-3.5" />
+                  <CheckCircle2
+                    className="size-3.5 text-emerald-600"
+                    aria-label="Full credit"
+                  />
                 ) : result?.verdict === "partial" ? (
                   <CircleDashed className="size-3.5 text-amber-500" />
                 ) : result ? (
@@ -892,6 +918,15 @@ function ContinuousPaper({
                     await exporter(),
                   );
                   setResults((current) => ({ ...current, [selectedQuestion.id]: result }));
+                  // A correct fast answer settles the question, so the rough
+                  // working and sketching for it is wiped from the paper.
+                  const fastMark =
+                    selectedQuestion.multipleChoice ||
+                    selectedQuestion.answerCheckMode === "final-number";
+                  if (fastMark && result.verdict === "correct") {
+                    clearers.current[selectedQuestion.id]?.();
+                    setDrafts((current) => ({ ...current, [selectedQuestion.id]: "" }));
+                  }
                 } catch (error) {
                   toast.error((error as Error).message);
                 } finally {

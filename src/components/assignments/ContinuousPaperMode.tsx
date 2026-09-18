@@ -49,6 +49,8 @@ type PaperAnswer = {
   question_id: string;
   answer_text: string;
   image_paths?: string[] | null;
+  /** Signed copies used by the teacher's live student-work view. */
+  imageUrls?: string[];
   verdict?: string | null;
   awarded_marks?: number | null;
   feedback?: string | null;
@@ -524,10 +526,16 @@ function ContinuousPaper({
           {questions.map((question, index) => {
             const result = results[question.id];
             const snips = question.imageUrls ?? [];
+            const savedPaperUrls = locked
+              ? (
+                  answers.find((answer) => answer.question_id === question.id)?.imageUrls ?? []
+                ).filter((url) => url.includes(PAD_FILE_NAME))
+              : [];
             const multipleChoice = Boolean(question.multipleChoice);
             const needsBlank = /draw|diagram|graph|plot|sketch|calculate/i.test(
               question.question_text,
             );
+            const answerHeight = multipleChoice || savedPaperUrls.length > 0 ? 0 : 220;
             const answerHeight = multipleChoice ? 0 : 220;
             const label = questionLabel(question.question_text, index);
             return (
@@ -544,7 +552,7 @@ function ContinuousPaper({
                   disabled={locked || result?.verdict === "correct"}
                   lined={!needsBlank}
                   answerHeight={answerHeight}
-                  backgroundUrls={snips}
+                  backgroundUrls={savedPaperUrls.length > 0 ? [] : snips}
                   tool={tool}
                   color={color}
                   onSelect={() => setSelected(question.id)}
@@ -553,6 +561,17 @@ function ContinuousPaper({
                       <span className="absolute left-1 top-1 z-20 rounded bg-primary/90 px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
                         Q{label}
                       </span>
+                      {savedPaperUrls.length > 0 ? (
+                        <div>
+                          <p className="mb-2 text-xs font-medium text-muted-foreground">
+                            Student&apos;s marked paper
+                          </p>
+                          <QuestionSnipStack
+                            urls={savedPaperUrls}
+                            alt={`Student's answer for question ${label}`}
+                          />
+                        </div>
+                      ) : snips.length ? (
                       {snips.length ? (
                         <QuestionSnipStack urls={snips} alt={`Question ${label}`} />
                       ) : (
@@ -791,7 +810,10 @@ export function ReadOnlyPaperMode({
       allowHint={false}
       allowSteps={false}
       revealOnFullMarks={false}
-      markSchemeRevealed={false}
+      // The server only sends answer images that this student is entitled to
+      // see. Mirroring that payload lets the teacher's student view show the
+      // exact same released mark-scheme block instead of hiding it again.
+      markSchemeRevealed={questions.some((question) => question.answerImageUrls?.length)}
       onMark={async () => {
         throw new Error("This student view is read-only.");
       }}

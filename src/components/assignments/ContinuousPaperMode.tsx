@@ -11,9 +11,6 @@ import {
   Save,
   TextCursorInput,
   Trash2,
-  PenLine,
-  Plus,
-  Save,
   Type,
   Undo2,
   XCircle,
@@ -506,54 +503,6 @@ function PaperMarkScheme({ urls }: { urls: string[] }) {
   );
 }
 
-function PaperMarkScheme({ urls }: { urls: string[] }) {
-  const [revealed, setRevealed] = useState(100);
-  const frame = useRef<HTMLDivElement | null>(null);
-  const revealAt = (clientY: number) => {
-    const rect = frame.current?.getBoundingClientRect();
-    if (rect) setRevealed(Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100)));
-  };
-  return (
-    <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium">Mark scheme</p>
-        <p className="text-right text-[11px] text-muted-foreground">Drag the cover or use ↑ ↓</p>
-      </div>
-      <div ref={frame} className="relative mt-2 overflow-hidden rounded-md">
-        <QuestionSnipStack urls={urls} answers alt="Official mark scheme" />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 bg-card"
-          style={{ height: `${100 - revealed}%` }}
-        />
-        <div
-          role="slider"
-          tabIndex={0}
-          aria-label="Reveal or cover the mark scheme"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(revealed)}
-          className="absolute inset-x-0 z-10 h-3 -translate-y-1/2 cursor-ns-resize touch-none border-y border-primary/50 bg-primary/20 outline-none focus:ring-2 focus:ring-primary"
-          style={{ top: `${revealed}%` }}
-          onPointerDown={(event) => {
-            event.currentTarget.setPointerCapture(event.pointerId);
-            revealAt(event.clientY);
-          }}
-          onPointerMove={(event) => {
-            if (event.currentTarget.hasPointerCapture(event.pointerId)) revealAt(event.clientY);
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
-            event.preventDefault();
-            setRevealed((value) =>
-              Math.max(0, Math.min(100, value + (event.key === "ArrowDown" ? 5 : -5))),
-            );
-          }}
-        />
-      </div>
-    </div>
-  );
-}
 
 function ContinuousPaper({
   assignmentId,
@@ -594,6 +543,22 @@ function ContinuousPaper({
         ]),
     ),
   );
+  // Marks saved on the server always win, so a question marked in question mode
+  // shows its score (and its released answer) here too, and the other way round.
+  useEffect(() => {
+    setResults((current) => {
+      const merged = { ...current };
+      for (const answer of answers) {
+        if (!answer.verdict) continue;
+        merged[answer.question_id] = {
+          verdict: answer.verdict,
+          awardedMarks: Number(answer.awarded_marks ?? 0),
+          feedback: answer.feedback ?? "",
+        };
+      }
+      return merged;
+    });
+  }, [answers]);
   const exporters = useRef<Record<string, () => Promise<File>>>({});
   const undoers = useRef<Record<string, () => void>>({});
   const [marking, setMarking] = useState<string | null>(null);

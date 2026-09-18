@@ -39,7 +39,7 @@ function PresentationPage() {
     if (!details.data) return;
     let cancelled = false;
     let channel: RealtimeChannel | null = null;
-    let helloTimer: ReturnType<typeof window.setInterval> | null = null;
+    let helloTimer: number | null = null;
     const trusted = new Set(details.data.presenterIds);
 
     void (async () => {

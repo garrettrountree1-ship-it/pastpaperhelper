@@ -48,7 +48,7 @@ function decodeBase64(base64: string): Uint8Array {
 
 /** Reject an AI crop that the browser measured as entirely blank. */
 function cropContainsInk(
-  file: { inkBands?: Array<[number, number]> } | undefined,
+  file: { inkBands?: Array<[number, number]> | undefined } | undefined,
   crop: { top: number; bottom: number },
 ) {
   if (!file?.inkBands) return true;
@@ -260,7 +260,7 @@ export const removeStudentFromClass = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: assignments } = await supabaseAdmin
       .from("assignments")
-      .select("id, question_text")
+      .select("id")
       .eq("class_id", data.classId);
     const assignmentIds = (assignments ?? []).map((a) => a.id);
 
@@ -3394,7 +3394,7 @@ export const deleteQuestion = createServerFn({ method: "POST" })
     // teacher and student surface agrees on Q1, Q2, Q3… without stale gaps.
     const { data: remaining } = await db
       .from("questions")
-      .select("id")
+      .select("id, question_text")
       .eq("assignment_id", question.assignment_id)
       .order("position", { ascending: true });
     for (const [index, row] of (remaining ?? []).entries()) {

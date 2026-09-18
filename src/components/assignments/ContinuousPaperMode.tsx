@@ -11,9 +11,6 @@ import {
   Save,
   TextCursorInput,
   Trash2,
-  PenLine,
-  Plus,
-  Save,
   Type,
   Undo2,
   XCircle,
@@ -594,6 +591,22 @@ function ContinuousPaper({
         ]),
     ),
   );
+  // Marks saved on the server always win, so a question marked in question mode
+  // shows its score (and its released answer) here too, and the other way round.
+  useEffect(() => {
+    setResults((current) => {
+      const merged = { ...current };
+      for (const answer of answers) {
+        if (!answer.verdict) continue;
+        merged[answer.question_id] = {
+          verdict: answer.verdict,
+          awardedMarks: Number(answer.awarded_marks ?? 0),
+          feedback: answer.feedback ?? "",
+        };
+      }
+      return merged;
+    });
+  }, [answers]);
   const exporters = useRef<Record<string, () => Promise<File>>>({});
   const undoers = useRef<Record<string, () => void>>({});
   const [marking, setMarking] = useState<string | null>(null);

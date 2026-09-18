@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { VocabSheet } from "@/components/assignments/VocabSheet";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
-import { PreviewPaperMode } from "@/components/assignments/ContinuousPaperMode";
+import { PreviewPaperMode, ReadOnlyPaperMode } from "@/components/assignments/ContinuousPaperMode";
 import { parseSnipBand } from "@/components/assignments/QuestionSnip";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { Badge } from "@/components/ui/badge";

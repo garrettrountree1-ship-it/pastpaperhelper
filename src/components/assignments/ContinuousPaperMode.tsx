@@ -4,6 +4,8 @@ import {
   CheckCircle2,
   CircleDashed,
   Eraser,
+  Eye,
+  EyeOff,
   Minus,
   Move,
   PenLine,
@@ -45,7 +47,14 @@ import { resolveQuestionLabels } from "@/lib/question-label";
 type Point = { x: number; y: number };
 type Stroke = { color: string; width: number; points: Point[]; erase?: boolean };
 type PaperTool = "pen" | "eraser" | "text" | "textbox";
-type PaperTextBox = { id: string; x: number; y: number; text: string };
+type PaperTextBox = {
+  id: string;
+  x: number;
+  y: number;
+  text: string;
+  width?: number;
+  height?: number;
+};
 type PaperQuestion = {
   id: string;
   position: number;
@@ -268,7 +277,10 @@ function PaperAnswerArea({
       // Everything the student put on this question — pen strokes, typed lines and
       // every placed text box — is drawn into the one picture that gets marked.
       for (const box of textBoxesRef.current) {
-        const maxWidth = Math.max(80, output.width - box.x - 24);
+        const maxWidth = Math.max(
+          80,
+          Math.min(box.width ?? output.width, output.width - box.x - 24),
+        );
         let y = box.y + 24;
         for (const paragraph of box.text.split(/\n/)) {
           let line = "";
@@ -429,10 +441,12 @@ function PaperAnswerArea({
       {textBoxes.map((box) => (
         <div
           key={box.id}
-          className="absolute z-20 flex min-w-44 items-start rounded-md border bg-white/95 shadow-sm"
+          className="absolute z-20 flex items-stretch rounded-md border bg-white/95 shadow-sm"
           style={{
             left: `${(box.x / Math.max(1, canvasSize.width)) * 100}%`,
             top: `${(box.y / Math.max(1, canvasSize.height)) * 100}%`,
+            width: `${((box.width ?? 260) / Math.max(1, canvasSize.width)) * 100}%`,
+            height: `${((box.height ?? 84) / Math.max(1, canvasSize.height)) * 100}%`,
           }}
           onPointerDown={(event) => event.stopPropagation()}
         >
@@ -476,7 +490,7 @@ function PaperAnswerArea({
             disabled={disabled}
             rows={1}
             aria-label="Movable answer text"
-            className="min-h-9 resize-y border-0 px-1 py-2 shadow-none focus-visible:ring-0"
+            className="h-full min-h-9 flex-1 resize-none border-0 px-1 py-2 shadow-none focus-visible:ring-0"
             onPaste={(event) => {
               event.preventDefault();
               toast.error(NO_PASTE_MESSAGE);
@@ -502,6 +516,52 @@ function PaperAnswerArea({
           >
             <Trash2 className="size-4" />
           </button>
+          <button
+            type="button"
+            aria-label="Drag the corner to resize this text box"
+            title="Drag the corner to resize this text box"
+            disabled={disabled}
+            className="absolute -bottom-1 -right-1 size-4 cursor-nwse-resize touch-none rounded-sm border border-primary/60 bg-primary/30"
+            onPointerDown={(event) => {
+              if (disabled) return;
+              event.preventDefault();
+              event.stopPropagation();
+              const rect = canvasRef.current?.getBoundingClientRect();
+              const scaleX = rect ? canvasSize.width / Math.max(1, rect.width) : 1;
+              const scaleY = rect ? canvasSize.height / Math.max(1, rect.height) : 1;
+              const origin = {
+                x: event.clientX,
+                y: event.clientY,
+                width: box.width ?? 260,
+                height: box.height ?? 84,
+              };
+              const resize = (moveEvent: PointerEvent) =>
+                setTextBoxes((currentBoxes) =>
+                  currentBoxes.map((item) =>
+                    item.id === box.id
+                      ? {
+                          ...item,
+                          width: Math.max(
+                            120,
+                            origin.width + (moveEvent.clientX - origin.x) * scaleX,
+                          ),
+                          height: Math.max(
+                            48,
+                            origin.height + (moveEvent.clientY - origin.y) * scaleY,
+                          ),
+                        }
+                      : item,
+                  ),
+                );
+              const finish = () => {
+                window.removeEventListener("pointermove", resize);
+                window.removeEventListener("pointerup", finish);
+                persist();
+              };
+              window.addEventListener("pointermove", resize);
+              window.addEventListener("pointerup", finish);
+            }}
+          />
         </div>
       ))}
     </div>
@@ -519,6 +579,28 @@ function PaperMarkScheme({ urls }: { urls: string[] }) {
     <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium">Mark scheme</p>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 gap-1 px-2 text-[11px]"
+            onClick={() => setRevealed(0)}
+          >
+            <EyeOff className="size-3.5" /> Cover
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 gap-1 px-2 text-[11px]"
+            onClick={() => setRevealed(100)}
+          >
+            <Eye className="size-3.5" /> Uncover
+          </Button>
+        </div>
+      </div>
+      <div className="flex justify-end">
         <p className="text-right text-[11px] text-muted-foreground">Drag the cover or use ↑ ↓</p>
       </div>
       <div ref={frame} className="relative mt-2 overflow-hidden rounded-md">

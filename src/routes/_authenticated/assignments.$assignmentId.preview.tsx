@@ -384,6 +384,8 @@ function PreviewQuestion({
   markSchemeRevealed,
   revealOnFullMarks,
   onFlag,
+  sharedResult,
+  onResult,
 }: {
   assignmentId: string;
   question: Question;
@@ -396,8 +398,22 @@ function PreviewQuestion({
   markSchemeRevealed: boolean;
   revealOnFullMarks: boolean;
   onFlag: () => void;
+  /** The mark this question already earned in either view of this test session. */
+  sharedResult: {
+    verdict: string;
+    awardedMarks: number;
+    feedback: string;
+    answerText: string;
+    attempts: number;
+  } | null;
+  onResult: (result: {
+    verdict: string;
+    awardedMarks: number;
+    feedback: string;
+    answerText: string;
+  }) => void;
 }) {
-  const [answer, setAnswer] = useState("");
+  const [answer, setAnswer] = useState(sharedResult?.answerText ?? "");
   const { requiresPhoto, photoOnly } = photoAvailability(
     question.question_text,
     question.photoMode ?? "auto",

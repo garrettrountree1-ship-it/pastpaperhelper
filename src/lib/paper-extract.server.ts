@@ -40,7 +40,7 @@ export type UploadedFile = {
   mimeType: string;
   base64: string;
   /** Browser-measured non-white row ranges for rejecting blank crop guesses. */
-  inkBands?: Array<[number, number]>;
+  inkBands?: Array<[number, number]> | undefined;
 };
 
 type ExtractInput = {

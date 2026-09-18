@@ -47,7 +47,14 @@ import { resolveQuestionLabels } from "@/lib/question-label";
 type Point = { x: number; y: number };
 type Stroke = { color: string; width: number; points: Point[]; erase?: boolean };
 type PaperTool = "pen" | "eraser" | "text" | "textbox";
-type PaperTextBox = { id: string; x: number; y: number; text: string };
+type PaperTextBox = {
+  id: string;
+  x: number;
+  y: number;
+  text: string;
+  width?: number;
+  height?: number;
+};
 type PaperQuestion = {
   id: string;
   position: number;

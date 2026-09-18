@@ -1225,7 +1225,7 @@ export function PreviewPaperMode({
               reader.readAsDataURL(file);
             })
           : null;
-        return previewGradeAnswer({
+        const result = await previewGradeAnswer({
           data: {
             assignmentId,
             questionId: question.id,
@@ -1235,6 +1235,14 @@ export function PreviewPaperMode({
             priorFlags: 0,
           },
         });
+        // One test session, one mark per question: share it with question view.
+        onResult?.(question.id, {
+          verdict: result.verdict,
+          awardedMarks: Number(result.awardedMarks ?? 0),
+          feedback: result.feedback ?? "",
+          answerText: text,
+        });
+        return result;
       }}
     />
   );

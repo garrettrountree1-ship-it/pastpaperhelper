@@ -547,29 +547,20 @@ function readLeadingQuestionLabel(text: string): LeadingQuestionLabel | null {
 }
 
 /**
- * Teachers often paste questions with wrong, repeated or missing numbering.
- * Questions are renumbered 1, 2, 3 ... in upload order, while printed
- * sub-part letters (a)(i) are kept and regrouped under the new number.
+ * Keeps the number printed in the paper and carries it into following standalone
+ * subparts. The cut itself is the source of truth: a repeated printed number is
+ * never silently changed just because another crop appeared before it.
  */
 export function renumberQuestions(items: ExtractedQuestion[]): ExtractedQuestion[] {
-  let counter = 0;
-  let prevMain: string | null = null;
+  let activeMain: string | null = null;
   let activeLetter: string | null = null;
 
   return items.map((item) => {
     const parsed = readLeadingQuestionLabel(item.questionText);
-    const hasSubpart = Boolean(parsed?.letter || parsed?.roman);
-    // A repeated bare number is a new question in compilations where numbering
-    // restarts. A repeated number carrying (a)/(i) remains under its parent.
-    const startsNewMain = Boolean(
-      parsed?.main && (parsed.main !== prevMain || (!hasSubpart && parsed.main === prevMain)),
-    );
-
-    if (startsNewMain || (!parsed && !hasSubpart) || counter === 0) {
-      counter += 1;
-      activeLetter = null;
+    if (parsed?.main) {
+      if (parsed.main !== activeMain) activeLetter = null;
+      activeMain = parsed.main;
     }
-    if (parsed?.main) prevMain = parsed.main;
     if (parsed?.letter) activeLetter = parsed.letter;
 
     const letter = parsed?.letter ?? (parsed?.roman ? activeLetter : null);
@@ -577,7 +568,7 @@ export function renumberQuestions(items: ExtractedQuestion[]): ExtractedQuestion
     const body = parsed
       ? item.questionText.slice(parsed.consumed).replace(/^[\s.):-]+/, "")
       : item.questionText;
-    const label = `${counter}${sub}`;
+    const label = `${activeMain ?? item.pages[0] ?? 1}${sub}`;
     return { ...item, questionText: `${label} ${body}`.trim() };
   });
 }

@@ -9,7 +9,7 @@ import {
   X,
   XCircle,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { QuestionSnipStack } from "@/components/assignments/QuestionSnip";
@@ -74,6 +74,62 @@ type Result = {
   feedback: string;
 };
 
+function StudyMarkScheme({ urls, action }: { urls: string[]; action: ReactNode }) {
+  const [revealed, setRevealed] = useState(100);
+  const frame = useRef<HTMLDivElement | null>(null);
+  const setFromPointer = (clientY: number) => {
+    const rect = frame.current?.getBoundingClientRect();
+    if (!rect) return;
+    setRevealed(Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100)));
+  };
+  return (
+    <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-medium">Mark scheme</p>
+        <p className="text-xs text-muted-foreground">Drag the cover or use ↑ ↓ to self-quiz</p>
+      </div>
+      <div ref={frame} className="relative mt-2 overflow-hidden rounded-lg">
+        <QuestionSnipStack
+          urls={urls}
+          answers
+          alt="Official answer as printed in the mark scheme"
+        />
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 bg-card"
+          style={{ height: `${100 - revealed}%` }}
+          aria-hidden
+        />
+        <div
+          role="slider"
+          tabIndex={0}
+          aria-label="Reveal or cover the mark scheme"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(revealed)}
+          className="absolute inset-x-0 z-10 h-3 -translate-y-1/2 cursor-ns-resize touch-none border-y border-primary/50 bg-primary/20 outline-none focus:ring-2 focus:ring-primary"
+          style={{ top: `${revealed}%` }}
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId);
+            setFromPointer(event.clientY);
+          }}
+          onPointerMove={(event) => {
+            if (event.currentTarget.hasPointerCapture(event.pointerId))
+              setFromPointer(event.clientY);
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+            event.preventDefault();
+            setRevealed((value) =>
+              Math.max(0, Math.min(100, value + (event.key === "ArrowDown" ? 5 : -5))),
+            );
+          }}
+        />
+      </div>
+      {action ? <div className="mt-3 flex flex-wrap gap-2">{action}</div> : null}
+    </div>
+  );
+}
+
 export function QuestionExperience({
   question,
   index,
@@ -102,6 +158,7 @@ export function QuestionExperience({
   onSend,
   locked = false,
   markSchemeImageUrls = [],
+  paperModeUrls: providedPaperModeUrls = [],
   answerAction = null,
   headerAction = null,
   snipAction = null,
@@ -112,6 +169,7 @@ export function QuestionExperience({
   assignmentId,
   sentBack = null,
   snipUrls = [],
+  referenceImageUrls = [],
   readOnly = false,
   creditedAll = false,
   answerCheckMode = null,
@@ -140,7 +198,7 @@ export function QuestionExperience({
   onRemovePhoto?: (name: string) => void;
   onPhotosChange: (files: FileList | null) => void;
   /** Attach an on-screen (stylus) working sheet as an image. */
-  onAddDrawing?: (file: File) => void;
+  onAddDrawing?: (file: File) => void | Promise<void>;
   result: Result | null;
   attempts: number;
   checking: boolean;
@@ -157,6 +215,8 @@ export function QuestionExperience({
   /** Mark-scheme answer, only present once the teacher reveals it. */
   /** The official answer exactly as printed, shown only once released. */
   markSchemeImageUrls?: string[];
+  /** Saved annotated paper-mode answer images for this question. */
+  paperModeUrls?: string[];
   /** Teacher-only control beside the answer picture (recut). */
   answerAction?: React.ReactNode;
   /** Optional action shown in the question header (e.g. message the teacher). */
@@ -179,6 +239,8 @@ export function QuestionExperience({
   sentBack?: { at: string; note: string | null } | null;
   /** Snipped picture(s) of the question as printed — shown instead of typed wording. */
   snipUrls?: string[];
+  /** A prior drawing this question explicitly asks the student to amend. */
+  referenceImageUrls?: string[];
   /** Teacher looking at a student's work: everything visible, nothing changeable. */
   readOnly?: boolean;
   /** The teacher gave the whole class full marks for this question. */
@@ -208,6 +270,7 @@ export function QuestionExperience({
 
   const answerGuard = useOriginalTypingGuard();
   const tutorGuard = useOriginalTypingGuard();
+  const [drawingSaving, setDrawingSaving] = useState(false);
   const bulletTarget = photoOnly ? 0 : bulletTargetFor(question.marks, requiresPhoto);
   const hasWrittenAnswer = stripBullets(draft).trim().length > 0;
   const outOfTries = maxAttempts > 0 && attempts >= maxAttempts;
@@ -224,6 +287,17 @@ export function QuestionExperience({
     [photoFiles],
   );
   const submittedPhotoUrls = photoUrls.filter((url) => !url.includes(PAD_FILE_NAME));
+  // New paper mode passes its saved cuts explicitly, while older submissions stored
+  // them alongside ordinary photos. Combine both sources without shadowing the prop.
+  const savedPaperModeUrls = useMemo(
+    () => [
+      ...new Set([
+        ...providedPaperModeUrls,
+        ...photoUrls.filter((url) => url.includes(PAD_FILE_NAME)),
+      ]),
+    ],
+    [providedPaperModeUrls, photoUrls],
+  );
   const paperModeUrls = photoUrls.filter((url) => url.includes(PAD_FILE_NAME));
 
   // Seed the marks checklist so the student sees how many points are expected.
@@ -256,6 +330,10 @@ export function QuestionExperience({
         <div className="flex items-center gap-2">
           {hasFullCredit ? (
             <CheckCircle2 className="size-6 shrink-0 text-emerald-600" aria-label="Full credit" />
+          ) : verdict === "partial" ? (
+            <CircleDashed className="size-6 shrink-0 text-amber-600" aria-label="Partial credit" />
+          ) : result ? (
+            <XCircle className="size-6 shrink-0 text-destructive" aria-label="Not correct yet" />
           ) : null}
           <Badge variant="secondary">
             {result ? `${result.awardedMarks}/` : ""}
@@ -294,6 +372,29 @@ export function QuestionExperience({
               <p className="mt-3 whitespace-pre-wrap">{questionBody(question.question_text)}</p>
             )}
           </div>
+
+          {markSchemeImageUrls.length > 0 ? (
+            <StudyMarkScheme urls={markSchemeImageUrls} action={answerAction} />
+          ) : null}
+
+          {savedPaperModeUrls.length > 0 ? (
+            <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
+              <p className="text-sm font-medium">Paper mode answer</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Saved from the continuous paper when this question was marked.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {savedPaperModeUrls.map((url) => (
+                  <StudentWorkPhoto
+                    key={url}
+                    url={url}
+                    alt="Paper mode answer"
+                    className="h-32 w-48 rounded-lg border border-border object-contain"
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           {keywordTranslation ? (
             tutorTerms.length > 0 ? (
@@ -352,6 +453,8 @@ export function QuestionExperience({
               </span>
             </summary>
             <div className="border-t border-border px-4 pb-4">
+              {/* Mark-scheme and paper-mode images intentionally render above this
+              answer panel. Keeping them out of here prevents duplicate blocks. */}
               {markSchemeImageUrls.length > 0 ? (
                 <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
                   <p className="text-sm font-medium">Mark scheme</p>
@@ -539,13 +642,24 @@ export function QuestionExperience({
                 {onAddDrawing && !readOnly ? (
                   <details className="rounded-lg border border-dashed border-border p-3">
                     <summary className="cursor-pointer text-sm font-medium">
-                      Draw your answer on the pad
+                      {referenceImageUrls.length > 0
+                        ? "Edit your earlier diagram for this question"
+                        : "Draw your answer on the pad"}
                     </summary>
                     <div className="mt-3">
+                      {referenceImageUrls.length > 0 ? (
+                        <p className="mb-2 text-xs text-muted-foreground">
+                          This question refers back to your earlier drawing. It is loaded below so
+                          you can add to it and submit the edited version for marking.
+                        </p>
+                      ) : null}
                       <DrawingPad
                         disabled={locked}
-                        backgroundUrls={snipUrls}
+                        backgroundUrls={
+                          referenceImageUrls.length > 0 ? referenceImageUrls : snipUrls
+                        }
                         onAttach={onAddDrawing}
+                        onSavePending={setDrawingSaving}
                       />
                     </div>
                   </details>
@@ -567,6 +681,7 @@ export function QuestionExperience({
                         creditedAll ||
                         outOfTries ||
                         checking ||
+                        drawingSaving ||
                         (!hasWrittenAnswer && photoCount === 0) ||
                         !isEnglishOnly(draft)
                       }
@@ -579,9 +694,11 @@ export function QuestionExperience({
                             ? "No tries left"
                             : checking
                               ? "Marking..."
-                              : result
-                                ? "Re-check answer"
-                                : "Check answer"}
+                              : drawingSaving
+                                ? "Saving drawing..."
+                                : result
+                                  ? "Re-check answer"
+                                  : "Check answer"}
                     </Button>
                   )}
                 </div>

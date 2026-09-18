@@ -470,18 +470,23 @@ function PreviewQuestion({
         })
       }
       onPhotosChange={(files) => void addPhotos(files)}
-      onAddDrawing={(file) => {
-        const reader = new FileReader();
-        // The pad keeps one picture, replaced each time the working is saved.
-        reader.onload = () =>
-          setPhotos((prev) => {
-            const url = String(reader.result);
-            const kept = prev.filter((item) => item !== padPhoto.current);
-            padPhoto.current = url;
-            return [...kept, url].slice(0, 3);
-          });
-        reader.readAsDataURL(file);
-      }}
+      onAddDrawing={(file) =>
+        new Promise<void>((resolve, reject) => {
+          const reader = new FileReader();
+          // The pad keeps one picture, replaced each time the working is saved.
+          reader.onload = () => {
+            setPhotos((prev) => {
+              const url = String(reader.result);
+              const kept = prev.filter((item) => item !== padPhoto.current);
+              padPhoto.current = url;
+              return [...kept, url].slice(0, 3);
+            });
+            resolve();
+          };
+          reader.onerror = () => reject(new Error("Couldn't save the drawing."));
+          reader.readAsDataURL(file);
+        })
+      }
       result={result ?? null}
       answerCheckMode={question.answerCheckMode ?? null}
       attempts={attempts}

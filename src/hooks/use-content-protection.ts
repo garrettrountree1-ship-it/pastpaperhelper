@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
  * always on inside a homework assignment. Blocking selection / copying of the
  * question wording is optional and set per assignment by the teacher.
  */
-/** True when the user is typing in a field, where copy/paste must keep working. */
+/** True when the user is typing in a field, where their own text may be copied. */
 function isEditable(target: EventTarget | null) {
   const el = target as HTMLElement | null;
   if (!el || !el.tagName) return false;
@@ -43,15 +43,15 @@ function hideOverlay() {
 }
 
 export function useContentProtection(
-  options: boolean | { blockCopy?: boolean; blockCapture?: boolean } = {},
+  options: boolean | { blockCopy?: boolean; blockCapture?: boolean; blockPaste?: boolean } = {},
 ) {
   const blockCopy = typeof options === "boolean" ? options : Boolean(options.blockCopy);
-  const blockCapture =
-    typeof options === "boolean" ? options : options.blockCapture !== false;
+  const blockCapture = typeof options === "boolean" ? options : options.blockCapture !== false;
+  const blockPaste = typeof options === "boolean" ? options : options.blockPaste !== false;
   const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
-    if (!blockCopy && !blockCapture) {
+    if (!blockCopy && !blockCapture && !blockPaste) {
       setHidden(false);
       return;
     }
@@ -60,6 +60,7 @@ export function useContentProtection(
       if (isEditable(event.target)) return;
       event.preventDefault();
     };
+    const blockEveryPaste = (event: ClipboardEvent) => event.preventDefault();
 
     const conceal = () => setHidden(true);
     const reveal = () => {
@@ -107,7 +108,9 @@ export function useContentProtection(
       const captureCombo =
         key === "printscreen" ||
         // Windows Snipping Tool (Win/Shift+S) and macOS screenshot shortcuts
-        (event.shiftKey && (combo || event.getModifierState?.("Meta")) && ["s", "3", "4", "5"].includes(key)) ||
+        (event.shiftKey &&
+          (combo || event.getModifierState?.("Meta")) &&
+          ["s", "3", "4", "5"].includes(key)) ||
         (combo && ["p", "s"].includes(key) && !isEditable(event.target));
       const copyCombo = combo && ["c", "x"].includes(key) && !isEditable(event.target);
 
@@ -158,6 +161,7 @@ export function useContentProtection(
       document.addEventListener("contextmenu", block);
       document.addEventListener("dragstart", block);
     }
+    if (blockPaste) document.addEventListener("paste", blockEveryPaste, true);
     document.addEventListener("keydown", onKey);
     if (blockCapture) {
       document.addEventListener("keydown", onKeyDownCapture, true);
@@ -173,13 +177,12 @@ export function useContentProtection(
       document.addEventListener("freeze", onPageHide);
     }
 
-
-
     return () => {
       document.removeEventListener("copy", block);
       document.removeEventListener("cut", block);
       document.removeEventListener("contextmenu", block);
       document.removeEventListener("dragstart", block);
+      document.removeEventListener("paste", blockEveryPaste, true);
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("keydown", onKeyDownCapture, true);
       document.removeEventListener("keyup", onKeyUp, true);
@@ -196,7 +199,7 @@ export function useContentProtection(
       window.clearTimeout(revealTimer);
       hideOverlay();
     };
-  }, [blockCopy, blockCapture]);
+  }, [blockCopy, blockCapture, blockPaste]);
 
   return {
     /** True while the questions should be masked. */

@@ -45,11 +45,13 @@ export function DrawingPad({
   disabled = false,
   backgroundUrls = [],
   onAttach,
+  onSavePending,
 }: {
   disabled?: boolean;
   /** Question picture(s) shown faintly under the ink in full screen. */
   backgroundUrls?: string[];
-  onAttach: (file: File) => void;
+  onAttach: (file: File) => void | Promise<void>;
+  onSavePending?: (pending: boolean) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -523,8 +525,13 @@ export function DrawingPad({
     }
     canvas.toBlob((blob) => {
       if (blob) {
-        onAttach(new File([blob], PAD_FILE_NAME, { type: "image/png" }));
+        const attached = onAttach(new File([blob], PAD_FILE_NAME, { type: "image/png" }));
+        void Promise.resolve(attached)
+          .catch(() => undefined)
+          .finally(() => onSavePending?.(false));
         setSaved(true);
+      } else {
+        onSavePending?.(false);
       }
       selectedRef.current = wasSelected;
       redraw();
@@ -535,11 +542,12 @@ export function DrawingPad({
    * about it, so pressing Check answer always marks their latest working. */
   function scheduleSave() {
     window.clearTimeout(saveTimer.current);
+    onSavePending?.(true);
     saveTimer.current = window.setTimeout(() => {
       // Save empty sheets too. Clearing the final stroke must replace the old
       // attached image and thumbnail rather than leaving stale writing behind.
       attach();
-    }, 700);
+    }, 250);
   }
 
   /** Minimising saves the sheet so the student can go straight to submitting. */
@@ -699,6 +707,30 @@ export function DrawingPad({
       >
         <canvas
           ref={canvasRef}
+          tabIndex={0}
+          aria-label="Question picture and drawing canvas. In Move picture mode, use the arrow keys to move the question."
+          onKeyDown={(event) => {
+            if (disabled || modeRef.current !== "move" || !backgroundsRef.current.length) return;
+            const movement: Record<string, [number, number]> = {
+              ArrowUp: [0, -1],
+              ArrowDown: [0, 1],
+              ArrowLeft: [-1, 0],
+              ArrowRight: [1, 0],
+            };
+            const direction = movement[event.key];
+            if (!direction) return;
+            event.preventDefault();
+            const step = event.shiftKey ? 20 : 5;
+            offsetRef.current = {
+              x: offsetRef.current.x + direction[0] * step,
+              y: offsetRef.current.y + direction[1] * step,
+            };
+            selectedRef.current = true;
+            setSelected(true);
+            redraw();
+            updateSheet();
+            scheduleSave();
+          }}
           onPointerDown={start}
           onPointerMove={move}
           onPointerUp={end}

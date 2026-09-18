@@ -423,7 +423,6 @@ function PreviewQuestion({
   const [photos, setPhotos] = useState<string[]>([]);
   const [reply, setReply] = useState("");
   const [thread, setThread] = useState<Array<{ role: "tutor" | "student"; content: string }>>([]);
-  const [attempts, setAttempts] = useState(0);
 
   const check = useMutation({
     mutationFn: async () => {

@@ -536,7 +536,7 @@ function ContinuousPaper({
               question.question_text,
             );
             const answerHeight = multipleChoice || savedPaperUrls.length > 0 ? 0 : 220;
-            const answerHeight = multipleChoice ? 0 : 220;
+
             const label = questionLabel(question.question_text, index);
             return (
               <section

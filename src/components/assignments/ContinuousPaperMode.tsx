@@ -8,7 +8,6 @@ import {
   PenLine,
   Plus,
   Save,
-  Sparkles,
   Type,
   Undo2,
   XCircle,
@@ -532,9 +531,10 @@ function ContinuousPaper({
           {questions.map((question, index) => {
             const result = results[question.id];
             const snips = question.imageUrls ?? [];
-            const savedAnswer = answers.find((answer) => answer.question_id === question.id);
             const savedPaperUrls = locked
-              ? (savedAnswer?.imageUrls ?? []).filter((url) => url.includes(PAD_FILE_NAME))
+              ? (
+                  answers.find((answer) => answer.question_id === question.id)?.imageUrls ?? []
+                ).filter((url) => url.includes(PAD_FILE_NAME))
               : [];
             const multipleChoice = Boolean(question.multipleChoice);
             const needsBlank = /draw|diagram|graph|plot|sketch|calculate/i.test(
@@ -684,7 +684,10 @@ function ContinuousPaper({
                 {selectedResult.verdict !== "correct" ? (
                   <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
                     <p className="flex items-center gap-1.5 font-semibold">
-                      <Sparkles className="size-4 text-primary" /> AI tutor
+                      <span aria-hidden="true" className="text-primary">
+                        ✨
+                      </span>{" "}
+                      AI tutor
                     </p>
                     <p className="mt-2 whitespace-pre-wrap">
                       {selectedResult.leadingQuestion || selectedResult.feedback}

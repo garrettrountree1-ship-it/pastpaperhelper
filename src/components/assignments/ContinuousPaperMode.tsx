@@ -1,6 +1,21 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Eraser, Minus, PenLine, Plus, Save, Type, Undo2 } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronsUpDown,
+  CircleDashed,
+  Eraser,
+  Minus,
+  Move,
+  PenLine,
+  Plus,
+  Save,
+  TextCursorInput,
+  Trash2,
+  Type,
+  Undo2,
+  XCircle,
+} from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
@@ -18,10 +33,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { gradeAnswer, previewGradeAnswer } from "@/lib/app.functions";
 import { questionPagesOnly } from "@/lib/answer-key";
+import { NO_PASTE_MESSAGE } from "@/lib/integrity";
+import { questionLabel } from "@/lib/question-label";
 
 type Point = { x: number; y: number };
 type Stroke = { color: string; width: number; points: Point[]; erase?: boolean };
-type PaperTool = "pen" | "eraser" | "text";
+type PaperTool = "pen" | "eraser" | "text" | "textbox";
+type PaperTextBox = { id: string; x: number; y: number; text: string };
 type PaperQuestion = {
   id: string;
   position: number;
@@ -36,12 +54,20 @@ type PaperAnswer = {
   question_id: string;
   answer_text: string;
   image_paths?: string[] | null;
+  /** Signed copies used by the teacher's live student-work view. */
+  imageUrls?: string[];
   verdict?: string | null;
   awarded_marks?: number | null;
   feedback?: string | null;
   attempts?: number;
 };
-type PaperResult = { verdict: string; awardedMarks: number; feedback: string };
+type PaperResult = {
+  verdict: string;
+  awardedMarks: number;
+  feedback: string;
+  leadingQuestion?: string;
+  markSchemeImageUrls?: string[];
+};
 
 const COLORS = ["#111827", "#2563eb", "#dc2626", "#16a34a", "#7c3aed", "#ea580c"];
 
@@ -59,6 +85,7 @@ function PaperAnswerArea({
   onSelect,
   registerExport,
   registerUndo,
+  registerAddTextBox,
 }: {
   storageKey: string;
   initialText: string;
@@ -73,6 +100,7 @@ function PaperAnswerArea({
   onSelect: () => void;
   registerExport: (exporter: () => Promise<File>) => void;
   registerUndo: (undo: () => void) => void;
+  registerAddTextBox: (add: () => void) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -80,6 +108,9 @@ function PaperAnswerArea({
   const current = useRef<Stroke | null>(null);
   const [text, setText] = useState(initialText);
   const [height, setHeight] = useState(answerHeight);
+  const [textBoxes, setTextBoxes] = useState<PaperTextBox[]>([]);
+  const textBoxesRef = useRef(textBoxes);
+  textBoxesRef.current = textBoxes;
   const textRef = useRef(text);
   textRef.current = text;
 
@@ -108,7 +139,11 @@ function PaperAnswerArea({
     try {
       window.localStorage.setItem(
         storageKey,
-        JSON.stringify({ strokes: strokes.current, text: textRef.current }),
+        JSON.stringify({
+          strokes: strokes.current,
+          text: textRef.current,
+          textBoxes: textBoxesRef.current,
+        }),
       );
     } catch {
       // The work remains in memory if browser storage is unavailable.
@@ -119,8 +154,13 @@ function PaperAnswerArea({
     try {
       const saved = window.localStorage.getItem(storageKey);
       if (saved) {
-        const parsed = JSON.parse(saved) as { strokes?: Stroke[]; text?: string };
+        const parsed = JSON.parse(saved) as {
+          strokes?: Stroke[];
+          text?: string;
+          textBoxes?: PaperTextBox[];
+        };
         strokes.current = parsed.strokes ?? [];
+        setTextBoxes(parsed.textBoxes ?? []);
         if (typeof parsed.text === "string") {
           setText(parsed.text);
           onTextChange(parsed.text);
@@ -198,6 +238,11 @@ function PaperAnswerArea({
         }
       }
       context.drawImage(source, 0, 0);
+      context.fillStyle = "#111827";
+      context.font = "18px sans-serif";
+      for (const box of textBoxesRef.current) {
+        context.fillText(box.text, box.x + 8, box.y + 24, Math.max(40, output.width - box.x - 16));
+      }
       if (textRef.current.trim()) {
         context.fillStyle = "#111827";
         context.font = "18px sans-serif";
@@ -222,7 +267,19 @@ function PaperAnswerArea({
       );
       return new File([blob], PAD_FILE_NAME, { type: "image/png" });
     });
-  }, [backgroundUrls, height, registerExport, registerUndo]);
+    registerAddTextBox(() => {
+      const wrap = wrapRef.current;
+      setTextBoxes((boxes) => [
+        ...boxes,
+        {
+          id: crypto.randomUUID(),
+          x: Math.max(16, (wrap?.clientWidth ?? 360) / 2 - 100),
+          y: Math.max(16, (wrap?.clientHeight ?? 240) / 2 - 20),
+          text: "",
+        },
+      ]);
+    });
+  }, [backgroundUrls, height, registerAddTextBox, registerExport, registerUndo]);
 
   const startResize = (event: React.PointerEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -268,6 +325,14 @@ function PaperAnswerArea({
               onTextChange(event.target.value);
               persist();
             }}
+            onPaste={(event) => {
+              event.preventDefault();
+              toast.error(NO_PASTE_MESSAGE);
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              toast.error(NO_PASTE_MESSAGE);
+            }}
             placeholder={tool === "text" ? "Type on these lines…" : ""}
             className={`relative z-20 h-full min-h-0 resize-none border-0 bg-transparent px-0 py-1 text-base leading-9 shadow-none focus-visible:ring-0 ${
               tool === "text" ? "pointer-events-auto" : "pointer-events-none"
@@ -277,8 +342,15 @@ function PaperAnswerArea({
             type="button"
             className="absolute bottom-0 left-0 z-30 flex h-4 w-full cursor-ns-resize items-end justify-center bg-gradient-to-t from-muted/70 to-transparent"
             onPointerDown={startResize}
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+              event.preventDefault();
+              setHeight((value) =>
+                Math.max(110, Math.min(900, value + (event.key === "ArrowDown" ? 20 : -20))),
+              );
+            }}
             aria-label="Drag to change the answer space"
-            title="Drag down to add more writing space"
+            title="Drag or use the arrow keys to change the answer space"
           >
             <span className="mb-1 h-1 w-16 rounded-full bg-muted-foreground/40" />
           </button>
@@ -292,6 +364,14 @@ function PaperAnswerArea({
         onPointerDown={(event) => {
           if (disabled || tool === "text") return;
           onSelect();
+          if (tool === "textbox") {
+            const location = point(event);
+            setTextBoxes((currentBoxes) => [
+              ...currentBoxes,
+              { id: crypto.randomUUID(), x: location.x, y: location.y, text: "" },
+            ]);
+            return;
+          }
           event.currentTarget.setPointerCapture(event.pointerId);
           current.current = {
             color,
@@ -315,6 +395,130 @@ function PaperAnswerArea({
           persist();
         }}
       />
+      {textBoxes.map((box) => (
+        <div
+          key={box.id}
+          className="absolute z-20 flex min-w-40 items-center rounded-md border bg-white shadow-sm"
+          style={{ left: box.x, top: box.y }}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="touch-none cursor-move p-2 text-muted-foreground"
+            aria-label="Move text box"
+            onPointerDown={(event) => {
+              event.preventDefault();
+              event.currentTarget.setPointerCapture(event.pointerId);
+              const origin = { x: event.clientX, y: event.clientY, boxX: box.x, boxY: box.y };
+              const moveBox = (moveEvent: PointerEvent) =>
+                setTextBoxes((currentBoxes) =>
+                  currentBoxes.map((item) =>
+                    item.id === box.id
+                      ? {
+                          ...item,
+                          x: Math.max(0, origin.boxX + moveEvent.clientX - origin.x),
+                          y: Math.max(0, origin.boxY + moveEvent.clientY - origin.y),
+                        }
+                      : item,
+                  ),
+                );
+              const finish = () => {
+                window.removeEventListener("pointermove", moveBox);
+                window.removeEventListener("pointerup", finish);
+                persist();
+              };
+              window.addEventListener("pointermove", moveBox);
+              window.addEventListener("pointerup", finish);
+            }}
+          >
+            <Move className="size-4" />
+          </button>
+          <Input
+            autoFocus={!box.text}
+            value={box.text}
+            disabled={disabled}
+            aria-label="Movable answer text"
+            className="border-0 shadow-none focus-visible:ring-0"
+            onPaste={(event) => {
+              event.preventDefault();
+              toast.error(NO_PASTE_MESSAGE);
+            }}
+            onChange={(event) =>
+              setTextBoxes((currentBoxes) =>
+                currentBoxes.map((item) =>
+                  item.id === box.id ? { ...item, text: event.target.value } : item,
+                ),
+              )
+            }
+            onBlur={persist}
+          />
+          <button
+            type="button"
+            className="p-2 text-muted-foreground hover:text-destructive"
+            aria-label="Delete text box"
+            disabled={disabled}
+            onClick={() => {
+              setTextBoxes((currentBoxes) => currentBoxes.filter((item) => item.id !== box.id));
+              window.setTimeout(persist);
+            }}
+          >
+            <Trash2 className="size-4" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PaperMarkScheme({ urls }: { urls: string[] }) {
+  const [revealed, setRevealed] = useState(100);
+  const frame = useRef<HTMLDivElement | null>(null);
+  const revealAt = (clientY: number) => {
+    const rect = frame.current?.getBoundingClientRect();
+    if (rect) setRevealed(Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100)));
+  };
+  return (
+    <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium">Mark scheme</p>
+        <p className="text-right text-[11px] text-muted-foreground">Drag the cover or use ↑ ↓</p>
+      </div>
+      <div ref={frame} className="relative mt-2 overflow-hidden rounded-md">
+        <QuestionSnipStack urls={urls} answers alt="Official mark scheme" />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 bg-card"
+          style={{ height: `${100 - revealed}%` }}
+        />
+        <div
+          role="slider"
+          tabIndex={0}
+          aria-label="Reveal or cover the mark scheme"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(revealed)}
+          className="absolute inset-x-0 z-10 h-3 -translate-y-1/2 cursor-ns-resize touch-none border-y border-primary/50 bg-primary/20 outline-none focus:ring-2 focus:ring-primary"
+          style={{ top: `${revealed}%` }}
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId);
+            revealAt(event.clientY);
+          }}
+          onPointerMove={(event) => {
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) revealAt(event.clientY);
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+            event.preventDefault();
+            setRevealed((value) =>
+              Math.max(0, Math.min(100, value + (event.key === "ArrowDown" ? 5 : -5))),
+            );
+          }}
+        >
+          <span className="absolute -left-1 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full border border-primary/50 bg-background text-primary shadow-sm">
+            <ChevronsUpDown className="size-3.5" />
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -360,6 +564,7 @@ function ContinuousPaper({
   );
   const exporters = useRef<Record<string, () => Promise<File>>>({});
   const undoers = useRef<Record<string, () => void>>({});
+  const textBoxAdders = useRef<Record<string, () => void>>({});
   const [marking, setMarking] = useState<string | null>(null);
   const [tool, setTool] = useState<PaperTool>("pen");
   const [color, setColor] = useState(COLORS[0]!);
@@ -389,6 +594,17 @@ function ContinuousPaper({
           title="Type on the lines"
         >
           <Type className="size-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant={tool === "textbox" ? "default" : "ghost"}
+          onClick={() => {
+            setTool("textbox");
+            textBoxAdders.current[selected]?.();
+          }}
+          title="Place a movable text box"
+        >
+          <TextCursorInput className="size-4" />
         </Button>
         <Button
           size="icon"
@@ -447,11 +663,18 @@ function ContinuousPaper({
           {questions.map((question, index) => {
             const result = results[question.id];
             const snips = question.imageUrls ?? [];
+            const savedPaperUrls = locked
+              ? (
+                  answers.find((answer) => answer.question_id === question.id)?.imageUrls ?? []
+                ).filter((url) => url.includes(PAD_FILE_NAME))
+              : [];
             const multipleChoice = Boolean(question.multipleChoice);
             const needsBlank = /draw|diagram|graph|plot|sketch|calculate/i.test(
               question.question_text,
             );
-            const answerHeight = multipleChoice ? 0 : 220;
+            const answerHeight = multipleChoice || savedPaperUrls.length > 0 ? 0 : 220;
+
+            const label = questionLabel(question.question_text, index);
             return (
               <section
                 key={question.id}
@@ -466,17 +689,27 @@ function ContinuousPaper({
                   disabled={locked || result?.verdict === "correct"}
                   lined={!needsBlank}
                   answerHeight={answerHeight}
-                  backgroundUrls={snips}
+                  backgroundUrls={savedPaperUrls.length > 0 ? [] : snips}
                   tool={tool}
                   color={color}
                   onSelect={() => setSelected(question.id)}
                   questionContent={
                     <>
                       <span className="absolute left-1 top-1 z-20 rounded bg-primary/90 px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
-                        Q{index + 1}
+                        Q{label}
                       </span>
-                      {snips.length ? (
-                        <QuestionSnipStack urls={snips} alt={`Question ${index + 1}`} />
+                      {savedPaperUrls.length > 0 ? (
+                        <div>
+                          <p className="mb-2 text-xs font-medium text-muted-foreground">
+                            Student&apos;s marked paper
+                          </p>
+                          <QuestionSnipStack
+                            urls={savedPaperUrls}
+                            alt={`Student's answer for question ${label}`}
+                          />
+                        </div>
+                      ) : snips.length ? (
+                        <QuestionSnipStack urls={snips} alt={`Question ${label}`} />
                       ) : (
                         <p className="whitespace-pre-wrap text-sm">{question.question_text}</p>
                       )}
@@ -490,6 +723,9 @@ function ContinuousPaper({
                   }}
                   registerUndo={(undo) => {
                     undoers.current[question.id] = undo;
+                  }}
+                  registerAddTextBox={(add) => {
+                    textBoxAdders.current[question.id] = add;
                   }}
                 />
               </section>
@@ -506,6 +742,7 @@ function ContinuousPaper({
         <div className="grid grid-cols-4 gap-1 lg:grid-cols-3">
           {questions.map((question, index) => {
             const result = results[question.id];
+            const label = questionLabel(question.question_text, index);
             return (
               <Button
                 key={question.id}
@@ -519,8 +756,14 @@ function ContinuousPaper({
                   });
                 }}
               >
-                {result?.verdict === "correct" ? <CheckCircle2 className="size-3.5" /> : null} Q
-                {index + 1}
+                {result?.verdict === "correct" ? (
+                  <CheckCircle2 className="size-4 fill-emerald-100 text-emerald-600" />
+                ) : result?.verdict === "partial" ? (
+                  <CircleDashed className="size-3.5 text-amber-500" />
+                ) : result ? (
+                  <XCircle className="size-3.5 text-destructive" />
+                ) : null}{" "}
+                Q{label}
               </Button>
             );
           })}
@@ -528,7 +771,9 @@ function ContinuousPaper({
         {selectedQuestion ? (
           <div className="mt-4 space-y-3 border-t pt-4">
             <p className="font-medium">
-              Paper Q{questions.indexOf(selectedQuestion) + 1} · {selectedQuestion.marks} marks
+              Paper Q
+              {questionLabel(selectedQuestion.question_text, questions.indexOf(selectedQuestion))} ·{" "}
+              {selectedQuestion.marks} marks
             </p>
             {selectedQuestion.multipleChoice ||
             selectedQuestion.answerCheckMode === "final-number" ? (
@@ -549,18 +794,69 @@ function ContinuousPaper({
                       [selectedQuestion.id]: event.target.value,
                     }))
                   }
+                  onPaste={(event) => {
+                    event.preventDefault();
+                    toast.error(NO_PASTE_MESSAGE);
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    toast.error(NO_PASTE_MESSAGE);
+                  }}
                   placeholder={selectedQuestion.multipleChoice ? "A–E" : "Final answer"}
                   disabled={locked || selectedResult?.verdict === "correct"}
                 />
               </div>
             ) : null}
             {selectedResult ? (
-              <div className="rounded-lg border p-3 text-sm">
-                <Badge>
-                  {selectedResult.awardedMarks}/{selectedQuestion.marks}
-                </Badge>
-                <p className="mt-2">{selectedResult.feedback}</p>
+              <div className="space-y-2">
+                <div className="rounded-lg border p-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    {selectedResult.verdict === "correct" ? (
+                      <CheckCircle2
+                        className="size-6 fill-emerald-100 text-emerald-600"
+                        aria-label="Correct"
+                      />
+                    ) : null}
+                    <Badge>
+                      {selectedResult.awardedMarks}/{selectedQuestion.marks}
+                    </Badge>
+                  </div>
+                  {selectedResult.verdict === "correct" && selectedResult.feedback ? (
+                    <p className="mt-2">{selectedResult.feedback}</p>
+                  ) : null}
+                </div>
+                {selectedResult.verdict !== "correct" ? (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+                    <p className="flex items-center gap-1.5 font-semibold">
+                      <span aria-hidden="true" className="text-primary">
+                        ✨
+                      </span>{" "}
+                      AI tutor
+                    </p>
+                    <p className="mt-2 whitespace-pre-wrap">
+                      {selectedResult.leadingQuestion || selectedResult.feedback}
+                    </p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Use a hint or step-by-step help below, then improve your work and mark it
+                      again.
+                    </p>
+                  </div>
+                ) : null}
               </div>
+            ) : null}
+            {(markSchemeRevealed ||
+              (revealOnFullMarks &&
+                (selectedResult?.verdict === "correct" ||
+                  Number(selectedResult?.awardedMarks ?? 0) >= Number(selectedQuestion.marks)))) &&
+            (selectedResult?.markSchemeImageUrls?.length ||
+              selectedQuestion.answerImageUrls?.length) ? (
+              <PaperMarkScheme
+                urls={
+                  selectedResult?.markSchemeImageUrls?.length
+                    ? selectedResult.markSchemeImageUrls
+                    : selectedQuestion.answerImageUrls!
+                }
+              />
             ) : null}
             <Button
               className="w-full"
@@ -573,14 +869,12 @@ function ContinuousPaper({
                 setMarking(selectedQuestion.id);
                 try {
                   const draft = drafts[selectedQuestion.id] ?? "";
-                  const useFastMark =
-                    Boolean(draft.trim()) &&
-                    (selectedQuestion.multipleChoice ||
-                      selectedQuestion.answerCheckMode === "final-number");
                   const result = await onMark(
                     selectedQuestion,
                     draft,
-                    useFastMark ? undefined : await exporter(),
+                    // Always include the rendered paper. A student may draw on a
+                    // fast-mark question instead of (or as well as) typing.
+                    await exporter(),
                   );
                   setResults((current) => ({ ...current, [selectedQuestion.id]: result }));
                 } catch (error) {
@@ -602,18 +896,6 @@ function ContinuousPaper({
               allowHint={allowHint}
               allowSteps={allowSteps}
             />
-            {(markSchemeRevealed ||
-              (revealOnFullMarks && selectedResult?.awardedMarks === selectedQuestion.marks)) &&
-            selectedQuestion.answerImageUrls?.length ? (
-              <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
-                <p className="mb-2 text-sm font-medium">Mark scheme</p>
-                <QuestionSnipStack
-                  urls={selectedQuestion.answerImageUrls}
-                  answers
-                  alt="Official mark scheme"
-                />
-              </div>
-            ) : null}
             {selectedAnswer?.attempts ? (
               <p className="text-xs text-muted-foreground">
                 {selectedAnswer.attempts} previous attempt{selectedAnswer.attempts === 1 ? "" : "s"}
@@ -661,7 +943,10 @@ export function StudentPaperMode({
         const { data } = await supabase.auth.getUser();
         if (!data.user) throw new Error("Please sign in again.");
         const path = `${data.user.id}/${assignmentId}/${question.id}/${PAD_FILE_NAME}`;
-        if (file) {
+        const useFastAnswer =
+          Boolean(text.trim()) &&
+          (Boolean(question.multipleChoice) || question.answerCheckMode === "final-number");
+        if (file && !useFastAnswer) {
           const { error } = await supabase.storage
             .from("student-work")
             .upload(path, file, { contentType: "image/png", upsert: true });
@@ -676,7 +961,9 @@ export function StudentPaperMode({
             assignmentId,
             questionId: question.id,
             answerText: text,
-            imagePaths: file ? [...existingPaths, path].slice(-6) : [],
+            // A completed fast-answer field is authoritative. Only use the
+            // rendered sketch when that field is empty.
+            imagePaths: file && !useFastAnswer ? [...existingPaths, path].slice(-6) : [],
           },
         });
         await queryClient.refetchQueries({ queryKey, type: "active" });
@@ -705,7 +992,10 @@ export function ReadOnlyPaperMode({
       allowHint={false}
       allowSteps={false}
       revealOnFullMarks={false}
-      markSchemeRevealed={false}
+      // The server only sends answer images that this student is entitled to
+      // see. Mirroring that payload lets the teacher's student view show the
+      // exact same released mark-scheme block instead of hiding it again.
+      markSchemeRevealed={questions.some((question) => question.answerImageUrls?.length)}
       onMark={async () => {
         throw new Error("This student view is read-only.");
       }}
@@ -738,6 +1028,9 @@ export function PreviewPaperMode({
       revealOnFullMarks={revealOnFullMarks}
       markSchemeRevealed={markSchemeRevealed}
       onMark={async (question, text, file) => {
+        const useFastAnswer =
+          Boolean(text.trim()) &&
+          (Boolean(question.multipleChoice) || question.answerCheckMode === "final-number");
         const dataUrl = file
           ? await new Promise<string>((resolve, reject) => {
               const reader = new FileReader();
@@ -752,7 +1045,7 @@ export function PreviewPaperMode({
             questionId: question.id,
             answerText: text,
             imageDataUrls: [],
-            padDataUrls: dataUrl ? [dataUrl] : [],
+            padDataUrls: dataUrl && !useFastAnswer ? [dataUrl] : [],
             priorFlags: 0,
           },
         });

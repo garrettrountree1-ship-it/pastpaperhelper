@@ -2919,7 +2919,13 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const previewImages = data.imageDataUrls ?? [];
+    // Pad drawings are real answer images too. Previously they were only used
+    // to exempt an image from the camera-authenticity check and were then
+    // accidentally omitted from both the "has an answer" check and the AI
+    // marker. That made a sketch-only paper answer look empty in teacher test
+    // view even though the browser had sent the rendered page correctly.
+    const padImages = data.padDataUrls ?? [];
+    const previewImages = [...(data.imageDataUrls ?? []), ...padImages];
     if (!data.answerText.trim() && previewImages.length === 0) {
       throw new Error("Type an answer or attach a photo to test the marking.");
     }
@@ -2980,7 +2986,7 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
         answer: data.answerText,
         marks: question.marks,
       }),
-      checkHandDrawnPhotos(previewImages.filter((url) => !(data.padDataUrls ?? []).includes(url))),
+      checkHandDrawnPhotos(previewImages.filter((url) => !padImages.includes(url))),
     ]);
     if (!previewPhotoCheck.ok || previewDetection.isAi) {
       const strikes = (data.priorFlags ?? 0) + 1;
@@ -3044,6 +3050,10 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       feedback: result.feedback,
       leadingQuestion: result.leadingQuestion ?? "",
       markBreakdown: result.markPoints ?? [],
+      // Teacher preview saves nothing, so it cannot rely on a workspace
+      // refetch to release a newly-correct answer. Return the recovered cut
+      // with this result so paper preview can show it immediately.
+      markSchemeImageUrls: await signPaperPages(db, previewMarkSchemePaths),
     };
   });
 

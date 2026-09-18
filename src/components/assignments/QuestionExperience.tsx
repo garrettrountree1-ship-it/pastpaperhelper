@@ -153,6 +153,7 @@ export function QuestionExperience({
   onSend,
   locked = false,
   markSchemeImageUrls = [],
+  paperModeUrls = [],
   answerAction = null,
   headerAction = null,
   snipAction = null,
@@ -209,6 +210,8 @@ export function QuestionExperience({
   /** Mark-scheme answer, only present once the teacher reveals it. */
   /** The official answer exactly as printed, shown only once released. */
   markSchemeImageUrls?: string[];
+  /** Saved annotated paper-mode answer images for this question. */
+  paperModeUrls?: string[];
   /** Teacher-only control beside the answer picture (recut). */
   answerAction?: React.ReactNode;
   /** Optional action shown in the question header (e.g. message the teacher). */
@@ -355,6 +358,25 @@ export function QuestionExperience({
 
           {markSchemeImageUrls.length > 0 ? (
             <StudyMarkScheme urls={markSchemeImageUrls} action={answerAction} />
+          ) : null}
+
+          {paperModeUrls.length > 0 ? (
+            <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
+              <p className="text-sm font-medium">Paper mode answer</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Saved from the continuous paper when this question was marked.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {paperModeUrls.map((url) => (
+                  <StudentWorkPhoto
+                    key={url}
+                    url={url}
+                    alt="Paper mode answer"
+                    className="h-32 w-48 rounded-lg border border-border object-contain"
+                  />
+                ))}
+              </div>
+            </div>
           ) : null}
 
           {keywordTranslation ? (

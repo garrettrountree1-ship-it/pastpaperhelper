@@ -56,7 +56,12 @@ type PaperAnswer = {
   feedback?: string | null;
   attempts?: number;
 };
-type PaperResult = { verdict: string; awardedMarks: number; feedback: string };
+type PaperResult = {
+  verdict: string;
+  awardedMarks: number;
+  feedback: string;
+  leadingQuestion?: string;
+};
 
 const COLORS = ["#111827", "#2563eb", "#dc2626", "#16a34a", "#7c3aed", "#ea580c"];
 
@@ -669,11 +674,32 @@ function ContinuousPaper({
               </div>
             ) : null}
             {selectedResult ? (
-              <div className="rounded-lg border p-3 text-sm">
-                <Badge>
-                  {selectedResult.awardedMarks}/{selectedQuestion.marks}
-                </Badge>
-                <p className="mt-2">{selectedResult.feedback}</p>
+              <div className="space-y-2">
+                <div className="rounded-lg border p-3 text-sm">
+                  <Badge>
+                    {selectedResult.awardedMarks}/{selectedQuestion.marks}
+                  </Badge>
+                  {selectedResult.verdict === "correct" && selectedResult.feedback ? (
+                    <p className="mt-2">{selectedResult.feedback}</p>
+                  ) : null}
+                </div>
+                {selectedResult.verdict !== "correct" ? (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+                    <p className="flex items-center gap-1.5 font-semibold">
+                      <span aria-hidden="true" className="text-primary">
+                        ✨
+                      </span>{" "}
+                      AI tutor
+                    </p>
+                    <p className="mt-2 whitespace-pre-wrap">
+                      {selectedResult.leadingQuestion || selectedResult.feedback}
+                    </p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Use a hint or step-by-step help below, then improve your work and mark it
+                      again.
+                    </p>
+                  </div>
+                ) : null}
               </div>
             ) : null}
             <Button

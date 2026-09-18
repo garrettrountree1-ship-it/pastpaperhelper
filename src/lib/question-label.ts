@@ -7,7 +7,10 @@ import { cleanMathText } from "@/lib/math-text";
  */
 const ROMAN = "i{1,3}|iv|v|vi{1,3}|ix|x";
 const HEAD = new RegExp(`^\\s*\\(?(\\d{1,3})\\)?\\s*[.)]?\\s*`, "i");
-const PAREN_PART = new RegExp(`^\\s*\\(\\s*(${ROMAN}|[a-z](?:${ROMAN})?)\\s*\\)`, "i");
+const PAREN_PART = new RegExp(
+  `^\\s*\\(\\s*(${ROMAN}|[a-z](?:[.]?(?:${ROMAN}))?)\\s*\\)`,
+  "i",
+);
 const COMPACT_PART = new RegExp(`^\\s*([a-z])(?:\\s*\\(?(${ROMAN})\\)?)?(?=\\s|[.):-]|$)`, "i");
 
 type Parsed = { label: string; rest: string };
@@ -19,10 +22,30 @@ function dropRepeats(parts: string[]): string[] {
 
 /** Split compact printed parts such as "aii" into letter "a" + roman "ii". */
 function tokenParts(token: string): string[] {
-  const value = token.toLowerCase();
+  const value = token.toLowerCase().replace(/[.]/g, "");
   if (new RegExp(`^(?:${ROMAN})$`, "i").test(value)) return [value];
   const compact = new RegExp(`^([a-z])(${ROMAN})$`, "i").exec(value);
   return compact?.[1] && compact[2] ? [compact[1], compact[2]] : [value];
+}
+
+/**
+ * Older extractions sometimes stored a running position before the real
+ * sub-part, for example `6 (b.ii) ...` or `5 ...\n(a.ii) ...`. Recover that
+ * printed part so an entire assignment can still display as 5(a)(ii),
+ * 5(b)(i), 5(b)(ii), then 6.
+ */
+function embeddedParts(questionText: string): string[] {
+  const parsed = parseOnce(questionText ?? "");
+  if (!parsed) return [];
+  const existing = parseLabelString(parsed.label).parts;
+  const body = parsed.rest;
+  const match = new RegExp(
+    `(?:^|\\n)\\s*\\(\\s*([a-z])(?:[.]?\\s*\\(?(${ROMAN})\\)?)?\\s*\\)(?=\\s|[.):-]|$)`,
+    "im",
+  ).exec(body);
+  if (!match?.[1]) return existing;
+  const found = [match[1].toLowerCase(), ...(match[2] ? [match[2].toLowerCase()] : [])];
+  return existing.length > 0 ? existing : found;
 }
 
 /** Match compact labels printed on papers: 1(ai), 1(aii), 1(biii). */
@@ -216,9 +239,31 @@ export function resolveQuestionLabels(questionTexts: string[]): string[] {
   let previous: string | null = null;
   questionTexts.forEach((text, index) => {
     const printed = printedLabel(text);
+    const printedParts = printed ? parseLabelString(printed).parts : [];
+    const recoveredParts = printedParts.length > 0 ? printedParts : embeddedParts(text);
+    if (recoveredParts.length > 0) {
+      const printedMain = printed ? parseLabelString(printed).main : null;
+      const previousParsed = previous ? parseLabelString(previous) : null;
+      const main =
+        printedParts.length > 0
+          ? printedMain
+          : previousParsed?.parts.length
+            ? previousParsed.main
+            : (printedMain ?? (previousParsed?.main ?? index) + 1);
+      const label = formatLabel(main, recoveredParts);
+      labels.push(label);
+      previous = label;
+      return;
+    }
     if (printed) {
-      labels.push(printed);
-      previous = printed;
+      const printedMain = parseLabelString(printed).main;
+      const previousParsed = previous ? parseLabelString(previous) : null;
+      const label =
+        previousParsed?.parts.length && previousParsed.main !== null
+          ? formatLabel(previousParsed.main + 1, [])
+          : formatLabel(printedMain, []);
+      labels.push(label);
+      previous = label;
       return;
     }
     const parts = leadingPartsOnly(text);

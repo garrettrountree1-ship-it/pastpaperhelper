@@ -3390,8 +3390,7 @@ export const deleteQuestion = createServerFn({ method: "POST" })
     const { error } = await db.from("questions").delete().eq("id", data.questionId);
     if (error) throw new Error(error.message);
 
-    // Keep stored positions contiguous immediately after a deletion so every
-    // teacher and student surface agrees on Q1, Q2, Q3… without stale gaps.
+    // Keep positions contiguous without flattening printed sub-part labels.
     const { data: remaining } = await db
       .from("questions")
       .select("id, question_text")
@@ -3402,7 +3401,6 @@ export const deleteQuestion = createServerFn({ method: "POST" })
         .from("questions")
         .update({
           position: index + 1,
-          question_text: setQuestionLabel(row.question_text ?? "", String(index + 1)),
         })
         .eq("id", row.id);
       if (renumberError) throw new Error(renumberError.message);

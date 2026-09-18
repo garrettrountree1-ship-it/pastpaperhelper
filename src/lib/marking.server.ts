@@ -69,7 +69,7 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
       ? `The next ${schemeImages.length} attached image(s) are the EXACT cut of the printed official answer key / mark scheme for THIS question. Mark strictly against that picture: read every marking point, its stated mark value and notation (M1, A1, B1, ecf, owtte, accept/reject lists, units, significant figures, tables, diagrams). It is the authoritative source and overrides the transcribed text wherever they disagree. The student's answer does NOT have to match it word for word — award the mark when the meaning is the same, while requiring any key term, value, unit or symbol the printed scheme insists on.`
       : "",
     images.length > 0
-      ? `The student also attached ${images.length} photo(s) of handwritten working or a diagram. Read them carefully — that working is part of the answer.`
+      ? `The student also attached ${images.length} image(s) of handwritten working, mouse/stylus writing, or a diagram. Read them carefully — all visible writing and drawing is part of the answer. Mouse-drawn characters can be rough, uneven, disconnected or unusually shaped.`
       : "",
     input.finalNumericOnly
       ? `FINAL-NUMBER-ONLY MODE: read the student's final numerical value, including from handwriting, and compare only that value with the teacher-verified accepted answer ${JSON.stringify(input.expectedAnswer || input.markScheme)}. A range written as "minimum to maximum" is inclusive. Do not assess or award method/working marks separately. Award all available marks for a matching value and no marks otherwise.`
@@ -85,11 +85,13 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     "When a picture of the printed official answer key is attached, that picture is the authoritative mark scheme: derive the marking points and their mark values from it, not from any transcription, and mark the student's response against it by meaning rather than exact wording.",
     "Be generous with equivalent wording: a short answer such as a single letter, number, formula or option that matches the mark scheme earns full marks.",
     "Answers may include photos of handwritten maths working, graphs or diagrams; read the images and credit correct working shown there.",
+    "Treat uncertain handwriting and mouse/stylus ink charitably. Use the question, units, nearby symbols, calculation flow and mark-scheme context to choose the most plausible reading. If a plausible reading is correct, award the mark; do not penalize poor penmanship, rough lines, imperfect letter shapes or OCR uncertainty.",
+    "For a short handwritten answer, formula, number, label or option, actively check plausible character alternatives (for example 1/l/I, 0/O, 5/S, ×/x, minus/dash, decimal points, subscripts and superscripts) before deciding it is wrong.",
     "When the answer is a photo of handwritten calculation working, mark it step by step: award each method/substitution mark that is correct even if the final answer is wrong, so partial credit is normal. If a diagram or drawing is photographed, judge the drawing itself against the mark scheme (labels, lines, shading, plotted points) rather than expecting typed words.",
     input.finalNumericOnly
       ? "For numerical questions, ignore the method and compare the final value only. Accept equivalent scientific notation and any value inside a teacher-provided inclusive range. Follow any precision or unit requirement explicitly printed in the official answer."
       : "For calculations, follow the printed rubric exactly: inspect the working step by step, award its M/A/B marks independently, and do not invent full credit for a bare final value when the rubric requires method marks.",
-    "If a photo is unreadable or shows no relevant working, say so plainly without revealing the answer.",
+    "Only call handwriting or a drawing unreadable when no reasonable interpretation can be made after using the surrounding context. If any clearly visible relevant work earns a mark, award it even when another part is hard to read.",
     "Split the mark scheme into its individual marking points exactly as written (each M1/A1/B1 or bullet worth its stated marks) and return them in markPoints with marks for that point and awarded true/false. The sum of the marks of awarded points MUST equal awardedMarks.",
     "Award marks only for points that genuinely match the mark scheme. Never award more than the marks available and never award negative marks.",
     "verdict is 'correct' only when full marks are earned, 'partial' when some marks are earned, 'incorrect' when none are.",

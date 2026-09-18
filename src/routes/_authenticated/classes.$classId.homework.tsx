@@ -2371,7 +2371,7 @@ function StudentReport({
           ) : null}
 
           <div className="mt-3 space-y-2">
-            {assignment.questions.map((question) => (
+            {assignment.questions.map((question, questionIndex) => (
               <details
                 key={question.id}
                 className="rounded-md border border-border bg-background p-3"
@@ -2380,7 +2380,10 @@ function StudentReport({
                   <span className="inline-flex w-[calc(100%-1.5rem)] flex-wrap items-center justify-between gap-2 align-middle">
                     <span className="min-w-0">
                       <span className="font-medium">
-                        Q{questionLabel(question.questionText, question.position - 1)}
+                        Q
+                        {resolveQuestionLabels(
+                          assignment.questions.map((item) => item.questionText),
+                        )[questionIndex] ?? questionLabel(question.questionText, question.position - 1)}
                       </span>{" "}
                       <span className="text-muted-foreground">
                         {question.awardedMarks ?? 0}/{question.marks} marks · {question.attempts}{" "}

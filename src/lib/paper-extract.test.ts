@@ -13,7 +13,7 @@ const question = (questionText: string, top: number, bottom: number) => ({
 });
 
 describe("paper extraction safeguards", () => {
-  test("restarted bare question numbers become separate questions", () => {
+  test("keeps the number visible in each cut instead of inventing a sequence", () => {
     const result = renumberQuestions([
       question("1 First compiled question", 0.1, 0.2),
       question("1 Second compiled question", 0.3, 0.4),
@@ -22,7 +22,7 @@ describe("paper extraction safeguards", () => {
 
     assert.deepEqual(
       result.map((item) => item.questionText),
-      ["1 First compiled question", "2 Second compiled question", "3 Third compiled question"],
+      ["1 First compiled question", "1 Second compiled question", "2 Third compiled question"],
     );
   });
 

@@ -21,6 +21,7 @@ import { Route as AuthenticatedVocabBingoRouteImport } from './routes/_authentic
 import { Route as AuthenticatedWagerRoundRouteImport } from './routes/_authenticated/wager-round'
 import { Route as AuthenticatedAssignmentsAssignmentIdRouteImport } from './routes/_authenticated/assignments.$assignmentId'
 import { Route as AuthenticatedChallengeMatchIdRouteImport } from './routes/_authenticated/challenge.$matchId'
+import { Route as AuthenticatedPresentCodeRouteImport } from './routes/_authenticated/present.$code'
 import { Route as AuthenticatedQuizQuizIdRouteImport } from './routes/_authenticated/quiz.$quizId'
 import { Route as OauthGoogleDriveReturnRouteImport } from './routes/oauth/google-drive.return'
 import { Route as AuthenticatedAssignmentsAssignmentIdIndexRouteImport } from './routes/_authenticated/assignments.$assignmentId.index'
@@ -95,6 +96,12 @@ const AuthenticatedChallengeMatchIdRoute =
     path: '/challenge/$matchId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPresentCodeRoute =
+  AuthenticatedPresentCodeRouteImport.update({
+    id: '/present/$code',
+    path: '/present/$code',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedQuizQuizIdRoute = AuthenticatedQuizQuizIdRouteImport.update({
   id: '/quiz/$quizId',
   path: '/quiz/$quizId',
@@ -166,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/wager-round': typeof AuthenticatedWagerRoundRoute
   '/assignments/$assignmentId': typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
   '/challenge/$matchId': typeof AuthenticatedChallengeMatchIdRoute
+  '/present/$code': typeof AuthenticatedPresentCodeRoute
   '/quiz/$quizId': typeof AuthenticatedQuizQuizIdRoute
   '/oauth/google-drive/return': typeof OauthGoogleDriveReturnRoute
   '/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
@@ -188,6 +196,7 @@ export interface FileRoutesByTo {
   '/vocab-bingo': typeof AuthenticatedVocabBingoRoute
   '/wager-round': typeof AuthenticatedWagerRoundRoute
   '/challenge/$matchId': typeof AuthenticatedChallengeMatchIdRoute
+  '/present/$code': typeof AuthenticatedPresentCodeRoute
   '/quiz/$quizId': typeof AuthenticatedQuizQuizIdRoute
   '/oauth/google-drive/return': typeof OauthGoogleDriveReturnRoute
   '/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
@@ -213,6 +222,7 @@ export interface FileRoutesById {
   '/_authenticated/wager-round': typeof AuthenticatedWagerRoundRoute
   '/_authenticated/assignments/$assignmentId': typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
   '/_authenticated/challenge/$matchId': typeof AuthenticatedChallengeMatchIdRoute
+  '/_authenticated/present/$code': typeof AuthenticatedPresentCodeRoute
   '/_authenticated/quiz/$quizId': typeof AuthenticatedQuizQuizIdRoute
   '/oauth/google-drive/return': typeof OauthGoogleDriveReturnRoute
   '/_authenticated/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
@@ -238,6 +248,7 @@ export interface FileRouteTypes {
     | '/wager-round'
     | '/assignments/$assignmentId'
     | '/challenge/$matchId'
+    | '/present/$code'
     | '/quiz/$quizId'
     | '/oauth/google-drive/return'
     | '/assignments/$assignmentId/preview'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/vocab-bingo'
     | '/wager-round'
     | '/challenge/$matchId'
+    | '/present/$code'
     | '/quiz/$quizId'
     | '/oauth/google-drive/return'
     | '/assignments/$assignmentId/preview'
@@ -284,6 +296,7 @@ export interface FileRouteTypes {
     | '/_authenticated/wager-round'
     | '/_authenticated/assignments/$assignmentId'
     | '/_authenticated/challenge/$matchId'
+    | '/_authenticated/present/$code'
     | '/_authenticated/quiz/$quizId'
     | '/oauth/google-drive/return'
     | '/_authenticated/assignments/$assignmentId/preview'
@@ -390,6 +403,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChallengeMatchIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/present/$code': {
+      id: '/_authenticated/present/$code'
+      path: '/present/$code'
+      fullPath: '/present/$code'
+      preLoaderRoute: typeof AuthenticatedPresentCodeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/quiz/$quizId': {
       id: '/_authenticated/quiz/$quizId'
       path: '/quiz/$quizId'
@@ -490,6 +510,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedWagerRoundRoute: typeof AuthenticatedWagerRoundRoute
   AuthenticatedAssignmentsAssignmentIdRoute: typeof AuthenticatedAssignmentsAssignmentIdRouteWithChildren
   AuthenticatedChallengeMatchIdRoute: typeof AuthenticatedChallengeMatchIdRoute
+  AuthenticatedPresentCodeRoute: typeof AuthenticatedPresentCodeRoute
   AuthenticatedQuizQuizIdRoute: typeof AuthenticatedQuizQuizIdRoute
   AuthenticatedClassesClassIdGamesRoute: typeof AuthenticatedClassesClassIdGamesRoute
   AuthenticatedClassesClassIdHomeworkRoute: typeof AuthenticatedClassesClassIdHomeworkRoute
@@ -509,6 +530,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAssignmentsAssignmentIdRoute:
     AuthenticatedAssignmentsAssignmentIdRouteWithChildren,
   AuthenticatedChallengeMatchIdRoute: AuthenticatedChallengeMatchIdRoute,
+  AuthenticatedPresentCodeRoute: AuthenticatedPresentCodeRoute,
   AuthenticatedQuizQuizIdRoute: AuthenticatedQuizQuizIdRoute,
   AuthenticatedClassesClassIdGamesRoute: AuthenticatedClassesClassIdGamesRoute,
   AuthenticatedClassesClassIdHomeworkRoute:

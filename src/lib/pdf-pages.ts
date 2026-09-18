@@ -3,7 +3,13 @@
  * printed figures, diagrams and equations are preserved (never re-described).
  */
 
-export type PageImage = { filename: string; mimeType: string; base64: string };
+export type PageImage = {
+  filename: string;
+  mimeType: string;
+  base64: string;
+  /** Non-white horizontal bands, used server-side to reject blank AI crops. */
+  inkBands?: Array<[number, number]>;
+};
 
 const MAX_PAGES = 30;
 const RENDER_WIDTH = 1400;
@@ -75,6 +81,36 @@ function maskIdentifyingText(
   }
 }
 
+/** Compact row-level content map; fractions keep it independent of image size. */
+function findInkBands(context: CanvasRenderingContext2D, width: number, height: number) {
+  const pixels = context.getImageData(0, 0, width, height).data;
+  const inkRows: boolean[] = [];
+  for (let y = 0; y < height; y += 2) {
+    let ink = 0;
+    for (let x = 0; x < width; x += 3) {
+      const at = (y * width + x) * 4;
+      if (((pixels[at] ?? 255) + (pixels[at + 1] ?? 255) + (pixels[at + 2] ?? 255)) / 3 < 225) {
+        ink += 1;
+      }
+    }
+    inkRows.push(ink >= 2);
+  }
+  const bands: Array<[number, number]> = [];
+  let start = -1;
+  for (let row = 0; row <= inkRows.length; row += 1) {
+    if (inkRows[row] && start < 0) start = row;
+    if ((!inkRows[row] || row === inkRows.length) && start >= 0) {
+      const previous = bands[bands.length - 1];
+      const top = start / inkRows.length;
+      const bottom = row / inkRows.length;
+      if (previous && top - previous[1] < 0.006) previous[1] = bottom;
+      else bands.push([top, bottom]);
+      start = -1;
+    }
+  }
+  return bands.slice(0, 250);
+}
+
 async function renderPdfBytes(data: ArrayBuffer, stem: string): Promise<PageImage[]> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const workerUrl = (await import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url")).default;
@@ -106,10 +142,12 @@ async function renderPdfBytes(data: ArrayBuffer, stem: string): Promise<PageImag
     } catch {
       // No text layer (scanned page) — the render already has no extractable text.
     }
+    const inkBands = findInkBands(context, canvas.width, canvas.height);
     pages.push({
       filename: `${stem}-page-${n}.jpg`,
       mimeType: "image/jpeg",
       base64: dataUrlToBase64(canvas.toDataURL("image/jpeg", 0.85)),
+      inkBands,
     });
     canvas.width = 0;
     canvas.height = 0;
@@ -166,4 +204,3 @@ export async function filesToPages(files: File[]): Promise<PageImage[]> {
     })
     .slice(0, MAX_PAGES);
 }
-

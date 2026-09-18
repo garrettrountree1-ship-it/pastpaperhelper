@@ -73,7 +73,10 @@ export function ClassLessonMirror({ classId, isStudent }: { classId: string; isS
         return;
       }
 
-      if (message.viewActive === false || message.finalView) {
+      // Only an intentional Stop mirroring message should navigate a student
+      // back. A bare inactive heartbeat can arrive late after reconnecting and
+      // used to kick the whole class out of the lesson workspace.
+      if (message.finalView === true) {
         const activeSession = window.sessionStorage.getItem(sessionKey(classId));
         if (message.sessionId && activeSession && message.sessionId !== activeSession) return;
         const saved = window.sessionStorage.getItem(returnKey(classId));
@@ -103,6 +106,7 @@ export function ClassLessonMirror({ classId, isStudent }: { classId: string; isS
       channel.on("broadcast", { event: "lesson" }, receive);
       channel.subscribe((status) => {
         if (status !== "SUBSCRIBED") return;
+        if (timer) window.clearInterval(timer);
         const hello = () => void channel?.send({ type: "broadcast", event: "hello", payload: {} });
         hello();
         timer = window.setInterval(hello, 1500);

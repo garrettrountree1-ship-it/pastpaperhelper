@@ -119,6 +119,8 @@ function PreviewPage() {
         data: { assignmentId, studentId: studentId === "class" ? null : studentId },
       }),
     retry: 2,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 8 * 60 * 60 * 1000,
   });
 
   const data = preview.data;
@@ -434,18 +436,23 @@ function PreviewQuestion({
         })
       }
       onPhotosChange={(files) => void addPhotos(files)}
-      onAddDrawing={(file) => {
-        const reader = new FileReader();
-        // The pad keeps one picture, replaced each time the working is saved.
-        reader.onload = () =>
-          setPhotos((prev) => {
-            const url = String(reader.result);
-            const kept = prev.filter((item) => item !== padPhoto.current);
-            padPhoto.current = url;
-            return [...kept, url].slice(0, 3);
-          });
-        reader.readAsDataURL(file);
-      }}
+      onAddDrawing={(file) =>
+        new Promise<void>((resolve, reject) => {
+          const reader = new FileReader();
+          // The pad keeps one picture, replaced each time the working is saved.
+          reader.onload = () => {
+            setPhotos((prev) => {
+              const url = String(reader.result);
+              const kept = prev.filter((item) => item !== padPhoto.current);
+              padPhoto.current = url;
+              return [...kept, url].slice(0, 3);
+            });
+            resolve();
+          };
+          reader.onerror = () => reject(new Error("Couldn't save the drawing."));
+          reader.readAsDataURL(file);
+        })
+      }
       result={result ?? null}
       answerCheckMode={question.answerCheckMode ?? null}
       attempts={attempts}
@@ -511,6 +518,7 @@ function StudentWorkView({
     queryKey: ["student-homework-view", assignmentId, studentId],
     queryFn: () => getStudentHomeworkView({ data: { assignmentId, studentId } }),
     retry: 2,
+    staleTime: 5 * 60 * 1000,
   });
 
   if (view.isPending) return <Skeleton className="mt-8 h-64 w-full" />;

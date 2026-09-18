@@ -85,6 +85,11 @@ function AssignmentPage() {
   const workspace = useQuery({
     queryKey,
     queryFn: () => getAssignmentWorkspace({ data: { assignmentId } }),
+    // Keep the signed page URLs stable while the student moves around the app.
+    // That lets the browser reuse its downloaded question pictures instead of
+    // receiving fresh URLs and downloading the same pages on every visit.
+    staleTime: 30 * 60 * 1000,
+    gcTime: 8 * 60 * 60 * 1000,
     retry: 2,
   });
 
@@ -240,6 +245,7 @@ function AssignmentPage() {
                       question={question}
                       locked={Boolean(data.submission.locked_at) || data.assignment.pastDue}
                       answer={data.answers.find((a) => a.question_id === question.id) ?? null}
+                      referenceImageUrls={referenceImagesFor(data.questions, data.answers, index)}
                       messages={data.messages}
                       queryKey={queryKey}
                       keywordTranslation={Boolean(settings?.keywordTranslation)}
@@ -310,6 +316,25 @@ type Answer = {
 };
 type Message = { id: string; answer_id: string; role: string; content: string };
 
+function referenceImagesFor(questions: Question[], answers: Answer[], index: number) {
+  const wording = questions[index]?.question_text ?? "";
+  if (
+    !/(?:previous|earlier|above)\s+(?:diagram|graph|image|drawing)|(?:add to|edit|amend|complete)\s+(?:the|your)\s+(?:diagram|graph|image|drawing)/i.test(
+      wording,
+    )
+  ) {
+    return [];
+  }
+  for (let previous = index - 1; previous >= 0; previous -= 1) {
+    const answer = answers.find((item) => item.question_id === questions[previous]?.id);
+    const images = answer?.imageUrls ?? [];
+    const drawing = images.filter((url) => url.includes(PAD_FILE_NAME));
+    if (drawing.length > 0) return drawing;
+    if (images.length > 0) return [images[images.length - 1]!];
+  }
+  return [];
+}
+
 /**
  * Groups questions under their past-paper page image(s). Each page image is
  * shown at most once for the whole assignment: a question only starts a new
@@ -347,6 +372,7 @@ function QuestionCard({
   index,
   question,
   answer,
+  referenceImageUrls,
   messages,
   queryKey,
   locked,
@@ -363,6 +389,7 @@ function QuestionCard({
   index: number;
   question: Question;
   answer: Answer | null;
+  referenceImageUrls: string[];
   messages: Message[];
   queryKey: string[];
   locked: boolean;
@@ -459,6 +486,7 @@ function QuestionCard({
         question={question}
         index={index}
         snipUrls={snipsFor(question)}
+        referenceImageUrls={referenceImageUrls}
         draft={draft}
         onDraftChange={setDraft}
         requiresPhoto={requiresPhoto}

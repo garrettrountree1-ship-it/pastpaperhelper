@@ -532,10 +532,9 @@ function ContinuousPaper({
           {questions.map((question, index) => {
             const result = results[question.id];
             const snips = question.imageUrls ?? [];
+            const savedAnswer = answers.find((answer) => answer.question_id === question.id);
             const savedPaperUrls = locked
-              ? (
-                  answers.find((answer) => answer.question_id === question.id)?.imageUrls ?? []
-                ).filter((url) => url.includes(PAD_FILE_NAME))
+              ? (savedAnswer?.imageUrls ?? []).filter((url) => url.includes(PAD_FILE_NAME))
               : [];
             const multipleChoice = Boolean(question.multipleChoice);
             const needsBlank = /draw|diagram|graph|plot|sketch|calculate/i.test(

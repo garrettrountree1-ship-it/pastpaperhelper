@@ -277,7 +277,10 @@ function PaperAnswerArea({
       // Everything the student put on this question — pen strokes, typed lines and
       // every placed text box — is drawn into the one picture that gets marked.
       for (const box of textBoxesRef.current) {
-        const maxWidth = Math.max(80, output.width - box.x - 24);
+        const maxWidth = Math.max(
+          80,
+          Math.min(box.width ?? output.width, output.width - box.x - 24),
+        );
         let y = box.y + 24;
         for (const paragraph of box.text.split(/\n/)) {
           let line = "";

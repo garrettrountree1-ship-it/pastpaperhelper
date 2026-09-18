@@ -11,7 +11,7 @@ const PAREN_PART = new RegExp(
   `^\\s*\\(\\s*(${ROMAN}|[a-z](?:[.]?(?:${ROMAN}))?)\\s*\\)`,
   "i",
 );
-const COMPACT_PART = new RegExp(`^\\s*([a-z])(?:\\s*\\(?(${ROMAN})\\)?)?(?=\\s|[.):-]|$)`, "i");
+const COMPACT_PART = new RegExp(`^\\s*([a-z])(?:\\s*\\(?(${ROMAN})\\)?)?(?=\\s|[.):-]|$)`);
 
 type Parsed = { label: string; rest: string };
 
@@ -46,10 +46,7 @@ function embeddedParts(questionText: string): string[] {
   if (!parsed) return [];
   const existing = parseLabelString(parsed.label).parts;
   const body = parsed.rest;
-  const match = new RegExp(
-    `(?:^|\\n)\\s*\\(\\s*([a-z])(?:[.]?\\s*\\(?(${ROMAN})\\)?)?\\s*\\)(?=\\s|[.):-]|$)`,
-    "im",
-  ).exec(body);
+  const match = /(?:^|\n)\s*\(\s*([a-z][.]?(?:[ivx]+)?)\s*\)(?=\s|[.):-]|$)/im.exec(body);
   if (!match?.[1]) return existing;
   const found = tokenParts(match[1]);
   return existing.length > 0 ? existing : found;

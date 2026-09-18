@@ -113,6 +113,34 @@ function PreviewPage() {
   const [flags, setFlags] = useState(0);
   const [studentId, setStudentId] = useState<string>("class");
   const [viewMode, setViewMode] = useState<"questions" | "paper">("questions");
+  // One test session shares its marks between question view and paper mode, so a
+  // question answered correctly in one view shows its credit in the other too.
+  const [testResults, setTestResults] = useState<
+    Record<
+      string,
+      {
+        verdict: string;
+        awardedMarks: number;
+        feedback: string;
+        answerText: string;
+        attempts: number;
+      }
+    >
+  >({});
+  const recordResult = (
+    questionId: string,
+    result: { verdict: string; awardedMarks: number; feedback?: string; answerText: string },
+  ) =>
+    setTestResults((prev) => ({
+      ...prev,
+      [questionId]: {
+        verdict: result.verdict,
+        awardedMarks: Number(result.awardedMarks ?? 0),
+        feedback: result.feedback ?? "",
+        answerText: result.answerText,
+        attempts: (prev[questionId]?.attempts ?? 0) + 1,
+      },
+    }));
   const viewingStudent = studentId !== "class";
   const preview = useQuery({
     queryKey: ["assignment-preview", assignmentId, studentId],

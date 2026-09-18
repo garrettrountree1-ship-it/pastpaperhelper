@@ -1191,14 +1191,18 @@ export function PreviewPaperMode({
   settings,
   revealOnFullMarks,
   markSchemeRevealed,
+  answers = [],
+  onResult,
 }: {
   assignmentId: string;
   questions: PaperQuestion[];
   settings: { allowHint?: boolean; allowSteps?: boolean } | undefined;
   revealOnFullMarks: boolean;
   markSchemeRevealed: boolean;
+  /** Marks already earned in the other view of this same test session. */
+  answers?: PaperAnswer[];
+  onResult?: (questionId: string, result: PaperResult & { answerText: string }) => void;
 }) {
-  const [answers] = useState<PaperAnswer[]>([]);
   return (
     <ContinuousPaper
       assignmentId={`preview:${assignmentId}`}
@@ -1221,7 +1225,7 @@ export function PreviewPaperMode({
               reader.readAsDataURL(file);
             })
           : null;
-        return previewGradeAnswer({
+        const result = await previewGradeAnswer({
           data: {
             assignmentId,
             questionId: question.id,
@@ -1231,6 +1235,14 @@ export function PreviewPaperMode({
             priorFlags: 0,
           },
         });
+        // One test session, one mark per question: share it with question view.
+        onResult?.(question.id, {
+          verdict: result.verdict,
+          awardedMarks: Number(result.awardedMarks ?? 0),
+          feedback: result.feedback ?? "",
+          answerText: text,
+        });
+        return result;
       }}
     />
   );

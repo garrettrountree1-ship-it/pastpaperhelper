@@ -241,6 +241,7 @@ function leadingPartsOnly(questionText: string): string[] {
 export function resolveQuestionLabels(questionTexts: string[]): string[] {
   const labels: string[] = [];
   let previous: string | null = null;
+  let legacyMultipartMain: number | null = null;
   questionTexts.forEach((text, index) => {
     const printed = printedLabel(text);
     const printedParts = printed ? parseLabelString(printed).parts : [];
@@ -255,10 +256,10 @@ export function resolveQuestionLabels(questionTexts: string[]): string[] {
         previousParsed?.parts.length &&
         printedMain !== null &&
         previousParsed.main !== null &&
-        (repeatedPart.length > 0 || printedMain > previousParsed.main + 1);
+        (legacyMultipartMain !== null || repeatedPart.length > 0 || printedMain > previousParsed.main + 1);
       const main =
         legacyRunningPrefix
-          ? previousParsed.main
+          ? (legacyMultipartMain ?? previousParsed.main)
           : printedParts.length > 0
           ? printedMain
           : previousParsed?.parts.length
@@ -267,17 +268,21 @@ export function resolveQuestionLabels(questionTexts: string[]): string[] {
       const label = formatLabel(main, recoveredParts);
       labels.push(label);
       previous = label;
+      if (printedParts.length === 0 && recoveredParts.length > 0) legacyMultipartMain = main;
       return;
     }
     if (printed) {
       const printedMain = parseLabelString(printed).main;
       const previousParsed = previous ? parseLabelString(previous) : null;
       const label =
-        previousParsed?.parts.length && previousParsed.main !== null
+        legacyMultipartMain !== null
+          ? formatLabel(legacyMultipartMain + 1, [])
+          : previousParsed?.parts.length && previousParsed.main !== null
           ? formatLabel(previousParsed.main + 1, [])
           : formatLabel(printedMain, []);
       labels.push(label);
       previous = label;
+      legacyMultipartMain = null;
       return;
     }
     const parts = leadingPartsOnly(text);

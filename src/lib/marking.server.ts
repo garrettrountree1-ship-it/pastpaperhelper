@@ -1,7 +1,7 @@
-import { generateText } from "ai";
+import { generateText, streamText } from "ai";
 import { z } from "zod";
 
-import { gatewayModel } from "./ai-gateway.server";
+import { gatewayModel, gatewayResponsesModel } from "./ai-gateway.server";
 
 export type MarkPoint = { point: string; marks: number; awarded: boolean };
 
@@ -115,26 +115,32 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     ...images.map(asImage),
   ];
 
-  let lastError: unknown = null;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      const { text } = await generateText({
-        model: gatewayModel(),
-        maxOutputTokens: 1200,
-        system,
-        messages: [{ role: "user", content }],
-      });
-      const parsed = markSchema.parse(JSON.parse(extractJson(text)));
-      return clamp(parsed, input.marks);
-    } catch (error) {
-      lastError = error;
-    }
+  try {
+    // Reasoning marks can take longer than a normal request, so consume the
+    // streamed response server-side instead of holding one silent request open.
+    const result = streamText({
+      model: gatewayResponsesModel(),
+      system,
+      messages: [{ role: "user", content }],
+      providerOptions: {
+        openai: {
+          forceReasoning: true,
+          reasoningEffort: "medium",
+          reasoningSummary: "auto",
+          store: false,
+          include: ["reasoning.encrypted_content"],
+        },
+      },
+    });
+    const parsed = markSchema.parse(JSON.parse(extractJson(await result.text)));
+    return clamp(parsed, input.marks);
+  } catch (error) {
+    throw new Error(
+      `We couldn't mark that answer just now. ${
+        error instanceof Error ? error.message : "Please try again."
+      }`,
+    );
   }
-  throw new Error(
-    `We couldn't mark that answer just now. Please try again. (${
-      lastError instanceof Error ? lastError.message : "unknown error"
-    })`,
-  );
 }
 
 function clamp(result: z.infer<typeof markSchema>, maxMarks: number): MarkResult {

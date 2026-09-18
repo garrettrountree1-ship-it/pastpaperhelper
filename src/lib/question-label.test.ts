@@ -43,6 +43,10 @@ test("repairs legacy running numbers placed before dotted sub-parts", () => {
   );
 });
 
+test("does not fold a genuine next main question into the previous sub-parts", () => {
+  assert.deepEqual(resolveQuestionLabels(["1(b) Explain", "2(a) Calculate"]), ["1(b)", "2(a)"]);
+});
+
 test("parses dotted sub-parts without losing letter or roman numbering", () => {
   assert.equal(questionLabel("6 (b.ii) Explain", 5), "6(bii)");
   assert.deepEqual(parseLabelString("6(b.ii)"), { main: 6, parts: ["b", "ii"] });

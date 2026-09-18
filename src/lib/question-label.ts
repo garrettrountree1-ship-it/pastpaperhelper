@@ -244,8 +244,19 @@ export function resolveQuestionLabels(questionTexts: string[]): string[] {
     if (recoveredParts.length > 0) {
       const printedMain = printed ? parseLabelString(printed).main : null;
       const previousParsed = previous ? parseLabelString(previous) : null;
+      const bodyAfterPrinted = parseOnce(text)?.rest ?? "";
+      const repeatedPart = leadingPartsOnly(bodyAfterPrinted);
+      const legacyRunningPrefix =
+        printedParts.length > 0 &&
+        previousParsed?.parts.length &&
+        repeatedPart.join(".") === printedParts.join(".") &&
+        printedMain !== null &&
+        previousParsed.main !== null &&
+        printedMain === previousParsed.main + 1;
       const main =
-        printedParts.length > 0
+        legacyRunningPrefix
+          ? previousParsed.main
+          : printedParts.length > 0
           ? printedMain
           : previousParsed?.parts.length
             ? previousParsed.main

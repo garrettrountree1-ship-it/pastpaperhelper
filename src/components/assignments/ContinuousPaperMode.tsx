@@ -490,7 +490,7 @@ function PaperAnswerArea({
             disabled={disabled}
             rows={1}
             aria-label="Movable answer text"
-            className="min-h-9 resize-y border-0 px-1 py-2 shadow-none focus-visible:ring-0"
+            className="h-full min-h-9 flex-1 resize-none border-0 px-1 py-2 shadow-none focus-visible:ring-0"
             onPaste={(event) => {
               event.preventDefault();
               toast.error(NO_PASTE_MESSAGE);

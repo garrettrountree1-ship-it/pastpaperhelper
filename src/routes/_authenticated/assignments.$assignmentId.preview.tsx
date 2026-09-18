@@ -327,6 +327,8 @@ function PreviewPage() {
                           markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
                           revealOnFullMarks={Boolean(data.assignment.revealOnFullMarks)}
                           onFlag={() => setFlags((count) => count + 1)}
+                          sharedResult={testResults[question.id] ?? null}
+                          onResult={(result) => recordResult(question.id, result)}
                         />
                       ))}
                     </div>

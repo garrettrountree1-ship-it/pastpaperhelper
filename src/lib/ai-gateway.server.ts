@@ -1,4 +1,5 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createOpenAI } from "@ai-sdk/openai";
 
 /**
  * Lovable AI Gateway provider. Server-only.
@@ -17,5 +18,16 @@ export function gatewayModel() {
   const key = process.env["LOVABLE_API_KEY"];
   if (!key) throw new Error("AI is not configured yet. Missing LOVABLE_API_KEY.");
   return createLovableAiGatewayProvider(key)(TUTOR_MODEL);
+}
+
+/** OpenAI Responses provider for the default reasoning model. */
+export function gatewayResponsesModel() {
+  const key = process.env["LOVABLE_API_KEY"];
+  if (!key) throw new Error("AI is not configured yet. Missing LOVABLE_API_KEY.");
+  return createOpenAI({
+    baseURL: "https://ai.gateway.lovable.dev/v1",
+    apiKey: key,
+    headers: { "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
+  }).responses(TUTOR_MODEL);
 }
 

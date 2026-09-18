@@ -51,7 +51,7 @@ function embeddedParts(questionText: string): string[] {
     "im",
   ).exec(body);
   if (!match?.[1]) return existing;
-  const found = tokenParts(`${match[1]}${match[2] ?? ""}`);
+  const found = tokenParts(match[1]);
   return existing.length > 0 ? existing : found;
 }
 

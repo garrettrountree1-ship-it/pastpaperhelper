@@ -153,7 +153,7 @@ export function QuestionExperience({
   onSend,
   locked = false,
   markSchemeImageUrls = [],
-  paperModeUrls = [],
+  paperModeUrls: providedPaperModeUrls = [],
   answerAction = null,
   headerAction = null,
   snipAction = null,
@@ -282,6 +282,17 @@ export function QuestionExperience({
     [photoFiles],
   );
   const submittedPhotoUrls = photoUrls.filter((url) => !url.includes(PAD_FILE_NAME));
+  // New paper mode passes its saved cuts explicitly, while older submissions stored
+  // them alongside ordinary photos. Combine both sources without shadowing the prop.
+  const savedPaperModeUrls = useMemo(
+    () => [
+      ...new Set([
+        ...providedPaperModeUrls,
+        ...photoUrls.filter((url) => url.includes(PAD_FILE_NAME)),
+      ]),
+    ],
+    [providedPaperModeUrls, photoUrls],
+  );
 
   // Seed the marks checklist so the student sees how many points are expected.
   useEffect(() => {
@@ -360,14 +371,14 @@ export function QuestionExperience({
             <StudyMarkScheme urls={markSchemeImageUrls} action={answerAction} />
           ) : null}
 
-          {paperModeUrls.length > 0 ? (
+          {savedPaperModeUrls.length > 0 ? (
             <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
               <p className="text-sm font-medium">Paper mode answer</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Saved from the continuous paper when this question was marked.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
-                {paperModeUrls.map((url) => (
+                {savedPaperModeUrls.map((url) => (
                   <StudentWorkPhoto
                     key={url}
                     url={url}
@@ -414,7 +425,10 @@ export function QuestionExperience({
             </div>
           ) : null}
 
-          <details className="group mt-4 rounded-xl border border-border bg-background/40">
+          <details
+            open={readOnly || undefined}
+            className="group mt-4 rounded-xl border border-border bg-background/40"
+          >
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
               <span className="flex min-w-0 items-center gap-2 font-medium">
                 <ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" />
@@ -433,6 +447,8 @@ export function QuestionExperience({
               </span>
             </summary>
             <div className="border-t border-border px-4 pb-4">
+              {/* Mark-scheme and paper-mode images intentionally render above this
+              answer panel. Keeping them out of here prevents duplicate blocks. */}
               <div className="mt-4 space-y-3">
                 {readOnly ? null : (
                   <p className="text-xs text-muted-foreground">
@@ -444,7 +460,10 @@ export function QuestionExperience({
                   </p>
                 )}
 
-                <details className="rounded-lg border border-dashed border-border p-3">
+                <details
+                  open={readOnly || undefined}
+                  className="rounded-lg border border-dashed border-border p-3"
+                >
                   <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">
                     {readOnly ? "Typed answer" : "Type your answer"}
                   </summary>

@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { questionPagesOnly } from "@/lib/answer-key";
 import { parseCropFragment } from "@/lib/snip-crop";
-import { snapBandToWhitespace } from "@/lib/snip-whitespace";
 
 /**
  * Shows a question exactly as printed on the past-paper page.
@@ -26,29 +25,27 @@ const guard = {
 
 /** One band of one page, cut only where the paper is empty. */
 function SnipBand({ url, alt }: { url: string; alt: string }) {
-  const raw = parseSnipBand(url);
-  const [band, setBand] = useState(raw);
+  // A workspace refresh creates a new signature for the same stored picture.
+  // Keep the already-painted URL until it actually expires so submitting an
+  // answer cannot blank and reload every question image.
+  const [paintedUrl, setPaintedUrl] = useState(url);
+  const raw = parseSnipBand(paintedUrl);
   const [ratio, setRatio] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!raw) return;
-    let live = true;
-    if (url.includes(";manual")) return;
-    void snapBandToWhitespace(url, raw).then((tidy) => {
-      if (live) setBand(tidy);
-    });
-    return () => {
-      live = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url]);
+  // Crops are validated before they are saved. Do not asynchronously move the
+  // edges after first paint: that made questions visibly blink and jump in both
+  // student homework and teacher preview.
+  const band = raw;
 
   if (!band) {
     return (
       <img
-        src={url}
+        src={paintedUrl}
         alt={alt}
         loading="eager"
+        decoding="async"
+        onError={() => {
+          if (paintedUrl !== url) setPaintedUrl(url);
+        }}
         {...guard}
         className="pointer-events-none block w-full select-none object-contain"
       />
@@ -65,15 +62,19 @@ function SnipBand({ url, alt }: { url: string; alt: string }) {
       style={{ aspectRatio: `${pageRatio / height}` }}
     >
       <img
-        src={url}
+        src={paintedUrl}
         alt={alt}
         loading="eager"
+        decoding="async"
         {...guard}
         onLoad={(event) => {
           const image = event.currentTarget;
           if (image.naturalWidth && image.naturalHeight) {
             setRatio(image.naturalWidth / image.naturalHeight);
           }
+        }}
+        onError={() => {
+          if (paintedUrl !== url) setPaintedUrl(url);
         }}
         className="pointer-events-none absolute left-0 top-0 w-full max-w-none select-none"
         style={{ transform: `translateY(${-band.top * 100}%)` }}
@@ -159,6 +160,12 @@ export function mergeSnipPieces(urls: string[]): string[] {
   return out;
 }
 
+/** Identity of the stored page and crop, excluding its rotating access token. */
+function stableSnipKey(url: string) {
+  const [resource, hash = ""] = url.split("#");
+  return `${resource?.split("?")[0] ?? resource}#${hash}`;
+}
+
 /**
  * Every piece of one question joined into a single picture — so a question that
  * carries on over a page break reads as one thing, with the answer-key pages
@@ -183,7 +190,7 @@ export function QuestionSnipStack({
   return (
     <div className={`overflow-hidden rounded-lg border border-border bg-card ${className}`}>
       {pieces.map((url) => (
-        <SnipBand key={url} url={url} alt={alt} />
+        <SnipBand key={stableSnipKey(url)} url={url} alt={alt} />
       ))}
     </div>
   );

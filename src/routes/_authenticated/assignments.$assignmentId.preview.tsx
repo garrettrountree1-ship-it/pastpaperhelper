@@ -121,6 +121,8 @@ function PreviewPage() {
         data: { assignmentId, studentId: studentId === "class" ? null : studentId },
       }),
     retry: 2,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 8 * 60 * 60 * 1000,
   });
 
   const data = preview.data;
@@ -547,6 +549,7 @@ function StudentWorkView({
     queryKey: ["student-homework-view", assignmentId, studentId],
     queryFn: () => getStudentHomeworkView({ data: { assignmentId, studentId } }),
     retry: 2,
+    staleTime: 5 * 60 * 1000,
   });
 
   if (view.isPending) return <Skeleton className="mt-8 h-64 w-full" />;

@@ -39,6 +39,8 @@ export type UploadedFile = {
   filename: string;
   mimeType: string;
   base64: string;
+  /** Browser-measured non-white row ranges for rejecting blank crop guesses. */
+  inkBands?: Array<[number, number]>;
 };
 
 type ExtractInput = {
@@ -66,6 +68,7 @@ const SHARED_RULES = [
   "The upload is often NOT a clean official paper: teachers paste questions and mark schemes together from several different papers into a Word document or PDF, in any order, with inconsistent numbering, duplicated numbers, missing numbers, stray headings, tables and screenshots.",
   "Papers mix question types freely: multiple choice (A/B/C/D), short answer, calculations, diagram/drawing tasks and extended writing. Treat every one of them as a question.",
   "Every answerable sub-part is its own item: 1(a), 1(b)(i), 1(b)(ii), 2(a) ... Never merge sub-parts and never summarise a paper down to a few sample questions.",
+  "The printed MAIN NUMBER controls grouping. Start a new main question whenever a new printed number appears. Until the next number, attach standalone letters and roman numerals to that number: a, b, c, d; i, ii, iii; ai, aii, aiii; (a)(i), (a)(ii), (a)(iii). Never promote a sub-part to a new main number.",
   'Sub-part labels are printed in many styles and ALL of them count as their own part: (a), a), a., (i), (ii), (a)(i), (a.i), (a.ii), (b.iii), c.i, ai, aii, bi, bii. A label such as "(a.ii)" or "(b)" standing alone on its own line is a real sub-part even when its parent number is printed pages earlier.',
   "Work through the documents page by page, in order, from the first question to the very last one, including anything that appears after a mark scheme block or between mark scheme blocks.",
   "In teacher-made documents each sub-part is usually followed immediately by its own mark scheme block, then the NEXT sub-part continues below or on the following page. Always keep reading past every mark scheme block: the parts printed after it are still questions and are the ones most often missed.",
@@ -853,9 +856,19 @@ async function runDetail(
         batch[rowIndex];
       const label = String(item["label"] ?? "").trim() || match?.label || "";
       let questionText = String(item["questionText"] ?? "").trim();
-      // Only printed numbering is echoed into the wording; invented keys (p3-Q1) are not.
-      const printed = /^\d/.test(label);
-      if (printed && !questionText.toLowerCase().startsWith(label.toLowerCase())) {
+      // Preserve standalone printed sub-parts too. Previously labels such as
+      // (b), (iii), aii and aiii could disappear from the transcription, which
+      // made the renumbering pass incorrectly start another main question.
+      const labelHead = readLeadingQuestionLabel(label);
+      const textHead = readLeadingQuestionLabel(questionText);
+      const sameHead = Boolean(
+        labelHead &&
+        textHead &&
+        labelHead.main === textHead.main &&
+        labelHead.letter === textHead.letter &&
+        labelHead.roman === textHead.roman,
+      );
+      if (labelHead && !sameHead) {
         questionText = `${label} ${questionText}`;
       }
       const pagesFromModel = Array.isArray(item["pages"])
@@ -888,8 +901,14 @@ async function runDetail(
 
   if (details.length === 0) return details;
   try {
+    // The detail pass already located most crops. A second full visual read was
+    // expensive and could replace a good location with whitespace, so only ask
+    // the crop specialist about items that genuinely have no crop.
+    const missingCrops = details.filter((detail) => !detail.crops?.length);
     const [audited, answers] = await Promise.all([
-      runCropAudit(key, header, documents, details).catch(() => new Map()),
+      missingCrops.length > 0
+        ? runCropAudit(key, header, documents, missingCrops).catch(() => new Map())
+        : Promise.resolve(new Map<string, QuestionCrop[] | null>()),
       runAnswerValueAudit(key, header, documents, details).catch(() => new Map()),
     ]);
     return details.map((detail) => {
@@ -901,7 +920,9 @@ async function runDetail(
         ...detail,
         // An omitted audit row is not evidence that a valid first-pass crop is
         // unsafe. Only replace a crop when the audit explicitly reports the item.
-        crops: audited.has(lookup) ? (audited.get(lookup) ?? null) : detail.crops,
+        crops: audited.has(lookup)
+          ? reconcileCropAudit(detail.crops, audited.get(lookup) ?? null)
+          : detail.crops,
         ...(auditedAnswer ??
           (calculation && (detail.answerCrops?.length ?? 0) > 0
             ? { expectedAnswer: "", numericalAnswer: true }
@@ -911,6 +932,30 @@ async function runDetail(
   } catch {
     return details;
   }
+}
+
+/**
+ * A second AI pass may tighten a crop, but it must not jump to an unrelated
+ * blank strip. Keep the first independently-found location unless the audit
+ * overlaps it on the same page.
+ */
+export function reconcileCropAudit(
+  original: QuestionCrop[] | null | undefined,
+  audited: QuestionCrop[] | null,
+) {
+  if (!original?.length) return audited;
+  if (!audited?.length) return original;
+  const credible = audited.filter((candidate) =>
+    original.some((first) => {
+      if (first.page !== candidate.page || first.sheet !== candidate.sheet) return false;
+      const overlap = Math.min(first.bottom, candidate.bottom) - Math.max(first.top, candidate.top);
+      return (
+        overlap > 0 &&
+        overlap / Math.min(first.bottom - first.top, candidate.bottom - candidate.top) >= 0.25
+      );
+    }),
+  );
+  return credible.length > 0 ? credible : original;
 }
 
 async function runAnswerValueAudit(

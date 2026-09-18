@@ -46,6 +46,15 @@ function decodeBase64(base64: string): Uint8Array {
   return bytes;
 }
 
+/** Reject an AI crop that the browser measured as entirely blank. */
+function cropContainsInk(
+  file: { inkBands?: Array<[number, number]> } | undefined,
+  crop: { top: number; bottom: number },
+) {
+  if (!file?.inkBands) return true;
+  return file.inkBands.some(([top, bottom]) => bottom > crop.top && top < crop.bottom);
+}
+
 function makeJoinCode() {
   const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   let code = "";
@@ -2426,6 +2435,10 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
               filename: z.string(),
               mimeType: z.string(),
               base64: z.string().min(1),
+              inkBands: z
+                .array(z.tuple([z.number(), z.number()]))
+                .max(250)
+                .optional(),
             }),
           )
           .min(1)
@@ -2436,6 +2449,10 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
               filename: z.string(),
               mimeType: z.string(),
               base64: z.string().min(1),
+              inkBands: z
+                .array(z.tuple([z.number(), z.number()]))
+                .max(250)
+                .optional(),
             }),
           )
           .max(30)
@@ -2502,7 +2519,10 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
         // When the AI could locate the question on its page, keep only that
         // page and remember the band to snip, so the student sees the printed
         // question itself (tables, options, diagrams) and nothing else.
-        const crops = (q.crops ?? []).filter((crop) => Boolean(pagePaths[crop.page]));
+        const crops = (q.crops ?? []).filter(
+          (crop) =>
+            Boolean(pagePaths[crop.page]) && cropContainsInk(data.paperFiles[crop.page - 1], crop),
+        );
         // Never fall back to a whole page. A mixed teacher document can hold
         // the next sub-part, a repeated question and its mark scheme on that
         // same page. If no safe crop was found, the exact transcribed wording
@@ -2514,6 +2534,11 @@ export const extractPaperQuestions = createServerFn({ method: "POST" })
         // marking notation stay exactly as printed. Answers are only ever shown
         // to a student once the teacher releases the mark scheme.
         const answerPaths = (q.answerCrops ?? [])
+          .filter((crop) => {
+            const files =
+              (crop.sheet ?? "paper") === "answer" ? data.markSchemeFiles : data.paperFiles;
+            return cropContainsInk(files[crop.page - 1], crop);
+          })
           .map((crop) => {
             const page =
               (crop.sheet ?? "paper") === "answer"
@@ -2810,6 +2835,14 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
     const questions = (allPreviewQuestions ?? []).filter(
       (q) => !(previewIsStandardLevel && isHigherLevelTag(q.tag_label as string | null)),
     );
+    const previewQuestionPaths = questions.map((q) => q.image_paths ?? []);
+    const previewAnswerPaths = questions.map((q) => q.answer_image_paths ?? []);
+    const previewSignedGroups = await signPaperPageGroups(db, [
+      ...previewQuestionPaths,
+      ...previewAnswerPaths,
+    ]);
+    const previewQuestionUrls = previewSignedGroups.slice(0, previewQuestionPaths.length);
+    const previewAnswerUrls = previewSignedGroups.slice(previewQuestionPaths.length);
 
     return {
       tutorSettings,
@@ -2829,40 +2862,38 @@ export const getAssignmentPreview = createServerFn({ method: "POST" })
         revealOnFullMarks,
         className: klass?.name ?? "",
       },
-      questions: await Promise.all(
-        (questions ?? []).map(async (q) => ({
-          id: q.id,
-          position: q.position,
-          question_text: q.question_text,
-          marks: q.marks,
-          image_paths: q.image_paths,
-          // Preview the exact mark-scheme crop just as students receive it.
-          markScheme: null,
+      questions: questions.map((q, index) => ({
+        id: q.id,
+        position: q.position,
+        question_text: q.question_text,
+        marks: q.marks,
+        image_paths: q.image_paths,
+        // Preview the exact mark-scheme crop just as students receive it.
+        markScheme: null,
 
-          answerImagePaths: q.answer_image_paths ?? [],
-          answerImageUrls: await signPaperPages(db, q.answer_image_paths ?? []),
-          photoMode: resolvePhotoMode({
-            question: q.photo_mode as string | null,
-            assignment: assignment.photo_mode as string | null,
-          }),
-          imageUrls: await signPaperPages(db, q.image_paths ?? []),
-          tagLabel: q.tag_label ?? "",
-          tagImage: q.tag_image ?? "",
-          multipleChoice: isMultipleChoice(
+        answerImagePaths: q.answer_image_paths ?? [],
+        answerImageUrls: previewAnswerUrls[index] ?? [],
+        photoMode: resolvePhotoMode({
+          question: q.photo_mode as string | null,
+          assignment: assignment.photo_mode as string | null,
+        }),
+        imageUrls: previewQuestionUrls[index] ?? [],
+        tagLabel: q.tag_label ?? "",
+        tagImage: q.tag_image ?? "",
+        multipleChoice: isMultipleChoice(
+          (q as { multiple_choice?: boolean | null }).multiple_choice,
+          (q as { mark_scheme?: string | null }).mark_scheme,
+        ),
+        answerCheckMode:
+          !isMultipleChoice(
             (q as { multiple_choice?: boolean | null }).multiple_choice,
             (q as { mark_scheme?: string | null }).mark_scheme,
-          ),
-          answerCheckMode:
-            !isMultipleChoice(
-              (q as { multiple_choice?: boolean | null }).multiple_choice,
-              (q as { mark_scheme?: string | null }).mark_scheme,
-            ) && (q as { numerical_answer?: boolean | null }).numerical_answer
-              ? tutorSettings.checkFinalNumericOnly
-                ? ("final-number" as const)
-                : ("full-working" as const)
-              : null,
-        })),
-      ),
+          ) && (q as { numerical_answer?: boolean | null }).numerical_answer
+            ? tutorSettings.checkFinalNumericOnly
+              ? ("final-number" as const)
+              : ("full-working" as const)
+            : null,
+      })),
     };
   });
 

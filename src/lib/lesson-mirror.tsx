@@ -227,7 +227,7 @@ export function useLessonMirrorState({
       });
 
       let lastView = sendingRef.current;
-      let lastSnapshot = 0;
+      let lastHeartbeat = 0;
       let stopRepeats = 0;
       timer = setInterval(() => {
         const content = pendingContent.current;
@@ -236,13 +236,13 @@ export function useLessonMirrorState({
         const hasContent = Object.keys(content).length > 0;
         const hasView = sendingRef.current && Object.keys(view).length > 0;
         const now = Date.now();
-        const heartbeatDue = sendingRef.current && now - lastSnapshot >= 1000;
+        const heartbeatDue = sendingRef.current && now - lastHeartbeat >= 2500;
         if (!viewChanged && !hasContent && !hasView && !heartbeatDue && stopRepeats === 0) return;
         pendingContent.current = {};
         pendingView.current = {};
         if (viewChanged) {
           lastView = sendingRef.current;
-          lastSnapshot = now;
+          lastHeartbeat = now;
           if (sendingRef.current) {
             sessionId.current = crypto.randomUUID();
             stopRepeats = 0;
@@ -257,16 +257,11 @@ export function useLessonMirrorState({
           return;
         }
         if (heartbeatDue) {
-          lastSnapshot = now;
-          // A keep-alive: only the small pieces, so a pasted photo is not
-          // re-sent every second.
-          const small = (fields: Fields) =>
-            Object.fromEntries(
-              Object.entries(fields).filter(
-                ([, value]) => JSON.stringify(value ?? null).length <= MAX_CHARS,
-              ),
-            );
-          sendFields(small(allContent.current), small(allView.current));
+          lastHeartbeat = now;
+          // Presence only: repeating the entire workspace every second flooded
+          // weak school Wi-Fi and repeatedly re-applied zoom/scroll. Changed
+          // fields still go out above, and hello requests recover snapshots.
+          send({ ...meta() });
           return;
         }
         if (!sendingRef.current && stopRepeats > 0) {
@@ -412,12 +407,13 @@ export function useLessonMirrorState({
     return () => window.clearInterval(timer);
   }, [isTeacher, viewActive]);
 
-  // If the teacher's screen goes quiet (closed tab, lost connection), release
-  // the student's screen instead of leaving it frozen on the last picture.
+  // Give school Wi-Fi and the realtime socket time to reconnect. Six seconds
+  // made the screen unlock and relock during ordinary packet loss, which felt
+  // like students were being kicked out and also re-applied the teacher zoom.
   useEffect(() => {
     if (isTeacher || !viewActive) return;
     const timer = window.setInterval(() => {
-      if (Date.now() - lastActiveAt.current < 6000) return;
+      if (Date.now() - lastActiveAt.current < 30_000) return;
       activeSession.current = null;
       activePresenter.current = null;
       setViewActive(false);

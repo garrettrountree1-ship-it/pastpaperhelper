@@ -45,7 +45,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useTutorThread } from "@/hooks/use-tutor-thread";
 import { docFormat } from "@/lib/doc-kind";
 import { LessonMirrorContext, useLessonMirrorState, useMirrorFieldWith } from "@/lib/lesson-mirror";
-import { listClassPresenters } from "@/lib/mirror.functions";
+import { getPresentationClass, listClassPresenters } from "@/lib/mirror.functions";
 import { getMaterialUrl, updateUnit } from "@/lib/materials.functions";
 import { createSection, deleteSection, listSections, updateSection } from "@/lib/notes.functions";
 
@@ -125,6 +125,13 @@ export function LessonWorkspace({
     queryFn: () => fetchPresenters({ data: { classId } }),
     enabled: !canManage,
     staleTime: 10 * 60 * 1000,
+  });
+  const fetchPresentationClass = useServerFn(getPresentationClass);
+  const presentationClass = useQuery({
+    queryKey: ["presentation-class", classId],
+    queryFn: () => fetchPresentationClass({ data: { classId } }),
+    enabled: canManage,
+    staleTime: 30 * 60 * 1000,
   });
   const mirror = useLessonMirrorState({
     classId,
@@ -621,6 +628,25 @@ export function LessonWorkspace({
     <LessonMirrorContext.Provider value={mirror}>
       <div className="fixed inset-0 z-50 flex flex-col bg-background">
         <FormativeCheckPanel classId={classId} asStudent={!canManage} />
+        {canManage && presentationClass.data ? (
+          <button
+            type="button"
+            className="fixed bottom-3 right-3 z-[90] rounded-lg border bg-background/95 px-3 py-2 text-left text-xs shadow-lg backdrop-blur hover:border-primary"
+            title="Copy the stable student presentation link"
+            onClick={() => {
+              const link = `${window.location.origin}/present/${presentationClass.data.code}`;
+              void navigator.clipboard.writeText(link);
+              toast.success("Student presentation link copied");
+            }}
+          >
+            <span className="block font-medium">
+              Student screen: /present/{presentationClass.data.code}
+            </span>
+            <span className="block text-muted-foreground">
+              Code {presentationClass.data.code} · click to copy
+            </span>
+          </button>
+        ) : null}
         {mirror.sending || mirror.receiving ? (
           <div className="pointer-events-none absolute left-1/2 top-2 z-[60] -translate-x-1/2 rounded-full border bg-background/95 px-3 py-1 text-xs font-medium shadow">
             {mirror.sending

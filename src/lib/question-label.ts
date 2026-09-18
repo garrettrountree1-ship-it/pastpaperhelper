@@ -7,17 +7,36 @@ import { cleanMathText } from "@/lib/math-text";
  */
 const ROMAN = "i{1,3}|iv|v|vi{1,3}|ix|x";
 const HEAD = new RegExp(`^\\s*\\(?(\\d{1,3})\\)?\\s*[.)]?\\s*`, "i");
-const PAREN_PART = new RegExp(`^\\s*\\(\\s*(${ROMAN}|[a-z])\\s*\\)`, "i");
-const COMPACT_PART = new RegExp(
-  `^\\s*([a-z])(?:\\s*\\(?(${ROMAN})\\)?)?(?=\\s|[.):-]|$)`,
-  "i",
-);
+const PAREN_PART = new RegExp(`^\\s*\\(\\s*(${ROMAN}|[a-z](?:${ROMAN})?)\\s*\\)`, "i");
+const COMPACT_PART = new RegExp(`^\\s*([a-z])(?:\\s*\\(?(${ROMAN})\\)?)?(?=\\s|[.):-]|$)`, "i");
 
 type Parsed = { label: string; rest: string };
 
 /** Papers (and re-labelling) sometimes repeat a part: "13(g) (g) State ..." -> one (g). */
 function dropRepeats(parts: string[]): string[] {
   return parts.filter((part, index) => index === 0 || part !== parts[index - 1]);
+}
+
+/** Split compact printed parts such as "aii" into letter "a" + roman "ii". */
+function tokenParts(token: string): string[] {
+  const value = token.toLowerCase();
+  if (new RegExp(`^(?:${ROMAN})$`, "i").test(value)) return [value];
+  const compact = new RegExp(`^([a-z])(${ROMAN})$`, "i").exec(value);
+  return compact?.[1] && compact[2] ? [compact[1], compact[2]] : [value];
+}
+
+/** Match compact labels printed on papers: 1(ai), 1(aii), 1(biii). */
+function displayParts(parts: string[]): string {
+  const output: string[] = [];
+  for (let index = 0; index < parts.length; index += 1) {
+    const part = parts[index]!;
+    const next = parts[index + 1];
+    if (/^[a-z]$/.test(part) && next && new RegExp(`^(?:${ROMAN})$`, "i").test(next)) {
+      output.push(`(${part}${next})`);
+      index += 1;
+    } else output.push(`(${part})`);
+  }
+  return output.join("");
 }
 
 function parseOnce(text: string): Parsed | null {
@@ -29,7 +48,7 @@ function parseOnce(text: string): Parsed | null {
     const part = PAREN_PART.exec(rest);
     if (!part) break;
     const value = part[1];
-    if (value) parts.push(value.toLowerCase());
+    if (value) parts.push(...tokenParts(value));
     rest = rest.slice(part[0].length);
   }
   if (parts.length === 0) {
@@ -42,7 +61,7 @@ function parseOnce(text: string): Parsed | null {
       rest = rest.slice(compact[0].length);
     }
   }
-  const label = `${head[1]}${dropRepeats(parts).map((p) => `(${p})`).join("")}`;
+  const label = `${head[1]}${displayParts(dropRepeats(parts))}`;
   return { label, rest: rest.replace(/^[\s.):-]+/, "") };
 }
 
@@ -70,7 +89,6 @@ export function setQuestionMainNumber(questionText: string, next: number): strin
   return `${safe} ${text.trimStart()}`;
 }
 
-
 /** Strips the leading label (even when the paper repeats it) so it isn't shown twice. */
 export function questionBody(questionText: string): string {
   let text = cleanMathText((questionText ?? "").trim());
@@ -92,7 +110,7 @@ export function parseLabelString(label: string): { main: number | null; parts: s
   for (;;) {
     const part = PAREN_PART.exec(rest);
     if (part?.[1]) {
-      parts.push(part[1].toLowerCase());
+      parts.push(...tokenParts(part[1]));
       rest = rest.slice(part[0].length);
       continue;
     }
@@ -109,7 +127,7 @@ export function parseLabelString(label: string): { main: number | null; parts: s
 }
 
 export function formatLabel(main: number | null, parts: string[]): string {
-  return `${main ?? ""}${parts.map((p) => `(${p})`).join("")}`;
+  return `${main ?? ""}${displayParts(parts)}`;
 }
 
 /** Replaces the printed label at the start of a question, keeping the wording. */
@@ -138,7 +156,7 @@ export function shiftLetter(part: string, delta: number): string {
   return String.fromCharCode(next);
 }
 
-const ROMANS = ["i","ii","iii","iv","v","vi","vii","viii","ix","x","xi","xii"];
+const ROMANS = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii"];
 
 /**
  * Suggests the label for a question inserted right after `label`:

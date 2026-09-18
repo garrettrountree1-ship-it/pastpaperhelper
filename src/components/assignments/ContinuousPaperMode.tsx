@@ -5,6 +5,12 @@ import {
   CircleDashed,
   Eraser,
   Minus,
+  Move,
+  PenLine,
+  Plus,
+  Save,
+  TextCursorInput,
+  Trash2,
   PenLine,
   Plus,
   Save,
@@ -34,7 +40,8 @@ import { questionLabel } from "@/lib/question-label";
 
 type Point = { x: number; y: number };
 type Stroke = { color: string; width: number; points: Point[]; erase?: boolean };
-type PaperTool = "pen" | "eraser" | "text";
+type PaperTool = "pen" | "eraser" | "text" | "textbox";
+type PaperTextBox = { id: string; x: number; y: number; text: string };
 type PaperQuestion = {
   id: string;
   position: number;
@@ -100,6 +107,9 @@ function PaperAnswerArea({
   const current = useRef<Stroke | null>(null);
   const [text, setText] = useState(initialText);
   const [height, setHeight] = useState(answerHeight);
+  const [textBoxes, setTextBoxes] = useState<PaperTextBox[]>([]);
+  const textBoxesRef = useRef(textBoxes);
+  textBoxesRef.current = textBoxes;
   const textRef = useRef(text);
   textRef.current = text;
 
@@ -128,7 +138,11 @@ function PaperAnswerArea({
     try {
       window.localStorage.setItem(
         storageKey,
-        JSON.stringify({ strokes: strokes.current, text: textRef.current }),
+        JSON.stringify({
+          strokes: strokes.current,
+          text: textRef.current,
+          textBoxes: textBoxesRef.current,
+        }),
       );
     } catch {
       // The work remains in memory if browser storage is unavailable.
@@ -139,8 +153,13 @@ function PaperAnswerArea({
     try {
       const saved = window.localStorage.getItem(storageKey);
       if (saved) {
-        const parsed = JSON.parse(saved) as { strokes?: Stroke[]; text?: string };
+        const parsed = JSON.parse(saved) as {
+          strokes?: Stroke[];
+          text?: string;
+          textBoxes?: PaperTextBox[];
+        };
         strokes.current = parsed.strokes ?? [];
+        setTextBoxes(parsed.textBoxes ?? []);
         if (typeof parsed.text === "string") {
           setText(parsed.text);
           onTextChange(parsed.text);
@@ -218,6 +237,11 @@ function PaperAnswerArea({
         }
       }
       context.drawImage(source, 0, 0);
+      context.fillStyle = "#111827";
+      context.font = "18px sans-serif";
+      for (const box of textBoxesRef.current) {
+        context.fillText(box.text, box.x + 8, box.y + 24, Math.max(40, output.width - box.x - 16));
+      }
       if (textRef.current.trim()) {
         context.fillStyle = "#111827";
         context.font = "18px sans-serif";
@@ -327,6 +351,14 @@ function PaperAnswerArea({
         onPointerDown={(event) => {
           if (disabled || tool === "text") return;
           onSelect();
+          if (tool === "textbox") {
+            const location = point(event);
+            setTextBoxes((currentBoxes) => [
+              ...currentBoxes,
+              { id: crypto.randomUUID(), x: location.x, y: location.y, text: "" },
+            ]);
+            return;
+          }
           event.currentTarget.setPointerCapture(event.pointerId);
           current.current = {
             color,
@@ -350,6 +382,126 @@ function PaperAnswerArea({
           persist();
         }}
       />
+      {textBoxes.map((box) => (
+        <div
+          key={box.id}
+          className="absolute z-20 flex min-w-40 items-center rounded-md border bg-white shadow-sm"
+          style={{ left: box.x, top: box.y }}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="touch-none cursor-move p-2 text-muted-foreground"
+            aria-label="Move text box"
+            onPointerDown={(event) => {
+              event.preventDefault();
+              event.currentTarget.setPointerCapture(event.pointerId);
+              const origin = { x: event.clientX, y: event.clientY, boxX: box.x, boxY: box.y };
+              const moveBox = (moveEvent: PointerEvent) =>
+                setTextBoxes((currentBoxes) =>
+                  currentBoxes.map((item) =>
+                    item.id === box.id
+                      ? {
+                          ...item,
+                          x: Math.max(0, origin.boxX + moveEvent.clientX - origin.x),
+                          y: Math.max(0, origin.boxY + moveEvent.clientY - origin.y),
+                        }
+                      : item,
+                  ),
+                );
+              const finish = () => {
+                window.removeEventListener("pointermove", moveBox);
+                window.removeEventListener("pointerup", finish);
+                persist();
+              };
+              window.addEventListener("pointermove", moveBox);
+              window.addEventListener("pointerup", finish);
+            }}
+          >
+            <Move className="size-4" />
+          </button>
+          <Input
+            autoFocus={!box.text}
+            value={box.text}
+            disabled={disabled}
+            aria-label="Movable answer text"
+            className="border-0 shadow-none focus-visible:ring-0"
+            onPaste={(event) => {
+              event.preventDefault();
+              toast.error(NO_PASTE_MESSAGE);
+            }}
+            onChange={(event) =>
+              setTextBoxes((currentBoxes) =>
+                currentBoxes.map((item) =>
+                  item.id === box.id ? { ...item, text: event.target.value } : item,
+                ),
+              )
+            }
+            onBlur={persist}
+          />
+          <button
+            type="button"
+            className="p-2 text-muted-foreground hover:text-destructive"
+            aria-label="Delete text box"
+            disabled={disabled}
+            onClick={() => {
+              setTextBoxes((currentBoxes) => currentBoxes.filter((item) => item.id !== box.id));
+              window.setTimeout(persist);
+            }}
+          >
+            <Trash2 className="size-4" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PaperMarkScheme({ urls }: { urls: string[] }) {
+  const [revealed, setRevealed] = useState(100);
+  const frame = useRef<HTMLDivElement | null>(null);
+  const revealAt = (clientY: number) => {
+    const rect = frame.current?.getBoundingClientRect();
+    if (rect) setRevealed(Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100)));
+  };
+  return (
+    <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium">Mark scheme</p>
+        <p className="text-right text-[11px] text-muted-foreground">Drag the cover or use ↑ ↓</p>
+      </div>
+      <div ref={frame} className="relative mt-2 overflow-hidden rounded-md">
+        <QuestionSnipStack urls={urls} answers alt="Official mark scheme" />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 bg-card"
+          style={{ height: `${100 - revealed}%` }}
+        />
+        <div
+          role="slider"
+          tabIndex={0}
+          aria-label="Reveal or cover the mark scheme"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(revealed)}
+          className="absolute inset-x-0 z-10 h-3 -translate-y-1/2 cursor-ns-resize touch-none border-y border-primary/50 bg-primary/20 outline-none focus:ring-2 focus:ring-primary"
+          style={{ top: `${revealed}%` }}
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId);
+            revealAt(event.clientY);
+          }}
+          onPointerMove={(event) => {
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) revealAt(event.clientY);
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+            event.preventDefault();
+            setRevealed((value) =>
+              Math.max(0, Math.min(100, value + (event.key === "ArrowDown" ? 5 : -5))),
+            );
+          }}
+        />
+      </div>
     </div>
   );
 }
@@ -473,6 +625,14 @@ function ContinuousPaper({
           title="Type on the lines"
         >
           <Type className="size-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant={tool === "textbox" ? "default" : "ghost"}
+          onClick={() => setTool("textbox")}
+          title="Place a movable text box"
+        >
+          <TextCursorInput className="size-4" />
         </Button>
         <Button
           size="icon"
@@ -741,7 +901,9 @@ function ContinuousPaper({
               allowSteps={allowSteps}
             />
             {(markSchemeRevealed ||
-              (revealOnFullMarks && selectedResult?.awardedMarks === selectedQuestion.marks)) &&
+              (revealOnFullMarks &&
+                (selectedResult?.verdict === "correct" ||
+                  Number(selectedResult?.awardedMarks ?? 0) >= Number(selectedQuestion.marks)))) &&
             selectedQuestion.answerImageUrls?.length ? (
               <PaperMarkScheme urls={selectedQuestion.answerImageUrls} />
             ) : null}
@@ -792,7 +954,10 @@ export function StudentPaperMode({
         const { data } = await supabase.auth.getUser();
         if (!data.user) throw new Error("Please sign in again.");
         const path = `${data.user.id}/${assignmentId}/${question.id}/${PAD_FILE_NAME}`;
-        if (file) {
+        const useFastAnswer =
+          Boolean(text.trim()) &&
+          (Boolean(question.multipleChoice) || question.answerCheckMode === "final-number");
+        if (file && !useFastAnswer) {
           const { error } = await supabase.storage
             .from("student-work")
             .upload(path, file, { contentType: "image/png", upsert: true });
@@ -807,7 +972,9 @@ export function StudentPaperMode({
             assignmentId,
             questionId: question.id,
             answerText: text,
-            imagePaths: file ? [...existingPaths, path].slice(-6) : [],
+            // A completed fast-answer field is authoritative. Only use the
+            // rendered sketch when that field is empty.
+            imagePaths: file && !useFastAnswer ? [...existingPaths, path].slice(-6) : [],
           },
         });
         await queryClient.refetchQueries({ queryKey, type: "active" });
@@ -872,6 +1039,9 @@ export function PreviewPaperMode({
       revealOnFullMarks={revealOnFullMarks}
       markSchemeRevealed={markSchemeRevealed}
       onMark={async (question, text, file) => {
+        const useFastAnswer =
+          Boolean(text.trim()) &&
+          (Boolean(question.multipleChoice) || question.answerCheckMode === "final-number");
         const dataUrl = file
           ? await new Promise<string>((resolve, reject) => {
               const reader = new FileReader();
@@ -886,7 +1056,7 @@ export function PreviewPaperMode({
             questionId: question.id,
             answerText: text,
             imageDataUrls: [],
-            padDataUrls: dataUrl ? [dataUrl] : [],
+            padDataUrls: dataUrl && !useFastAnswer ? [dataUrl] : [],
             priorFlags: 0,
           },
         });

@@ -346,6 +346,15 @@ function PreviewPage() {
                       settings={settings}
                       revealOnFullMarks={Boolean(data.assignment.revealOnFullMarks)}
                       markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
+                      answers={Object.entries(testResults).map(([questionId, result]) => ({
+                        question_id: questionId,
+                        answer_text: result.answerText,
+                        verdict: result.verdict,
+                        awarded_marks: result.awardedMarks,
+                        feedback: result.feedback,
+                        attempts: result.attempts,
+                      }))}
+                      onResult={(questionId, result) => recordResult(questionId, result)}
                     />
                   </div>
                 ) : null}

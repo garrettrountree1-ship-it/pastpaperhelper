@@ -918,6 +918,15 @@ function ContinuousPaper({
                     await exporter(),
                   );
                   setResults((current) => ({ ...current, [selectedQuestion.id]: result }));
+                  // A correct fast answer settles the question, so the rough
+                  // working and sketching for it is wiped from the paper.
+                  const fastMark =
+                    selectedQuestion.multipleChoice ||
+                    selectedQuestion.answerCheckMode === "final-number";
+                  if (fastMark && result.verdict === "correct") {
+                    clearers.current[selectedQuestion.id]?.();
+                    setDrafts((current) => ({ ...current, [selectedQuestion.id]: "" }));
+                  }
                 } catch (error) {
                   toast.error((error as Error).message);
                 } finally {

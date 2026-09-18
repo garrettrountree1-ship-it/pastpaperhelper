@@ -3388,7 +3388,7 @@ export const deleteQuestion = createServerFn({ method: "POST" })
     // teacher and student surface agrees on Q1, Q2, Q3… without stale gaps.
     const { data: remaining } = await db
       .from("questions")
-      .select("id")
+      .select("id, question_text")
       .eq("assignment_id", question.assignment_id)
       .order("position", { ascending: true });
     for (const [index, row] of (remaining ?? []).entries()) {

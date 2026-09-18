@@ -260,7 +260,7 @@ export const removeStudentFromClass = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: assignments } = await supabaseAdmin
       .from("assignments")
-      .select("id, question_text")
+      .select("id")
       .eq("class_id", data.classId);
     const assignmentIds = (assignments ?? []).map((a) => a.id);
 

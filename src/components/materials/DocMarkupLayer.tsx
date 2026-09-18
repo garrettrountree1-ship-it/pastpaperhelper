@@ -31,7 +31,7 @@ export const MARKUP_WIDTH = 1000;
 export function useDocMarkup(
   baseKey: string,
   options?: {
-    initialNotes?: Record<number, SlideAnnotation>;
+    initialNotes?: Record<number, SlideAnnotation> | undefined;
     onNotesChange?: (notes: Record<number, SlideAnnotation>) => void;
   },
 ) {

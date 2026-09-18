@@ -89,6 +89,11 @@ function AssignmentPage() {
   const workspace = useQuery({
     queryKey,
     queryFn: () => getAssignmentWorkspace({ data: { assignmentId } }),
+    // Keep the signed page URLs stable while the student moves around the app.
+    // That lets the browser reuse its downloaded question pictures instead of
+    // receiving fresh URLs and downloading the same pages on every visit.
+    staleTime: 30 * 60 * 1000,
+    gcTime: 8 * 60 * 60 * 1000,
     retry: 2,
   });
 

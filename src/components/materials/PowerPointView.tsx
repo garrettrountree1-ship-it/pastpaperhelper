@@ -37,9 +37,9 @@ export function PowerPointView({
   markupKey?: string;
   /** Only teachers draw or add text boxes; students get a clean viewer. */
   canAnnotate?: boolean;
-  sectionId?: string;
-  materialId?: string;
-  initialWork?: DocumentWork;
+  sectionId?: string | undefined;
+  materialId?: string | undefined;
+  initialWork?: DocumentWork | undefined;
 }) {
   const [loaded, setLoaded] = useState(false);
   const [viewerVersion, setViewerVersion] = useState(0);

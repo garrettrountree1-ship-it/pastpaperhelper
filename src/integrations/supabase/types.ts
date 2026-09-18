@@ -1150,7 +1150,6 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
-          document_work: Json
           id: string
           question_id: string
           student_id: string
@@ -1158,7 +1157,6 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
-          document_work?: Json
           id?: string
           question_id: string
           student_id: string
@@ -1166,7 +1164,6 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
-          document_work?: Json
           id?: string
           question_id?: string
           student_id?: string
@@ -1788,6 +1785,7 @@ export type Database = {
           class_id: string
           created_at: string
           created_by: string
+          document_work: Json
           id: string
           material_id: string | null
           notes_blocks: Json
@@ -1806,6 +1804,7 @@ export type Database = {
           class_id: string
           created_at?: string
           created_by: string
+          document_work?: Json
           id?: string
           material_id?: string | null
           notes_blocks?: Json
@@ -1824,6 +1823,7 @@ export type Database = {
           class_id?: string
           created_at?: string
           created_by?: string
+          document_work?: Json
           id?: string
           material_id?: string | null
           notes_blocks?: Json

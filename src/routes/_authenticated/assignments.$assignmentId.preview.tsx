@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { VocabSheet } from "@/components/assignments/VocabSheet";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
+import { PreviewPaperMode } from "@/components/assignments/ContinuousPaperMode";
 import { parseSnipBand } from "@/components/assignments/QuestionSnip";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { Badge } from "@/components/ui/badge";
@@ -111,6 +112,7 @@ function PreviewPage() {
   const { assignmentId } = Route.useParams();
   const [flags, setFlags] = useState(0);
   const [studentId, setStudentId] = useState<string>("class");
+  const [viewMode, setViewMode] = useState<"questions" | "paper">("questions");
   const viewingStudent = studentId !== "class";
   const preview = useQuery({
     queryKey: ["assignment-preview", assignmentId, studentId],
@@ -135,7 +137,7 @@ function PreviewPage() {
   return (
     <div className="min-h-screen">
       <AppHeader role="teacher" />
-      <main className="mx-auto max-w-3xl px-4 py-8">
+      <main className={`mx-auto px-4 py-8 ${viewMode === "paper" ? "max-w-7xl" : "max-w-3xl"}`}>
         {data ? (
           <Link
             to="/classes/$classId/homework"
@@ -228,6 +230,22 @@ function PreviewPage() {
                   <Badge variant="destructive">Past due · closed for students</Badge>
                 ) : null}
               </div>
+              <div className="mt-4 inline-flex rounded-lg border bg-muted/40 p-1">
+                <Button
+                  size="sm"
+                  variant={viewMode === "questions" ? "default" : "ghost"}
+                  onClick={() => setViewMode("questions")}
+                >
+                  Question view
+                </Button>
+                <Button
+                  size="sm"
+                  variant={viewMode === "paper" ? "default" : "ghost"}
+                  onClick={() => setViewMode("paper")}
+                >
+                  Paper mode
+                </Button>
+              </div>
               {flags > 0 && !viewingStudent ? (
                 <p className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                   {flags >= 4
@@ -243,11 +261,12 @@ function PreviewPage() {
                 studentId={studentId}
                 protectedClassName={protection.protectedClassName}
                 concealed={protection.concealed}
+                viewMode={viewMode}
               />
             ) : (
               <>
                 <div
-                  className={`mt-8 space-y-6 ${protection.protectedClassName} ${
+                  className={`${viewMode === "paper" ? "hidden" : "mt-8 space-y-6"} ${protection.protectedClassName} ${
                     protection.concealed ? "pointer-events-none blur-lg" : ""
                   }`}
                 >
@@ -285,6 +304,21 @@ function PreviewPage() {
                     </div>
                   ))}
                 </div>
+
+                {viewMode === "paper" ? (
+                  <div className={`mt-6 ${protection.protectedClassName}`}>
+                    <PreviewPaperMode
+                      assignmentId={assignmentId}
+                      questions={data.questions.map((question) => ({
+                        ...question,
+                        imageUrls: (question.imageUrls ?? []).filter((url) => parseSnipBand(url)),
+                      }))}
+                      settings={settings}
+                      revealOnFullMarks={Boolean(data.assignment.revealOnFullMarks)}
+                      markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
+                    />
+                  </div>
+                ) : null}
 
                 <p className="mt-8 text-center text-xs text-muted-foreground">
                   This is your test view — try any question and the AI marks it exactly as it would
@@ -508,11 +542,13 @@ function StudentWorkView({
   studentId,
   protectedClassName,
   concealed,
+  viewMode,
 }: {
   assignmentId: string;
   studentId: string;
   protectedClassName: string;
   concealed: boolean;
+  viewMode: "questions" | "paper";
 }) {
   const view = useQuery({
     queryKey: ["student-homework-view", assignmentId, studentId],
@@ -573,71 +609,83 @@ function StudentWorkView({
         </p>
       </div>
 
-      <div
-        className={`mt-6 space-y-6 ${protectedClassName} ${
-          concealed ? "pointer-events-none blur-lg" : ""
-        }`}
-      >
-        {data.questions.map((question, index) => {
-          const answer = answers.find((row) => row.question_id === question.id) ?? null;
-          const thread = answer
-            ? data.messages.filter((message) => message.answer_id === answer.id)
-            : [];
-          return (
-            <QuestionExperience
-              key={question.id}
-              readOnly
-              question={question}
-              index={index}
-              snipUrls={(question.imageUrls ?? []).filter((url) => parseSnipBand(url))}
-              draft={answer?.answer_text ?? ""}
-              onDraftChange={() => {}}
-              requiresPhoto={false}
-              showPhoto={false}
-              onShowPhoto={() => {}}
-              photoCount={0}
-              photoUrls={answer?.imageUrls ?? []}
-              photoFiles={[]}
-              onPhotosChange={() => {}}
-              sentBack={
-                answer?.rejected_at
-                  ? { at: answer.rejected_at, note: answer.rejection_note ?? null }
-                  : null
-              }
-              creditedAll={(question as { creditedAll?: boolean }).creditedAll ?? false}
-              answerCheckMode={question.answerCheckMode ?? null}
-              result={
-                (question as { creditedAll?: boolean }).creditedAll
-                  ? {
-                      verdict: "correct",
-                      awardedMarks: Number(question.marks ?? 0),
-                      feedback: answer?.feedback ?? "",
-                    }
-                  : answer && !answer.rejected_at
-                    ? {
-                        verdict: answer.verdict ?? "incorrect",
-                        awardedMarks: Number(answer.awarded_marks ?? 0),
-                        feedback: answer.feedback ?? "",
-                      }
+      {viewMode === "questions" ? (
+        <div
+          className={`mt-6 space-y-6 ${protectedClassName} ${
+            concealed ? "pointer-events-none blur-lg" : ""
+          }`}
+        >
+          {data.questions.map((question, index) => {
+            const answer = answers.find((row) => row.question_id === question.id) ?? null;
+            const thread = answer
+              ? data.messages.filter((message) => message.answer_id === answer.id)
+              : [];
+            return (
+              <QuestionExperience
+                key={question.id}
+                readOnly
+                question={question}
+                index={index}
+                snipUrls={(question.imageUrls ?? []).filter((url) => parseSnipBand(url))}
+                draft={answer?.answer_text ?? ""}
+                onDraftChange={() => {}}
+                requiresPhoto={false}
+                showPhoto={false}
+                onShowPhoto={() => {}}
+                photoCount={0}
+                photoUrls={answer?.imageUrls ?? []}
+                photoFiles={[]}
+                onPhotosChange={() => {}}
+                sentBack={
+                  answer?.rejected_at
+                    ? { at: answer.rejected_at, note: answer.rejection_note ?? null }
                     : null
-              }
-              attempts={Number(answer?.attempts ?? 0)}
-              checking={false}
-              checkError={undefined}
-              onCheck={() => {}}
-              thread={thread}
-              reply=""
-              onReplyChange={() => {}}
-              tutoring={false}
-              tutorError={undefined}
-              onSend={() => {}}
-              markSchemeImageUrls={question.answerImageUrls ?? []}
-              keywordTranslation={false}
-              assignmentId={assignmentId}
-            />
-          );
-        })}
-      </div>
+                }
+                creditedAll={(question as { creditedAll?: boolean }).creditedAll ?? false}
+                answerCheckMode={question.answerCheckMode ?? null}
+                result={
+                  (question as { creditedAll?: boolean }).creditedAll
+                    ? {
+                        verdict: "correct",
+                        awardedMarks: Number(question.marks ?? 0),
+                        feedback: answer?.feedback ?? "",
+                      }
+                    : answer && !answer.rejected_at
+                      ? {
+                          verdict: answer.verdict ?? "incorrect",
+                          awardedMarks: Number(answer.awarded_marks ?? 0),
+                          feedback: answer.feedback ?? "",
+                        }
+                      : null
+                }
+                attempts={Number(answer?.attempts ?? 0)}
+                checking={false}
+                checkError={undefined}
+                onCheck={() => {}}
+                thread={thread}
+                reply=""
+                onReplyChange={() => {}}
+                tutoring={false}
+                tutorError={undefined}
+                onSend={() => {}}
+                markSchemeImageUrls={question.answerImageUrls ?? []}
+                keywordTranslation={false}
+                assignmentId={assignmentId}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <div
+          className={`mt-6 ${protectedClassName} ${concealed ? "pointer-events-none blur-lg" : ""}`}
+        >
+          <ReadOnlyPaperMode
+            assignmentId={assignmentId}
+            questions={data.questions}
+            answers={answers}
+          />
+        </div>
+      )}
     </>
   );
 }

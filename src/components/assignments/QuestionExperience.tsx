@@ -34,6 +34,11 @@ import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
 import { questionBody, questionLabel } from "@/lib/question-label";
 import { QuestionTagBadge } from "@/components/assignments/QuestionTagBadge";
 
+// Re-export through the established assignment experience module so the
+// student route does not compete with the legacy PaperMode import during
+// rolling branch merges.
+export { StudentPaperMode as ContinuousStudentPaperMode } from "@/components/assignments/ContinuousPaperMode";
+
 /** Blocks paste, drag-drop and autofill-style bulk insertion into answer inputs. */
 function useOriginalTypingGuard() {
   const [flagged, setFlagged] = useState(false);
@@ -293,6 +298,7 @@ export function QuestionExperience({
     ],
     [providedPaperModeUrls, photoUrls],
   );
+  const paperModeUrls = photoUrls.filter((url) => url.includes(PAD_FILE_NAME));
 
   // Seed the marks checklist so the student sees how many points are expected.
   useEffect(() => {
@@ -449,6 +455,42 @@ export function QuestionExperience({
             <div className="border-t border-border px-4 pb-4">
               {/* Mark-scheme and paper-mode images intentionally render above this
               answer panel. Keeping them out of here prevents duplicate blocks. */}
+              {markSchemeImageUrls.length > 0 ? (
+                <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
+                  <p className="text-sm font-medium">Mark scheme</p>
+                  {/* Answers are only ever shown as the picture cut from the printed
+              mark scheme — never as retyped text. */}
+                  <QuestionSnipStack
+                    urls={markSchemeImageUrls}
+                    answers
+                    alt="Official answer as printed in the mark scheme"
+                    className="mt-2"
+                  />
+                  {answerAction ? (
+                    <div className="mt-3 flex flex-wrap gap-2">{answerAction}</div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {paperModeUrls.length > 0 ? (
+                <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
+                  <p className="text-sm font-medium">Paper mode answer</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Saved from the continuous paper when this question was marked.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {paperModeUrls.map((url) => (
+                      <StudentWorkPhoto
+                        key={url}
+                        url={url}
+                        alt="Paper mode answer"
+                        className="h-32 w-48 rounded-lg border border-border object-contain"
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="mt-4 space-y-3">
                 {readOnly ? null : (
                   <p className="text-xs text-muted-foreground">

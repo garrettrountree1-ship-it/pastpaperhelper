@@ -50,9 +50,9 @@ export function PdfDocView({
   canDownload?: boolean;
   /** Only teachers draw or highlight; students get a clean viewer. */
   canAnnotate?: boolean;
-  sectionId?: string;
-  materialId?: string;
-  initialWork?: DocumentWork;
+  sectionId?: string | undefined;
+  materialId?: string | undefined;
+  initialWork?: DocumentWork | undefined;
 }) {
   const [pages, setPages] = useState<string[] | null>(null);
   const [failed, setFailed] = useState(false);

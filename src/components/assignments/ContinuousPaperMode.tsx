@@ -4,6 +4,8 @@ import {
   CheckCircle2,
   CircleDashed,
   Eraser,
+  Eye,
+  EyeOff,
   Minus,
   Move,
   PenLine,

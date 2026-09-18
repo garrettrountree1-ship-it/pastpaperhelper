@@ -48,7 +48,7 @@ function decodeBase64(base64: string): Uint8Array {
 
 /** Reject an AI crop that the browser measured as entirely blank. */
 function cropContainsInk(
-  file: { inkBands?: Array<[number, number]> } | undefined,
+  file: { inkBands?: Array<[number, number]> | undefined } | undefined,
   crop: { top: number; bottom: number },
 ) {
   if (!file?.inkBands) return true;

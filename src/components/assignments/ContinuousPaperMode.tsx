@@ -572,7 +572,7 @@ function ContinuousPaper({
                           />
                         </div>
                       ) : snips.length ? (
-                      {snips.length ? (
+
                         <QuestionSnipStack urls={snips} alt={`Question ${label}`} />
                       ) : (
                         <p className="whitespace-pre-wrap text-sm">{question.question_text}</p>

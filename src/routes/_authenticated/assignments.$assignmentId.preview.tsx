@@ -228,24 +228,22 @@ function PreviewPage() {
                   <Badge variant="destructive">Past due · closed for students</Badge>
                 ) : null}
               </div>
-              {!viewingStudent ? (
-                <div className="mt-4 inline-flex rounded-lg border bg-muted/40 p-1">
-                  <Button
-                    size="sm"
-                    variant={viewMode === "questions" ? "default" : "ghost"}
-                    onClick={() => setViewMode("questions")}
-                  >
-                    Question view
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={viewMode === "paper" ? "default" : "ghost"}
-                    onClick={() => setViewMode("paper")}
-                  >
-                    Paper mode
-                  </Button>
-                </div>
-              ) : null}
+              <div className="mt-4 inline-flex rounded-lg border bg-muted/40 p-1">
+                <Button
+                  size="sm"
+                  variant={viewMode === "questions" ? "default" : "ghost"}
+                  onClick={() => setViewMode("questions")}
+                >
+                  Question view
+                </Button>
+                <Button
+                  size="sm"
+                  variant={viewMode === "paper" ? "default" : "ghost"}
+                  onClick={() => setViewMode("paper")}
+                >
+                  Paper mode
+                </Button>
+              </div>
               {flags > 0 && !viewingStudent ? (
                 <p className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                   {flags >= 4
@@ -261,6 +259,7 @@ function PreviewPage() {
                 studentId={studentId}
                 protectedClassName={protection.protectedClassName}
                 concealed={protection.concealed}
+                viewMode={viewMode}
               />
             ) : (
               <>
@@ -536,11 +535,13 @@ function StudentWorkView({
   studentId,
   protectedClassName,
   concealed,
+  viewMode,
 }: {
   assignmentId: string;
   studentId: string;
   protectedClassName: string;
   concealed: boolean;
+  viewMode: "questions" | "paper";
 }) {
   const view = useQuery({
     queryKey: ["student-homework-view", assignmentId, studentId],
@@ -600,71 +601,83 @@ function StudentWorkView({
         </p>
       </div>
 
-      <div
-        className={`mt-6 space-y-6 ${protectedClassName} ${
-          concealed ? "pointer-events-none blur-lg" : ""
-        }`}
-      >
-        {data.questions.map((question, index) => {
-          const answer = answers.find((row) => row.question_id === question.id) ?? null;
-          const thread = answer
-            ? data.messages.filter((message) => message.answer_id === answer.id)
-            : [];
-          return (
-            <QuestionExperience
-              key={question.id}
-              readOnly
-              question={question}
-              index={index}
-              snipUrls={(question.imageUrls ?? []).filter((url) => parseSnipBand(url))}
-              draft={answer?.answer_text ?? ""}
-              onDraftChange={() => {}}
-              requiresPhoto={false}
-              showPhoto={false}
-              onShowPhoto={() => {}}
-              photoCount={0}
-              photoUrls={answer?.imageUrls ?? []}
-              photoFiles={[]}
-              onPhotosChange={() => {}}
-              sentBack={
-                answer?.rejected_at
-                  ? { at: answer.rejected_at, note: answer.rejection_note ?? null }
-                  : null
-              }
-              creditedAll={(question as { creditedAll?: boolean }).creditedAll ?? false}
-              answerCheckMode={question.answerCheckMode ?? null}
-              result={
-                (question as { creditedAll?: boolean }).creditedAll
-                  ? {
-                      verdict: "correct",
-                      awardedMarks: Number(question.marks ?? 0),
-                      feedback: answer?.feedback ?? "",
-                    }
-                  : answer && !answer.rejected_at
-                    ? {
-                        verdict: answer.verdict ?? "incorrect",
-                        awardedMarks: Number(answer.awarded_marks ?? 0),
-                        feedback: answer.feedback ?? "",
-                      }
+      {viewMode === "questions" ? (
+        <div
+          className={`mt-6 space-y-6 ${protectedClassName} ${
+            concealed ? "pointer-events-none blur-lg" : ""
+          }`}
+        >
+          {data.questions.map((question, index) => {
+            const answer = answers.find((row) => row.question_id === question.id) ?? null;
+            const thread = answer
+              ? data.messages.filter((message) => message.answer_id === answer.id)
+              : [];
+            return (
+              <QuestionExperience
+                key={question.id}
+                readOnly
+                question={question}
+                index={index}
+                snipUrls={(question.imageUrls ?? []).filter((url) => parseSnipBand(url))}
+                draft={answer?.answer_text ?? ""}
+                onDraftChange={() => {}}
+                requiresPhoto={false}
+                showPhoto={false}
+                onShowPhoto={() => {}}
+                photoCount={0}
+                photoUrls={answer?.imageUrls ?? []}
+                photoFiles={[]}
+                onPhotosChange={() => {}}
+                sentBack={
+                  answer?.rejected_at
+                    ? { at: answer.rejected_at, note: answer.rejection_note ?? null }
                     : null
-              }
-              attempts={Number(answer?.attempts ?? 0)}
-              checking={false}
-              checkError={undefined}
-              onCheck={() => {}}
-              thread={thread}
-              reply=""
-              onReplyChange={() => {}}
-              tutoring={false}
-              tutorError={undefined}
-              onSend={() => {}}
-              markSchemeImageUrls={question.answerImageUrls ?? []}
-              keywordTranslation={false}
-              assignmentId={assignmentId}
-            />
-          );
-        })}
-      </div>
+                }
+                creditedAll={(question as { creditedAll?: boolean }).creditedAll ?? false}
+                answerCheckMode={question.answerCheckMode ?? null}
+                result={
+                  (question as { creditedAll?: boolean }).creditedAll
+                    ? {
+                        verdict: "correct",
+                        awardedMarks: Number(question.marks ?? 0),
+                        feedback: answer?.feedback ?? "",
+                      }
+                    : answer && !answer.rejected_at
+                      ? {
+                          verdict: answer.verdict ?? "incorrect",
+                          awardedMarks: Number(answer.awarded_marks ?? 0),
+                          feedback: answer.feedback ?? "",
+                        }
+                      : null
+                }
+                attempts={Number(answer?.attempts ?? 0)}
+                checking={false}
+                checkError={undefined}
+                onCheck={() => {}}
+                thread={thread}
+                reply=""
+                onReplyChange={() => {}}
+                tutoring={false}
+                tutorError={undefined}
+                onSend={() => {}}
+                markSchemeImageUrls={question.answerImageUrls ?? []}
+                keywordTranslation={false}
+                assignmentId={assignmentId}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <div
+          className={`mt-6 ${protectedClassName} ${concealed ? "pointer-events-none blur-lg" : ""}`}
+        >
+          <ReadOnlyPaperMode
+            assignmentId={assignmentId}
+            questions={data.questions}
+            answers={answers}
+          />
+        </div>
+      )}
     </>
   );
 }

@@ -251,7 +251,7 @@ export const removeStudentFromClass = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: assignments } = await supabaseAdmin
       .from("assignments")
-      .select("id")
+      .select("id, question_text")
       .eq("class_id", data.classId);
     const assignmentIds = (assignments ?? []).map((a) => a.id);
 
@@ -1999,6 +1999,19 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
       access.markSchemeRevealed ||
       (access.revealOnFullMarks && fullMarkQuestionIds.has(questionId));
 
+    // The header must describe only the questions this student can actually
+    // see (after exclusions and SL/HL filtering), not the assignment-wide
+    // total cached on an older submission.
+    const visibleQuestionIds = new Set(questions.map((question) => question.id));
+    const visibleTotalMarks = questions.reduce((sum, question) => sum + Number(question.marks), 0);
+    const visibleRawMarks = (answers ?? [])
+      .filter((answer) => visibleQuestionIds.has(answer.question_id))
+      .reduce((sum, answer) => sum + Number(answer.awarded_marks ?? 0), 0);
+    const visiblePenalty = Number(submission.penalty_percent ?? 0);
+    const visibleAwardedMarks = submission.locked_at
+      ? 0
+      : Math.round(visibleRawMarks * (1 - visiblePenalty / 100) * 100) / 100;
+
     // Some questions were extracted without their mark-scheme cut saved. Find
     // and store that exact cut now, so every released question shows a picture.
     const { recoverAnswerCropsFor } = await import("./answer-crop.server");
@@ -2081,7 +2094,11 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
         creditedAll: Boolean((q as { credited_all_at?: string | null }).credited_all_at),
       })),
 
-      submission,
+      submission: {
+        ...submission,
+        total_marks: visibleTotalMarks,
+        awarded_marks: visibleAwardedMarks,
+      },
       answers: answersWithImages,
       messages: messages ?? [],
     };
@@ -3336,6 +3353,24 @@ export const deleteQuestion = createServerFn({ method: "POST" })
     const { error } = await db.from("questions").delete().eq("id", data.questionId);
     if (error) throw new Error(error.message);
 
+    // Keep stored positions contiguous immediately after a deletion so every
+    // teacher and student surface agrees on Q1, Q2, Q3… without stale gaps.
+    const { data: remaining } = await db
+      .from("questions")
+      .select("id")
+      .eq("assignment_id", question.assignment_id)
+      .order("position", { ascending: true });
+    for (const [index, row] of (remaining ?? []).entries()) {
+      const { error: renumberError } = await db
+        .from("questions")
+        .update({
+          position: index + 1,
+          question_text: setQuestionLabel(row.question_text ?? "", String(index + 1)),
+        })
+        .eq("id", row.id);
+      if (renumberError) throw new Error(renumberError.message);
+    }
+
     await recalcAssignment(db, question.assignment_id);
     return { ok: true };
   });
@@ -3907,6 +3942,20 @@ export const getStudentHomeworkView = createServerFn({ method: "POST" })
       access.markSchemeRevealed ||
       (access.revealOnFullMarks && fullMarkQuestionIds.has(questionId));
 
+    const visibleQuestionIds = new Set(questions.map((question) => question.id));
+    const visibleTotalMarks = questions.reduce((sum, question) => sum + Number(question.marks), 0);
+    const visibleRawMarks = (answers ?? [])
+      .filter((answer) => visibleQuestionIds.has((answer as { question_id: string }).question_id))
+      .reduce(
+        (sum, answer) =>
+          sum + Number((answer as { awarded_marks?: number | null }).awarded_marks ?? 0),
+        0,
+      );
+    const visiblePenalty = Number(submission?.penalty_percent ?? 0);
+    const visibleAwardedMarks = submission?.locked_at
+      ? 0
+      : Math.round(visibleRawMarks * (1 - visiblePenalty / 100) * 100) / 100;
+
     const { data: profile } = await db
       .from("profiles")
       .select("full_name")
@@ -3962,7 +4011,13 @@ export const getStudentHomeworkView = createServerFn({ method: "POST" })
           creditedAll: Boolean((q as { credited_all_at?: string | null }).credited_all_at),
         })),
       ),
-      submission,
+      submission: submission
+        ? {
+            ...submission,
+            total_marks: visibleTotalMarks,
+            awarded_marks: visibleAwardedMarks,
+          }
+        : null,
       answers: answersWithImages,
       messages: messages ?? [],
     };

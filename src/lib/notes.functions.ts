@@ -101,6 +101,7 @@ export const listSections = createServerFn({ method: "GET" })
         .eq("unit_id", data.unitId)
         .order("position", { ascending: true })
         .order("created_at", { ascending: true });
+      rows = legacyResult.data;
       rows = legacyResult.data?.map((row) => ({ ...row, document_work: {} })) ?? null;
       error = legacyResult.error;
     }

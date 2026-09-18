@@ -224,7 +224,7 @@ export function QuestionExperience({
     [photoFiles],
   );
   const submittedPhotoUrls = photoUrls.filter((url) => !url.includes(PAD_FILE_NAME));
-  const paperModeUrls = hasFullCredit ? photoUrls.filter((url) => url.includes(PAD_FILE_NAME)) : [];
+  const paperModeUrls = photoUrls.filter((url) => url.includes(PAD_FILE_NAME));
 
   // Seed the marks checklist so the student sees how many points are expected.
   useEffect(() => {
@@ -330,7 +330,10 @@ export function QuestionExperience({
             </div>
           ) : null}
 
-          <details className="group mt-4 rounded-xl border border-border bg-background/40">
+          <details
+            open={readOnly || undefined}
+            className="group mt-4 rounded-xl border border-border bg-background/40"
+          >
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
               <span className="flex min-w-0 items-center gap-2 font-medium">
                 <ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" />
@@ -396,7 +399,10 @@ export function QuestionExperience({
                   </p>
                 )}
 
-                <details className="rounded-lg border border-dashed border-border p-3">
+                <details
+                  open={readOnly || undefined}
+                  className="rounded-lg border border-dashed border-border p-3"
+                >
                   <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">
                     {readOnly ? "Typed answer" : "Type your answer"}
                   </summary>

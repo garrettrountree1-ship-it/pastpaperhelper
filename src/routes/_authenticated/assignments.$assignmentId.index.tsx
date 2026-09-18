@@ -34,12 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  gradeAnswer,
-  getAssignmentWorkspace,
-  sendTutorMessage,
-  submitAssignment,
-} from "@/lib/app.functions";
+import { gradeAnswer, getAssignmentWorkspace, sendTutorMessage } from "@/lib/app.functions";
 
 export const Route = createFileRoute("/_authenticated/assignments/$assignmentId/")({
   head: () => ({
@@ -100,17 +95,6 @@ function AssignmentPage() {
     staleTime: 30 * 60 * 1000,
     gcTime: 8 * 60 * 60 * 1000,
     retry: 2,
-  });
-
-  const submit = useServerFn(submitAssignment);
-
-  const submitMutation = useMutation({
-    mutationFn: () => submit({ data: { assignmentId } }),
-    onSuccess: () => {
-      toast.success("Homework submitted");
-      queryClient.invalidateQueries({ queryKey });
-    },
-    onError: (error: Error) => toast.error(error.message),
   });
 
   const data = workspace.data;
@@ -316,20 +300,6 @@ function AssignmentPage() {
                 />
               </div>
             ) : null}
-
-            <div className="mt-8 flex justify-end">
-              <Button
-                onClick={() => submitMutation.mutate()}
-                disabled={
-                  data.assignment.pastDue ||
-                  answered < data.questions.length ||
-                  data.submission.status === "submitted" ||
-                  submitMutation.isPending
-                }
-              >
-                {data.submission.status === "submitted" ? "Submitted" : "Submit homework"}
-              </Button>
-            </div>
           </>
         ) : null}
       </main>

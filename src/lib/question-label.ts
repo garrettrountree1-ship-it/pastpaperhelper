@@ -17,7 +17,14 @@ type Parsed = { label: string; rest: string };
 
 /** Papers (and re-labelling) sometimes repeat a part: "13(g) (g) State ..." -> one (g). */
 function dropRepeats(parts: string[]): string[] {
-  return parts.filter((part, index) => index === 0 || part !== parts[index - 1]);
+  const adjacent = parts.filter((part, index) => index === 0 || part !== parts[index - 1]);
+  if (adjacent.length % 2 === 0) {
+    const middle = adjacent.length / 2;
+    if (adjacent.slice(0, middle).join(".") === adjacent.slice(middle).join(".")) {
+      return adjacent.slice(0, middle);
+    }
+  }
+  return adjacent;
 }
 
 /** Split compact printed parts such as "aii" into letter "a" + roman "ii". */
@@ -44,7 +51,7 @@ function embeddedParts(questionText: string): string[] {
     "im",
   ).exec(body);
   if (!match?.[1]) return existing;
-  const found = [match[1].toLowerCase(), ...(match[2] ? [match[2].toLowerCase()] : [])];
+  const found = tokenParts(`${match[1]}${match[2] ?? ""}`);
   return existing.length > 0 ? existing : found;
 }
 
@@ -249,10 +256,10 @@ export function resolveQuestionLabels(questionTexts: string[]): string[] {
       const legacyRunningPrefix =
         printedParts.length > 0 &&
         previousParsed?.parts.length &&
-        repeatedPart.join(".") === printedParts.join(".") &&
         printedMain !== null &&
         previousParsed.main !== null &&
-        printedMain === previousParsed.main + 1;
+        (repeatedPart.join(".") === printedParts.join(".") ||
+          printedMain > previousParsed.main + 1);
       const main =
         legacyRunningPrefix
           ? previousParsed.main

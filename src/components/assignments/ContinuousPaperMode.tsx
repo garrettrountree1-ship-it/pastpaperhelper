@@ -1,6 +1,18 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Eraser, Minus, PenLine, Plus, Save, Type, Undo2 } from "lucide-react";
+import {
+  CheckCircle2,
+  CircleDashed,
+  Eraser,
+  Minus,
+  PenLine,
+  Plus,
+  Save,
+  Sparkles,
+  Type,
+  Undo2,
+  XCircle,
+} from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
@@ -18,6 +30,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { gradeAnswer, previewGradeAnswer } from "@/lib/app.functions";
 import { questionPagesOnly } from "@/lib/answer-key";
+import { NO_PASTE_MESSAGE } from "@/lib/integrity";
+import { questionLabel } from "@/lib/question-label";
 
 type Point = { x: number; y: number };
 type Stroke = { color: string; width: number; points: Point[]; erase?: boolean };
@@ -36,12 +50,19 @@ type PaperAnswer = {
   question_id: string;
   answer_text: string;
   image_paths?: string[] | null;
+  /** Signed copies used by the teacher's live student-work view. */
+  imageUrls?: string[];
   verdict?: string | null;
   awarded_marks?: number | null;
   feedback?: string | null;
   attempts?: number;
 };
-type PaperResult = { verdict: string; awardedMarks: number; feedback: string };
+type PaperResult = {
+  verdict: string;
+  awardedMarks: number;
+  feedback: string;
+  leadingQuestion?: string;
+};
 
 const COLORS = ["#111827", "#2563eb", "#dc2626", "#16a34a", "#7c3aed", "#ea580c"];
 
@@ -268,6 +289,14 @@ function PaperAnswerArea({
               onTextChange(event.target.value);
               persist();
             }}
+            onPaste={(event) => {
+              event.preventDefault();
+              toast.error(NO_PASTE_MESSAGE);
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              toast.error(NO_PASTE_MESSAGE);
+            }}
             placeholder={tool === "text" ? "Type on these lines…" : ""}
             className={`relative z-20 h-full min-h-0 resize-none border-0 bg-transparent px-0 py-1 text-base leading-9 shadow-none focus-visible:ring-0 ${
               tool === "text" ? "pointer-events-auto" : "pointer-events-none"
@@ -277,8 +306,15 @@ function PaperAnswerArea({
             type="button"
             className="absolute bottom-0 left-0 z-30 flex h-4 w-full cursor-ns-resize items-end justify-center bg-gradient-to-t from-muted/70 to-transparent"
             onPointerDown={startResize}
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+              event.preventDefault();
+              setHeight((value) =>
+                Math.max(110, Math.min(900, value + (event.key === "ArrowDown" ? 20 : -20))),
+              );
+            }}
             aria-label="Drag to change the answer space"
-            title="Drag down to add more writing space"
+            title="Drag or use the arrow keys to change the answer space"
           >
             <span className="mb-1 h-1 w-16 rounded-full bg-muted-foreground/40" />
           </button>
@@ -315,6 +351,55 @@ function PaperAnswerArea({
           persist();
         }}
       />
+    </div>
+  );
+}
+
+function PaperMarkScheme({ urls }: { urls: string[] }) {
+  const [revealed, setRevealed] = useState(100);
+  const frame = useRef<HTMLDivElement | null>(null);
+  const revealAt = (clientY: number) => {
+    const rect = frame.current?.getBoundingClientRect();
+    if (rect) setRevealed(Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100)));
+  };
+  return (
+    <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium">Mark scheme</p>
+        <p className="text-right text-[11px] text-muted-foreground">Drag the cover or use ↑ ↓</p>
+      </div>
+      <div ref={frame} className="relative mt-2 overflow-hidden rounded-md">
+        <QuestionSnipStack urls={urls} answers alt="Official mark scheme" />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 bg-card"
+          style={{ height: `${100 - revealed}%` }}
+        />
+        <div
+          role="slider"
+          tabIndex={0}
+          aria-label="Reveal or cover the mark scheme"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(revealed)}
+          className="absolute inset-x-0 z-10 h-3 -translate-y-1/2 cursor-ns-resize touch-none border-y border-primary/50 bg-primary/20 outline-none focus:ring-2 focus:ring-primary"
+          style={{ top: `${revealed}%` }}
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId);
+            revealAt(event.clientY);
+          }}
+          onPointerMove={(event) => {
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) revealAt(event.clientY);
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+            event.preventDefault();
+            setRevealed((value) =>
+              Math.max(0, Math.min(100, value + (event.key === "ArrowDown" ? 5 : -5))),
+            );
+          }}
+        />
+      </div>
     </div>
   );
 }
@@ -447,11 +532,17 @@ function ContinuousPaper({
           {questions.map((question, index) => {
             const result = results[question.id];
             const snips = question.imageUrls ?? [];
+            const savedPaperUrls = locked
+              ? (
+                  answers.find((answer) => answer.question_id === question.id)?.imageUrls ?? []
+                ).filter((url) => url.includes(PAD_FILE_NAME))
+              : [];
             const multipleChoice = Boolean(question.multipleChoice);
             const needsBlank = /draw|diagram|graph|plot|sketch|calculate/i.test(
               question.question_text,
             );
-            const answerHeight = multipleChoice ? 0 : 220;
+            const answerHeight = multipleChoice || savedPaperUrls.length > 0 ? 0 : 220;
+            const label = questionLabel(question.question_text, index);
             return (
               <section
                 key={question.id}
@@ -466,17 +557,27 @@ function ContinuousPaper({
                   disabled={locked || result?.verdict === "correct"}
                   lined={!needsBlank}
                   answerHeight={answerHeight}
-                  backgroundUrls={snips}
+                  backgroundUrls={savedPaperUrls.length > 0 ? [] : snips}
                   tool={tool}
                   color={color}
                   onSelect={() => setSelected(question.id)}
                   questionContent={
                     <>
                       <span className="absolute left-1 top-1 z-20 rounded bg-primary/90 px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
-                        Q{index + 1}
+                        Q{label}
                       </span>
-                      {snips.length ? (
-                        <QuestionSnipStack urls={snips} alt={`Question ${index + 1}`} />
+                      {savedPaperUrls.length > 0 ? (
+                        <div>
+                          <p className="mb-2 text-xs font-medium text-muted-foreground">
+                            Student&apos;s marked paper
+                          </p>
+                          <QuestionSnipStack
+                            urls={savedPaperUrls}
+                            alt={`Student's answer for question ${label}`}
+                          />
+                        </div>
+                      ) : snips.length ? (
+                        <QuestionSnipStack urls={snips} alt={`Question ${label}`} />
                       ) : (
                         <p className="whitespace-pre-wrap text-sm">{question.question_text}</p>
                       )}
@@ -506,6 +607,7 @@ function ContinuousPaper({
         <div className="grid grid-cols-4 gap-1 lg:grid-cols-3">
           {questions.map((question, index) => {
             const result = results[question.id];
+            const label = questionLabel(question.question_text, index);
             return (
               <Button
                 key={question.id}
@@ -519,8 +621,14 @@ function ContinuousPaper({
                   });
                 }}
               >
-                {result?.verdict === "correct" ? <CheckCircle2 className="size-3.5" /> : null} Q
-                {index + 1}
+                {result?.verdict === "correct" ? (
+                  <CheckCircle2 className="size-3.5" />
+                ) : result?.verdict === "partial" ? (
+                  <CircleDashed className="size-3.5 text-amber-500" />
+                ) : result ? (
+                  <XCircle className="size-3.5 text-destructive" />
+                ) : null}{" "}
+                Q{label}
               </Button>
             );
           })}
@@ -528,7 +636,9 @@ function ContinuousPaper({
         {selectedQuestion ? (
           <div className="mt-4 space-y-3 border-t pt-4">
             <p className="font-medium">
-              Paper Q{questions.indexOf(selectedQuestion) + 1} · {selectedQuestion.marks} marks
+              Paper Q
+              {questionLabel(selectedQuestion.question_text, questions.indexOf(selectedQuestion))} ·{" "}
+              {selectedQuestion.marks} marks
             </p>
             {selectedQuestion.multipleChoice ||
             selectedQuestion.answerCheckMode === "final-number" ? (
@@ -549,17 +659,43 @@ function ContinuousPaper({
                       [selectedQuestion.id]: event.target.value,
                     }))
                   }
+                  onPaste={(event) => {
+                    event.preventDefault();
+                    toast.error(NO_PASTE_MESSAGE);
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    toast.error(NO_PASTE_MESSAGE);
+                  }}
                   placeholder={selectedQuestion.multipleChoice ? "A–E" : "Final answer"}
                   disabled={locked || selectedResult?.verdict === "correct"}
                 />
               </div>
             ) : null}
             {selectedResult ? (
-              <div className="rounded-lg border p-3 text-sm">
-                <Badge>
-                  {selectedResult.awardedMarks}/{selectedQuestion.marks}
-                </Badge>
-                <p className="mt-2">{selectedResult.feedback}</p>
+              <div className="space-y-2">
+                <div className="rounded-lg border p-3 text-sm">
+                  <Badge>
+                    {selectedResult.awardedMarks}/{selectedQuestion.marks}
+                  </Badge>
+                  {selectedResult.verdict === "correct" && selectedResult.feedback ? (
+                    <p className="mt-2">{selectedResult.feedback}</p>
+                  ) : null}
+                </div>
+                {selectedResult.verdict !== "correct" ? (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+                    <p className="flex items-center gap-1.5 font-semibold">
+                      <Sparkles className="size-4 text-primary" /> AI tutor
+                    </p>
+                    <p className="mt-2 whitespace-pre-wrap">
+                      {selectedResult.leadingQuestion || selectedResult.feedback}
+                    </p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Use a hint or step-by-step help below, then improve your work and mark it
+                      again.
+                    </p>
+                  </div>
+                ) : null}
               </div>
             ) : null}
             <Button
@@ -573,14 +709,12 @@ function ContinuousPaper({
                 setMarking(selectedQuestion.id);
                 try {
                   const draft = drafts[selectedQuestion.id] ?? "";
-                  const useFastMark =
-                    Boolean(draft.trim()) &&
-                    (selectedQuestion.multipleChoice ||
-                      selectedQuestion.answerCheckMode === "final-number");
                   const result = await onMark(
                     selectedQuestion,
                     draft,
-                    useFastMark ? undefined : await exporter(),
+                    // Always include the rendered paper. A student may draw on a
+                    // fast-mark question instead of (or as well as) typing.
+                    await exporter(),
                   );
                   setResults((current) => ({ ...current, [selectedQuestion.id]: result }));
                 } catch (error) {
@@ -605,14 +739,7 @@ function ContinuousPaper({
             {(markSchemeRevealed ||
               (revealOnFullMarks && selectedResult?.awardedMarks === selectedQuestion.marks)) &&
             selectedQuestion.answerImageUrls?.length ? (
-              <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
-                <p className="mb-2 text-sm font-medium">Mark scheme</p>
-                <QuestionSnipStack
-                  urls={selectedQuestion.answerImageUrls}
-                  answers
-                  alt="Official mark scheme"
-                />
-              </div>
+              <PaperMarkScheme urls={selectedQuestion.answerImageUrls} />
             ) : null}
             {selectedAnswer?.attempts ? (
               <p className="text-xs text-muted-foreground">
@@ -705,7 +832,10 @@ export function ReadOnlyPaperMode({
       allowHint={false}
       allowSteps={false}
       revealOnFullMarks={false}
-      markSchemeRevealed={false}
+      // The server only sends answer images that this student is entitled to
+      // see. Mirroring that payload lets the teacher's student view show the
+      // exact same released mark-scheme block instead of hiding it again.
+      markSchemeRevealed={questions.some((question) => question.answerImageUrls?.length)}
       onMark={async () => {
         throw new Error("This student view is read-only.");
       }}

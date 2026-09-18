@@ -516,6 +516,52 @@ function PaperAnswerArea({
           >
             <Trash2 className="size-4" />
           </button>
+          <button
+            type="button"
+            aria-label="Drag the corner to resize this text box"
+            title="Drag the corner to resize this text box"
+            disabled={disabled}
+            className="absolute -bottom-1 -right-1 size-4 cursor-nwse-resize touch-none rounded-sm border border-primary/60 bg-primary/30"
+            onPointerDown={(event) => {
+              if (disabled) return;
+              event.preventDefault();
+              event.stopPropagation();
+              const rect = canvasRef.current?.getBoundingClientRect();
+              const scaleX = rect ? canvasSize.width / Math.max(1, rect.width) : 1;
+              const scaleY = rect ? canvasSize.height / Math.max(1, rect.height) : 1;
+              const origin = {
+                x: event.clientX,
+                y: event.clientY,
+                width: box.width ?? 260,
+                height: box.height ?? 84,
+              };
+              const resize = (moveEvent: PointerEvent) =>
+                setTextBoxes((currentBoxes) =>
+                  currentBoxes.map((item) =>
+                    item.id === box.id
+                      ? {
+                          ...item,
+                          width: Math.max(
+                            120,
+                            origin.width + (moveEvent.clientX - origin.x) * scaleX,
+                          ),
+                          height: Math.max(
+                            48,
+                            origin.height + (moveEvent.clientY - origin.y) * scaleY,
+                          ),
+                        }
+                      : item,
+                  ),
+                );
+              const finish = () => {
+                window.removeEventListener("pointermove", resize);
+                window.removeEventListener("pointerup", finish);
+                persist();
+              };
+              window.addEventListener("pointermove", resize);
+              window.addEventListener("pointerup", finish);
+            }}
+          />
         </div>
       ))}
     </div>

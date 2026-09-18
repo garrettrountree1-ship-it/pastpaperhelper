@@ -579,6 +579,28 @@ function PaperMarkScheme({ urls }: { urls: string[] }) {
     <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium">Mark scheme</p>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 gap-1 px-2 text-[11px]"
+            onClick={() => setRevealed(0)}
+          >
+            <EyeOff className="size-3.5" /> Cover
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 gap-1 px-2 text-[11px]"
+            onClick={() => setRevealed(100)}
+          >
+            <Eye className="size-3.5" /> Uncover
+          </Button>
+        </div>
+      </div>
+      <div className="flex justify-end">
         <p className="text-right text-[11px] text-muted-foreground">Drag the cover or use ↑ ↓</p>
       </div>
       <div ref={frame} className="relative mt-2 overflow-hidden rounded-md">

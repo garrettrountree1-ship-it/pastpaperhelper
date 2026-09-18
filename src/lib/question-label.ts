@@ -255,8 +255,7 @@ export function resolveQuestionLabels(questionTexts: string[]): string[] {
         previousParsed?.parts.length &&
         printedMain !== null &&
         previousParsed.main !== null &&
-        (repeatedPart.join(".") === printedParts.join(".") ||
-          printedMain > previousParsed.main + 1);
+        (repeatedPart.length > 0 || printedMain > previousParsed.main + 1);
       const main =
         legacyRunningPrefix
           ? previousParsed.main

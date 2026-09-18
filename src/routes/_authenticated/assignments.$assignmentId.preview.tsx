@@ -443,13 +443,20 @@ function PreviewQuestion({
       if (/AI-generated or copied|locked/i.test(error.message)) onFlag();
     },
     onSuccess: (result) => {
-      setAttempts((count) => count + 1);
+      onResult({
+        verdict: result.verdict,
+        awardedMarks: Number(result.awardedMarks ?? 0),
+        feedback: result.feedback ?? "",
+        answerText: answer,
+      });
       const opener = result.leadingQuestion;
       setThread(opener ? [{ role: "tutor", content: opener }] : []);
     },
   });
 
-  const result = check.data;
+  const attempts = sharedResult?.attempts ?? 0;
+  // The mark is shared with paper mode, so whichever view answered it shows credit.
+  const result = check.data ?? sharedResult ?? null;
   // Full marks on this question releases this question's answer when the teacher
   // turned that on, exactly as a student would see it.
   const earnedFullMarks = question.marks > 0 && Number(result?.awardedMarks ?? 0) >= question.marks;

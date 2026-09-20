@@ -2,9 +2,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   CheckCircle2,
-  ChevronsUpDown,
   CircleDashed,
   Eraser,
+  Eye,
+  EyeOff,
   Minus,
   Move,
   PenLine,
@@ -16,11 +17,18 @@ import {
   Undo2,
   XCircle,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
-import { QuestionHelpButtons } from "@/components/assignments/QuestionHelpDialog";
+import {
+  HELP_PILL,
+  HELP_PILL_DOT,
+  HELP_PILL_LABEL,
+  QuestionHelpButtons,
+  TeacherIcon,
+} from "@/components/assignments/QuestionHelpDialog";
 import { PAD_FILE_NAME } from "@/components/assignments/DrawingPad";
+import { MessageTeacherDialog } from "@/components/messaging/MessageTeacherDialog";
 import {
   mergeSnipPieces,
   parseSnipBand,
@@ -34,12 +42,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { gradeAnswer, previewGradeAnswer } from "@/lib/app.functions";
 import { questionPagesOnly } from "@/lib/answer-key";
 import { NO_PASTE_MESSAGE } from "@/lib/integrity";
-import { questionLabel, questionLabels } from "@/lib/question-label";
+import { resolveQuestionLabels } from "@/lib/question-label";
 
 type Point = { x: number; y: number };
 type Stroke = { color: string; width: number; points: Point[]; erase?: boolean };
 type PaperTool = "pen" | "eraser" | "text" | "textbox";
-type PaperTextBox = { id: string; x: number; y: number; text: string };
+type PaperTextBox = {
+  id: string;
+  x: number;
+  y: number;
+  text: string;
+  width?: number;
+  height?: number;
+};
 type PaperQuestion = {
   id: string;
   position: number;
@@ -66,7 +81,6 @@ type PaperResult = {
   awardedMarks: number;
   feedback: string;
   leadingQuestion?: string;
-  markSchemeImageUrls?: string[];
 };
 
 const COLORS = ["#111827", "#2563eb", "#dc2626", "#16a34a", "#7c3aed", "#ea580c"];
@@ -85,7 +99,7 @@ function PaperAnswerArea({
   onSelect,
   registerExport,
   registerUndo,
-  registerAddTextBox,
+  registerClear,
 }: {
   storageKey: string;
   initialText: string;
@@ -100,7 +114,8 @@ function PaperAnswerArea({
   onSelect: () => void;
   registerExport: (exporter: () => Promise<File>) => void;
   registerUndo: (undo: () => void) => void;
-  registerAddTextBox: (add: () => void) => void;
+  /** Wipes every stroke, text box and typed line for this question. */
+  registerClear: (clear: () => void) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -109,6 +124,9 @@ function PaperAnswerArea({
   const [text, setText] = useState(initialText);
   const [height, setHeight] = useState(answerHeight);
   const [textBoxes, setTextBoxes] = useState<PaperTextBox[]>([]);
+  // Text boxes are stored in the drawing's own coordinates, so where the student
+  // drops them is exactly where they appear in the marked picture.
+  const [canvasSize, setCanvasSize] = useState({ width: 1, height: 1 });
   const textBoxesRef = useRef(textBoxes);
   textBoxesRef.current = textBoxes;
   const textRef = useRef(text);
@@ -183,6 +201,7 @@ function PaperAnswerArea({
       if (canvas.width === width && canvas.height === height) return;
       canvas.width = width;
       canvas.height = height;
+      setCanvasSize({ width, height });
       redraw();
     };
     resize();
@@ -196,6 +215,21 @@ function PaperAnswerArea({
       strokes.current.pop();
       redraw();
       persist();
+    });
+    registerClear(() => {
+      strokes.current = [];
+      current.current = null;
+      setTextBoxes([]);
+      textBoxesRef.current = [];
+      setText("");
+      textRef.current = "";
+      onTextChange("");
+      redraw();
+      try {
+        window.localStorage.removeItem(storageKey);
+      } catch {
+        // Nothing to clean up when browser storage is unavailable.
+      }
     });
     registerExport(async () => {
       const source = canvasRef.current;
@@ -240,8 +274,27 @@ function PaperAnswerArea({
       context.drawImage(source, 0, 0);
       context.fillStyle = "#111827";
       context.font = "18px sans-serif";
+      // Everything the student put on this question — pen strokes, typed lines and
+      // every placed text box — is drawn into the one picture that gets marked.
       for (const box of textBoxesRef.current) {
-        context.fillText(box.text, box.x + 8, box.y + 24, Math.max(40, output.width - box.x - 16));
+        const maxWidth = Math.max(
+          80,
+          Math.min(box.width ?? output.width, output.width - box.x - 24),
+        );
+        let y = box.y + 24;
+        for (const paragraph of box.text.split(/\n/)) {
+          let line = "";
+          for (const word of paragraph.split(/\s+/)) {
+            const candidate = `${line}${word} `;
+            if (line && context.measureText(candidate).width > maxWidth) {
+              context.fillText(line, box.x + 8, y);
+              line = `${word} `;
+              y += 24;
+            } else line = candidate;
+          }
+          context.fillText(line, box.x + 8, y);
+          y += 24;
+        }
       }
       if (textRef.current.trim()) {
         context.fillStyle = "#111827";
@@ -267,19 +320,8 @@ function PaperAnswerArea({
       );
       return new File([blob], PAD_FILE_NAME, { type: "image/png" });
     });
-    registerAddTextBox(() => {
-      const wrap = wrapRef.current;
-      setTextBoxes((boxes) => [
-        ...boxes,
-        {
-          id: crypto.randomUUID(),
-          x: Math.max(16, (wrap?.clientWidth ?? 360) / 2 - 100),
-          y: Math.max(16, (wrap?.clientHeight ?? 240) / 2 - 20),
-          text: "",
-        },
-      ]);
-    });
-  }, [backgroundUrls, height, registerAddTextBox, registerExport, registerUndo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backgroundUrls, height, registerExport, registerUndo, registerClear]);
 
   const startResize = (event: React.PointerEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -370,6 +412,7 @@ function PaperAnswerArea({
               ...currentBoxes,
               { id: crypto.randomUUID(), x: location.x, y: location.y, text: "" },
             ]);
+            window.setTimeout(persist);
             return;
           }
           event.currentTarget.setPointerCapture(event.pointerId);
@@ -398,8 +441,13 @@ function PaperAnswerArea({
       {textBoxes.map((box) => (
         <div
           key={box.id}
-          className="absolute z-20 flex min-w-40 items-center rounded-md border bg-white shadow-sm"
-          style={{ left: box.x, top: box.y }}
+          className="absolute z-20 flex items-stretch rounded-md border bg-white/95 shadow-sm"
+          style={{
+            left: `${(box.x / Math.max(1, canvasSize.width)) * 100}%`,
+            top: `${(box.y / Math.max(1, canvasSize.height)) * 100}%`,
+            width: `${((box.width ?? 260) / Math.max(1, canvasSize.width)) * 100}%`,
+            height: `${((box.height ?? 84) / Math.max(1, canvasSize.height)) * 100}%`,
+          }}
           onPointerDown={(event) => event.stopPropagation()}
         >
           <button
@@ -409,6 +457,9 @@ function PaperAnswerArea({
             onPointerDown={(event) => {
               event.preventDefault();
               event.currentTarget.setPointerCapture(event.pointerId);
+              const rect = canvasRef.current?.getBoundingClientRect();
+              const scaleX = rect ? canvasSize.width / Math.max(1, rect.width) : 1;
+              const scaleY = rect ? canvasSize.height / Math.max(1, rect.height) : 1;
               const origin = { x: event.clientX, y: event.clientY, boxX: box.x, boxY: box.y };
               const moveBox = (moveEvent: PointerEvent) =>
                 setTextBoxes((currentBoxes) =>
@@ -416,8 +467,8 @@ function PaperAnswerArea({
                     item.id === box.id
                       ? {
                           ...item,
-                          x: Math.max(0, origin.boxX + moveEvent.clientX - origin.x),
-                          y: Math.max(0, origin.boxY + moveEvent.clientY - origin.y),
+                          x: Math.max(0, origin.boxX + (moveEvent.clientX - origin.x) * scaleX),
+                          y: Math.max(0, origin.boxY + (moveEvent.clientY - origin.y) * scaleY),
                         }
                       : item,
                   ),
@@ -433,12 +484,13 @@ function PaperAnswerArea({
           >
             <Move className="size-4" />
           </button>
-          <Input
+          <Textarea
             autoFocus={!box.text}
             value={box.text}
             disabled={disabled}
+            rows={1}
             aria-label="Movable answer text"
-            className="border-0 shadow-none focus-visible:ring-0"
+            className="h-full min-h-9 flex-1 resize-none border-0 px-1 py-2 shadow-none focus-visible:ring-0"
             onPaste={(event) => {
               event.preventDefault();
               toast.error(NO_PASTE_MESSAGE);
@@ -464,6 +516,52 @@ function PaperAnswerArea({
           >
             <Trash2 className="size-4" />
           </button>
+          <button
+            type="button"
+            aria-label="Drag the corner to resize this text box"
+            title="Drag the corner to resize this text box"
+            disabled={disabled}
+            className="absolute -bottom-1 -right-1 size-4 cursor-nwse-resize touch-none rounded-sm border border-primary/60 bg-primary/30"
+            onPointerDown={(event) => {
+              if (disabled) return;
+              event.preventDefault();
+              event.stopPropagation();
+              const rect = canvasRef.current?.getBoundingClientRect();
+              const scaleX = rect ? canvasSize.width / Math.max(1, rect.width) : 1;
+              const scaleY = rect ? canvasSize.height / Math.max(1, rect.height) : 1;
+              const origin = {
+                x: event.clientX,
+                y: event.clientY,
+                width: box.width ?? 260,
+                height: box.height ?? 84,
+              };
+              const resize = (moveEvent: PointerEvent) =>
+                setTextBoxes((currentBoxes) =>
+                  currentBoxes.map((item) =>
+                    item.id === box.id
+                      ? {
+                          ...item,
+                          width: Math.max(
+                            120,
+                            origin.width + (moveEvent.clientX - origin.x) * scaleX,
+                          ),
+                          height: Math.max(
+                            48,
+                            origin.height + (moveEvent.clientY - origin.y) * scaleY,
+                          ),
+                        }
+                      : item,
+                  ),
+                );
+              const finish = () => {
+                window.removeEventListener("pointermove", resize);
+                window.removeEventListener("pointerup", finish);
+                persist();
+              };
+              window.addEventListener("pointermove", resize);
+              window.addEventListener("pointerup", finish);
+            }}
+          />
         </div>
       ))}
     </div>
@@ -481,6 +579,28 @@ function PaperMarkScheme({ urls }: { urls: string[] }) {
     <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium">Mark scheme</p>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 gap-1 px-2 text-[11px]"
+            onClick={() => setRevealed(0)}
+          >
+            <EyeOff className="size-3.5" /> Cover
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 gap-1 px-2 text-[11px]"
+            onClick={() => setRevealed(100)}
+          >
+            <Eye className="size-3.5" /> Uncover
+          </Button>
+        </div>
+      </div>
+      <div className="flex justify-end">
         <p className="text-right text-[11px] text-muted-foreground">Drag the cover or use ↑ ↓</p>
       </div>
       <div ref={frame} className="relative mt-2 overflow-hidden rounded-md">
@@ -513,11 +633,7 @@ function PaperMarkScheme({ urls }: { urls: string[] }) {
               Math.max(0, Math.min(100, value + (event.key === "ArrowDown" ? 5 : -5))),
             );
           }}
-        >
-          <span className="absolute -left-1 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full border border-primary/50 bg-background text-primary shadow-sm">
-            <ChevronsUpDown className="size-3.5" />
-          </span>
-        </div>
+        />
       </div>
     </div>
   );
@@ -532,6 +648,7 @@ function ContinuousPaper({
   allowSteps,
   revealOnFullMarks,
   markSchemeRevealed,
+  teacherMessage,
   onMark,
 }: {
   assignmentId: string;
@@ -542,6 +659,7 @@ function ContinuousPaper({
   allowSteps: boolean;
   revealOnFullMarks: boolean;
   markSchemeRevealed: boolean;
+  teacherMessage?: { classId: string; className: string; assignmentTitle: string };
   onMark: (question: PaperQuestion, text: string, file?: File) => Promise<PaperResult>;
 }) {
   const [selected, setSelected] = useState(questions[0]?.id ?? "");
@@ -562,19 +680,39 @@ function ContinuousPaper({
         ]),
     ),
   );
+  // Marks saved on the server always win, so a question marked in question mode
+  // shows its score (and its released answer) here too, and the other way round.
+  useEffect(() => {
+    setResults((current) => {
+      const merged = { ...current };
+      for (const answer of answers) {
+        if (!answer.verdict) continue;
+        merged[answer.question_id] = {
+          verdict: answer.verdict,
+          awardedMarks: Number(answer.awarded_marks ?? 0),
+          feedback: answer.feedback ?? "",
+        };
+      }
+      return merged;
+    });
+  }, [answers]);
   const exporters = useRef<Record<string, () => Promise<File>>>({});
   const undoers = useRef<Record<string, () => void>>({});
-  const textBoxAdders = useRef<Record<string, () => void>>({});
+  const clearers = useRef<Record<string, () => void>>({});
   const [marking, setMarking] = useState<string | null>(null);
   const [tool, setTool] = useState<PaperTool>("pen");
   const [color, setColor] = useState(COLORS[0]!);
   const [zoom, setZoom] = useState(1);
+  // Every view of a paper shows the paper's own numbering (1a, 1b, 1b(ii) …).
+  const labels = useMemo(
+    () => resolveQuestionLabels(questions.map((question) => question.question_text)),
+    [questions],
+  );
   const selectedQuestion = questions.find((question) => question.id === selected) ?? questions[0];
   const selectedResult = selectedQuestion ? results[selectedQuestion.id] : undefined;
   const selectedAnswer = selectedQuestion
     ? answers.find((answer) => answer.question_id === selectedQuestion.id)
     : undefined;
-  const printedLabels = questionLabels(questions.map((question) => question.question_text));
 
   const questionRefs = useRef<Record<string, HTMLElement | null>>({});
   return (
@@ -599,10 +737,7 @@ function ContinuousPaper({
         <Button
           size="icon"
           variant={tool === "textbox" ? "default" : "ghost"}
-          onClick={() => {
-            setTool("textbox");
-            textBoxAdders.current[selected]?.();
-          }}
+          onClick={() => setTool("textbox")}
           title="Place a movable text box"
         >
           <TextCursorInput className="size-4" />
@@ -675,16 +810,13 @@ function ContinuousPaper({
             );
             const answerHeight = multipleChoice || savedPaperUrls.length > 0 ? 0 : 220;
 
-            const label = printedLabels[index] ?? questionLabel(question.question_text, index);
-            const resultMarkSchemeUrls = result?.markSchemeImageUrls?.length
-              ? result.markSchemeImageUrls
-              : (question.answerImageUrls ?? []);
-            const showMarkScheme =
-              resultMarkSchemeUrls.length > 0 &&
-              (markSchemeRevealed ||
-                (revealOnFullMarks &&
-                  (result?.verdict === "correct" ||
-                    Number(result?.awardedMarks ?? 0) >= Number(question.marks))));
+            const label = labels[index] ?? String(index + 1);
+            const fullCredit =
+              Number(question.marks) > 0 &&
+              Number(result?.awardedMarks ?? 0) >= Number(question.marks);
+            const showAnswerHere =
+              (markSchemeRevealed || (revealOnFullMarks && fullCredit)) &&
+              (question.answerImageUrls?.length ?? 0) > 0;
             return (
               <section
                 key={question.id}
@@ -734,13 +866,13 @@ function ContinuousPaper({
                   registerUndo={(undo) => {
                     undoers.current[question.id] = undo;
                   }}
-                  registerAddTextBox={(add) => {
-                    textBoxAdders.current[question.id] = add;
+                  registerClear={(clear) => {
+                    clearers.current[question.id] = clear;
                   }}
                 />
-                {showMarkScheme ? (
-                  <div className="border-t bg-white p-5">
-                    <PaperMarkScheme urls={resultMarkSchemeUrls} />
+                {showAnswerHere ? (
+                  <div className="border-t bg-primary/5 p-4">
+                    <PaperMarkScheme urls={question.answerImageUrls ?? []} />
                   </div>
                 ) : null}
               </section>
@@ -757,7 +889,7 @@ function ContinuousPaper({
         <div className="grid grid-cols-4 gap-1 lg:grid-cols-3">
           {questions.map((question, index) => {
             const result = results[question.id];
-            const label = printedLabels[index] ?? questionLabel(question.question_text, index);
+            const label = labels[index] ?? String(index + 1);
             return (
               <Button
                 key={question.id}
@@ -772,7 +904,7 @@ function ContinuousPaper({
                 }}
               >
                 {result?.verdict === "correct" ? (
-                  <CheckCircle2 className="size-4 fill-emerald-100 text-emerald-600" />
+                  <CheckCircle2 className="size-3.5 text-emerald-600" aria-label="Full credit" />
                 ) : result?.verdict === "partial" ? (
                   <CircleDashed className="size-3.5 text-amber-500" />
                 ) : result ? (
@@ -787,11 +919,8 @@ function ContinuousPaper({
           <div className="mt-4 space-y-3 border-t pt-4">
             <p className="font-medium">
               Paper Q
-              {printedLabels[questions.indexOf(selectedQuestion)] ??
-                questionLabel(
-                  selectedQuestion.question_text,
-                  questions.indexOf(selectedQuestion),
-                )}{" "}
+              {labels[questions.indexOf(selectedQuestion)] ??
+                questions.indexOf(selectedQuestion) + 1}{" "}
               · {selectedQuestion.marks} marks
             </p>
             {selectedQuestion.multipleChoice ||
@@ -829,17 +958,9 @@ function ContinuousPaper({
             {selectedResult ? (
               <div className="space-y-2">
                 <div className="rounded-lg border p-3 text-sm">
-                  <div className="flex items-center gap-2">
-                    {selectedResult.verdict === "correct" ? (
-                      <CheckCircle2
-                        className="size-6 fill-emerald-100 text-emerald-600"
-                        aria-label="Correct"
-                      />
-                    ) : null}
-                    <Badge>
-                      {selectedResult.awardedMarks}/{selectedQuestion.marks}
-                    </Badge>
-                  </div>
+                  <Badge>
+                    {selectedResult.awardedMarks}/{selectedQuestion.marks}
+                  </Badge>
                   {selectedResult.verdict === "correct" && selectedResult.feedback ? (
                     <p className="mt-2">{selectedResult.feedback}</p>
                   ) : null}
@@ -882,6 +1003,15 @@ function ContinuousPaper({
                     await exporter(),
                   );
                   setResults((current) => ({ ...current, [selectedQuestion.id]: result }));
+                  // A correct fast answer settles the question, so the rough
+                  // working and sketching for it is wiped from the paper.
+                  const fastMark =
+                    selectedQuestion.multipleChoice ||
+                    selectedQuestion.answerCheckMode === "final-number";
+                  if (fastMark && result.verdict === "correct") {
+                    clearers.current[selectedQuestion.id]?.();
+                    setDrafts((current) => ({ ...current, [selectedQuestion.id]: "" }));
+                  }
                 } catch (error) {
                   toast.error((error as Error).message);
                 } finally {
@@ -901,6 +1031,40 @@ function ContinuousPaper({
               allowHint={allowHint}
               allowSteps={allowSteps}
             />
+            {teacherMessage ? (
+              <MessageTeacherDialog
+                classId={teacherMessage.classId}
+                className={teacherMessage.className}
+                preset={{
+                  assignmentId,
+                  questionId: selectedQuestion.id,
+                  topic: `${teacherMessage.assignmentTitle} · Question ${
+                    labels[questions.indexOf(selectedQuestion)] ??
+                    questions.indexOf(selectedQuestion) + 1
+                  }`,
+                }}
+                trigger={
+                  <button
+                    type="button"
+                    title="Ask the teacher"
+                    aria-label="Ask the teacher"
+                    className={`${HELP_PILL} w-full border-primary/50 bg-primary/10 hover:bg-primary/20`}
+                  >
+                    <span className={`${HELP_PILL_DOT} bg-primary text-primary-foreground`}>
+                      <TeacherIcon className="size-3.5" />
+                    </span>
+                    <span className={`${HELP_PILL_LABEL} text-foreground`}>Ask the teacher</span>
+                  </button>
+                }
+              />
+            ) : null}
+            {(markSchemeRevealed ||
+              (revealOnFullMarks &&
+                (selectedResult?.verdict === "correct" ||
+                  Number(selectedResult?.awardedMarks ?? 0) >= Number(selectedQuestion.marks)))) &&
+            selectedQuestion.answerImageUrls?.length ? (
+              <PaperMarkScheme urls={selectedQuestion.answerImageUrls} />
+            ) : null}
             {selectedAnswer?.attempts ? (
               <p className="text-xs text-muted-foreground">
                 {selectedAnswer.attempts} previous attempt{selectedAnswer.attempts === 1 ? "" : "s"}
@@ -922,6 +1086,9 @@ export function StudentPaperMode({
   revealOnFullMarks,
   markSchemeRevealed,
   queryKey,
+  classId,
+  className,
+  assignmentTitle,
 }: {
   assignmentId: string;
   questions: PaperQuestion[];
@@ -931,6 +1098,9 @@ export function StudentPaperMode({
   revealOnFullMarks: boolean;
   markSchemeRevealed: boolean;
   queryKey: string[];
+  classId: string;
+  className: string;
+  assignmentTitle: string;
 }) {
   const grade = useServerFn(gradeAnswer);
   const queryClient = useQueryClient();
@@ -944,6 +1114,7 @@ export function StudentPaperMode({
       allowSteps={settings?.allowSteps !== false}
       revealOnFullMarks={revealOnFullMarks}
       markSchemeRevealed={markSchemeRevealed}
+      teacherMessage={{ classId, className, assignmentTitle }}
       onMark={async (question, text, file) => {
         const { data } = await supabase.auth.getUser();
         if (!data.user) throw new Error("Please sign in again.");
@@ -1014,14 +1185,18 @@ export function PreviewPaperMode({
   settings,
   revealOnFullMarks,
   markSchemeRevealed,
+  answers = [],
+  onResult,
 }: {
   assignmentId: string;
   questions: PaperQuestion[];
   settings: { allowHint?: boolean; allowSteps?: boolean } | undefined;
   revealOnFullMarks: boolean;
   markSchemeRevealed: boolean;
+  /** Marks already earned in the other view of this same test session. */
+  answers?: PaperAnswer[];
+  onResult?: (questionId: string, result: PaperResult & { answerText: string }) => void;
 }) {
-  const [answers] = useState<PaperAnswer[]>([]);
   return (
     <ContinuousPaper
       assignmentId={`preview:${assignmentId}`}
@@ -1044,7 +1219,7 @@ export function PreviewPaperMode({
               reader.readAsDataURL(file);
             })
           : null;
-        return previewGradeAnswer({
+        const result = await previewGradeAnswer({
           data: {
             assignmentId,
             questionId: question.id,
@@ -1054,6 +1229,14 @@ export function PreviewPaperMode({
             priorFlags: 0,
           },
         });
+        // One test session, one mark per question: share it with question view.
+        onResult?.(question.id, {
+          verdict: result.verdict,
+          awardedMarks: Number(result.awardedMarks ?? 0),
+          feedback: result.feedback ?? "",
+          answerText: text,
+        });
+        return result;
       }}
     />
   );

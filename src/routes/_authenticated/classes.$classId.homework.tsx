@@ -106,6 +106,7 @@ import {
   parseLabelString,
   questionBody,
   questionLabel,
+  resolveQuestionLabels,
   setQuestionLabel,
   shiftLetter,
 } from "@/lib/question-label";
@@ -1058,7 +1059,9 @@ function AssignmentDialog({
                 <div className="rounded-xl border border-border p-4">
                   <div className="flex items-center justify-between gap-2">
                     {(() => {
-                      const label = questionLabel(question.questionText, index);
+                      const label =
+                        resolveQuestionLabels(questions.map((q) => q.questionText))[index] ??
+                        questionLabel(question.questionText, index);
                       const draft = labelDrafts[index];
                       const commit = () => {
                         const next = (draft ?? "").trim();
@@ -1563,7 +1566,10 @@ function QuestionControlsDialog({
             <p className="text-sm text-muted-foreground">This assignment has no questions.</p>
           ) : (
             controls.data.questions.map((question, index) => {
-              const label = questionLabel(question.questionText, index);
+              const label =
+                resolveQuestionLabels(
+                  (controls.data?.questions ?? []).map((q) => q.questionText),
+                )[index] ?? questionLabel(question.questionText, index);
               const excludedCount = (controls.data?.exclusions ?? []).filter(
                 (e) => e.questionId === question.id,
               ).length;
@@ -2365,7 +2371,7 @@ function StudentReport({
           ) : null}
 
           <div className="mt-3 space-y-2">
-            {assignment.questions.map((question) => (
+            {assignment.questions.map((question, questionIndex) => (
               <details
                 key={question.id}
                 className="rounded-md border border-border bg-background p-3"
@@ -2374,7 +2380,10 @@ function StudentReport({
                   <span className="inline-flex w-[calc(100%-1.5rem)] flex-wrap items-center justify-between gap-2 align-middle">
                     <span className="min-w-0">
                       <span className="font-medium">
-                        Q{questionLabel(question.questionText, question.position - 1)}
+                        Q
+                        {resolveQuestionLabels(
+                          assignment.questions.map((item) => item.questionText),
+                        )[questionIndex] ?? questionLabel(question.questionText, question.position - 1)}
                       </span>{" "}
                       <span className="text-muted-foreground">
                         {question.awardedMarks ?? 0}/{question.marks} marks · {question.attempts}{" "}

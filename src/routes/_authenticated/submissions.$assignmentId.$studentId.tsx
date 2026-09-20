@@ -4,7 +4,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { questionBody, questionLabel } from "@/lib/question-label";
+import { questionBody, resolveQuestionLabels } from "@/lib/question-label";
 
 import { AppHeader } from "@/components/AppHeader";
 import { StudentWorkPhoto } from "@/components/StudentWorkPhoto";
@@ -218,13 +218,17 @@ function SubmissionPage() {
             })()}
 
             <div className="mt-6 space-y-5">
-              {detail.data.questions.map((question, index) => {
+              {(() => {
+                const paperLabels = resolveQuestionLabels(
+                  detail.data.questions.map((q) => q.question_text),
+                );
+                return detail.data.questions.map((question, index) => {
                 const answer = detail.data.answers.find((a) => a.question_id === question.id);
                 return (
                   <section key={question.id} className="paper p-6">
                     <div className="flex items-start justify-between gap-4">
                       <h2 className="font-display text-xl">
-                        Question {questionLabel(question.question_text, index)}
+                        Question {paperLabels[index] ?? index + 1}
                       </h2>
                       <span className="text-sm text-muted-foreground">{question.marks} marks</span>
                     </div>
@@ -371,7 +375,8 @@ function SubmissionPage() {
 
                   </section>
                 );
-              })}
+                });
+              })()}
             </div>
           </>
         ) : null}

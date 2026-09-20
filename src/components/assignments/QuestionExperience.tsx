@@ -173,7 +173,7 @@ export function QuestionExperience({
   readOnly = false,
   creditedAll = false,
   answerCheckMode = null,
-  displayLabel,
+  label,
 }: {
   question: {
     id: string;
@@ -224,6 +224,8 @@ export function QuestionExperience({
   headerAction?: ReactNode;
   /** Teacher-only action displayed beside the printed question image. */
   snipAction?: ReactNode;
+  /** The paper's own printed number for this question (1a, 1b(ii) …). */
+  label?: string | undefined;
   /** Show the Question Vocabulary Translation box under the question. */
   keywordTranslation?: boolean;
   /** Scaffolding: "Give me a hint" available. */
@@ -248,8 +250,6 @@ export function QuestionExperience({
   creditedAll?: boolean;
   /** Teacher-selected calculation marking rule, shown clearly to the student. */
   answerCheckMode?: "final-number" | "full-working" | null;
-  /** Label resolved in the context of the full paper, including carried sub-parts. */
-  displayLabel?: string;
 }) {
   const verdict = result?.verdict ?? null;
   const glossary = useQuery({
@@ -315,7 +315,7 @@ export function QuestionExperience({
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="font-display text-xl">
-            Question {displayLabel ?? questionLabel(question.question_text, index)}{" "}
+            Question {label ?? questionLabel(question.question_text, index)}{" "}
             <QuestionTagBadge label={question.tagLabel} image={question.tagImage} />
           </h2>
           {answerCheckMode === "final-number" && !question.multipleChoice ? (

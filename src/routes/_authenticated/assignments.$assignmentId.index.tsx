@@ -7,7 +7,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { questionLabel, questionLabels } from "@/lib/question-label";
+import { questionLabel, resolveQuestionLabels } from "@/lib/question-label";
 import type { PhotoMode } from "@/lib/photo-mode";
 import { photoAvailability } from "@/lib/photo-mode";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
@@ -108,9 +108,6 @@ function AssignmentPage() {
   const answered = data
     ? data.questions.filter((q) => data.answers.some((a) => a.question_id === q.id)).length
     : 0;
-  const printedLabels = data
-    ? questionLabels(data.questions.map((question) => question.question_text))
-    : [];
 
   return (
     <div className="min-h-screen">
@@ -260,8 +257,10 @@ function AssignmentPage() {
                       className={data.assignment.className}
                       assignmentTitle={data.assignment.title}
                       index={index}
+                      label={
+                        resolveQuestionLabels(data.questions.map((q) => q.question_text))[index]
+                      }
                       question={question}
-                      displayLabel={printedLabels[index]}
                       locked={Boolean(data.submission.locked_at) || data.assignment.pastDue}
                       answer={data.answers.find((a) => a.question_id === question.id) ?? null}
                       referenceImageUrls={referenceImagesFor(data.questions, data.answers, index)}
@@ -302,6 +301,9 @@ function AssignmentPage() {
                   revealOnFullMarks={Boolean(data.assignment.revealOnFullMarks)}
                   markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
                   queryKey={queryKey}
+                  classId={data.assignment.classId}
+                  className={data.assignment.className}
+                  assignmentTitle={data.assignment.title}
                 />
               </div>
             ) : null}
@@ -397,6 +399,7 @@ function QuestionCard({
   className,
   assignmentTitle,
   index,
+  label,
   question,
   answer,
   referenceImageUrls,
@@ -414,6 +417,8 @@ function QuestionCard({
   className: string;
   assignmentTitle: string;
   index: number;
+  /** The paper's own printed number for this question. */
+  label?: string | undefined;
   question: Question;
   answer: Answer | null;
   referenceImageUrls: string[];
@@ -567,6 +572,7 @@ function QuestionCard({
         tutorError={tutorMutation.isError ? (tutorMutation.error as Error).message : undefined}
         onSend={() => tutorMutation.mutate()}
         locked={locked}
+        label={label}
         keywordTranslation={keywordTranslation}
         allowHint={allowHint}
         allowSteps={allowSteps}
@@ -582,7 +588,7 @@ function QuestionCard({
             preset={{
               assignmentId,
               questionId: question.id,
-              topic: `${assignmentTitle} · Question ${questionLabel(question.question_text, index)}`,
+              topic: `${assignmentTitle} · Question ${label ?? questionLabel(question.question_text, index)}`,
             }}
             trigger={
               <button

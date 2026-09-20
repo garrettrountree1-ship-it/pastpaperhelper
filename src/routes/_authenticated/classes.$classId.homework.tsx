@@ -1573,6 +1573,9 @@ function QuestionControlsDialog({
                 resolveQuestionLabels((controls.data?.questions ?? []).map((q) => q.questionText))[
                   index
                 ] ?? questionLabel(question.questionText, index);
+                resolveQuestionLabels(
+                  (controls.data?.questions ?? []).map((q) => q.questionText),
+                )[index] ?? questionLabel(question.questionText, index);
               const excludedCount = (controls.data?.exclusions ?? []).filter(
                 (e) => e.questionId === question.id,
               ).length;
@@ -2388,6 +2391,7 @@ function StudentReport({
                           assignment.questions.map((item) => item.questionText),
                         )[questionIndex] ??
                           questionLabel(question.questionText, question.position - 1)}
+                        )[questionIndex] ?? questionLabel(question.questionText, question.position - 1)}
                       </span>{" "}
                       <span className="text-muted-foreground">
                         {question.awardedMarks ?? 0}/{question.marks} marks · {question.attempts}{" "}

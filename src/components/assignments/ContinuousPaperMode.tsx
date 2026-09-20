@@ -571,6 +571,7 @@ function PaperAnswerArea({
 
 function PaperMarkScheme({ urls }: { urls: string[] }) {
   const [revealed, setRevealed] = useState(COVERED_MARK_SCHEME_PERCENT);
+  const [revealed, setRevealed] = useState(100);
   const frame = useRef<HTMLDivElement | null>(null);
   const revealAt = (clientY: number) => {
     const rect = frame.current?.getBoundingClientRect();
@@ -587,6 +588,7 @@ function PaperMarkScheme({ urls }: { urls: string[] }) {
             variant="outline"
             className="h-7 gap-1 px-2 text-[11px]"
             onClick={() => setRevealed(COVERED_MARK_SCHEME_PERCENT)}
+            onClick={() => setRevealed(0)}
           >
             <EyeOff className="size-3.5" /> Cover
           </Button>
@@ -1031,6 +1033,7 @@ function ContinuousPaper({
                     selectedQuestion.answerCheckMode === "final-number";
                   const answeredWithFastField = fastMark && Boolean(draft.trim());
                   if (answeredWithFastField && result.verdict === "correct") {
+                  if (fastMark && result.verdict === "correct") {
                     clearers.current[selectedQuestion.id]?.();
                     setDrafts((current) => ({ ...current, [selectedQuestion.id]: "" }));
                   }
@@ -1079,6 +1082,13 @@ function ContinuousPaper({
                   </button>
                 }
               />
+            ) : null}
+            {(markSchemeRevealed ||
+              (revealOnFullMarks &&
+                (selectedResult?.verdict === "correct" ||
+                  Number(selectedResult?.awardedMarks ?? 0) >= Number(selectedQuestion.marks)))) &&
+            selectedQuestion.answerImageUrls?.length ? (
+              <PaperMarkScheme urls={selectedQuestion.answerImageUrls} />
             ) : null}
             {selectedAnswer?.attempts ? (
               <p className="text-xs text-muted-foreground">

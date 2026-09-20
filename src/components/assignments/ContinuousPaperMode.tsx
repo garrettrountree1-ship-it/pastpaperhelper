@@ -587,7 +587,6 @@ function PaperMarkScheme({ urls }: { urls: string[] }) {
             variant="outline"
             className="h-7 gap-1 px-2 text-[11px]"
             onClick={() => setRevealed(COVERED_MARK_SCHEME_PERCENT)}
-            onClick={() => setRevealed(0)}
           >
             <EyeOff className="size-3.5" /> Cover
           </Button>

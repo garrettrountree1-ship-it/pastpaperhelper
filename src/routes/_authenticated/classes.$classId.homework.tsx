@@ -821,7 +821,10 @@ function AssignmentDialog({
     setQuestions((prev) => {
       const current = prev[index];
       if (!current) return prev;
-      const oldParsed = parseLabelString(questionLabel(current.questionText, index));
+      const resolved = resolveQuestionLabels(prev.map((question) => question.questionText));
+      const oldParsed = parseLabelString(
+        resolved[index] ?? questionLabel(current.questionText, index),
+      );
       const nextParsed = parseLabelString(nextLabel);
       const mainDelta =
         oldParsed.main !== null && nextParsed.main !== null ? nextParsed.main - oldParsed.main : 0;
@@ -834,7 +837,7 @@ function AssignmentDialog({
       return prev.map((q, i) => {
         if (i < index) return q;
         if (i === index) return { ...q, questionText: setQuestionLabel(q.questionText, nextLabel) };
-        const parsed = parseLabelString(questionLabel(q.questionText, i));
+        const parsed = parseLabelString(resolved[i] ?? questionLabel(q.questionText, i));
         if (mainDelta !== 0) {
           if (parsed.main === null) return q;
           const shifted = formatLabel(Math.max(1, parsed.main + mainDelta), parsed.parts);
@@ -1567,6 +1570,9 @@ function QuestionControlsDialog({
           ) : (
             controls.data.questions.map((question, index) => {
               const label =
+                resolveQuestionLabels((controls.data?.questions ?? []).map((q) => q.questionText))[
+                  index
+                ] ?? questionLabel(question.questionText, index);
                 resolveQuestionLabels(
                   (controls.data?.questions ?? []).map((q) => q.questionText),
                 )[index] ?? questionLabel(question.questionText, index);
@@ -2383,6 +2389,8 @@ function StudentReport({
                         Q
                         {resolveQuestionLabels(
                           assignment.questions.map((item) => item.questionText),
+                        )[questionIndex] ??
+                          questionLabel(question.questionText, question.position - 1)}
                         )[questionIndex] ?? questionLabel(question.questionText, question.position - 1)}
                       </span>{" "}
                       <span className="text-muted-foreground">

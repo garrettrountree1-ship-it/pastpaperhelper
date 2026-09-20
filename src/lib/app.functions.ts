@@ -26,6 +26,7 @@ import {
   nextLabelAfter,
   parseLabelString,
   questionLabel,
+  resolveQuestionLabels,
   setQuestionLabel,
 } from "@/lib/question-label";
 
@@ -497,11 +498,14 @@ export const createAssignment = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
+    const resolvedLabels = resolveQuestionLabels(data.questions.map((q) => q.questionText));
     const { error: qError } = await supabase.from("questions").insert(
       data.questions.map((q, index) => ({
         assignment_id: assignment.id,
         position: index + 1,
-        question_text: cleanMathText(q.questionText),
+        question_text: cleanMathText(
+          setQuestionLabel(q.questionText, resolvedLabels[index] ?? String(index + 1)),
+        ),
         mark_scheme: cleanMathText(q.markScheme),
         marks: q.marks,
         image_paths: q.imagePaths ?? [],
@@ -913,9 +917,12 @@ export const updateAssignment = createServerFn({ method: "POST" })
     const existingIds = new Set((existing ?? []).map((q) => q.id));
 
     const keptIds: string[] = [];
+    const resolvedLabels = resolveQuestionLabels(data.questions.map((q) => q.questionText));
     for (const [index, q] of data.questions.entries()) {
       const payload = {
-        question_text: cleanMathText(q.questionText),
+        question_text: cleanMathText(
+          setQuestionLabel(q.questionText, resolvedLabels[index] ?? String(index + 1)),
+        ),
         mark_scheme: cleanMathText(q.markScheme),
         marks: q.marks,
         position: index + 1,

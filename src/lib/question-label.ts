@@ -49,11 +49,14 @@ function embeddedParts(questionText: string): string[] {
   return existing.length > 0 ? existing : found;
 }
 
+/** Display labels compactly: 7a, 7a(i), 7a(ii), 7b. */
 /** Match compact labels printed on papers: 1(ai), 1(aii), 1(biii). */
 function displayParts(parts: string[]): string {
   const output: string[] = [];
   for (let index = 0; index < parts.length; index += 1) {
     const part = parts[index]!;
+    if (index === 0 && /^[a-z]$/.test(part) && !new RegExp(`^(?:${ROMAN})$`, "i").test(part)) {
+      output.push(part);
     const next = parts[index + 1];
     if (/^[a-z]$/.test(part) && next && new RegExp(`^(?:${ROMAN})$`, "i").test(next)) {
       output.push(`(${part}${next})`);
@@ -89,8 +92,22 @@ function parseOnce(text: string): Parsed | null {
   return { label, rest: rest.replace(/^[\s.):-]+/, "") };
 }
 
+/**
+ * Some older imports prefixed every crop with its running database position,
+ * then retained the real printed number from the image (for example
+ * `9 7. The acid-catalysed...`). In that shape the second, punctuated number
+ * is the paper's authoritative label.
+ */
+function authoritativeParse(text: string): Parsed | null {
+  const outer = parseOnce(text);
+  if (!outer) return null;
+  if (!/^\s*\d{1,3}\s*[.)]/.test(outer.rest)) return outer;
+  const inner = parseOnce(outer.rest);
+  return inner ?? outer;
+}
+
 export function questionLabel(questionText: string, fallbackIndex: number): string {
-  const parsed = parseOnce(questionText ?? "");
+  const parsed = authoritativeParse(questionText ?? "");
   return parsed ? parsed.label : String(fallbackIndex + 1);
 }
 
@@ -116,7 +133,7 @@ export function setQuestionMainNumber(questionText: string, next: number): strin
 /** Strips the leading label (even when the paper repeats it) so it isn't shown twice. */
 export function questionBody(questionText: string): string {
   let text = cleanMathText((questionText ?? "").trim());
-  const first = parseOnce(text);
+  const first = authoritativeParse(text);
   if (!first) return text;
   text = first.rest;
   const again = parseOnce(text);
@@ -157,7 +174,7 @@ export function formatLabel(main: number | null, parts: string[]): string {
 /** Replaces the printed label at the start of a question, keeping the wording. */
 export function setQuestionLabel(questionText: string, label: string): string {
   const text = (questionText ?? "").trim();
-  const parsed = parseOnce(text);
+  const parsed = authoritativeParse(text);
   let body = parsed ? parsed.rest : text;
   const clean = (label ?? "").trim();
   if (!clean) return body;
@@ -202,6 +219,7 @@ export function nextLabelAfter(label: string): string {
 
 /** The label printed on the paper, or null when the wording carries none. */
 export function printedLabel(questionText: string): string | null {
+  return authoritativeParse(questionText ?? "")?.label ?? null;
   return parseOnce(questionText ?? "")?.label ?? null;
 }
 
@@ -246,6 +264,12 @@ export function resolveQuestionLabels(questionTexts: string[]): string[] {
     if (recoveredParts.length > 0) {
       const printedMain = printed ? parseLabelString(printed).main : null;
       const previousParsed = previous ? parseLabelString(previous) : null;
+      const bodyAfterPrinted = authoritativeParse(text)?.rest ?? "";
+      const repeatedPart = leadingPartsOnly(bodyAfterPrinted);
+      const legacyRunningPrefix =
+        printedParts.length > 0 &&
+        printedMain !== null &&
+        previousParsed !== null &&
       const bodyAfterPrinted = parseOnce(text)?.rest ?? "";
       const repeatedPart = leadingPartsOnly(bodyAfterPrinted);
       const legacyRunningPrefix =

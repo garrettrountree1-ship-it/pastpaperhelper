@@ -859,7 +859,15 @@ async function runDetail(
         labelHead.letter === textHead.letter &&
         labelHead.roman === textHead.roman,
       );
-      if (labelHead && !sameHead) {
+      // The detail pass is looking directly at the requested crop. When it
+      // reads a different main number from the inventory, trust that visual
+      // re-read instead of producing a legacy double prefix such as `9 7.`.
+      // Those double prefixes caused every later part to inherit the database
+      // position rather than the number visibly printed on the paper.
+      const detailHasDifferentPrintedMain = Boolean(
+        labelHead?.main && textHead?.main && labelHead.main !== textHead.main,
+      );
+      if (labelHead && !sameHead && !detailHasDifferentPrintedMain) {
         questionText = `${label} ${questionText}`;
       }
       const pagesFromModel = Array.isArray(item["pages"])

@@ -42,6 +42,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { gradeAnswer, previewGradeAnswer } from "@/lib/app.functions";
 import { questionPagesOnly } from "@/lib/answer-key";
 import { NO_PASTE_MESSAGE } from "@/lib/integrity";
+import { COVERED_MARK_SCHEME_PERCENT } from "@/lib/mark-scheme-reveal";
 import { resolveQuestionLabels } from "@/lib/question-label";
 
 type Point = { x: number; y: number };
@@ -569,6 +570,7 @@ function PaperAnswerArea({
 }
 
 function PaperMarkScheme({ urls }: { urls: string[] }) {
+  const [revealed, setRevealed] = useState(COVERED_MARK_SCHEME_PERCENT);
   const [revealed, setRevealed] = useState(100);
   const frame = useRef<HTMLDivElement | null>(null);
   const revealAt = (clientY: number) => {
@@ -585,6 +587,7 @@ function PaperMarkScheme({ urls }: { urls: string[] }) {
             size="sm"
             variant="outline"
             className="h-7 gap-1 px-2 text-[11px]"
+            onClick={() => setRevealed(COVERED_MARK_SCHEME_PERCENT)}
             onClick={() => setRevealed(0)}
           >
             <EyeOff className="size-3.5" /> Cover
@@ -703,6 +706,22 @@ function ContinuousPaper({
   const [tool, setTool] = useState<PaperTool>("pen");
   const [color, setColor] = useState(COLORS[0]!);
   const [zoom, setZoom] = useState(1);
+  // Keep this local safeguard as well as the route-level protection: paper mode
+  // is also rendered by preview and read-only teacher/student views.
+  const [windowConcealed, setWindowConcealed] = useState(false);
+  useEffect(() => {
+    const conceal = () => setWindowConcealed(true);
+    const reveal = () => setWindowConcealed(false);
+    const onVisibility = () => setWindowConcealed(document.hidden);
+    window.addEventListener("blur", conceal);
+    window.addEventListener("focus", reveal);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("blur", conceal);
+      window.removeEventListener("focus", reveal);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
   // Every view of a paper shows the paper's own numbering (1a, 1b, 1b(ii) …).
   const labels = useMemo(
     () => resolveQuestionLabels(questions.map((question) => question.question_text)),
@@ -716,7 +735,11 @@ function ContinuousPaper({
 
   const questionRefs = useRef<Record<string, HTMLElement | null>>({});
   return (
-    <div className="relative grid items-start gap-4 pl-14 lg:grid-cols-[minmax(0,1fr)_19rem]">
+    <div
+      className={`relative grid items-start gap-4 pl-14 transition-[filter] lg:grid-cols-[minmax(0,1fr)_19rem] ${
+        windowConcealed ? "pointer-events-none select-none blur-lg" : ""
+      }`}
+    >
       <div className="paper fixed left-2 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center gap-1 p-1.5 shadow-xl">
         <Button
           size="icon"
@@ -1008,6 +1031,8 @@ function ContinuousPaper({
                   const fastMark =
                     selectedQuestion.multipleChoice ||
                     selectedQuestion.answerCheckMode === "final-number";
+                  const answeredWithFastField = fastMark && Boolean(draft.trim());
+                  if (answeredWithFastField && result.verdict === "correct") {
                   if (fastMark && result.verdict === "correct") {
                     clearers.current[selectedQuestion.id]?.();
                     setDrafts((current) => ({ ...current, [selectedQuestion.id]: "" }));

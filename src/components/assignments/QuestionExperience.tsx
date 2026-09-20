@@ -33,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { bulletTargetFor, normaliseBullets, stripBullets } from "@/lib/bullet-scaffold";
 import { NO_PASTE_MESSAGE } from "@/lib/integrity";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
+import { COVERED_MARK_SCHEME_PERCENT } from "@/lib/mark-scheme-reveal";
 import { questionBody, questionLabel } from "@/lib/question-label";
 import { QuestionTagBadge } from "@/components/assignments/QuestionTagBadge";
 
@@ -77,7 +78,7 @@ type Result = {
 };
 
 function StudyMarkScheme({ urls, action }: { urls: string[]; action: ReactNode }) {
-  const [revealed, setRevealed] = useState(0);
+  const [revealed, setRevealed] = useState(COVERED_MARK_SCHEME_PERCENT);
   const frame = useRef<HTMLDivElement | null>(null);
   const setFromPointer = (clientY: number) => {
     const rect = frame.current?.getBoundingClientRect();
@@ -94,7 +95,7 @@ function StudyMarkScheme({ urls, action }: { urls: string[]; action: ReactNode }
             size="sm"
             variant="outline"
             className="h-7 gap-1 px-2 text-[11px]"
-            onClick={() => setRevealed(0)}
+            onClick={() => setRevealed(COVERED_MARK_SCHEME_PERCENT)}
           >
             <EyeOff className="size-3.5" /> Cover
           </Button>

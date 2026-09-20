@@ -42,6 +42,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { gradeAnswer, previewGradeAnswer } from "@/lib/app.functions";
 import { questionPagesOnly } from "@/lib/answer-key";
 import { NO_PASTE_MESSAGE } from "@/lib/integrity";
+import { COVERED_MARK_SCHEME_PERCENT } from "@/lib/mark-scheme-reveal";
 import { resolveQuestionLabels } from "@/lib/question-label";
 
 type Point = { x: number; y: number };
@@ -569,7 +570,7 @@ function PaperAnswerArea({
 }
 
 function PaperMarkScheme({ urls }: { urls: string[] }) {
-  const [revealed, setRevealed] = useState(0);
+  const [revealed, setRevealed] = useState(COVERED_MARK_SCHEME_PERCENT);
   const frame = useRef<HTMLDivElement | null>(null);
   const revealAt = (clientY: number) => {
     const rect = frame.current?.getBoundingClientRect();
@@ -585,7 +586,7 @@ function PaperMarkScheme({ urls }: { urls: string[] }) {
             size="sm"
             variant="outline"
             className="h-7 gap-1 px-2 text-[11px]"
-            onClick={() => setRevealed(0)}
+            onClick={() => setRevealed(COVERED_MARK_SCHEME_PERCENT)}
           >
             <EyeOff className="size-3.5" /> Cover
           </Button>
@@ -703,6 +704,8 @@ function ContinuousPaper({
   const [tool, setTool] = useState<PaperTool>("pen");
   const [color, setColor] = useState(COLORS[0]!);
   const [zoom, setZoom] = useState(1);
+  // Keep this local safeguard as well as the route-level protection: paper mode
+  // is also rendered by preview and read-only teacher/student views.
   const [windowConcealed, setWindowConcealed] = useState(false);
   useEffect(() => {
     const conceal = () => setWindowConcealed(true);
@@ -1026,7 +1029,8 @@ function ContinuousPaper({
                   const fastMark =
                     selectedQuestion.multipleChoice ||
                     selectedQuestion.answerCheckMode === "final-number";
-                  if (fastMark && draft.trim() && result.verdict === "correct") {
+                  const answeredWithFastField = fastMark && Boolean(draft.trim());
+                  if (answeredWithFastField && result.verdict === "correct") {
                     clearers.current[selectedQuestion.id]?.();
                     setDrafts((current) => ({ ...current, [selectedQuestion.id]: "" }));
                   }

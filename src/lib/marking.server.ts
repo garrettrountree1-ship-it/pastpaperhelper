@@ -1,7 +1,9 @@
-import { generateText, streamText } from "ai";
+import { generateText } from "ai";
 import { z } from "zod";
 
-import { gatewayModel, gatewayResponsesModel } from "./ai-gateway.server";
+import { gatewayModel, TUTOR_MODEL } from "./ai-gateway.server";
+
+const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 export type MarkPoint = { point: string; marks: number; awarded: boolean };
 
@@ -69,7 +71,7 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
       ? `The next ${schemeImages.length} attached image(s) are the EXACT cut of the printed official answer key / mark scheme for THIS question. Mark strictly against that picture: read every marking point, its stated mark value and notation (M1, A1, B1, ecf, owtte, accept/reject lists, units, significant figures, tables, diagrams). It is the authoritative source and overrides the transcribed text wherever they disagree. The student's answer does NOT have to match it word for word — award the mark when the meaning is the same, while requiring any key term, value, unit or symbol the printed scheme insists on.`
       : "",
     images.length > 0
-      ? `The student also attached ${images.length} image(s) of handwritten working, mouse/stylus writing, or a diagram. Read them carefully — all visible writing and drawing is part of the answer. Mouse-drawn characters can be rough, uneven, disconnected or unusually shaped.`
+      ? `The student also attached ${images.length} photo(s) of handwritten working or a diagram. Read them carefully — that working is part of the answer.`
       : "",
     input.finalNumericOnly
       ? `FINAL-NUMBER-ONLY MODE: read the student's final numerical value, including from handwriting, and compare only that value with the teacher-verified accepted answer ${JSON.stringify(input.expectedAnswer || input.markScheme)}. A range written as "minimum to maximum" is inclusive. Do not assess or award method/working marks separately. Award all available marks for a matching value and no marks otherwise.`
@@ -85,13 +87,11 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     "When a picture of the printed official answer key is attached, that picture is the authoritative mark scheme: derive the marking points and their mark values from it, not from any transcription, and mark the student's response against it by meaning rather than exact wording.",
     "Be generous with equivalent wording: a short answer such as a single letter, number, formula or option that matches the mark scheme earns full marks.",
     "Answers may include photos of handwritten maths working, graphs or diagrams; read the images and credit correct working shown there.",
-    "Treat uncertain handwriting and mouse/stylus ink charitably. Use the question, units, nearby symbols, calculation flow and mark-scheme context to choose the most plausible reading. If a plausible reading is correct, award the mark; do not penalize poor penmanship, rough lines, imperfect letter shapes or OCR uncertainty.",
-    "For a short handwritten answer, formula, number, label or option, actively check plausible character alternatives (for example 1/l/I, 0/O, 5/S, ×/x, minus/dash, decimal points, subscripts and superscripts) before deciding it is wrong.",
     "When the answer is a photo of handwritten calculation working, mark it step by step: award each method/substitution mark that is correct even if the final answer is wrong, so partial credit is normal. If a diagram or drawing is photographed, judge the drawing itself against the mark scheme (labels, lines, shading, plotted points) rather than expecting typed words.",
     input.finalNumericOnly
       ? "For numerical questions, ignore the method and compare the final value only. Accept equivalent scientific notation and any value inside a teacher-provided inclusive range. Follow any precision or unit requirement explicitly printed in the official answer."
       : "For calculations, follow the printed rubric exactly: inspect the working step by step, award its M/A/B marks independently, and do not invent full credit for a bare final value when the rubric requires method marks.",
-    "Only call handwriting or a drawing unreadable when no reasonable interpretation can be made after using the surrounding context. If any clearly visible relevant work earns a mark, award it even when another part is hard to read.",
+    "If a photo is unreadable or shows no relevant working, say so plainly without revealing the answer.",
     "Split the mark scheme into its individual marking points exactly as written (each M1/A1/B1 or bullet worth its stated marks) and return them in markPoints with marks for that point and awarded true/false. The sum of the marks of awarded points MUST equal awardedMarks.",
     "Award marks only for points that genuinely match the mark scheme. Never award more than the marks available and never award negative marks.",
     "verdict is 'correct' only when full marks are earned, 'partial' when some marks are earned, 'incorrect' when none are.",
@@ -103,45 +103,91 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     "Output raw JSON only.",
   ].join(" ");
 
-  const asImage = (url: string) => ({
-    type: "image" as const,
-    image: url.startsWith("data:") ? url : new URL(url),
-  });
-
-  const content = [
-    { type: "text" as const, text: prompt },
-    ...questionImages.map(asImage),
-    ...schemeImages.map(asImage),
-    ...images.map(asImage),
-  ];
-
-  try {
-    // Reasoning marks can take longer than a normal request, so consume the
-    // streamed response server-side instead of holding one silent request open.
-    const result = streamText({
-      model: gatewayResponsesModel(),
-      system,
-      messages: [{ role: "user", content }],
-      providerOptions: {
-        openai: {
-          forceReasoning: true,
-          reasoningEffort: "medium",
-          reasoningSummary: "auto",
-          store: false,
-          include: ["reasoning.encrypted_content"],
-        },
-      },
-    });
-    const parsed = markSchema.parse(JSON.parse(extractJson(await result.text)));
-    return clamp(parsed, input.marks);
-  } catch (error) {
-    throw new Error(
-      `We couldn't mark that answer just now. ${
-        error instanceof Error ? error.message : "Please try again."
-      }`,
-    );
+  // Marking uses the gateway's non-streaming JSON endpoint. The SDK adapter can
+  // occasionally receive a stream that closes before its final chunk and then
+  // throws "No output generated. Check the stream for errors" even though the
+  // request itself was valid. Non-streaming responses avoid that failure mode.
+  // Retry transient gateway failures; on the last attempt omit only the
+  // question-page pictures (the question text remains) to reduce payload size.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const text = await requestMarkingJson({
+        system,
+        prompt,
+        questionImages: attempt < 2 ? questionImages : [],
+        schemeImages,
+        answerImages: images,
+      });
+      const parsed = markSchema.parse(JSON.parse(extractJson(text)));
+      return clamp(parsed, input.marks);
+    } catch (error) {
+      console.error("AI marking attempt failed", {
+        attempt: attempt + 1,
+        questionImages: attempt < 2 ? questionImages.length : 0,
+        schemeImages: schemeImages.length,
+        answerImages: images.length,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      if (attempt < 2) await delay(400 * 2 ** attempt);
+    }
   }
+  throw new Error(
+    "We couldn't mark that answer because the marking service returned no result. Your attempt was not counted. Please wait a moment and try again.",
+  );
 }
+
+async function requestMarkingJson({
+  system,
+  prompt,
+  questionImages,
+  schemeImages,
+  answerImages,
+}: {
+  system: string;
+  prompt: string;
+  questionImages: string[];
+  schemeImages: string[];
+  answerImages: string[];
+}): Promise<string> {
+  const key = process.env["LOVABLE_API_KEY"];
+  if (!key) throw new Error("AI is not configured yet. Missing LOVABLE_API_KEY.");
+  const image = (url: string) => ({ type: "image_url", image_url: { url } });
+  const response = await fetch(GATEWAY, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
+    body: JSON.stringify({
+      model: TUTOR_MODEL,
+      max_tokens: 1600,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: system },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            ...questionImages.map(image),
+            ...schemeImages.map(image),
+            ...answerImages.map(image),
+          ],
+        },
+      ],
+    }),
+  });
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`gateway ${response.status}: ${detail.slice(0, 240)}`);
+  }
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+    error?: { message?: string };
+  };
+  const text = payload.choices?.[0]?.message?.content?.trim() ?? "";
+  if (!text) throw new Error(payload.error?.message || "gateway returned an empty response");
+  return text;
+}
+
+const delay = (milliseconds: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 
 function clamp(result: z.infer<typeof markSchema>, maxMarks: number): MarkResult {
   const awarded = Math.max(0, Math.min(maxMarks, Math.round(result.awardedMarks * 2) / 2));

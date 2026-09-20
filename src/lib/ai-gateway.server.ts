@@ -30,4 +30,3 @@ export function gatewayResponsesModel() {
     headers: { "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
   }).responses(TUTOR_MODEL);
 }
-

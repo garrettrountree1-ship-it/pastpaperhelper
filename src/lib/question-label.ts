@@ -7,10 +7,7 @@ import { cleanMathText } from "@/lib/math-text";
  */
 const ROMAN = "i{1,3}|iv|v|vi{1,3}|ix|x";
 const HEAD = new RegExp(`^\\s*\\(?(\\d{1,3})\\)?\\s*[.)]?\\s*`, "i");
-const PAREN_PART = new RegExp(
-  `^\\s*\\(\\s*(${ROMAN}|[a-z](?:[.]?(?:${ROMAN}))?)\\s*\\)`,
-  "i",
-);
+const PAREN_PART = new RegExp(`^\\s*\\(\\s*(${ROMAN}|[a-z](?:[.]?(?:${ROMAN}))?)\\s*\\)`, "i");
 const COMPACT_PART = new RegExp(`^\\s*([a-z])(?:\\s*\\(?(${ROMAN})\\)?)?(?=\\s|[.):-]|$)`);
 
 type Parsed = { label: string; rest: string };
@@ -256,11 +253,12 @@ export function resolveQuestionLabels(questionTexts: string[]): string[] {
         previousParsed?.parts.length &&
         printedMain !== null &&
         previousParsed.main !== null &&
-        (legacyMultipartMain !== null || repeatedPart.length > 0 || printedMain > previousParsed.main + 1);
-      const main =
-        legacyRunningPrefix
-          ? (legacyMultipartMain ?? previousParsed.main)
-          : printedParts.length > 0
+        (legacyMultipartMain !== null ||
+          repeatedPart.length > 0 ||
+          printedMain > previousParsed.main + 1);
+      const main = legacyRunningPrefix
+        ? (legacyMultipartMain ?? previousParsed.main)
+        : printedParts.length > 0
           ? printedMain
           : previousParsed?.parts.length
             ? previousParsed.main
@@ -278,8 +276,8 @@ export function resolveQuestionLabels(questionTexts: string[]): string[] {
         legacyMultipartMain !== null
           ? formatLabel(legacyMultipartMain + 1, [])
           : previousParsed?.parts.length && previousParsed.main !== null
-          ? formatLabel(previousParsed.main + 1, [])
-          : formatLabel(printedMain, []);
+            ? formatLabel(previousParsed.main + 1, [])
+            : formatLabel(printedMain, []);
       labels.push(label);
       previous = label;
       legacyMultipartMain = null;

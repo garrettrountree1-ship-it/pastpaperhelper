@@ -639,7 +639,6 @@ function PaperMarkScheme({ urls }: { urls: string[] }) {
   );
 }
 
-
 function ContinuousPaper({
   assignmentId,
   questions,
@@ -852,7 +851,6 @@ function ContinuousPaper({
                           />
                         </div>
                       ) : snips.length ? (
-
                         <QuestionSnipStack urls={snips} alt={`Question ${label}`} />
                       ) : (
                         <p className="whitespace-pre-wrap text-sm">{question.question_text}</p>
@@ -877,7 +875,6 @@ function ContinuousPaper({
                     <PaperMarkScheme urls={question.answerImageUrls ?? []} />
                   </div>
                 ) : null}
-
               </section>
             );
           })}
@@ -907,10 +904,7 @@ function ContinuousPaper({
                 }}
               >
                 {result?.verdict === "correct" ? (
-                  <CheckCircle2
-                    className="size-3.5 text-emerald-600"
-                    aria-label="Full credit"
-                  />
+                  <CheckCircle2 className="size-3.5 text-emerald-600" aria-label="Full credit" />
                 ) : result?.verdict === "partial" ? (
                   <CircleDashed className="size-3.5 text-amber-500" />
                 ) : result ? (

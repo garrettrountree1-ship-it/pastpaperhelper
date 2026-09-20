@@ -540,7 +540,7 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    let questionResult = await supabase
+    const questionResult = await supabase
       .from("questions")
       .select(
         "id, question_text, mark_scheme, marks, position, image_paths, answer_image_paths, source_page_path, answer_source_page_path, tag_label, tag_image, multiple_choice, expected_answer, numerical_answer",
@@ -1677,7 +1677,7 @@ export const getStudentClassReport = createServerFn({ method: "POST" })
 
     const questionIds = (questions ?? []).map((q) => q.id);
     const { data: helpMessages } = questionIds.length
-      ? await (db as any)
+      ? await db
           .from("question_help_messages")
           .select("id, question_id, mode, role, content, created_at")
           .in("question_id", questionIds)
@@ -1914,7 +1914,7 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     const access = await studentAccess(db, data.assignmentId, userId);
 
     // Mark schemes are only sent once the teacher reveals them.
-    let workspaceQuestionResult = await db
+    const workspaceQuestionResult = await db
       .from("questions")
       .select(
         "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image, credited_all_at, multiple_choice, numerical_answer",
@@ -3050,6 +3050,10 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       feedback: result.feedback,
       leadingQuestion: result.leadingQuestion ?? "",
       markBreakdown: result.markPoints ?? [],
+      // Teacher preview saves nothing, so it cannot rely on a workspace
+      // refetch to release a newly-correct answer. Return the recovered cut
+      // with this result so paper preview can show it immediately.
+      markSchemeImageUrls: await signPaperPages(db, previewMarkSchemePaths),
     };
   });
 

@@ -1033,7 +1033,6 @@ function ContinuousPaper({
                     selectedQuestion.answerCheckMode === "final-number";
                   const answeredWithFastField = fastMark && Boolean(draft.trim());
                   if (answeredWithFastField && result.verdict === "correct") {
-                  if (fastMark && result.verdict === "correct") {
                     clearers.current[selectedQuestion.id]?.();
                     setDrafts((current) => ({ ...current, [selectedQuestion.id]: "" }));
                   }

@@ -49,19 +49,18 @@ function embeddedParts(questionText: string): string[] {
   return existing.length > 0 ? existing : found;
 }
 
-/** Display labels compactly: 7a, 7a(i), 7a(ii), 7b. */
 /** Match compact labels printed on papers: 1(ai), 1(aii), 1(biii). */
 function displayParts(parts: string[]): string {
   const output: string[] = [];
   for (let index = 0; index < parts.length; index += 1) {
     const part = parts[index]!;
-    if (index === 0 && /^[a-z]$/.test(part) && !new RegExp(`^(?:${ROMAN})$`, "i").test(part)) {
-      output.push(part);
     const next = parts[index + 1];
     if (/^[a-z]$/.test(part) && next && new RegExp(`^(?:${ROMAN})$`, "i").test(next)) {
       output.push(`(${part}${next})`);
       index += 1;
-    } else output.push(`(${part})`);
+    } else {
+      output.push(`(${part})`);
+    }
   }
   return output.join("");
 }
@@ -220,7 +219,6 @@ export function nextLabelAfter(label: string): string {
 /** The label printed on the paper, or null when the wording carries none. */
 export function printedLabel(questionText: string): string | null {
   return authoritativeParse(questionText ?? "")?.label ?? null;
-  return parseOnce(questionText ?? "")?.label ?? null;
 }
 
 /** Part labels printed without their main number: "(b)", "b)", "(ii)". */
@@ -270,12 +268,6 @@ export function resolveQuestionLabels(questionTexts: string[]): string[] {
         printedParts.length > 0 &&
         printedMain !== null &&
         previousParsed !== null &&
-      const bodyAfterPrinted = parseOnce(text)?.rest ?? "";
-      const repeatedPart = leadingPartsOnly(bodyAfterPrinted);
-      const legacyRunningPrefix =
-        printedParts.length > 0 &&
-        previousParsed?.parts.length &&
-        printedMain !== null &&
         previousParsed.main !== null &&
         (legacyMultipartMain !== null ||
           repeatedPart.length > 0 ||

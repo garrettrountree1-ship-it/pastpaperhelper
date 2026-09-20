@@ -2389,8 +2389,6 @@ function StudentReport({
                         Q
                         {resolveQuestionLabels(
                           assignment.questions.map((item) => item.questionText),
-                        )[questionIndex] ??
-                          questionLabel(question.questionText, question.position - 1)}
                         )[questionIndex] ?? questionLabel(question.questionText, question.position - 1)}
                       </span>{" "}
                       <span className="text-muted-foreground">

@@ -7,17 +7,58 @@ import { cleanMathText } from "@/lib/math-text";
  */
 const ROMAN = "i{1,3}|iv|v|vi{1,3}|ix|x";
 const HEAD = new RegExp(`^\\s*\\(?(\\d{1,3})\\)?\\s*[.)]?\\s*`, "i");
-const PAREN_PART = new RegExp(`^\\s*\\(\\s*(${ROMAN}|[a-z])\\s*\\)`, "i");
-const COMPACT_PART = new RegExp(
-  `^\\s*([a-z])(?:\\s*\\(?(${ROMAN})\\)?)?(?=\\s|[.):-]|$)`,
-  "i",
-);
+const PAREN_PART = new RegExp(`^\\s*\\(\\s*(${ROMAN}|[a-z](?:[.]?(?:${ROMAN}))?)\\s*\\)`, "i");
+const COMPACT_PART = new RegExp(`^\\s*([a-z])(?:\\s*\\(?(${ROMAN})\\)?)?(?=\\s|[.):-]|$)`);
 
 type Parsed = { label: string; rest: string };
 
 /** Papers (and re-labelling) sometimes repeat a part: "13(g) (g) State ..." -> one (g). */
 function dropRepeats(parts: string[]): string[] {
-  return parts.filter((part, index) => index === 0 || part !== parts[index - 1]);
+  const adjacent = parts.filter((part, index) => index === 0 || part !== parts[index - 1]);
+  if (adjacent.length % 2 === 0) {
+    const middle = adjacent.length / 2;
+    if (adjacent.slice(0, middle).join(".") === adjacent.slice(middle).join(".")) {
+      return adjacent.slice(0, middle);
+    }
+  }
+  return adjacent;
+}
+
+/** Split compact printed parts such as "aii" into letter "a" + roman "ii". */
+function tokenParts(token: string): string[] {
+  const value = token.toLowerCase().replace(/[.]/g, "");
+  if (new RegExp(`^(?:${ROMAN})$`, "i").test(value)) return [value];
+  const compact = new RegExp(`^([a-z])(${ROMAN})$`, "i").exec(value);
+  return compact?.[1] && compact[2] ? [compact[1], compact[2]] : [value];
+}
+
+/**
+ * Older extractions sometimes stored a running position before the real
+ * sub-part, for example `6 (b.ii) ...` or `5 ...\n(a.ii) ...`. Recover that
+ * printed part so an entire assignment can still display as 5(a)(ii),
+ * 5(b)(i), 5(b)(ii), then 6.
+ */
+function embeddedParts(questionText: string): string[] {
+  const parsed = parseOnce(questionText ?? "");
+  if (!parsed) return [];
+  const existing = parseLabelString(parsed.label).parts;
+  const body = parsed.rest;
+  const match = /(?:^|\n)\s*\(\s*([a-z][.]?(?:[ivx]+)?)\s*\)(?=\s|[.):-]|$)/im.exec(body);
+  if (!match?.[1]) return existing;
+  const found = tokenParts(match[1]);
+  return existing.length > 0 ? existing : found;
+}
+
+/** Display labels compactly: 7a, 7a(i), 7a(ii), 7b. */
+function displayParts(parts: string[]): string {
+  const output: string[] = [];
+  for (let index = 0; index < parts.length; index += 1) {
+    const part = parts[index]!;
+    if (index === 0 && /^[a-z]$/.test(part) && !new RegExp(`^(?:${ROMAN})$`, "i").test(part)) {
+      output.push(part);
+    } else output.push(`(${part})`);
+  }
+  return output.join("");
 }
 
 function parseOnce(text: string): Parsed | null {
@@ -29,7 +70,7 @@ function parseOnce(text: string): Parsed | null {
     const part = PAREN_PART.exec(rest);
     if (!part) break;
     const value = part[1];
-    if (value) parts.push(value.toLowerCase());
+    if (value) parts.push(...tokenParts(value));
     rest = rest.slice(part[0].length);
   }
   if (parts.length === 0) {
@@ -42,12 +83,26 @@ function parseOnce(text: string): Parsed | null {
       rest = rest.slice(compact[0].length);
     }
   }
-  const label = `${head[1]}${dropRepeats(parts).map((p) => `(${p})`).join("")}`;
+  const label = `${head[1]}${displayParts(dropRepeats(parts))}`;
   return { label, rest: rest.replace(/^[\s.):-]+/, "") };
 }
 
+/**
+ * Some older imports prefixed every crop with its running database position,
+ * then retained the real printed number from the image (for example
+ * `9 7. The acid-catalysed...`). In that shape the second, punctuated number
+ * is the paper's authoritative label.
+ */
+function authoritativeParse(text: string): Parsed | null {
+  const outer = parseOnce(text);
+  if (!outer) return null;
+  if (!/^\s*\d{1,3}\s*[.)]/.test(outer.rest)) return outer;
+  const inner = parseOnce(outer.rest);
+  return inner ?? outer;
+}
+
 export function questionLabel(questionText: string, fallbackIndex: number): string {
-  const parsed = parseOnce(questionText ?? "");
+  const parsed = authoritativeParse(questionText ?? "");
   return parsed ? parsed.label : String(fallbackIndex + 1);
 }
 
@@ -70,11 +125,10 @@ export function setQuestionMainNumber(questionText: string, next: number): strin
   return `${safe} ${text.trimStart()}`;
 }
 
-
 /** Strips the leading label (even when the paper repeats it) so it isn't shown twice. */
 export function questionBody(questionText: string): string {
   let text = cleanMathText((questionText ?? "").trim());
-  const first = parseOnce(text);
+  const first = authoritativeParse(text);
   if (!first) return text;
   text = first.rest;
   const again = parseOnce(text);
@@ -92,7 +146,7 @@ export function parseLabelString(label: string): { main: number | null; parts: s
   for (;;) {
     const part = PAREN_PART.exec(rest);
     if (part?.[1]) {
-      parts.push(part[1].toLowerCase());
+      parts.push(...tokenParts(part[1]));
       rest = rest.slice(part[0].length);
       continue;
     }
@@ -109,13 +163,13 @@ export function parseLabelString(label: string): { main: number | null; parts: s
 }
 
 export function formatLabel(main: number | null, parts: string[]): string {
-  return `${main ?? ""}${parts.map((p) => `(${p})`).join("")}`;
+  return `${main ?? ""}${displayParts(parts)}`;
 }
 
 /** Replaces the printed label at the start of a question, keeping the wording. */
 export function setQuestionLabel(questionText: string, label: string): string {
   const text = (questionText ?? "").trim();
-  const parsed = parseOnce(text);
+  const parsed = authoritativeParse(text);
   let body = parsed ? parsed.rest : text;
   const clean = (label ?? "").trim();
   if (!clean) return body;
@@ -138,7 +192,7 @@ export function shiftLetter(part: string, delta: number): string {
   return String.fromCharCode(next);
 }
 
-const ROMANS = ["i","ii","iii","iv","v","vi","vii","viii","ix","x","xi","xii"];
+const ROMANS = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii"];
 
 /**
  * Suggests the label for a question inserted right after `label`:
@@ -156,4 +210,102 @@ export function nextLabelAfter(label: string): string {
   if (/^[a-z]$/.test(last)) return formatLabel(main, [...rest, shiftLetter(last, 1)]);
   if (/^\d+$/.test(last)) return formatLabel(main, [...rest, String(Number(last) + 1)]);
   return formatLabel(main, parts);
+}
+
+/** The label printed on the paper, or null when the wording carries none. */
+export function printedLabel(questionText: string): string | null {
+  return authoritativeParse(questionText ?? "")?.label ?? null;
+}
+
+/** Part labels printed without their main number: "(b)", "b)", "(ii)". */
+function leadingPartsOnly(questionText: string): string[] {
+  let rest = (questionText ?? "").trim();
+  const parts: string[] = [];
+  for (;;) {
+    const paren = PAREN_PART.exec(rest);
+    if (paren?.[1]) {
+      parts.push(...tokenParts(paren[1]));
+      rest = rest.slice(paren[0].length);
+      continue;
+    }
+    if (parts.length === 0) {
+      const compact = /^\s*([a-z])\s*\)/i.exec(rest);
+      if (compact?.[1]) {
+        parts.push(compact[1].toLowerCase());
+        rest = rest.slice(compact[0].length);
+        continue;
+      }
+    }
+    break;
+  }
+  return dropRepeats(parts);
+}
+
+/**
+ * Works out the label of every question in a paper, in order. Printed labels
+ * win. A question without one continues the paper's own numbering: a part-only
+ * label such as "(c)" keeps the previous main number, and wording with no label
+ * at all follows on from the question above it (1(b) -> 1(c), 4 -> 5).
+ */
+export function resolveQuestionLabels(questionTexts: string[]): string[] {
+  const labels: string[] = [];
+  let previous: string | null = null;
+  let legacyMultipartMain: number | null = null;
+  questionTexts.forEach((text, index) => {
+    const printed = printedLabel(text);
+    const printedParts = printed ? parseLabelString(printed).parts : [];
+    const recoveredParts = printedParts.length > 0 ? printedParts : embeddedParts(text);
+    if (recoveredParts.length > 0) {
+      const printedMain = printed ? parseLabelString(printed).main : null;
+      const previousParsed = previous ? parseLabelString(previous) : null;
+      const bodyAfterPrinted = authoritativeParse(text)?.rest ?? "";
+      const repeatedPart = leadingPartsOnly(bodyAfterPrinted);
+      const legacyRunningPrefix =
+        printedParts.length > 0 &&
+        printedMain !== null &&
+        previousParsed !== null &&
+        previousParsed.main !== null &&
+        (legacyMultipartMain !== null ||
+          repeatedPart.length > 0 ||
+          printedMain > previousParsed.main + 1);
+      const main = legacyRunningPrefix
+        ? (legacyMultipartMain ?? previousParsed.main)
+        : printedParts.length > 0
+          ? printedMain
+          : previousParsed?.parts.length
+            ? previousParsed.main
+            : (printedMain ?? (previousParsed?.main ?? index) + 1);
+      const label = formatLabel(main, recoveredParts);
+      labels.push(label);
+      previous = label;
+      if (printedParts.length === 0 && recoveredParts.length > 0) legacyMultipartMain = main;
+      return;
+    }
+    if (printed) {
+      const printedMain = parseLabelString(printed).main;
+      const previousParsed = previous ? parseLabelString(previous) : null;
+      const label =
+        legacyMultipartMain !== null
+          ? formatLabel(legacyMultipartMain + 1, [])
+          : previousParsed?.parts.length && previousParsed.main !== null
+            ? formatLabel(previousParsed.main + 1, [])
+            : formatLabel(printedMain, []);
+      labels.push(label);
+      previous = label;
+      legacyMultipartMain = null;
+      return;
+    }
+    const parts = leadingPartsOnly(text);
+    const previousMain = previous ? parseLabelString(previous).main : null;
+    if (parts.length > 0 && previousMain !== null) {
+      const label = formatLabel(previousMain, parts);
+      labels.push(label);
+      previous = label;
+      return;
+    }
+    const label = previous ? nextLabelAfter(previous) : String(index + 1);
+    labels.push(label);
+    previous = label;
+  });
+  return labels;
 }

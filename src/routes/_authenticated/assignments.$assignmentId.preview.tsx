@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { VocabSheet } from "@/components/assignments/VocabSheet";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
-import { PreviewPaperMode } from "@/components/assignments/ContinuousPaperMode";
+import { PreviewPaperMode, ReadOnlyPaperMode } from "@/components/assignments/ContinuousPaperMode";
 import { parseSnipBand } from "@/components/assignments/QuestionSnip";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { Badge } from "@/components/ui/badge";
@@ -113,6 +113,34 @@ function PreviewPage() {
   const [flags, setFlags] = useState(0);
   const [studentId, setStudentId] = useState<string>("class");
   const [viewMode, setViewMode] = useState<"questions" | "paper">("questions");
+  // One test session shares its marks between question view and paper mode, so a
+  // question answered correctly in one view shows its credit in the other too.
+  const [testResults, setTestResults] = useState<
+    Record<
+      string,
+      {
+        verdict: string;
+        awardedMarks: number;
+        feedback: string;
+        answerText: string;
+        attempts: number;
+      }
+    >
+  >({});
+  const recordResult = (
+    questionId: string,
+    result: { verdict: string; awardedMarks: number; feedback?: string; answerText: string },
+  ) =>
+    setTestResults((prev) => ({
+      ...prev,
+      [questionId]: {
+        verdict: result.verdict,
+        awardedMarks: Number(result.awardedMarks ?? 0),
+        feedback: result.feedback ?? "",
+        answerText: result.answerText,
+        attempts: (prev[questionId]?.attempts ?? 0) + 1,
+      },
+    }));
   const viewingStudent = studentId !== "class";
   const preview = useQuery({
     queryKey: ["assignment-preview", assignmentId, studentId],
@@ -299,6 +327,8 @@ function PreviewPage() {
                           markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
                           revealOnFullMarks={Boolean(data.assignment.revealOnFullMarks)}
                           onFlag={() => setFlags((count) => count + 1)}
+                          sharedResult={testResults[question.id] ?? null}
+                          onResult={(result) => recordResult(question.id, result)}
                         />
                       ))}
                     </div>
@@ -316,6 +346,15 @@ function PreviewPage() {
                       settings={settings}
                       revealOnFullMarks={Boolean(data.assignment.revealOnFullMarks)}
                       markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
+                      answers={Object.entries(testResults).map(([questionId, result]) => ({
+                        question_id: questionId,
+                        answer_text: result.answerText,
+                        verdict: result.verdict,
+                        awarded_marks: result.awardedMarks,
+                        feedback: result.feedback,
+                        attempts: result.attempts,
+                      }))}
+                      onResult={(questionId, result) => recordResult(questionId, result)}
                     />
                   </div>
                 ) : null}
@@ -345,6 +384,8 @@ function PreviewQuestion({
   markSchemeRevealed,
   revealOnFullMarks,
   onFlag,
+  sharedResult,
+  onResult,
 }: {
   assignmentId: string;
   question: Question;
@@ -357,8 +398,22 @@ function PreviewQuestion({
   markSchemeRevealed: boolean;
   revealOnFullMarks: boolean;
   onFlag: () => void;
+  /** The mark this question already earned in either view of this test session. */
+  sharedResult: {
+    verdict: string;
+    awardedMarks: number;
+    feedback: string;
+    answerText: string;
+    attempts: number;
+  } | null;
+  onResult: (result: {
+    verdict: string;
+    awardedMarks: number;
+    feedback: string;
+    answerText: string;
+  }) => void;
 }) {
-  const [answer, setAnswer] = useState("");
+  const [answer, setAnswer] = useState(sharedResult?.answerText ?? "");
   const { requiresPhoto, photoOnly } = photoAvailability(
     question.question_text,
     question.photoMode ?? "auto",
@@ -368,7 +423,6 @@ function PreviewQuestion({
   const [photos, setPhotos] = useState<string[]>([]);
   const [reply, setReply] = useState("");
   const [thread, setThread] = useState<Array<{ role: "tutor" | "student"; content: string }>>([]);
-  const [attempts, setAttempts] = useState(0);
 
   const check = useMutation({
     mutationFn: async () => {
@@ -389,13 +443,20 @@ function PreviewQuestion({
       if (/AI-generated or copied|locked/i.test(error.message)) onFlag();
     },
     onSuccess: (result) => {
-      setAttempts((count) => count + 1);
+      onResult({
+        verdict: result.verdict,
+        awardedMarks: Number(result.awardedMarks ?? 0),
+        feedback: result.feedback ?? "",
+        answerText: answer,
+      });
       const opener = result.leadingQuestion;
       setThread(opener ? [{ role: "tutor", content: opener }] : []);
     },
   });
 
-  const result = check.data;
+  const attempts = sharedResult?.attempts ?? 0;
+  // The mark is shared with paper mode, so whichever view answered it shows credit.
+  const result = check.data ?? sharedResult ?? null;
   // Full marks on this question releases this question's answer when the teacher
   // turned that on, exactly as a student would see it.
   const earnedFullMarks = question.marks > 0 && Number(result?.awardedMarks ?? 0) >= question.marks;

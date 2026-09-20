@@ -29,6 +29,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
+import { questionLabels } from "@/lib/question-label";
 import type { PhotoMode } from "@/lib/photo-mode";
 import { photoAvailability } from "@/lib/photo-mode";
 import {
@@ -133,6 +134,9 @@ function PreviewPage() {
     blockCapture: true,
   });
   const totalMarks = data?.questions.reduce((sum, q) => sum + q.marks, 0) ?? 0;
+  const printedLabels = data
+    ? questionLabels(data.questions.map((question) => question.question_text))
+    : [];
 
   return (
     <div className="min-h-screen">
@@ -284,6 +288,11 @@ function PreviewPage() {
                           key={question.id}
                           assignmentId={assignmentId}
                           question={question}
+                          displayLabel={
+                            printedLabels[
+                              data.questions.findIndex((item) => item.id === question.id)
+                            ]
+                          }
                           flags={flags}
                           keywordTranslation={Boolean(data.tutorSettings?.keywordTranslation)}
                           protectQuestions={Boolean(data.tutorSettings?.protectQuestions)}
@@ -345,6 +354,7 @@ function PreviewQuestion({
   markSchemeRevealed,
   revealOnFullMarks,
   onFlag,
+  displayLabel,
 }: {
   assignmentId: string;
   question: Question;
@@ -357,6 +367,7 @@ function PreviewQuestion({
   markSchemeRevealed: boolean;
   revealOnFullMarks: boolean;
   onFlag: () => void;
+  displayLabel?: string;
 }) {
   const [answer, setAnswer] = useState("");
   const { requiresPhoto, photoOnly } = photoAvailability(
@@ -449,6 +460,7 @@ function PreviewQuestion({
   return (
     <QuestionExperience
       question={question}
+      displayLabel={displayLabel}
       index={question.position}
       snipUrls={(question.imageUrls ?? []).filter((url) => parseSnipBand(url))}
       draft={answer}

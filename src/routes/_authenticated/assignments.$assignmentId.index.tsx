@@ -7,7 +7,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { questionLabel } from "@/lib/question-label";
+import { questionLabel, questionLabels } from "@/lib/question-label";
 import type { PhotoMode } from "@/lib/photo-mode";
 import { photoAvailability } from "@/lib/photo-mode";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
@@ -108,6 +108,9 @@ function AssignmentPage() {
   const answered = data
     ? data.questions.filter((q) => data.answers.some((a) => a.question_id === q.id)).length
     : 0;
+  const printedLabels = data
+    ? questionLabels(data.questions.map((question) => question.question_text))
+    : [];
 
   return (
     <div className="min-h-screen">
@@ -258,6 +261,7 @@ function AssignmentPage() {
                       assignmentTitle={data.assignment.title}
                       index={index}
                       question={question}
+                      displayLabel={printedLabels[index]}
                       locked={Boolean(data.submission.locked_at) || data.assignment.pastDue}
                       answer={data.answers.find((a) => a.question_id === question.id) ?? null}
                       referenceImageUrls={referenceImagesFor(data.questions, data.answers, index)}

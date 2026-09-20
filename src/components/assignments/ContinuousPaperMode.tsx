@@ -34,7 +34,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { gradeAnswer, previewGradeAnswer } from "@/lib/app.functions";
 import { questionPagesOnly } from "@/lib/answer-key";
 import { NO_PASTE_MESSAGE } from "@/lib/integrity";
-import { questionLabel } from "@/lib/question-label";
+import { questionLabel, questionLabels } from "@/lib/question-label";
 
 type Point = { x: number; y: number };
 type Stroke = { color: string; width: number; points: Point[]; erase?: boolean };
@@ -574,6 +574,7 @@ function ContinuousPaper({
   const selectedAnswer = selectedQuestion
     ? answers.find((answer) => answer.question_id === selectedQuestion.id)
     : undefined;
+  const printedLabels = questionLabels(questions.map((question) => question.question_text));
 
   const questionRefs = useRef<Record<string, HTMLElement | null>>({});
   return (
@@ -674,7 +675,16 @@ function ContinuousPaper({
             );
             const answerHeight = multipleChoice || savedPaperUrls.length > 0 ? 0 : 220;
 
-            const label = questionLabel(question.question_text, index);
+            const label = printedLabels[index] ?? questionLabel(question.question_text, index);
+            const resultMarkSchemeUrls = result?.markSchemeImageUrls?.length
+              ? result.markSchemeImageUrls
+              : (question.answerImageUrls ?? []);
+            const showMarkScheme =
+              resultMarkSchemeUrls.length > 0 &&
+              (markSchemeRevealed ||
+                (revealOnFullMarks &&
+                  (result?.verdict === "correct" ||
+                    Number(result?.awardedMarks ?? 0) >= Number(question.marks))));
             return (
               <section
                 key={question.id}
@@ -728,6 +738,11 @@ function ContinuousPaper({
                     textBoxAdders.current[question.id] = add;
                   }}
                 />
+                {showMarkScheme ? (
+                  <div className="border-t bg-white p-5">
+                    <PaperMarkScheme urls={resultMarkSchemeUrls} />
+                  </div>
+                ) : null}
               </section>
             );
           })}
@@ -742,7 +757,7 @@ function ContinuousPaper({
         <div className="grid grid-cols-4 gap-1 lg:grid-cols-3">
           {questions.map((question, index) => {
             const result = results[question.id];
-            const label = questionLabel(question.question_text, index);
+            const label = printedLabels[index] ?? questionLabel(question.question_text, index);
             return (
               <Button
                 key={question.id}
@@ -772,8 +787,12 @@ function ContinuousPaper({
           <div className="mt-4 space-y-3 border-t pt-4">
             <p className="font-medium">
               Paper Q
-              {questionLabel(selectedQuestion.question_text, questions.indexOf(selectedQuestion))} ·{" "}
-              {selectedQuestion.marks} marks
+              {printedLabels[questions.indexOf(selectedQuestion)] ??
+                questionLabel(
+                  selectedQuestion.question_text,
+                  questions.indexOf(selectedQuestion),
+                )}{" "}
+              · {selectedQuestion.marks} marks
             </p>
             {selectedQuestion.multipleChoice ||
             selectedQuestion.answerCheckMode === "final-number" ? (
@@ -843,20 +862,6 @@ function ContinuousPaper({
                   </div>
                 ) : null}
               </div>
-            ) : null}
-            {(markSchemeRevealed ||
-              (revealOnFullMarks &&
-                (selectedResult?.verdict === "correct" ||
-                  Number(selectedResult?.awardedMarks ?? 0) >= Number(selectedQuestion.marks)))) &&
-            (selectedResult?.markSchemeImageUrls?.length ||
-              selectedQuestion.answerImageUrls?.length) ? (
-              <PaperMarkScheme
-                urls={
-                  selectedResult?.markSchemeImageUrls?.length
-                    ? selectedResult.markSchemeImageUrls
-                    : selectedQuestion.answerImageUrls!
-                }
-              />
             ) : null}
             <Button
               className="w-full"

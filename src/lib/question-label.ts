@@ -70,6 +70,34 @@ export function questionLabel(questionText: string, fallbackIndex: number): stri
   return parsed ? parsed.label : String(fallbackIndex + 1);
 }
 
+/**
+ * Resolve a whole paper in reading order. OCR often writes the main number only
+ * on the first cut, followed by standalone `(a)`, `(ai)`, `(aii)` cuts. Carry
+ * that printed number forward instead of turning those parts into 2, 3, 4… .
+ */
+export function questionLabels(questionTexts: string[]): string[] {
+  let currentMain: number | null = null;
+  return questionTexts.map((text, index) => {
+    const explicit = parseOnce(text ?? "");
+    if (explicit) {
+      const parsed = parseLabelString(explicit.label);
+      currentMain = parsed.main;
+      return explicit.label;
+    }
+    const standalone =
+      /^\s*(?:\(\s*([a-z](?:i{1,3}|iv|v|vi{1,3}|ix|x)?)\s*\)|([a-z](?:i{1,3}|iv|v|vi{1,3}|ix|x)?)(?=\s+[A-Z]|\s*[.):-]))/.exec(
+        text ?? "",
+      );
+    const standalonePart = standalone?.[1] ?? standalone?.[2];
+    if (currentMain !== null && standalonePart) {
+      return `${currentMain}${displayParts(tokenParts(standalonePart))}`;
+    }
+    const fallback = index + 1;
+    currentMain = fallback;
+    return String(fallback);
+  });
+}
+
 /** The printed main question number (the "1" in 1(b)(ii)), or null when absent. */
 export function questionMainNumber(questionText: string): number | null {
   const head = HEAD.exec(questionText ?? "");

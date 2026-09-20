@@ -92,7 +92,7 @@ function parseOnce(text: string): Parsed | null {
       rest = rest.slice(compact[0].length);
     }
   }
-  const label = `${head[1]}${displayParts(dropRepeats(parts))}`;
+  const label = `${head[1]}${compactDisplayParts(dropRepeats(parts))}`;
   return { label, rest: rest.replace(/^[\s.):-]+/, "") };
 }
 
@@ -274,7 +274,6 @@ export function resolveQuestionLabels(questionTexts: string[]): string[] {
         printedMain !== null &&
         previousParsed !== null &&
         previousParsed.main !== null &&
-        previousParsed.parts.length > 0 &&
         (legacyMultipartMain !== null ||
           repeatedPart.length > 0 ||
           printedMain > previousParsed.main + 1);
@@ -285,7 +284,9 @@ export function resolveQuestionLabels(questionTexts: string[]): string[] {
           : previousParsed?.parts.length
             ? previousParsed.main
             : (printedMain ?? (previousParsed?.main ?? index) + 1);
-      const label = formatLabel(main, recoveredParts);
+      const label = legacyRunningPrefix
+        ? `${main ?? ""}${compactDisplayParts(recoveredParts)}`
+        : formatLabel(main, recoveredParts);
       labels.push(label);
       previous = label;
       if (printedParts.length === 0 && recoveredParts.length > 0) legacyMultipartMain = main;

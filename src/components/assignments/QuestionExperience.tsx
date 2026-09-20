@@ -5,6 +5,8 @@ import {
   CheckCircle2,
   ChevronDown,
   CircleDashed,
+  Eye,
+  EyeOff,
   Sparkles,
   X,
   XCircle,
@@ -75,7 +77,7 @@ type Result = {
 };
 
 function StudyMarkScheme({ urls, action }: { urls: string[]; action: ReactNode }) {
-  const [revealed, setRevealed] = useState(100);
+  const [revealed, setRevealed] = useState(0);
   const frame = useRef<HTMLDivElement | null>(null);
   const setFromPointer = (clientY: number) => {
     const rect = frame.current?.getBoundingClientRect();
@@ -86,8 +88,30 @@ function StudyMarkScheme({ urls, action }: { urls: string[]; action: ReactNode }
     <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium">Mark scheme</p>
-        <p className="text-xs text-muted-foreground">Drag the cover or use ↑ ↓ to self-quiz</p>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 gap-1 px-2 text-[11px]"
+            onClick={() => setRevealed(0)}
+          >
+            <EyeOff className="size-3.5" /> Cover
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 gap-1 px-2 text-[11px]"
+            onClick={() => setRevealed(100)}
+          >
+            <Eye className="size-3.5" /> Uncover
+          </Button>
+        </div>
       </div>
+      <p className="mt-1 text-right text-xs text-muted-foreground">
+        Drag the cover or use ↑ ↓ to self-quiz
+      </p>
       <div ref={frame} className="relative mt-2 overflow-hidden rounded-lg">
         <QuestionSnipStack
           urls={urls}
@@ -456,25 +480,6 @@ export function QuestionExperience({
               </span>
             </summary>
             <div className="border-t border-border px-4 pb-4">
-              {/* Mark-scheme and paper-mode images intentionally render above this
-              answer panel. Keeping them out of here prevents duplicate blocks. */}
-              {markSchemeImageUrls.length > 0 ? (
-                <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
-                  <p className="text-sm font-medium">Mark scheme</p>
-                  {/* Answers are only ever shown as the picture cut from the printed
-              mark scheme — never as retyped text. */}
-                  <QuestionSnipStack
-                    urls={markSchemeImageUrls}
-                    answers
-                    alt="Official answer as printed in the mark scheme"
-                    className="mt-2"
-                  />
-                  {answerAction ? (
-                    <div className="mt-3 flex flex-wrap gap-2">{answerAction}</div>
-                  ) : null}
-                </div>
-              ) : null}
-
               {paperModeUrls.length > 0 ? (
                 <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
                   <p className="text-sm font-medium">Paper mode answer</p>

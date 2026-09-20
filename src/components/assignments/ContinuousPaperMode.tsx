@@ -569,7 +569,7 @@ function PaperAnswerArea({
 }
 
 function PaperMarkScheme({ urls }: { urls: string[] }) {
-  const [revealed, setRevealed] = useState(100);
+  const [revealed, setRevealed] = useState(0);
   const frame = useRef<HTMLDivElement | null>(null);
   const revealAt = (clientY: number) => {
     const rect = frame.current?.getBoundingClientRect();

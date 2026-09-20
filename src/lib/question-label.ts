@@ -49,13 +49,8 @@ function embeddedParts(questionText: string): string[] {
   return existing.length > 0 ? existing : found;
 }
 
-/** Canonical editable labels: 1(a), 1(a)(ii), 1(b). */
-function displayParts(parts: string[]): string {
-  return parts.map((part) => `(${part})`).join("");
-}
-
 /** Match compact labels printed on papers: 1(ai), 1(aii), 1(biii). */
-function compactDisplayParts(parts: string[]): string {
+function displayParts(parts: string[]): string {
   const output: string[] = [];
   for (let index = 0; index < parts.length; index += 1) {
     const part = parts[index]!;
@@ -92,7 +87,7 @@ function parseOnce(text: string): Parsed | null {
       rest = rest.slice(compact[0].length);
     }
   }
-  const label = `${head[1]}${compactDisplayParts(dropRepeats(parts))}`;
+  const label = `${head[1]}${displayParts(dropRepeats(parts))}`;
   return { label, rest: rest.replace(/^[\s.):-]+/, "") };
 }
 
@@ -284,9 +279,7 @@ export function resolveQuestionLabels(questionTexts: string[]): string[] {
           : previousParsed?.parts.length
             ? previousParsed.main
             : (printedMain ?? (previousParsed?.main ?? index) + 1);
-      const label = legacyRunningPrefix
-        ? `${main ?? ""}${compactDisplayParts(recoveredParts)}`
-        : formatLabel(main, recoveredParts);
+      const label = formatLabel(main, recoveredParts);
       labels.push(label);
       previous = label;
       if (printedParts.length === 0 && recoveredParts.length > 0) legacyMultipartMain = main;

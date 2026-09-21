@@ -46,6 +46,7 @@ export const Route = createFileRoute("/mirror")({
 
 function PublicMirrorPage() {
   const join = useServerFn(joinPublicMirror);
+  const beat = useServerFn(mirrorHeartbeat);
   const [code, setCode] = useState(() =>
     typeof window === "undefined" ? "" : (window.localStorage.getItem("class-mirror-code") ?? ""),
   );

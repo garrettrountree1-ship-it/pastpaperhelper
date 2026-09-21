@@ -64,6 +64,8 @@ function PublicMirrorPage() {
   // Keep the roster-name seat claimed while this tab is open; if the seat is
   // lost (e.g. claimed elsewhere after this tab slept), return to the join form.
   const heartbeat = useServerFn(mirrorHeartbeat);
+  const claimKey = (classCode: string, rosterName: string) =>
+    `class-mirror-claim:${classCode.toUpperCase()}:${rosterName.trim().toLowerCase()}`;
   useEffect(() => {
     if (!joined) return;
     const timer = window.setInterval(() => {
@@ -111,9 +113,6 @@ function PublicMirrorPage() {
       if (channel) void supabase.removeChannel(channel);
     };
   }, [joined]);
-
-  const claimKey = (classCode: string, rosterName: string) =>
-    `class-mirror-claim:${classCode.toUpperCase()}:${rosterName.trim().toLowerCase()}`;
 
   const enter = async () => {
     if (!code.trim() || !name.trim()) return;

@@ -1,9 +1,6 @@
 import { generateText } from "ai";
 import { z } from "zod";
 
-import { gatewayModel, TUTOR_MODEL } from "./ai-gateway.server";
-
-const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 import { gatewayModel, postChatCompletion } from "./ai-gateway.server";
 
 export type MarkPoint = { point: string; marks: number; awarded: boolean };

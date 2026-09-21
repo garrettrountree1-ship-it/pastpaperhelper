@@ -235,7 +235,14 @@ export function AccessControlsDialog({
                       onEditDue={(value) =>
                         setStudentDueEdits((prev) => ({ ...prev, [student.id]: value }))
                       }
-                      onSave={(input) => studentMutation.mutate({ studentId: student.id, ...input })}
+                      onSave={(input) => {
+                        setStudentDueEdits((prev) => {
+                          const next = { ...prev };
+                          delete next[student.id];
+                          return next;
+                        });
+                        studentMutation.mutate({ studentId: student.id, ...input });
+                      }}
                     />
                   ))}
                 </div>

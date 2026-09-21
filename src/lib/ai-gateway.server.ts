@@ -118,7 +118,7 @@ export async function postChatCompletion(
 export function chatRequest() {
   if (usingOwnOpenAi()) {
     return {
-      url: "https://api.openai.com/v1/chat/completions",
+      url: `${openAiBaseUrl()}/chat/completions`,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${ownKey()}`,

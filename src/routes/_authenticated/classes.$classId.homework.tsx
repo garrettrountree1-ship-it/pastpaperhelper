@@ -981,6 +981,12 @@ function AssignmentDialog({
               answer cuts either way, then matches a student&apos;s photograph to the prepared paper
               pages without another AI extraction step. Each question part (1a, 1b(i), 1b(ii)…) is
               kept with its exact mark-scheme block, hidden until it is released.
+              PDF, Word (.docx) or photos. Uploading the blank question paper and mark scheme as
+              separate files is recommended and is required for the new full-page Photo mode to
+              match a student&apos;s photographed page reliably. Existing combined uploads still
+              work in Question and Paper modes. Each question part (1a, 1b(i), 1b(ii)…) is cut out
+              of the page as a picture, with its exact mark-scheme block kept hidden until it is
+              released.
             </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">

@@ -148,19 +148,30 @@ export const releaseFormativeAnswer = createServerFn({ method: "POST" })
     return { answer };
   });
 
+type Db = Awaited<ReturnType<typeof admin>>;
+
 /** The live check for a class (if any), plus the caller's own attempts. */
 export const getActiveFormativeCheck = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ classId: z.string().uuid() }).parse(input))
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
+  .handler(async ({ data, context }) =>
+    getActiveFormativeCore(context.supabase, data.classId, context.userId),
+  );
+
+/**
+ * Shared reader for the live check. Used by signed-in students and by the
+ * name-based class mirror (which passes the roster student's id).
+ */
+export async function getActiveFormativeCore(db: Db, classId: string, userId: string) {
+  {
+    const supabase = db;
     // No end-time filter: the popup stays up until the teacher closes it.
     const { data: check } = await supabase
       .from("formative_checks")
       .select(
         "id, question, question_image, seconds, count_up, created_at, ends_at, teacher_id, expected_answer, released_answer, answer_released_at, parts, max_attempts, target_student_id, target_student_ids",
       )
-      .eq("class_id", data.classId)
+      .eq("class_id", classId)
       .is("closed_at", null)
       .or(
         `and(target_student_id.is.null,target_student_ids.eq.{}),target_student_ids.cs.{${userId}},target_student_id.eq.${userId},teacher_id.eq.${userId}`,
@@ -218,8 +229,16 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
         partVerdicts: ((r.part_verdicts ?? {}) as Record<string, string>),
       })),
     };
-  });
+  }
+}
 
+const answerInputSchema = z.object({
+  checkId: z.string().uuid(),
+  answer: z.string().min(1).max(4000),
+  /** Multi-part questions send one answer per part label. */
+  partAnswers: z.record(z.string(), z.string().max(2000)).optional(),
+  practice: z.boolean().optional(),
+});
 
 /**
  * Student answers a class question; AI marks it and returns encouraging
@@ -228,19 +247,23 @@ export const getActiveFormativeCheck = createServerFn({ method: "POST" })
  */
 export const answerFormativeCheck = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
-    z
-      .object({
-        checkId: z.string().uuid(),
-        answer: z.string().min(1).max(4000),
-        /** Multi-part questions send one answer per part label. */
-        partAnswers: z.record(z.string(), z.string().max(2000)).optional(),
-        practice: z.boolean().optional(),
-      })
-      .parse(input),
-  )
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
+  .inputValidator((input: unknown) => answerInputSchema.parse(input))
+  .handler(async ({ data, context }) =>
+    answerFormativeCore(context.supabase, context.userId, data),
+  );
+
+/**
+ * Shared marking/recording path for a formative answer. The class mirror calls
+ * this with the service client and the roster student's id, so mirror answers
+ * are saved under that student without any sign-in.
+ */
+export async function answerFormativeCore(
+  db: Db,
+  userId: string,
+  data: z.infer<typeof answerInputSchema>,
+) {
+  {
+    const supabase = db;
     const { data: check } = await supabase
       .from("formative_checks")
       .select(
@@ -385,7 +408,8 @@ export const answerFormativeCheck = createServerFn({ method: "POST" })
     }
 
     return { ...marked, attempt, partVerdicts, awardedPoints };
-  });
+  }
+}
 
 /**
  * Formative leaderboard scoring: a solid base for getting it right, a speed

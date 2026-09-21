@@ -2,7 +2,7 @@ import { unzipSync } from "fflate";
 import { cleanMathText } from "@/lib/math-text";
 import { extractChoiceAnswer, looksNumericalQuestion } from "@/lib/deterministic-marking";
 
-import { TUTOR_MODEL } from "./ai-gateway.server";
+import { aiApiKey, postChatCompletion } from "./ai-gateway.server";
 
 export type QuestionCrop = {
   /** Which upload the page belongs to: the paper, or the mark scheme/answer file. */
@@ -59,7 +59,6 @@ type InventoryItem = {
   kind?: string;
 };
 
-const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const BATCH_SIZE = 6;
 const MAX_ITEMS = 300;
 
@@ -173,8 +172,7 @@ const CROSSCHECK_SYSTEM = [
 ].join(" ");
 
 export async function extractQuestionsFromPapers(input: ExtractInput): Promise<ExtractionResult> {
-  const key = process.env["LOVABLE_API_KEY"];
-  if (!key) throw new Error("AI is not configured yet. Missing LOVABLE_API_KEY.");
+  const key = aiApiKey();
 
   const documents = buildDocumentContent(input);
   const header = [
@@ -268,8 +266,8 @@ export async function locateAnswerCrop(input: {
   markScheme: string;
   pages: UploadedFile[];
 }): Promise<QuestionCrop[] | null> {
-  const key = process.env["LOVABLE_API_KEY"];
-  if (!key || input.pages.length === 0) return null;
+  if (input.pages.length === 0) return null;
+  const key = aiApiKey();
   const documents: Array<Record<string, unknown>> = [];
   input.pages.forEach((file, index) => {
     documents.push({ type: "text", text: `--- ANSWER PAGE ${index + 1} ---` });
@@ -694,26 +692,20 @@ function extractDocxText(base64: string): string {
 }
 
 async function callGateway(
-  key: string,
+  _key: string,
   system: string,
   content: Array<Record<string, unknown>>,
 ): Promise<string> {
-  const response = await fetch(GATEWAY, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
-    body: JSON.stringify({
-      model: TUTOR_MODEL,
-      max_tokens: 16000,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content },
-      ],
-      response_format: { type: "json_object" },
-    }),
+  const { response, detail } = await postChatCompletion({
+    max_tokens: 16000,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content },
+    ],
+    response_format: { type: "json_object" },
   });
 
   if (!response.ok) {
-    const detail = await response.text();
     throw new Error(
       `The AI could not read those files (${response.status}). ${detail.slice(0, 300)}`,
     );

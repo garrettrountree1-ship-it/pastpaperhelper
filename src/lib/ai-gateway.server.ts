@@ -208,11 +208,25 @@ export function createLovableAiGatewayProvider(apiKey: string) {
  */
 function openAiFetchWithGatewayFallback(): typeof fetch {
   return async (input, init) => {
-    const response = await fetch(input as RequestInfo, init);
-    if (response.ok || response.status !== 403 || !fallbackAllowed()) return response;
+    let response = await fetch(input as RequestInfo, init);
+    if (response.ok || response.status !== 403) return response;
 
-    const detail = await response.clone().text();
+    let detail = await response.clone().text();
     if (!isRegionBlocked(response.status, detail)) return response;
+
+    // Try any additional relays the owner configured.
+    const requestedUrl = new URL(input instanceof Request ? input.url : String(input));
+    for (const base of extraOpenAiBaseUrls()) {
+      const next = new URL(base);
+      const target = `${next.origin}${next.pathname.replace(/\/+$/, "")}${requestedUrl.pathname.replace(/^\/v1/, "")}${requestedUrl.search}`;
+      response = await fetch(target, init);
+      if (response.ok) return response;
+      detail = await response.clone().text();
+      if (!isRegionBlocked(response.status, detail)) return response;
+    }
+    if (!fallbackAllowed()) return response;
+
+
 
     console.warn("OpenAI blocked this region; retrying through the Lovable AI Gateway");
     let body = init?.body;

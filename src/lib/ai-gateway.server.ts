@@ -39,6 +39,61 @@ export function aiApiKey() {
   return key;
 }
 
+/**
+ * OpenAI refuses requests coming from some countries/regions with a 403
+ * ("unsupported_country_region_territory"). The server handling a request runs
+ * close to the user, so a student in a blocked region would otherwise never be
+ * able to get marked. In that case we transparently retry the same request
+ * through the Lovable AI Gateway so the lesson keeps working.
+ */
+function isRegionBlocked(status: number, detail: string) {
+  return (
+    status === 403 &&
+    /unsupported_country_region_territory|country, region, or territory/i.test(detail)
+  );
+}
+
+function lovableChatRequest() {
+  return {
+    url: "https://ai.gateway.lovable.dev/v1/chat/completions",
+    headers: {
+      "Content-Type": "application/json",
+      "Lovable-API-Key": lovableKey(),
+    } as Record<string, string>,
+    model: LOVABLE_MODEL,
+  };
+}
+
+/**
+ * POST a chat-completions body (without `model`) to the configured provider,
+ * falling back to the Lovable gateway when OpenAI blocks the server's region.
+ */
+export async function postChatCompletion(
+  body: Record<string, unknown>,
+): Promise<{ response: Response; detail: string }> {
+  const primary = chatRequest();
+  let response = await fetch(primary.url, {
+    method: "POST",
+    headers: primary.headers,
+    body: JSON.stringify({ ...body, model: primary.model }),
+  });
+  if (response.ok) return { response, detail: "" };
+
+  let detail = await response.text();
+  if (usingOwnOpenAi() && lovableKey() && isRegionBlocked(response.status, detail)) {
+    console.warn("OpenAI blocked this region; retrying through the Lovable AI Gateway");
+    const fallback = lovableChatRequest();
+    response = await fetch(fallback.url, {
+      method: "POST",
+      headers: fallback.headers,
+      body: JSON.stringify({ ...body, model: fallback.model }),
+    });
+    if (response.ok) return { response, detail: "" };
+    detail = await response.text();
+  }
+  return { response, detail };
+}
+
 /** Endpoint + headers + model for a raw chat-completions request. */
 export function chatRequest() {
   if (usingOwnOpenAi()) {

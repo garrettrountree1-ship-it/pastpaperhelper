@@ -1,7 +1,7 @@
 import { generateText } from "ai";
 import { z } from "zod";
 
-import { chatRequest, gatewayModel } from "./ai-gateway.server";
+import { gatewayModel, postChatCompletion } from "./ai-gateway.server";
 
 export type MarkPoint = { point: string; marks: number; awarded: boolean };
 
@@ -147,31 +147,24 @@ async function requestMarkingJson({
   schemeImages: string[];
   answerImages: string[];
 }): Promise<string> {
-  const request = chatRequest();
   const image = (url: string) => ({ type: "image_url", image_url: { url } });
-  const response = await fetch(request.url, {
-    method: "POST",
-    headers: request.headers,
-    body: JSON.stringify({
-      model: request.model,
-      max_tokens: 1600,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: system },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            ...questionImages.map(image),
-            ...schemeImages.map(image),
-            ...answerImages.map(image),
-          ],
-        },
-      ],
-    }),
+  const { response, detail } = await postChatCompletion({
+    max_tokens: 1600,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: system },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          ...questionImages.map(image),
+          ...schemeImages.map(image),
+          ...answerImages.map(image),
+        ],
+      },
+    ],
   });
   if (!response.ok) {
-    const detail = await response.text();
     throw new Error(`gateway ${response.status}: ${detail.slice(0, 240)}`);
   }
   const payload = (await response.json()) as {

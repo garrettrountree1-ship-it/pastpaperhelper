@@ -39,6 +39,61 @@ export function aiApiKey() {
   return key;
 }
 
+/**
+ * OpenAI refuses requests coming from some countries/regions with a 403
+ * ("unsupported_country_region_territory"). The server handling a request runs
+ * close to the user, so a student in a blocked region would otherwise never be
+ * able to get marked. In that case we transparently retry the same request
+ * through the Lovable AI Gateway so the lesson keeps working.
+ */
+function isRegionBlocked(status: number, detail: string) {
+  return (
+    status === 403 &&
+    /unsupported_country_region_territory|country, region, or territory/i.test(detail)
+  );
+}
+
+function lovableChatRequest() {
+  return {
+    url: "https://ai.gateway.lovable.dev/v1/chat/completions",
+    headers: {
+      "Content-Type": "application/json",
+      "Lovable-API-Key": lovableKey(),
+    } as Record<string, string>,
+    model: LOVABLE_MODEL,
+  };
+}
+
+/**
+ * POST a chat-completions body (without `model`) to the configured provider,
+ * falling back to the Lovable gateway when OpenAI blocks the server's region.
+ */
+export async function postChatCompletion(
+  body: Record<string, unknown>,
+): Promise<{ response: Response; detail: string }> {
+  const primary = chatRequest();
+  let response = await fetch(primary.url, {
+    method: "POST",
+    headers: primary.headers,
+    body: JSON.stringify({ ...body, model: primary.model }),
+  });
+  if (response.ok) return { response, detail: "" };
+
+  let detail = await response.text();
+  if (usingOwnOpenAi() && lovableKey() && isRegionBlocked(response.status, detail)) {
+    console.warn("OpenAI blocked this region; retrying through the Lovable AI Gateway");
+    const fallback = lovableChatRequest();
+    response = await fetch(fallback.url, {
+      method: "POST",
+      headers: fallback.headers,
+      body: JSON.stringify({ ...body, model: fallback.model }),
+    });
+    if (response.ok) return { response, detail: "" };
+    detail = await response.text();
+  }
+  return { response, detail };
+}
+
 /** Endpoint + headers + model for a raw chat-completions request. */
 export function chatRequest() {
   if (usingOwnOpenAi()) {
@@ -88,10 +143,48 @@ export function createLovableAiGatewayProvider(apiKey: string) {
   });
 }
 
+/**
+ * `fetch` for the OpenAI provider that transparently re-sends a request through
+ * the Lovable AI Gateway when OpenAI refuses the server's region (403).
+ */
+function openAiFetchWithGatewayFallback(): typeof fetch {
+  return async (input, init) => {
+    const response = await fetch(input as RequestInfo, init);
+    if (response.ok || response.status !== 403 || !lovableKey()) return response;
+
+    const detail = await response.clone().text();
+    if (!isRegionBlocked(response.status, detail)) return response;
+
+    console.warn("OpenAI blocked this region; retrying through the Lovable AI Gateway");
+    let body = init?.body;
+    if (typeof body === "string") {
+      try {
+        const parsed = JSON.parse(body) as Record<string, unknown>;
+        parsed["model"] = LOVABLE_MODEL;
+        body = JSON.stringify(parsed);
+      } catch {
+        /* keep the original body */
+      }
+    }
+    const headers = new Headers(init?.headers);
+    headers.delete("authorization");
+    headers.set("Lovable-API-Key", lovableKey());
+    const requested = new URL(input instanceof Request ? input.url : String(input));
+    const path = requested.pathname.replace(/^\/v1/, "");
+    return fetch(`https://ai.gateway.lovable.dev/v1${path}`, {
+      ...init,
+      headers,
+      body: body ?? null,
+    });
+  };
+}
+
 /** The AI SDK model every text/vision feature uses. */
 export function gatewayModel() {
   if (usingOwnOpenAi()) {
-    return createOpenAI({ apiKey: ownKey() })(OPENAI_MODEL);
+    return createOpenAI({ apiKey: ownKey(), fetch: openAiFetchWithGatewayFallback() })(
+      OPENAI_MODEL,
+    );
   }
   return createLovableAiGatewayProvider(aiApiKey())(LOVABLE_MODEL);
 }

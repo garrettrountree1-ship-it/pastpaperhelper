@@ -20,6 +20,7 @@ type JoinedMirror = {
   code: string;
   studentName: string;
   alias: string | null;
+  claimToken: string;
   presenterIds: string[];
 };
 

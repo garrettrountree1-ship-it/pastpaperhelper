@@ -570,24 +570,32 @@ export function FormativeCheckPanel({
   classId,
   asStudent = false,
   showPopup = true,
+  mirrorToken,
 }: {
   classId: string;
   /** Demo accounts viewing the class as a student answer like a student. */
   asStudent?: boolean;
   /** The popup only appears inside the open lesson notes workspace. */
   showPopup?: boolean;
+  /** Name-based class mirror seat: answers are saved under the roster name. */
+  mirrorToken?: string;
 }) {
   const queryClient = useQueryClient();
   const fetchActive = useServerFn(getActiveFormativeCheck);
+  const fetchMirrorActive = useServerFn(mirrorGetActiveCheck);
   const fetchResults = useServerFn(listFormativeResults);
   const submit = useServerFn(answerFormativeCheck);
+  const submitMirror = useServerFn(mirrorAnswerCheck);
   const close = useServerFn(closeFormativeCheck);
   const addTime = useServerFn(extendFormativeCheck);
   const release = useServerFn(releaseFormativeAnswer);
 
   const active = useQuery({
-    queryKey: ["formative-active", classId],
-    queryFn: () => fetchActive({ data: { classId } }),
+    queryKey: ["formative-active", classId, mirrorToken ?? "account"],
+    queryFn: () =>
+      mirrorToken
+        ? fetchMirrorActive({ data: { claimToken: mirrorToken } })
+        : fetchActive({ data: { classId } }),
     refetchInterval: 5000,
   });
   const raw = active.data ?? null;

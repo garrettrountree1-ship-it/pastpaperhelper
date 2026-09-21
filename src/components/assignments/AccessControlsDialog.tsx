@@ -39,6 +39,9 @@ export function AccessControlsDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [classDue, setClassDue] = useState<string | null>(null);
+  /** Student due-date edits waiting for the bottom Save button (local input strings). */
+  const [studentDueEdits, setStudentDueEdits] = useState<Record<string, string>>({});
+  const [savingAll, setSavingAll] = useState(false);
   const queryClient = useQueryClient();
   const load = useServerFn(getAssignmentAccessControls);
   const saveClass = useServerFn(setAssignmentAccess);
@@ -86,13 +89,43 @@ export function AccessControlsDialog({
 
   const data = controls.data;
   const classDueValue = classDue ?? toLocalInput(data?.dueAt ?? null);
+  const hasUnsavedChanges = classDue !== null || Object.keys(studentDueEdits).length > 0;
+
+  /** Bottom Save: persists the class due date and every edited student at once. */
+  async function saveAll() {
+    if (!data) return;
+    setSavingAll(true);
+    try {
+      const jobs: Array<Promise<unknown>> = [];
+      if (classDue !== null) {
+        jobs.push(saveClass({ data: { assignmentId, dueAt: fromLocalInput(classDueValue) } }));
+      }
+      for (const [studentId, value] of Object.entries(studentDueEdits)) {
+        jobs.push(
+          saveStudent({ data: { assignmentId, studentId, dueAt: fromLocalInput(value) } }),
+        );
+      }
+      await Promise.all(jobs);
+      toast.success("Due dates saved");
+      setClassDue(null);
+      setStudentDueEdits({});
+      refresh();
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setSavingAll(false);
+    }
+  }
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) setClassDue(null);
+        if (!next) {
+          setClassDue(null);
+          setStudentDueEdits({});
+        }
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>

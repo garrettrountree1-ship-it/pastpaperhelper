@@ -103,6 +103,18 @@ function PublicMirrorPage() {
     setJoining(true);
     try {
       let { data } = await supabase.auth.getSession();
+      const typed = name.trim().toLowerCase();
+      if (data.session && !data.session.user.is_anonymous) {
+        const signedInName = String(data.session.user.user_metadata?.["full_name"] ?? "")
+          .trim()
+          .toLowerCase();
+        // This viewer page is name-based, so a leftover account session in this
+        // browser must not block a student joining under their roster name.
+        if (signedInName !== typed) {
+          await supabase.auth.signOut();
+          data = { session: null };
+        }
+      }
       if (!data.session) {
         const anonymous = await supabase.auth.signInAnonymously({
           options: { data: { full_name: name.trim() } },
@@ -200,13 +212,10 @@ function PublicMirrorPage() {
               {joined.alias ? <AliasAvatar alias={joined.alias} size={34} /> : null}
               <p className="font-medium">{joined.studentName}</p>
             </div>
-            <p className="mt-2 text-muted-foreground">
-              Your formative answers are recorded under this roster identity. This page will start
-              following the teacher when they click <strong>Mirror to students</strong>.
-            </p>
-            <p className="mt-4 text-xs text-muted-foreground">
-              Keeping the mirror teacher-controlled reduces bandwidth. Live mirroring itself uses no
-              AI tokens; AI is used only when a formative answer is marked.
+            <p className="mt-4 font-medium">Waiting for teacher mirror…</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Your answers are saved under this roster name. The lesson appears here as soon as your
+              teacher turns mirroring on.
             </p>
           </div>
         </div>

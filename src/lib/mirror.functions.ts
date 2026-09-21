@@ -44,16 +44,29 @@ export const joinPublicMirror = createServerFn({ method: "POST" })
       .eq("class_id", klass.id);
     const memberIds = (members ?? []).map((row) => row.student_id as string);
     const { data: profiles } = memberIds.length
-      ? await supabaseAdmin.from("profiles").select("id, full_name").in("id", memberIds)
+      ? await supabaseAdmin
+          .from("profiles")
+          .select("id, full_name, created_at")
+          .in("id", memberIds)
+          .order("created_at", { ascending: true })
       : { data: [] };
-    const rosterProfile = (profiles ?? []).find(
-      (profile) => profile.full_name.trim().toLowerCase() === data.name.toLowerCase(),
+    const typedName = data.name.trim().toLowerCase();
+    const matches = (profiles ?? []).filter(
+      (profile) => profile.full_name.trim().toLowerCase() === typedName,
     );
+    // The earliest profile with this name is the enrolled student; later ones are
+    // browser-only mirror viewers previously created for that same roster name.
+    const rosterProfile = matches[0];
     if (!rosterProfile) {
       throw new Error("Enter your name exactly as it appears on your teacher's class roster.");
     }
-    if (!isAnonymous && rosterProfile.id !== guestId) {
-      throw new Error("Use the roster name belonging to your signed-in account.");
+    // One viewer per roster name: a different browser already holding this name
+    // must not be replaced, so their formative answers stay under one identity.
+    const claimedByOther = matches.slice(1).some((profile) => profile.id !== guestId);
+    if (claimedByOther && rosterProfile.id !== guestId) {
+      throw new Error(
+        "Someone has already joined this mirror with that roster name. Ask your teacher for help.",
+      );
     }
 
     if (isAnonymous) {

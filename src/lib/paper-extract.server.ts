@@ -266,8 +266,8 @@ export async function locateAnswerCrop(input: {
   markScheme: string;
   pages: UploadedFile[];
 }): Promise<QuestionCrop[] | null> {
-  const key = process.env["LOVABLE_API_KEY"];
-  if (!key || input.pages.length === 0) return null;
+  if (input.pages.length === 0) return null;
+  const key = aiApiKey();
   const documents: Array<Record<string, unknown>> = [];
   input.pages.forEach((file, index) => {
     documents.push({ type: "text", text: `--- ANSWER PAGE ${index + 1} ---` });
@@ -692,15 +692,16 @@ function extractDocxText(base64: string): string {
 }
 
 async function callGateway(
-  key: string,
+  _key: string,
   system: string,
   content: Array<Record<string, unknown>>,
 ): Promise<string> {
-  const response = await fetch(GATEWAY, {
+  const request = chatRequest();
+  const response = await fetch(request.url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
+    headers: request.headers,
     body: JSON.stringify({
-      model: TUTOR_MODEL,
+      model: request.model,
       max_tokens: 16000,
       messages: [
         { role: "system", content: system },

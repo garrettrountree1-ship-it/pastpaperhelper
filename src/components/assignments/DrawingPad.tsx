@@ -440,7 +440,12 @@ export function DrawingPad({
       redraw();
     }
     drawing.current = true;
-    const width = event.pointerType === "pen" ? Math.max(1.2, event.pressure * 4 || 2) : 2.4;
+    // Pens report pressure on a light touch too; keep a generous floor so a
+    // soft stroke is never invisible, and let pressure thicken the line.
+    const width =
+      event.pointerType === "pen"
+        ? Math.max(2, 1.2 + (event.pressure > 0 ? event.pressure * 4 : 1.6))
+        : 2.4;
     strokesRef.current.push({ points: [point], width, color: colorRef.current });
     setHasInk(true);
   }
@@ -492,7 +497,23 @@ export function DrawingPad({
       return;
     }
     event.preventDefault();
-    strokesRef.current[strokesRef.current.length - 1]?.points.push(positionOf(event));
+    const stroke = strokesRef.current[strokesRef.current.length - 1];
+    if (stroke) {
+      // Browsers batch fast pen movement into one pointermove; replay every
+      // coalesced sample so quick or light strokes are never skipped.
+      const samples =
+        typeof event.nativeEvent.getCoalescedEvents === "function"
+          ? event.nativeEvent.getCoalescedEvents()
+          : [];
+      if (samples.length > 0) {
+        const rect = event.currentTarget.getBoundingClientRect();
+        for (const sample of samples) {
+          stroke.points.push({ x: sample.clientX - rect.left, y: sample.clientY - rect.top });
+        }
+      } else {
+        stroke.points.push(positionOf(event));
+      }
+    }
     redraw();
   }
 

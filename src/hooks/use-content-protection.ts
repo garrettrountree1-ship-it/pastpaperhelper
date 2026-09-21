@@ -149,10 +149,13 @@ export function useContentProtection(
       if (event.touches.length >= 3) onCapture();
     };
     const onPageHide = () => conceal();
+    // A two-finger pinch (gesturestart on iOS/iPadOS) is zooming, not a
+    // screenshot — let it through untouched. Genuine screenshot signals remain
+    // masked: three-finger swipes, focus loss, and the page being hidden.
     const onGesture = (event: Event) => {
       if (isEditable(event.target)) return;
-      event.preventDefault();
-      onCapture();
+      // Do not preventDefault or mask here: students must be able to pinch to
+      // zoom in and out of their paper without the screen blacking out.
     };
 
     if (blockCopy) {

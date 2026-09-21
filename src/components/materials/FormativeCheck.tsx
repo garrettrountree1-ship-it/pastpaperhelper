@@ -43,6 +43,9 @@ import {
   listMyFormativeChecks,
   releaseFormativeAnswer,
   resetFormativePoints,
+} from "@/lib/formative.functions";
+import { mirrorAnswerCheck, mirrorGetActiveCheck } from "@/lib/mirror.functions";
+import {
   revealFormativeAnswerForMe,
   setFormativeLeaderboard,
 } from "@/lib/formative.functions";

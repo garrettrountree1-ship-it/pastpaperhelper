@@ -263,6 +263,8 @@ function StudentRow({
   classRevealed,
   classFullMarks,
   saving,
+  dueEdit,
+  onEditDue,
   onSave,
 }: {
   student: {
@@ -276,14 +278,16 @@ function StudentRow({
   classRevealed: boolean;
   classFullMarks: boolean;
   saving: boolean;
+  /** Pending due-date edit saved by the dialog's bottom Save button. */
+  dueEdit: string | null;
+  onEditDue: (value: string) => void;
   onSave: (input: {
     dueAt?: string | null;
     markSchemeRevealed?: boolean;
     revealOnFullMarks?: boolean;
   }) => void;
 }) {
-  const [due, setDue] = useState<string | null>(null);
-  const value = due ?? toLocalInput(student.dueAt);
+  const value = dueEdit ?? toLocalInput(student.dueAt);
   const effective = student.dueAt ?? classDueAt;
 
   return (
@@ -293,23 +297,17 @@ function StudentRow({
         <Badge variant="secondary">Due: {formatDueDate(effective)}</Badge>
       </div>
       <div className="mt-2 flex flex-wrap items-end gap-2">
-        <DateTime24Input value={value} onChange={setDue} />
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={saving}
-          onClick={() => onSave({ dueAt: fromLocalInput(value) })}
-        >
-          Save
-        </Button>
+        <DateTime24Input value={value} onChange={onEditDue} />
+        {dueEdit !== null ? (
+          <Badge variant="outline" className="self-center">
+            Unsaved
+          </Badge>
+        ) : null}
         <Button
           size="sm"
           variant="ghost"
           disabled={saving || !student.dueAt}
-          onClick={() => {
-            setDue("");
-            onSave({ dueAt: null });
-          }}
+          onClick={() => onSave({ dueAt: null })}
         >
           Use class due date
         </Button>

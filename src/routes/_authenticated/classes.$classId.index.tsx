@@ -7,7 +7,6 @@ import { BookOpen, ChevronDown, Gamepad2, NotebookPen, Timer, Users } from "luci
 import { AppHeader } from "@/components/AppHeader";
 import { CoteacherPanel } from "@/components/classes/CoteacherPanel";
 import { FormativeReviewButton } from "@/components/materials/FormativeCheck";
-import { ClassLessonMirror } from "@/components/materials/ClassLessonMirror";
 import {
   ClassBulletinBoard,
   ClassBulletinPanel,
@@ -70,7 +69,6 @@ function ClassHome() {
 
   return (
     <div className="min-h-screen">
-      <ClassLessonMirror classId={classId} isStudent={role === "student"} />
       <AppHeader role={role} />
       <main className="mx-auto max-w-6xl px-4 py-8">
         <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">

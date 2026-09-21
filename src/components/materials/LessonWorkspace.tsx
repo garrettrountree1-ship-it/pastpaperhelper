@@ -87,6 +87,8 @@ export function LessonWorkspace({
   initialTab = "notes",
   onBack,
   onUnitChanged,
+  showFormativePanel = true,
+  externalMirror = false,
 }: {
   classId: string;
   unit: WorkspaceUnit;
@@ -95,6 +97,8 @@ export function LessonWorkspace({
   initialTab?: "notes" | "summary";
   onBack: () => void;
   onUnitChanged: () => void;
+  showFormativePanel?: boolean;
+  externalMirror?: boolean;
 }) {
   const queryClient = useQueryClient();
   const fetchSections = useServerFn(listSections);
@@ -115,7 +119,7 @@ export function LessonWorkspace({
   useEffect(() => {
     if (isPhone) setTutorOpen(false);
   }, [isPhone]);
-  const [presenting, setPresenting] = useState(false);
+  const [presenting, setPresenting] = useState(externalMirror);
 
   // Live screen mirroring works in both normal and full-screen lesson views.
   // Students only ever follow accounts that actually teach this class.
@@ -627,21 +631,21 @@ export function LessonWorkspace({
   return (
     <LessonMirrorContext.Provider value={mirror}>
       <div className="fixed inset-0 z-50 flex flex-col bg-background">
-        <FormativeCheckPanel classId={classId} asStudent={!canManage} />
+        {showFormativePanel ? (
+          <FormativeCheckPanel classId={classId} asStudent={!canManage} />
+        ) : null}
         {canManage && presentationClass.data ? (
           <button
             type="button"
             className="fixed bottom-3 right-3 z-[90] rounded-lg border bg-background/95 px-3 py-2 text-left text-xs shadow-lg backdrop-blur hover:border-primary"
             title="Copy the stable student presentation link"
             onClick={() => {
-              const link = `${window.location.origin}/present/${presentationClass.data.code}`;
+              const link = `${window.location.origin}/mirror`;
               void navigator.clipboard.writeText(link);
-              toast.success("Student presentation link copied");
+              toast.success("Class Mirror link copied");
             }}
           >
-            <span className="block font-medium">
-              Student screen: /present/{presentationClass.data.code}
-            </span>
+            <span className="block font-medium">Class Mirror: this website + /mirror</span>
             <span className="block text-muted-foreground">
               Code {presentationClass.data.code} · click to copy
             </span>

@@ -26,6 +26,7 @@ import {
   nextLabelAfter,
   parseLabelString,
   questionLabel,
+  resolveQuestionLabels,
   setQuestionLabel,
 } from "@/lib/question-label";
 
@@ -48,7 +49,7 @@ function decodeBase64(base64: string): Uint8Array {
 
 /** Reject an AI crop that the browser measured as entirely blank. */
 function cropContainsInk(
-  file: { inkBands?: Array<[number, number]> } | undefined,
+  file: { inkBands?: Array<[number, number]> | undefined } | undefined,
   crop: { top: number; bottom: number },
 ) {
   if (!file?.inkBands) return true;
@@ -260,7 +261,7 @@ export const removeStudentFromClass = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: assignments } = await supabaseAdmin
       .from("assignments")
-      .select("id, question_text")
+      .select("id")
       .eq("class_id", data.classId);
     const assignmentIds = (assignments ?? []).map((a) => a.id);
 
@@ -497,11 +498,14 @@ export const createAssignment = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
+    const resolvedLabels = resolveQuestionLabels(data.questions.map((q) => q.questionText));
     const { error: qError } = await supabase.from("questions").insert(
       data.questions.map((q, index) => ({
         assignment_id: assignment.id,
         position: index + 1,
-        question_text: cleanMathText(q.questionText),
+        question_text: cleanMathText(
+          setQuestionLabel(q.questionText, resolvedLabels[index] ?? String(index + 1)),
+        ),
         mark_scheme: cleanMathText(q.markScheme),
         marks: q.marks,
         image_paths: q.imagePaths ?? [],
@@ -540,7 +544,7 @@ export const getAssignmentForEdit = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    let questionResult = await supabase
+    const questionResult = await supabase
       .from("questions")
       .select(
         "id, question_text, mark_scheme, marks, position, image_paths, answer_image_paths, source_page_path, answer_source_page_path, tag_label, tag_image, multiple_choice, expected_answer, numerical_answer",
@@ -913,9 +917,12 @@ export const updateAssignment = createServerFn({ method: "POST" })
     const existingIds = new Set((existing ?? []).map((q) => q.id));
 
     const keptIds: string[] = [];
+    const resolvedLabels = resolveQuestionLabels(data.questions.map((q) => q.questionText));
     for (const [index, q] of data.questions.entries()) {
       const payload = {
-        question_text: cleanMathText(q.questionText),
+        question_text: cleanMathText(
+          setQuestionLabel(q.questionText, resolvedLabels[index] ?? String(index + 1)),
+        ),
         mark_scheme: cleanMathText(q.markScheme),
         marks: q.marks,
         position: index + 1,
@@ -1677,7 +1684,7 @@ export const getStudentClassReport = createServerFn({ method: "POST" })
 
     const questionIds = (questions ?? []).map((q) => q.id);
     const { data: helpMessages } = questionIds.length
-      ? await (db as any)
+      ? await db
           .from("question_help_messages")
           .select("id, question_id, mode, role, content, created_at")
           .in("question_id", questionIds)
@@ -1914,7 +1921,7 @@ export const getAssignmentWorkspace = createServerFn({ method: "POST" })
     const access = await studentAccess(db, data.assignmentId, userId);
 
     // Mark schemes are only sent once the teacher reveals them.
-    let workspaceQuestionResult = await db
+    const workspaceQuestionResult = await db
       .from("questions")
       .select(
         "id, position, question_text, marks, image_paths, answer_image_paths, mark_scheme, photo_mode, tag_label, tag_image, credited_all_at, multiple_choice, numerical_answer",
@@ -2919,7 +2926,13 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const previewImages = data.imageDataUrls ?? [];
+    // Pad drawings are real answer images too. Previously they were only used
+    // to exempt an image from the camera-authenticity check and were then
+    // accidentally omitted from both the "has an answer" check and the AI
+    // marker. That made a sketch-only paper answer look empty in teacher test
+    // view even though the browser had sent the rendered page correctly.
+    const padImages = data.padDataUrls ?? [];
+    const previewImages = [...(data.imageDataUrls ?? []), ...padImages];
     if (!data.answerText.trim() && previewImages.length === 0) {
       throw new Error("Type an answer or attach a photo to test the marking.");
     }
@@ -2980,7 +2993,7 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
         answer: data.answerText,
         marks: question.marks,
       }),
-      checkHandDrawnPhotos(previewImages.filter((url) => !(data.padDataUrls ?? []).includes(url))),
+      checkHandDrawnPhotos(previewImages.filter((url) => !padImages.includes(url))),
     ]);
     if (!previewPhotoCheck.ok || previewDetection.isAi) {
       const strikes = (data.priorFlags ?? 0) + 1;
@@ -3044,6 +3057,10 @@ export const previewGradeAnswer = createServerFn({ method: "POST" })
       feedback: result.feedback,
       leadingQuestion: result.leadingQuestion ?? "",
       markBreakdown: result.markPoints ?? [],
+      // Teacher preview saves nothing, so it cannot rely on a workspace
+      // refetch to release a newly-correct answer. Return the recovered cut
+      // with this result so paper preview can show it immediately.
+      markSchemeImageUrls: await signPaperPages(db, previewMarkSchemePaths),
     };
   });
 
@@ -3384,11 +3401,10 @@ export const deleteQuestion = createServerFn({ method: "POST" })
     const { error } = await db.from("questions").delete().eq("id", data.questionId);
     if (error) throw new Error(error.message);
 
-    // Keep stored positions contiguous immediately after a deletion so every
-    // teacher and student surface agrees on Q1, Q2, Q3… without stale gaps.
+    // Keep positions contiguous without flattening printed sub-part labels.
     const { data: remaining } = await db
       .from("questions")
-      .select("id")
+      .select("id, question_text")
       .eq("assignment_id", question.assignment_id)
       .order("position", { ascending: true });
     for (const [index, row] of (remaining ?? []).entries()) {
@@ -3396,7 +3412,6 @@ export const deleteQuestion = createServerFn({ method: "POST" })
         .from("questions")
         .update({
           position: index + 1,
-          question_text: setQuestionLabel(row.question_text ?? "", String(index + 1)),
         })
         .eq("id", row.id);
       if (renumberError) throw new Error(renumberError.message);

@@ -34,7 +34,7 @@ describe("paper extraction safeguards", () => {
     ]);
     assert.deepEqual(
       result.map((item) => item.questionText.split(" ")[0]),
-      ["1(a)", "1(a)(ii)", "1(a)(iii)", "1(b)", "2(a)"],
+      ["7(a)", "7(a)(ii)", "7(a)(iii)", "7(b)", "8(a)"],
     );
   });
 });

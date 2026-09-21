@@ -5,8 +5,23 @@
 //     React/TanStack dedupe, error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
+  vite: {
+    resolve: {
+      alias: [
+        // Keep the legacy import stable while the enhanced implementation lives
+        // at a non-conflicting path; this avoids the add/add conflict with main.
+        {
+          find: "@/components/assignments/PhotoPageMode",
+          replacement: fileURLToPath(
+            new URL("./src/components/assignments/PhotoHomeworkMode.tsx", import.meta.url),
+          ),
+        },
+      ],
+    },
+  },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this

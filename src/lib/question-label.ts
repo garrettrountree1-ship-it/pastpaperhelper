@@ -49,20 +49,9 @@ function embeddedParts(questionText: string): string[] {
   return existing.length > 0 ? existing : found;
 }
 
-/** Match compact labels printed on papers: 1(ai), 1(aii), 1(biii). */
+/** Display printed parts in one compact group: 7(a), 7(ai), 7(aii), 7(b). */
 function displayParts(parts: string[]): string {
-  const output: string[] = [];
-  for (let index = 0; index < parts.length; index += 1) {
-    const part = parts[index]!;
-    const next = parts[index + 1];
-    if (/^[a-z]$/.test(part) && next && new RegExp(`^(?:${ROMAN})$`, "i").test(next)) {
-      output.push(`(${part}${next})`);
-      index += 1;
-    } else {
-      output.push(`(${part})`);
-    }
-  }
-  return output.join("");
+  return parts.length > 0 ? `(${parts.join("")})` : "";
 }
 
 function parseOnce(text: string): Parsed | null {

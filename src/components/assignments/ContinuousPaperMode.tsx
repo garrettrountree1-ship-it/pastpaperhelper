@@ -1085,7 +1085,9 @@ function ContinuousPaper({
                 (selectedResult?.verdict === "correct" ||
                   Number(selectedResult?.awardedMarks ?? 0) >= Number(selectedQuestion.marks)))) &&
             selectedQuestion.answerImageUrls?.length ? (
-              <PaperMarkScheme urls={selectedQuestion.answerImageUrls} />
+              <div className="hidden" aria-hidden="true">
+                <PaperMarkScheme urls={selectedQuestion.answerImageUrls} />
+              </div>
             ) : null}
             {selectedAnswer?.attempts ? (
               <p className="text-xs text-muted-foreground">

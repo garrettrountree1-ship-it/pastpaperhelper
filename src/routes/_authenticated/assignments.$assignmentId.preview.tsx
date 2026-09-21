@@ -15,6 +15,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { VocabSheet } from "@/components/assignments/VocabSheet";
 import { QuestionExperience } from "@/components/assignments/QuestionExperience";
 import { PreviewPaperMode, ReadOnlyPaperMode } from "@/components/assignments/ContinuousPaperMode";
+import { PhotoPageMode } from "@/components/assignments/PhotoPageMode";
 import { parseSnipBand } from "@/components/assignments/QuestionSnip";
 import { useContentProtection } from "@/hooks/use-content-protection";
 import { Badge } from "@/components/ui/badge";
@@ -112,9 +113,9 @@ function PreviewPage() {
   const { assignmentId } = Route.useParams();
   const [flags, setFlags] = useState(0);
   const [studentId, setStudentId] = useState<string>("class");
-  const [viewMode, setViewMode] = useState<"questions" | "paper">("questions");
-  // One test session shares its marks between question view and paper mode, so a
-  // question answered correctly in one view shows its credit in the other too.
+  const [viewMode, setViewMode] = useState<"questions" | "paper" | "photo">("questions");
+  // One test session shares its marks between all three modes, so a question
+  // answered correctly in one view shows its credit in the others too.
   const [testResults, setTestResults] = useState<
     Record<
       string,
@@ -165,7 +166,7 @@ function PreviewPage() {
   return (
     <div className="min-h-screen">
       <AppHeader role="teacher" />
-      <main className={`mx-auto px-4 py-8 ${viewMode === "paper" ? "max-w-7xl" : "max-w-3xl"}`}>
+      <main className={`mx-auto px-4 py-8 ${viewMode === "questions" ? "max-w-3xl" : "max-w-7xl"}`}>
         {data ? (
           <Link
             to="/classes/$classId/homework"
@@ -273,6 +274,13 @@ function PreviewPage() {
                 >
                   Paper mode
                 </Button>
+                <Button
+                  size="sm"
+                  variant={viewMode === "photo" ? "default" : "ghost"}
+                  onClick={() => setViewMode("photo")}
+                >
+                  Photo mode
+                </Button>
               </div>
               {flags > 0 && !viewingStudent ? (
                 <p className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
@@ -294,7 +302,7 @@ function PreviewPage() {
             ) : (
               <>
                 <div
-                  className={`${viewMode === "paper" ? "hidden" : "mt-8 space-y-6"} ${protection.protectedClassName} ${
+                  className={`${viewMode !== "questions" ? "hidden" : "mt-8 space-y-6"} ${protection.protectedClassName} ${
                     protection.concealed ? "pointer-events-none blur-lg" : ""
                   }`}
                 >
@@ -355,6 +363,33 @@ function PreviewPage() {
                         attempts: result.attempts,
                       }))}
                       onResult={(questionId, result) => recordResult(questionId, result)}
+                    />
+                  </div>
+                ) : null}
+                {viewMode === "photo" ? (
+                  <div className={`mt-6 ${protection.protectedClassName}`}>
+                    <PhotoPageMode
+                      assignmentId={assignmentId}
+                      questions={data.questions.map((question) => ({
+                        ...question,
+                        imageUrls: (question.imageUrls ?? []).filter((url) => parseSnipBand(url)),
+                      }))}
+                      answers={Object.entries(testResults).map(([questionId, result]) => ({
+                        question_id: questionId,
+                        verdict: result.verdict,
+                        awarded_marks: result.awardedMarks,
+                        feedback: result.feedback,
+                        attempts: result.attempts,
+                      }))}
+                      locked={false}
+                      revealOnFullMarks={Boolean(data.assignment.revealOnFullMarks)}
+                      markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
+                      allowHint={settings?.allowHint !== false}
+                      allowSteps={settings?.allowSteps !== false}
+                      preview
+                      onPreviewResult={(questionId, result) =>
+                        recordResult(questionId, { ...result, answerText: "" })
+                      }
                     />
                   </div>
                 ) : null}
@@ -609,7 +644,7 @@ function StudentWorkView({
   studentId: string;
   protectedClassName: string;
   concealed: boolean;
-  viewMode: "questions" | "paper";
+  viewMode: "questions" | "paper" | "photo";
 }) {
   const view = useQuery({
     queryKey: ["student-homework-view", assignmentId, studentId],
@@ -736,7 +771,7 @@ function StudentWorkView({
             );
           })}
         </div>
-      ) : (
+      ) : viewMode === "paper" ? (
         <div
           className={`mt-6 ${protectedClassName} ${concealed ? "pointer-events-none blur-lg" : ""}`}
         >
@@ -744,6 +779,24 @@ function StudentWorkView({
             assignmentId={assignmentId}
             questions={data.questions}
             answers={answers}
+          />
+        </div>
+      ) : (
+        <div
+          className={`mt-6 ${protectedClassName} ${concealed ? "pointer-events-none blur-lg" : ""}`}
+        >
+          <PhotoPageMode
+            assignmentId={assignmentId}
+            questions={data.questions.map((question) => ({
+              ...question,
+              imageUrls: (question.imageUrls ?? []).filter((url) => parseSnipBand(url)),
+            }))}
+            answers={answers}
+            locked
+            revealOnFullMarks={false}
+            markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
+            allowHint={false}
+            allowSteps={false}
           />
         </div>
       )}

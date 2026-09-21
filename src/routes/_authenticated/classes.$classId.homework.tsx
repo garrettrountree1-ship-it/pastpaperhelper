@@ -976,11 +976,12 @@ function AssignmentDialog({
           <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-4">
             <h3 className="font-display text-lg">Upload past paper &amp; mark scheme</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              PDF, Word (.docx) or photos. Combined in one file, or paper and mark scheme
-              separately. Each question part (1a, 1b(i), 1b(ii)…) is cut out of the page as a
-              picture, so students answer the question exactly as printed — every table, option,
-              graph, diagram and symbol included. Nothing is retyped or invented; the mark scheme is
-              matched to each part and stays hidden from students.
+              PDF, Word (.docx) or photos. Uploading the blank question paper and mark scheme as
+              separate files is recommended and is required for the new full-page Photo mode to
+              match a student&apos;s photographed page reliably. Existing combined uploads still
+              work in Question and Paper modes. Each question part (1a, 1b(i), 1b(ii)…) is cut out
+              of the page as a picture, with its exact mark-scheme block kept hidden until it is
+              released.
             </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
@@ -1573,9 +1574,6 @@ function QuestionControlsDialog({
                 resolveQuestionLabels((controls.data?.questions ?? []).map((q) => q.questionText))[
                   index
                 ] ?? questionLabel(question.questionText, index);
-                resolveQuestionLabels(
-                  (controls.data?.questions ?? []).map((q) => q.questionText),
-                )[index] ?? questionLabel(question.questionText, index);
               const excludedCount = (controls.data?.exclusions ?? []).filter(
                 (e) => e.questionId === question.id,
               ).length;
@@ -2389,7 +2387,8 @@ function StudentReport({
                         Q
                         {resolveQuestionLabels(
                           assignment.questions.map((item) => item.questionText),
-                        )[questionIndex] ?? questionLabel(question.questionText, question.position - 1)}
+                        )[questionIndex] ??
+                          questionLabel(question.questionText, question.position - 1)}
                       </span>{" "}
                       <span className="text-muted-foreground">
                         {question.awardedMarks ?? 0}/{question.marks} marks · {question.attempts}{" "}

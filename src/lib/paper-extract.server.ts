@@ -696,23 +696,16 @@ async function callGateway(
   system: string,
   content: Array<Record<string, unknown>>,
 ): Promise<string> {
-  const request = chatRequest();
-  const response = await fetch(request.url, {
-    method: "POST",
-    headers: request.headers,
-    body: JSON.stringify({
-      model: request.model,
-      max_tokens: 16000,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content },
-      ],
-      response_format: { type: "json_object" },
-    }),
+  const { response, detail } = await postChatCompletion({
+    max_tokens: 16000,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content },
+    ],
+    response_format: { type: "json_object" },
   });
 
   if (!response.ok) {
-    const detail = await response.text();
     throw new Error(
       `The AI could not read those files (${response.status}). ${detail.slice(0, 300)}`,
     );

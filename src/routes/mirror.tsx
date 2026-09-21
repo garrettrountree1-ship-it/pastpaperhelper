@@ -61,6 +61,16 @@ function PublicMirrorPage() {
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
 
+  // Keeps this seat alive so the same roster name cannot be taken elsewhere.
+  useEffect(() => {
+    if (!joined?.claimToken) return;
+    const token = joined.claimToken;
+    const timer = window.setInterval(() => {
+      void heartbeat({ data: { claimToken: token } }).catch(() => undefined);
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [joined?.claimToken, heartbeat]);
+
   useEffect(() => {
     if (!joined) return;
     let cancelled = false;

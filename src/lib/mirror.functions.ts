@@ -126,11 +126,38 @@ export const joinPublicMirror = createServerFn({ method: "POST" })
       code: klass.join_code as string,
       studentName: rosterProfile.full_name as string,
       alias: viewerAlias,
+      alias: (rosterGameProfile?.alias as string | undefined) ?? null,
+      claimToken,
       presenterIds: [
         klass.teacher_id as string,
         ...(coteachers ?? []).map((row) => row.teacher_id as string),
       ],
     };
+  });
+
+/** Keeps a mirror seat alive; the page calls this every 20 seconds. */
+export const mirrorHeartbeat = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => claimInput.parse(input))
+  .handler(async ({ data }) => {
+    const claim = await resolveClaim(data.claimToken);
+    return { ok: true as const, classId: claim.classId };
+  });
+
+/** The live class question for a mirror seat, marked under the roster name. */
+export const mirrorGetActiveCheck = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => claimInput.parse(input))
+  .handler(async ({ data }) => {
+    const claim = await resolveClaim(data.claimToken);
+    return getActiveFormativeCore(claim.supabaseAdmin, claim.classId, claim.studentId);
+  });
+
+/** A mirror seat's answer, recorded against the roster student. */
+export const mirrorAnswerCheck = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => mirrorAnswerInput.parse(input))
+  .handler(async ({ data }) => {
+    const claim = await resolveClaim(data.claimToken);
+    const { claimToken: _claimToken, ...answer } = data;
+    return answerFormativeCore(claim.supabaseAdmin, claim.studentId, answer);
   });
 
 /** Resolves the short, keyboard-friendly link used by the dedicated class viewer. */

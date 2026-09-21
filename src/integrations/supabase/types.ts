@@ -1163,6 +1163,41 @@ export type Database = {
           },
         ]
       }
+      mirror_claims: {
+        Row: {
+          class_id: string
+          created_at: string
+          id: string
+          last_seen_at: string
+          student_id: string
+          token: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          student_id: string
+          token?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          student_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mirror_claims_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string

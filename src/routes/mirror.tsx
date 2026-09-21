@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { joinPublicMirror } from "@/lib/mirror.functions";
+import { joinPublicMirror, mirrorHeartbeat } from "@/lib/mirror.functions";
 
 type JoinedMirror = {
   classId: string;
@@ -22,6 +23,14 @@ type JoinedMirror = {
   alias: string | null;
   presenterIds: string[];
 };
+
+  claimToken: string;
+  presenterIds: string[];
+};
+
+/** Where this tab's mirror seat token is remembered, keyed per roster name. */
+const claimKey = (code: string, name: string) =>
+  `class-mirror-claim:${code.trim().toUpperCase()}:${name.trim().toLowerCase()}`;
 
 type Announcement = {
   from?: string;
@@ -63,6 +72,23 @@ function PublicMirrorPage() {
   useEffect(() => {
     if (!joined) return;
     let cancelled = false;
+  // Keep this tab's seat alive; an expired seat sends the student back to join.
+  useEffect(() => {
+    if (!joined) return;
+    const beat = useServerFn(mirrorHeartbeat);
+    const ping = () =>
+      void beat({ data: { claimToken: joined.claimToken } }).catch(() => {
+        window.localStorage.removeItem(claimKey(joined.code, joined.studentName));
+        setJoined(null);
+        toast.info("This mirror seat expired — join again.");
+      });
+    ping();
+    const timer = window.setInterval(ping, 20_000);
+    return () => window.clearInterval(timer);
+  }, [joined]);
+
+  useEffect(() => {
+    if (!joined) return;
     let channel: RealtimeChannel | null = null;
     let helloTimer: number | null = null;
     const trusted = new Set(joined.presenterIds);
@@ -116,6 +142,13 @@ function PublicMirrorPage() {
       if (data.session?.user.is_anonymous) await supabase.auth.refreshSession();
       window.localStorage.setItem("class-mirror-code", result.code);
       window.localStorage.setItem("class-mirror-name", result.studentName);
+      // No sign-in of any kind: the server checks the roster and hands back a
+      // claim token. A student's account session in another tab is untouched.
+      const savedToken = window.localStorage.getItem(claimKey(code, name)) ?? undefined;
+      const result = await join({ data: { code, name, claimToken: savedToken } });
+      window.localStorage.setItem("class-mirror-code", result.code);
+      window.localStorage.setItem("class-mirror-name", result.studentName);
+      window.localStorage.setItem(claimKey(result.code, result.studentName), result.claimToken);
       setJoined(result);
     } catch (error) {
       toast.error((error as Error).message);
@@ -178,6 +211,7 @@ function PublicMirrorPage() {
   return (
     <main className="min-h-screen bg-background">
       <FormativeCheckPanel classId={joined.classId} asStudent />
+      <FormativeCheckPanel classId={joined.classId} asStudent mirrorToken={joined.claimToken} />
       <div className="fixed right-3 top-3 z-[100] flex gap-2">
         <Button
           size="sm"
@@ -207,6 +241,11 @@ function PublicMirrorPage() {
             <p className="mt-4 text-xs text-muted-foreground">
               Keeping the mirror teacher-controlled reduces bandwidth. Live mirroring itself uses no
               AI tokens; AI is used only when a formative answer is marked.
+            </p>
+            <p className="mt-4 font-medium">Waiting for teacher mirror…</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Your answers are saved under this roster name. The lesson appears here as soon as your
+              teacher turns mirroring on.
             </p>
           </div>
         </div>

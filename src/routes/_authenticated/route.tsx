@@ -19,6 +19,9 @@ export const Route = createFileRoute("/_authenticated")({
     if (!session) {
       throw redirect({ to: "/auth" });
     }
+    if (session.user.app_metadata?.["mirror_only"] === true) {
+      throw redirect({ to: "/mirror" });
+    }
 
     try {
       const { data, error } = await supabase.auth.getUser();

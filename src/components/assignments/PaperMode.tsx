@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { gradeAnswer, previewGradeAnswer } from "@/lib/app.functions";
-import { questionLabel } from "@/lib/question-label";
+import { resolveQuestionLabels } from "@/lib/question-label";
 
 type Point = { x: number; y: number };
 type Stroke = { color: string; width: number; points: Point[] };
@@ -348,7 +348,7 @@ function ContinuousPaper({
               <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2">
                 <Badge>Paper Q{index + 1}</Badge>
                 <span className="text-xs text-muted-foreground">
-                  Printed label: {questionLabel(question.question_text, index)}
+                  Printed label: {resolveQuestionLabels(questions.map((q) => q.question_text))[index]}
                 </span>
                 <Badge variant="outline" className="ml-auto">
                   {result ? `${result.awardedMarks}/` : ""}

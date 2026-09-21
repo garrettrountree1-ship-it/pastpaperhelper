@@ -2,11 +2,136 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { uniqueAlias } from "@/lib/game-alias";
 
 const presentationInput = z.union([
   z.object({ classId: z.string().uuid() }),
   z.object({ code: z.string().trim().min(4).max(10) }),
 ]);
+
+const publicMirrorInput = z.object({
+  code: z.string().trim().min(4).max(10),
+  name: z.string().trim().min(2).max(80),
+  accessToken: z.string().min(20),
+});
+
+/**
+ * Gives a browser-only anonymous Supabase user access to the dedicated mirror.
+ * Students identify themselves by their roster name, so formative responses are
+ * recorded under that name without requiring a normal account sign-in.
+ */
+export const joinPublicMirror = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => publicMirrorInput.parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: auth, error: authError } = await supabaseAdmin.auth.getUser(data.accessToken);
+    const guestId = auth.user?.id;
+    if (authError || !guestId) {
+      throw new Error("Could not start this class viewer. Please try again.");
+    }
+    const isAnonymous = Boolean(auth.user?.is_anonymous);
+
+    const { data: klass } = await supabaseAdmin
+      .from("classes")
+      .select("id, name, join_code, teacher_id")
+      .eq("join_code", data.code.toUpperCase())
+      .maybeSingle();
+    if (!klass) throw new Error("That class code was not found.");
+
+    const { data: members } = await supabaseAdmin
+      .from("class_members")
+      .select("student_id")
+      .eq("class_id", klass.id);
+    const memberIds = (members ?? []).map((row) => row.student_id as string);
+    const { data: profiles } = memberIds.length
+      ? await supabaseAdmin.from("profiles").select("id, full_name").in("id", memberIds)
+      : { data: [] };
+    const rosterProfile = (profiles ?? []).find(
+      (profile) => profile.full_name.trim().toLowerCase() === data.name.toLowerCase(),
+    );
+    if (!rosterProfile) {
+      throw new Error("Enter your name exactly as it appears on your teacher's class roster.");
+    }
+    if (!isAnonymous && rosterProfile.id !== guestId) {
+      throw new Error("Use the roster name belonging to your signed-in account.");
+    }
+
+    if (isAnonymous) {
+      const { error: metadataError } = await supabaseAdmin.auth.admin.updateUserById(guestId, {
+        app_metadata: { mirror_only: true },
+      });
+      if (metadataError) throw new Error(metadataError.message);
+      const [{ error: profileError }, { error: memberError }] = await Promise.all([
+        supabaseAdmin
+          .from("profiles")
+          .upsert({ id: guestId, full_name: rosterProfile.full_name, email: null }),
+        supabaseAdmin
+          .from("class_members")
+          .upsert(
+            { class_id: klass.id, student_id: guestId },
+            { onConflict: "class_id,student_id" },
+          ),
+      ]);
+      if (profileError) throw new Error(profileError.message);
+      if (memberError) throw new Error(memberError.message);
+    }
+
+    const { data: existingGuestProfile } = await supabaseAdmin
+      .from("game_profiles")
+      .select("id")
+      .eq("class_id", klass.id)
+      .eq("student_id", guestId)
+      .maybeSingle();
+    let viewerAlias: string | null = null;
+    if (isAnonymous && !existingGuestProfile) {
+      const { data: rosterGameProfile } = await supabaseAdmin
+        .from("game_profiles")
+        .select("alias")
+        .eq("class_id", klass.id)
+        .eq("student_id", rosterProfile.id)
+        .maybeSingle();
+      const { data: aliases } = await supabaseAdmin
+        .from("game_profiles")
+        .select("alias")
+        .eq("class_id", klass.id);
+      const taken = new Set((aliases ?? []).map((row) => row.alias as string));
+      let alias = rosterGameProfile?.alias as string | undefined;
+      // Retain the enrolled student's animal/avatar. If aliases are unique in
+      // this deployment, a suffix distinguishes this browser-only viewer while
+      // AliasAvatar still recognises the same animal name.
+      if (alias && taken.has(alias)) alias = `${alias}Viewer`;
+      if (!alias || taken.has(alias)) alias = uniqueAlias(taken);
+      await supabaseAdmin
+        .from("game_profiles")
+        .insert({ class_id: klass.id, student_id: guestId, alias });
+      viewerAlias = alias;
+    } else {
+      const { data: profile } = await supabaseAdmin
+        .from("game_profiles")
+        .select("alias")
+        .eq("class_id", klass.id)
+        .eq("student_id", guestId)
+        .maybeSingle();
+      viewerAlias = (profile?.alias as string | undefined) ?? null;
+    }
+
+    const { data: coteachers } = await supabaseAdmin
+      .from("class_coteachers")
+      .select("teacher_id")
+      .eq("class_id", klass.id);
+
+    return {
+      classId: klass.id as string,
+      className: klass.name as string,
+      code: klass.join_code as string,
+      studentName: rosterProfile.full_name as string,
+      alias: viewerAlias,
+      presenterIds: [
+        klass.teacher_id as string,
+        ...(coteachers ?? []).map((row) => row.teacher_id as string),
+      ],
+    };
+  });
 
 /** Resolves the short, keyboard-friendly link used by the dedicated class viewer. */
 export const getPresentationClass = createServerFn({ method: "POST" })

@@ -1125,6 +1125,44 @@ export type Database = {
           },
         ]
       }
+      managed_student_credentials: {
+        Row: {
+          class_id: string
+          created_at: string
+          id: string
+          student_id: string
+          temporary_password: string | null
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          id?: string
+          student_id: string
+          temporary_password?: string | null
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          id?: string
+          student_id?: string
+          temporary_password?: string | null
+          updated_at?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "managed_student_credentials_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string

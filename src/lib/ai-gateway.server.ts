@@ -202,7 +202,6 @@ export function createLovableAiGatewayProvider(apiKey: string) {
   });
 }
 
-export const TUTOR_MODEL = "openai/gpt-6-astra";
 /**
  * `fetch` for the OpenAI provider that transparently re-sends a request through
  * the Lovable AI Gateway when OpenAI refuses the server's region (403).

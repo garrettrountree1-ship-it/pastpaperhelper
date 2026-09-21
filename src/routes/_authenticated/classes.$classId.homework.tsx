@@ -106,6 +106,7 @@ import {
   parseLabelString,
   questionBody,
   questionLabel,
+  resolveQuestionLabels,
   setQuestionLabel,
   shiftLetter,
 } from "@/lib/question-label";
@@ -820,7 +821,10 @@ function AssignmentDialog({
     setQuestions((prev) => {
       const current = prev[index];
       if (!current) return prev;
-      const oldParsed = parseLabelString(questionLabel(current.questionText, index));
+      const resolved = resolveQuestionLabels(prev.map((question) => question.questionText));
+      const oldParsed = parseLabelString(
+        resolved[index] ?? questionLabel(current.questionText, index),
+      );
       const nextParsed = parseLabelString(nextLabel);
       const mainDelta =
         oldParsed.main !== null && nextParsed.main !== null ? nextParsed.main - oldParsed.main : 0;
@@ -833,7 +837,7 @@ function AssignmentDialog({
       return prev.map((q, i) => {
         if (i < index) return q;
         if (i === index) return { ...q, questionText: setQuestionLabel(q.questionText, nextLabel) };
-        const parsed = parseLabelString(questionLabel(q.questionText, i));
+        const parsed = parseLabelString(resolved[i] ?? questionLabel(q.questionText, i));
         if (mainDelta !== 0) {
           if (parsed.main === null) return q;
           const shifted = formatLabel(Math.max(1, parsed.main + mainDelta), parsed.parts);
@@ -972,11 +976,12 @@ function AssignmentDialog({
           <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-4">
             <h3 className="font-display text-lg">Upload past paper &amp; mark scheme</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              PDF, Word (.docx) or photos. Combined in one file, or paper and mark scheme
-              separately. Each question part (1a, 1b(i), 1b(ii)…) is cut out of the page as a
-              picture, so students answer the question exactly as printed — every table, option,
-              graph, diagram and symbol included. Nothing is retyped or invented; the mark scheme is
-              matched to each part and stays hidden from students.
+              PDF, Word (.docx) or photos. Uploading the blank question paper and mark scheme as
+              separate files is recommended and is required for the new full-page Photo mode to
+              match a student&apos;s photographed page reliably. Existing combined uploads still
+              work in Question and Paper modes. Each question part (1a, 1b(i), 1b(ii)…) is cut out
+              of the page as a picture, with its exact mark-scheme block kept hidden until it is
+              released.
             </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
@@ -1058,7 +1063,9 @@ function AssignmentDialog({
                 <div className="rounded-xl border border-border p-4">
                   <div className="flex items-center justify-between gap-2">
                     {(() => {
-                      const label = questionLabel(question.questionText, index);
+                      const label =
+                        resolveQuestionLabels(questions.map((q) => q.questionText))[index] ??
+                        questionLabel(question.questionText, index);
                       const draft = labelDrafts[index];
                       const commit = () => {
                         const next = (draft ?? "").trim();
@@ -1563,7 +1570,10 @@ function QuestionControlsDialog({
             <p className="text-sm text-muted-foreground">This assignment has no questions.</p>
           ) : (
             controls.data.questions.map((question, index) => {
-              const label = questionLabel(question.questionText, index);
+              const label =
+                resolveQuestionLabels((controls.data?.questions ?? []).map((q) => q.questionText))[
+                  index
+                ] ?? questionLabel(question.questionText, index);
               const excludedCount = (controls.data?.exclusions ?? []).filter(
                 (e) => e.questionId === question.id,
               ).length;
@@ -2365,7 +2375,7 @@ function StudentReport({
           ) : null}
 
           <div className="mt-3 space-y-2">
-            {assignment.questions.map((question) => (
+            {assignment.questions.map((question, questionIndex) => (
               <details
                 key={question.id}
                 className="rounded-md border border-border bg-background p-3"
@@ -2374,7 +2384,11 @@ function StudentReport({
                   <span className="inline-flex w-[calc(100%-1.5rem)] flex-wrap items-center justify-between gap-2 align-middle">
                     <span className="min-w-0">
                       <span className="font-medium">
-                        Q{questionLabel(question.questionText, question.position - 1)}
+                        Q
+                        {resolveQuestionLabels(
+                          assignment.questions.map((item) => item.questionText),
+                        )[questionIndex] ??
+                          questionLabel(question.questionText, question.position - 1)}
                       </span>{" "}
                       <span className="text-muted-foreground">
                         {question.awardedMarks ?? 0}/{question.marks} marks · {question.attempts}{" "}

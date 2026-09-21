@@ -1,4 +1,5 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -17,6 +18,7 @@ import {
   withAuthRetry,
 } from "@/lib/auth-errors";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveManagedStudentUsername } from "@/lib/student-login.functions";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>): { mode?: "signup" | "signin" | undefined } =>
@@ -31,7 +33,10 @@ export const Route = createFileRoute("/auth")({
           "Sign in as a teacher to set past-paper homework, or as a student to join your class with a code.",
       },
       { property: "og:title", content: "Sign in · PastPaperHelper.AI" },
-      { property: "og:description", content: "Teacher and student logins for PastPaperHelper.AI homework." },
+      {
+        property: "og:description",
+        content: "Teacher and student logins for PastPaperHelper.AI homework.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -42,6 +47,7 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const { mode } = Route.useSearch();
   const navigate = useNavigate();
+  const resolveUsername = useServerFn(resolveManagedStudentUsername);
   const [tab, setTab] = useState<"signin" | "signup">(mode ?? "signin");
   const [busy, setBusy] = useState(false);
 
@@ -62,9 +68,15 @@ function AuthPage() {
     event.preventDefault();
     setBusy(true);
     let error: { message: string } | null = null;
+    let loginEmail = email.trim();
     try {
+      if (!loginEmail.includes("@")) {
+        const resolved = await resolveUsername({ data: { username: loginEmail } });
+        if (!resolved.email) throw new Error("That username was not found.");
+        loginEmail = resolved.email;
+      }
       ({ error } = await withAuthRetry(() =>
-        supabase.auth.signInWithPassword({ email, password }),
+        supabase.auth.signInWithPassword({ email: loginEmail, password }),
       ));
     } catch (thrown) {
       setBusy(false);
@@ -101,8 +113,6 @@ function AuthPage() {
     setBusy(false);
     navigate({ to: "/dashboard", replace: true });
   }
-
-
 
   async function handleSignUp(event: React.FormEvent) {
     event.preventDefault();
@@ -235,7 +245,6 @@ function AuthPage() {
     navigate({ to: "/dashboard", replace: true });
   }
 
-
   return (
     <div className="flex min-h-screen flex-col">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-5">
@@ -280,7 +289,6 @@ function AuthPage() {
             </div>
           ) : null}
 
-
           <Tabs value={tab} onValueChange={(value) => setTab(value as "signin" | "signup")}>
             <TabsList className="mt-6 grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign in</TabsTrigger>
@@ -290,10 +298,10 @@ function AuthPage() {
             <TabsContent value="signin">
               <form className="mt-4 space-y-4" onSubmit={handleSignIn}>
                 <div className="space-y-2">
-                  <Label htmlFor="signin-email">Email</Label>
+                  <Label htmlFor="signin-email">Email or teacher-created username</Label>
                   <Input
                     id="signin-email"
-                    type="email"
+                    type="text"
                     required
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
@@ -330,7 +338,6 @@ function AuthPage() {
                 >
                   Didn’t get the verification email? Send it again
                 </button>
-
               </form>
             </TabsContent>
 

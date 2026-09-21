@@ -408,7 +408,8 @@ export async function answerFormativeCore(
     }
 
     return { ...marked, attempt, partVerdicts, awardedPoints };
-  });
+  }
+}
 
 /**
  * Formative leaderboard scoring: a solid base for getting it right, a speed

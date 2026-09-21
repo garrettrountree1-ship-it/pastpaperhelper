@@ -65,13 +65,9 @@ function PublicMirrorPage() {
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
 
-  useEffect(() => {
-    if (!joined) return;
-    let cancelled = false;
   // Keep this tab's seat alive; an expired seat sends the student back to join.
   useEffect(() => {
     if (!joined) return;
-    const beat = useServerFn(mirrorHeartbeat);
     const ping = () =>
       void beat({ data: { claimToken: joined.claimToken } }).catch(() => {
         window.localStorage.removeItem(claimKey(joined.code, joined.studentName));
@@ -81,7 +77,7 @@ function PublicMirrorPage() {
     ping();
     const timer = window.setInterval(ping, 20_000);
     return () => window.clearInterval(timer);
-  }, [joined]);
+  }, [joined, beat]);
 
   useEffect(() => {
     if (!joined) return;
@@ -89,31 +85,25 @@ function PublicMirrorPage() {
     let helloTimer: number | null = null;
     const trusted = new Set(joined.presenterIds);
 
-    void (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.access_token) await supabase.realtime.setAuth(data.session.access_token);
-      if (cancelled) return;
-      channel = supabase.channel(`lesson-mirror:${joined.classId}`, {
-        config: { broadcast: { self: false } },
-      });
-      channelRef.current = channel;
-      channel.on("broadcast", { event: "lesson" }, ({ payload }) => {
-        const message = payload as Announcement;
-        if (!message.from || !trusted.has(message.from)) return;
-        setLive(Boolean(message.viewActive));
-        const nextUnit = message.view?.["workspace.unitId"];
-        if (typeof nextUnit === "string") setUnitId(nextUnit);
-      });
-      channel.subscribe((status) => {
-        if (status !== "SUBSCRIBED") return;
-        const hello = () => void channel?.send({ type: "broadcast", event: "hello", payload: {} });
-        hello();
-        helloTimer = window.setInterval(hello, 2000);
-      });
-    })();
+    channel = supabase.channel(`lesson-mirror:${joined.classId}`, {
+      config: { broadcast: { self: false } },
+    });
+    channelRef.current = channel;
+    channel.on("broadcast", { event: "lesson" }, ({ payload }) => {
+      const message = payload as Announcement;
+      if (!message.from || !trusted.has(message.from)) return;
+      setLive(Boolean(message.viewActive));
+      const nextUnit = message.view?.["workspace.unitId"];
+      if (typeof nextUnit === "string") setUnitId(nextUnit);
+    });
+    channel.subscribe((status) => {
+      if (status !== "SUBSCRIBED") return;
+      const hello = () => void channel?.send({ type: "broadcast", event: "hello", payload: {} });
+      hello();
+      helloTimer = window.setInterval(hello, 2000);
+    });
 
     return () => {
-      cancelled = true;
       if (helloTimer) window.clearInterval(helloTimer);
       channelRef.current = null;
       if (channel) void supabase.removeChannel(channel);
@@ -124,20 +114,6 @@ function PublicMirrorPage() {
     if (!code.trim() || !name.trim()) return;
     setJoining(true);
     try {
-      let { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        const anonymous = await supabase.auth.signInAnonymously({
-          options: { data: { full_name: name.trim() } },
-        });
-        if (anonymous.error) throw anonymous.error;
-        data = { session: anonymous.data.session };
-      }
-      const accessToken = data.session?.access_token;
-      if (!accessToken) throw new Error("Could not start an anonymous class viewer.");
-      const result = await join({ data: { code, name, accessToken } });
-      if (data.session?.user.is_anonymous) await supabase.auth.refreshSession();
-      window.localStorage.setItem("class-mirror-code", result.code);
-      window.localStorage.setItem("class-mirror-name", result.studentName);
       // No sign-in of any kind: the server checks the roster and hands back a
       // claim token. A student's account session in another tab is untouched.
       const savedToken = window.localStorage.getItem(claimKey(code, name)) ?? undefined;

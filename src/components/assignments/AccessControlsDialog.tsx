@@ -230,13 +230,26 @@ export function AccessControlsDialog({
                       classDueAt={data.dueAt}
                       classRevealed={data.markSchemeRevealed}
                       classFullMarks={data.revealOnFullMarks}
-                      saving={studentMutation.isPending}
+                      saving={studentMutation.isPending || savingAll}
+                      dueEdit={studentDueEdits[student.id] ?? null}
+                      onEditDue={(value) =>
+                        setStudentDueEdits((prev) => ({ ...prev, [student.id]: value }))
+                      }
                       onSave={(input) => studentMutation.mutate({ studentId: student.id, ...input })}
                     />
                   ))}
                 </div>
               )}
             </section>
+
+            <div className="flex items-center justify-end gap-2">
+              {hasUnsavedChanges ? (
+                <span className="text-xs text-muted-foreground">You have unsaved changes</span>
+              ) : null}
+              <Button onClick={saveAll} disabled={savingAll || !hasUnsavedChanges}>
+                {savingAll ? "Saving…" : "Save"}
+              </Button>
+            </div>
           </div>
         ) : null}
       </DialogContent>

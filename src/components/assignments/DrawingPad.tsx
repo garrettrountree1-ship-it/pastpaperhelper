@@ -497,7 +497,23 @@ export function DrawingPad({
       return;
     }
     event.preventDefault();
-    strokesRef.current[strokesRef.current.length - 1]?.points.push(positionOf(event));
+    const stroke = strokesRef.current[strokesRef.current.length - 1];
+    if (stroke) {
+      // Browsers batch fast pen movement into one pointermove; replay every
+      // coalesced sample so quick or light strokes are never skipped.
+      const samples =
+        typeof event.nativeEvent.getCoalescedEvents === "function"
+          ? event.nativeEvent.getCoalescedEvents()
+          : [];
+      if (samples.length > 0) {
+        const rect = event.currentTarget.getBoundingClientRect();
+        for (const sample of samples) {
+          stroke.points.push({ x: sample.clientX - rect.left, y: sample.clientY - rect.top });
+        }
+      } else {
+        stroke.points.push(positionOf(event));
+      }
+    }
     redraw();
   }
 

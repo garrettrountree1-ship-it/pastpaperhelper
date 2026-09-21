@@ -1125,34 +1125,37 @@ export type Database = {
           },
         ]
       }
-      mirror_claims: {
+      managed_student_credentials: {
         Row: {
           class_id: string
           created_at: string
           id: string
-          last_seen_at: string
           student_id: string
-          token: string
+          temporary_password: string | null
+          updated_at: string
+          username: string
         }
         Insert: {
           class_id: string
           created_at?: string
           id?: string
-          last_seen_at?: string
           student_id: string
-          token?: string
+          temporary_password?: string | null
+          updated_at?: string
+          username: string
         }
         Update: {
           class_id?: string
           created_at?: string
           id?: string
-          last_seen_at?: string
           student_id?: string
-          token?: string
+          temporary_password?: string | null
+          updated_at?: string
+          username?: string
         }
         Relationships: [
           {
-            foreignKeyName: "mirror_claims_class_id_fkey"
+            foreignKeyName: "managed_student_credentials_class_id_fkey"
             columns: ["class_id"]
             isOneToOne: false
             referencedRelation: "classes"

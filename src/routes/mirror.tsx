@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { joinPublicMirror, mirrorHeartbeat } from "@/lib/mirror.functions";
+import { joinPublicMirror } from "@/lib/mirror.functions";
 
 type JoinedMirror = {
   classId: string;
@@ -20,7 +20,6 @@ type JoinedMirror = {
   code: string;
   studentName: string;
   alias: string | null;
-  claimToken: string;
   presenterIds: string[];
 };
 
@@ -61,24 +60,6 @@ function PublicMirrorPage() {
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
 
-  // Keep the roster-name seat claimed while this tab is open; if the seat is
-  // lost (e.g. claimed elsewhere after this tab slept), return to the join form.
-  const heartbeat = useServerFn(mirrorHeartbeat);
-  const claimKey = (classCode: string, rosterName: string) =>
-    `class-mirror-claim:${classCode.toUpperCase()}:${rosterName.trim().toLowerCase()}`;
-  useEffect(() => {
-    if (!joined) return;
-    const timer = window.setInterval(() => {
-      heartbeat({ data: { claimToken: joined.claimToken } }).catch(() => {
-        window.localStorage.removeItem(claimKey(joined.code, joined.studentName));
-        setJoined(null);
-        toast.message("Your mirror seat expired. Join again to continue.");
-      });
-    }, 20_000);
-    return () => window.clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [joined?.claimToken]);
-
   useEffect(() => {
     if (!joined) return;
     let cancelled = false;
@@ -87,6 +68,9 @@ function PublicMirrorPage() {
     const trusted = new Set(joined.presenterIds);
 
     void (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.access_token) await supabase.realtime.setAuth(data.session.access_token);
+      if (cancelled) return;
       channel = supabase.channel(`lesson-mirror:${joined.classId}`, {
         config: { broadcast: { self: false } },
       });
@@ -118,6 +102,20 @@ function PublicMirrorPage() {
     if (!code.trim() || !name.trim()) return;
     setJoining(true);
     try {
+      let { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        const anonymous = await supabase.auth.signInAnonymously({
+          options: { data: { full_name: name.trim() } },
+        });
+        if (anonymous.error) throw anonymous.error;
+        data = { session: anonymous.data.session };
+      }
+      const accessToken = data.session?.access_token;
+      if (!accessToken) throw new Error("Could not start an anonymous class viewer.");
+      const result = await join({ data: { code, name, accessToken } });
+      if (data.session?.user.is_anonymous) await supabase.auth.refreshSession();
+      window.localStorage.setItem("class-mirror-code", result.code);
+      window.localStorage.setItem("class-mirror-name", result.studentName);
       // No sign-in of any kind: the server checks the roster and hands back a
       // claim token. A student's account session in another tab is untouched.
       const savedToken = window.localStorage.getItem(claimKey(code, name)) ?? undefined;
@@ -186,6 +184,7 @@ function PublicMirrorPage() {
 
   return (
     <main className="min-h-screen bg-background">
+      <FormativeCheckPanel classId={joined.classId} asStudent />
       <FormativeCheckPanel classId={joined.classId} asStudent mirrorToken={joined.claimToken} />
       <div className="fixed right-3 top-3 z-[100] flex gap-2">
         <Button
@@ -209,6 +208,13 @@ function PublicMirrorPage() {
               {joined.alias ? <AliasAvatar alias={joined.alias} size={34} /> : null}
               <p className="font-medium">{joined.studentName}</p>
             </div>
+            <p className="mt-2 text-muted-foreground">
+              Your formative answers are recorded under this roster identity. This page will start
+              following the teacher when they click <strong>Mirror to students</strong>.
+            </p>
+            <p className="mt-4 text-xs text-muted-foreground">
+              Keeping the mirror teacher-controlled reduces bandwidth. Live mirroring itself uses no
+              AI tokens; AI is used only when a formative answer is marked.
             <p className="mt-4 font-medium">Waiting for teacher mirror…</p>
             <p className="mt-2 text-sm text-muted-foreground">
               Your answers are saved under this roster name. The lesson appears here as soon as your

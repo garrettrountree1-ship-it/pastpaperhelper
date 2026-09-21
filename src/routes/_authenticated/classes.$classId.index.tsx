@@ -13,6 +13,10 @@ import {
   ClassBulletinPopup,
 } from "@/components/messaging/ClassBulletin";
 import { RemoveStudentButton } from "@/components/classes/RemoveStudentButton";
+import {
+  ManagedStudentCredentials,
+  ManagedStudentLoginButton,
+} from "@/components/classes/ManagedStudentLogins";
 import { useMyClasses } from "@/components/SectionShell";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -194,9 +198,12 @@ function ClassRoster({ classId, showIbLevels }: { classId: string; showIbLevels?
       </button>
       {open && (
         <div className="mt-4">
-          <p className="mb-4 text-sm text-muted-foreground">
-            Visible to you only — students cannot see this list.
-          </p>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              Visible to you only — students cannot see this list or its backup passwords.
+            </p>
+            <ManagedStudentLoginButton classId={classId} onCreated={() => void roster.refetch()} />
+          </div>
           {roster.isPending ? (
             <Skeleton className="h-24 w-full" />
           ) : students.length === 0 ? (
@@ -210,6 +217,7 @@ function ClassRoster({ classId, showIbLevels }: { classId: string; showIbLevels?
                   <tr>
                     <th className="py-2 pr-4 font-medium">Name</th>
                     <th className="py-2 pr-4 font-medium">Joined</th>
+                    <th className="py-2 pr-4 font-medium">Backup login</th>
                     {showIbLevels ? <th className="py-2 pr-4 font-medium">Level</th> : null}
                     <th className="py-2 font-medium" />
                   </tr>
@@ -220,6 +228,13 @@ function ClassRoster({ classId, showIbLevels }: { classId: string; showIbLevels?
                       <td className="py-2 pr-4">{s.name}</td>
                       <td className="py-2 pr-4 text-muted-foreground">
                         {new Date(s.joinedAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-2 pr-4">
+                        <ManagedStudentCredentials
+                          classId={classId}
+                          studentId={s.id}
+                          studentName={s.name}
+                        />
                       </td>
                       {showIbLevels ? (
                         <td className="py-2 pr-4">

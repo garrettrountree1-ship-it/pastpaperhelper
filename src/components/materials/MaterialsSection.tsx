@@ -106,10 +106,12 @@ export function MaterialsSection({
   classId,
   role,
   mirrorUnitId,
+  externalMirror = false,
 }: {
   classId: string;
   role: "teacher" | "student";
   mirrorUnitId?: string | undefined;
+  externalMirror?: boolean;
 }) {
   const classes = useQuery({
     queryKey: ["material-classes"],
@@ -134,6 +136,7 @@ export function MaterialsSection({
         classId={classId}
         canManage={role === "teacher" && Boolean(selected?.canManage)}
         mirrorUnitId={mirrorUnitId}
+        externalMirror={externalMirror}
       />
     </div>
   );
@@ -143,10 +146,12 @@ function UnitList({
   classId,
   canManage,
   mirrorUnitId,
+  externalMirror,
 }: {
   classId: string;
   canManage: boolean;
   mirrorUnitId?: string | undefined;
+  externalMirror: boolean;
 }) {
   const queryClient = useQueryClient();
   const fetchUnits = useServerFn(listUnits);
@@ -266,6 +271,8 @@ function UnitList({
           setOpenTab("notes");
         }}
         onUnitChanged={invalidate}
+        showFormativePanel={!externalMirror}
+        externalMirror={externalMirror}
       />
     );
   }

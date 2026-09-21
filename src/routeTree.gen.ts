@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as MirrorRouteImport } from './routes/mirror'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedBossQuestionRouteImport } from './routes/_authenticated/boss-question'
@@ -45,6 +46,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MirrorRoute = MirrorRouteImport.update({
+  id: '/mirror',
+  path: '/mirror',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -164,6 +170,7 @@ const AuthenticatedSubmissionsAssignmentIdStudentIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/mirror': typeof MirrorRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/boss-question': typeof AuthenticatedBossQuestionRoute
@@ -188,6 +195,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/mirror': typeof MirrorRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/boss-question': typeof AuthenticatedBossQuestionRoute
@@ -213,6 +221,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/mirror': typeof MirrorRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/boss-question': typeof AuthenticatedBossQuestionRoute
@@ -239,6 +248,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/mirror'
     | '/reset-password'
     | '/admin'
     | '/boss-question'
@@ -263,6 +273,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/mirror'
     | '/reset-password'
     | '/admin'
     | '/boss-question'
@@ -287,6 +298,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/mirror'
     | '/reset-password'
     | '/_authenticated/admin'
     | '/_authenticated/boss-question'
@@ -313,6 +325,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  MirrorRoute: typeof MirrorRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   OauthGoogleDriveReturnRoute: typeof OauthGoogleDriveReturnRoute
 }
@@ -338,6 +351,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mirror': {
+      id: '/mirror'
+      path: '/mirror'
+      fullPath: '/mirror'
+      preLoaderRoute: typeof MirrorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -551,6 +571,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  MirrorRoute: MirrorRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   OauthGoogleDriveReturnRoute: OauthGoogleDriveReturnRoute,
 }

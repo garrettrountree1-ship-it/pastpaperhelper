@@ -17,6 +17,26 @@ function ownKey() {
   return process.env["OPENAI_API_KEY"] || "";
 }
 
+/**
+ * Optional OpenAI-compatible relay in a region OpenAI permits (e.g. a small
+ * worker/server the owner runs in the US or Singapore). When set, every OpenAI
+ * call goes there instead of api.openai.com, and the Lovable credit fallback is
+ * switched off entirely. Value should be an origin ending in /v1.
+ */
+function openAiBaseUrl() {
+  const raw = (process.env["OPENAI_BASE_URL"] || "").trim().replace(/\/+$/, "");
+  return raw || "https://api.openai.com/v1";
+}
+
+function usingRelay() {
+  return openAiBaseUrl() !== "https://api.openai.com/v1";
+}
+
+/** Lovable credits are only spent when there is no relay configured. */
+function fallbackAllowed() {
+  return !usingRelay() && lovableKey().length > 0;
+}
+
 function lovableKey() {
   return process.env["LOVABLE_API_KEY"] || "";
 }

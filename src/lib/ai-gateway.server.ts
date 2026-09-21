@@ -202,6 +202,7 @@ export function createLovableAiGatewayProvider(apiKey: string) {
   });
 }
 
+export const TUTOR_MODEL = "openai/gpt-6-astra";
 /**
  * `fetch` for the OpenAI provider that transparently re-sends a request through
  * the Lovable AI Gateway when OpenAI refuses the server's region (403).
@@ -277,4 +278,15 @@ export function gatewayResponsesModel() {
     apiKey: key,
     headers: { "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
   }).responses(LOVABLE_MODEL);
+}
+
+/** OpenAI Responses provider for the default reasoning model. */
+export function gatewayResponsesModel() {
+  const key = process.env["LOVABLE_API_KEY"];
+  if (!key) throw new Error("AI is not configured yet. Missing LOVABLE_API_KEY.");
+  return createOpenAI({
+    baseURL: "https://ai.gateway.lovable.dev/v1",
+    apiKey: key,
+    headers: { "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
+  }).responses(TUTOR_MODEL);
 }

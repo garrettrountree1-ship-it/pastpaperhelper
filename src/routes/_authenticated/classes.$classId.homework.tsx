@@ -976,6 +976,11 @@ function AssignmentDialog({
           <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-4">
             <h3 className="font-display text-lg">Upload past paper &amp; mark scheme</h3>
             <p className="mt-1 text-sm text-muted-foreground">
+              PDF, Word (.docx) or photos. Upload the blank question paper and mark scheme as
+              separate files or as one mixed document. Photo mode uses the confirmed question and
+              answer cuts either way, then matches a student&apos;s photograph to the prepared paper
+              pages without another AI extraction step. Each question part (1a, 1b(i), 1b(ii)…) is
+              kept with its exact mark-scheme block, hidden until it is released.
               PDF, Word (.docx) or photos. Uploading the blank question paper and mark scheme as
               separate files is recommended and is required for the new full-page Photo mode to
               match a student&apos;s photographed page reliably. Existing combined uploads still

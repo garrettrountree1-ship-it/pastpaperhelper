@@ -577,7 +577,7 @@ function PaperMarkScheme({ urls }: { urls: string[] }) {
     if (rect) setRevealed(Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100)));
   };
   return (
-    <div className="paper-mark-scheme rounded-lg border border-primary/30 bg-primary/5 p-3">
+    <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium">Mark scheme</p>
         <div className="flex items-center gap-1">
@@ -902,7 +902,7 @@ function ContinuousPaper({
         </div>
       </div>
 
-      <aside className="paper sticky top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto p-3 [&_.paper-mark-scheme]:hidden">
+      <aside className="paper sticky top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto p-3">
         <p className="font-display text-lg">Questions</p>
         <p className="mb-3 text-xs text-muted-foreground">
           Select a block to mark it or ask for help.
@@ -1085,7 +1085,9 @@ function ContinuousPaper({
                 (selectedResult?.verdict === "correct" ||
                   Number(selectedResult?.awardedMarks ?? 0) >= Number(selectedQuestion.marks)))) &&
             selectedQuestion.answerImageUrls?.length ? (
-              <PaperMarkScheme urls={selectedQuestion.answerImageUrls} />
+              <div className="hidden" aria-hidden="true">
+                <PaperMarkScheme urls={selectedQuestion.answerImageUrls} />
+              </div>
             ) : null}
             {selectedAnswer?.attempts ? (
               <p className="text-xs text-muted-foreground">

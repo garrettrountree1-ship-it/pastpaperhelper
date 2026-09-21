@@ -100,7 +100,7 @@ export async function postChatCompletion(
   if (response.ok) return { response, detail: "" };
 
   let detail = await response.text();
-  if (usingOwnOpenAi() && lovableKey() && isRegionBlocked(response.status, detail)) {
+  if (usingOwnOpenAi() && fallbackAllowed() && isRegionBlocked(response.status, detail)) {
     console.warn("OpenAI blocked this region; retrying through the Lovable AI Gateway");
     const fallback = lovableChatRequest();
     response = await fetch(fallback.url, {

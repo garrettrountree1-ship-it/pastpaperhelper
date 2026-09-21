@@ -686,7 +686,9 @@ export function FormativeCheckPanel({
         setAnswer("");
       }
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["formative-active", classId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["formative-active", classId, mirrorToken ?? "account"],
+        }),
         queryClient.invalidateQueries({ queryKey: ["formative-leaderboard", classId] }),
       ]);
     },

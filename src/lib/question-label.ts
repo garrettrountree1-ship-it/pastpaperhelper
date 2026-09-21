@@ -49,16 +49,9 @@ function embeddedParts(questionText: string): string[] {
   return existing.length > 0 ? existing : found;
 }
 
-/** Display labels compactly: 7a, 7a(i), 7a(ii), 7b. */
+/** Display printed parts in one compact group: 7(a), 7(ai), 7(aii), 7(b). */
 function displayParts(parts: string[]): string {
-  const output: string[] = [];
-  for (let index = 0; index < parts.length; index += 1) {
-    const part = parts[index]!;
-    if (index === 0 && /^[a-z]$/.test(part) && !new RegExp(`^(?:${ROMAN})$`, "i").test(part)) {
-      output.push(part);
-    } else output.push(`(${part})`);
-  }
-  return output.join("");
+  return parts.length > 0 ? `(${parts.join("")})` : "";
 }
 
 function parseOnce(text: string): Parsed | null {

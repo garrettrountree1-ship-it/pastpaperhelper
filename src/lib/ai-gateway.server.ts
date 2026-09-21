@@ -143,10 +143,44 @@ export function createLovableAiGatewayProvider(apiKey: string) {
   });
 }
 
+/**
+ * `fetch` for the OpenAI provider that transparently re-sends a request through
+ * the Lovable AI Gateway when OpenAI refuses the server's region (403).
+ */
+function openAiFetchWithGatewayFallback(): typeof fetch {
+  return async (input, init) => {
+    const response = await fetch(input as RequestInfo, init);
+    if (response.ok || response.status !== 403 || !lovableKey()) return response;
+
+    const detail = await response.clone().text();
+    if (!isRegionBlocked(response.status, detail)) return response;
+
+    console.warn("OpenAI blocked this region; retrying through the Lovable AI Gateway");
+    let body = init?.body;
+    if (typeof body === "string") {
+      try {
+        const parsed = JSON.parse(body) as Record<string, unknown>;
+        parsed["model"] = LOVABLE_MODEL;
+        body = JSON.stringify(parsed);
+      } catch {
+        /* keep the original body */
+      }
+    }
+    const headers = new Headers(init?.headers);
+    headers.delete("authorization");
+    headers.set("Lovable-API-Key", lovableKey());
+    const requested = new URL(input instanceof Request ? input.url : String(input));
+    const path = requested.pathname.replace(/^\/v1/, "");
+    return fetch(`https://ai.gateway.lovable.dev/v1${path}`, { ...init, headers, body });
+  };
+}
+
 /** The AI SDK model every text/vision feature uses. */
 export function gatewayModel() {
   if (usingOwnOpenAi()) {
-    return createOpenAI({ apiKey: ownKey() })(OPENAI_MODEL);
+    return createOpenAI({ apiKey: ownKey(), fetch: openAiFetchWithGatewayFallback() })(
+      OPENAI_MODEL,
+    );
   }
   return createLovableAiGatewayProvider(aiApiKey())(LOVABLE_MODEL);
 }

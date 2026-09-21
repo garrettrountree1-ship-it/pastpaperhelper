@@ -48,7 +48,7 @@ export function ClassLessonMirror({ classId, isStudent }: { classId: string; isS
   useEffect(() => {
     if (!isStudent || trusted.current.length === 0) return;
     let channel: RealtimeChannel | null = null;
-    let timer: ReturnType<typeof window.setInterval> | null = null;
+    let timer: number | null = null;
     let cancelled = false;
 
     const receive = ({ payload }: { payload: unknown }) => {

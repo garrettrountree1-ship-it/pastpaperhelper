@@ -1,7 +1,9 @@
 import { generateText } from "ai";
 import { z } from "zod";
 
-import { gatewayModel } from "./ai-gateway.server";
+import { gatewayModel, TUTOR_MODEL } from "./ai-gateway.server";
+
+const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 export type MarkPoint = { point: string; marks: number; awarded: boolean };
 
@@ -101,39 +103,91 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     "Output raw JSON only.",
   ].join(" ");
 
-  const asImage = (url: string) => ({
-    type: "image" as const,
-    image: url.startsWith("data:") ? url : new URL(url),
-  });
-
-  const content = [
-    { type: "text" as const, text: prompt },
-    ...questionImages.map(asImage),
-    ...schemeImages.map(asImage),
-    ...images.map(asImage),
-  ];
-
-  let lastError: unknown = null;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  // Marking uses the gateway's non-streaming JSON endpoint. The SDK adapter can
+  // occasionally receive a stream that closes before its final chunk and then
+  // throws "No output generated. Check the stream for errors" even though the
+  // request itself was valid. Non-streaming responses avoid that failure mode.
+  // Retry transient gateway failures; on the last attempt omit only the
+  // question-page pictures (the question text remains) to reduce payload size.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const { text } = await generateText({
-        model: gatewayModel(),
-        maxOutputTokens: 1200,
+      const text = await requestMarkingJson({
         system,
-        messages: [{ role: "user", content }],
+        prompt,
+        questionImages: attempt < 2 ? questionImages : [],
+        schemeImages,
+        answerImages: images,
       });
       const parsed = markSchema.parse(JSON.parse(extractJson(text)));
       return clamp(parsed, input.marks);
     } catch (error) {
-      lastError = error;
+      console.error("AI marking attempt failed", {
+        attempt: attempt + 1,
+        questionImages: attempt < 2 ? questionImages.length : 0,
+        schemeImages: schemeImages.length,
+        answerImages: images.length,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      if (attempt < 2) await delay(400 * 2 ** attempt);
     }
   }
   throw new Error(
-    `We couldn't mark that answer just now. Please try again. (${
-      lastError instanceof Error ? lastError.message : "unknown error"
-    })`,
+    "We couldn't mark that answer because the marking service returned no result. Your attempt was not counted. Please wait a moment and try again.",
   );
 }
+
+async function requestMarkingJson({
+  system,
+  prompt,
+  questionImages,
+  schemeImages,
+  answerImages,
+}: {
+  system: string;
+  prompt: string;
+  questionImages: string[];
+  schemeImages: string[];
+  answerImages: string[];
+}): Promise<string> {
+  const key = process.env["LOVABLE_API_KEY"];
+  if (!key) throw new Error("AI is not configured yet. Missing LOVABLE_API_KEY.");
+  const image = (url: string) => ({ type: "image_url", image_url: { url } });
+  const response = await fetch(GATEWAY, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
+    body: JSON.stringify({
+      model: TUTOR_MODEL,
+      max_tokens: 1600,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: system },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            ...questionImages.map(image),
+            ...schemeImages.map(image),
+            ...answerImages.map(image),
+          ],
+        },
+      ],
+    }),
+  });
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`gateway ${response.status}: ${detail.slice(0, 240)}`);
+  }
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+    error?: { message?: string };
+  };
+  const text = payload.choices?.[0]?.message?.content?.trim() ?? "";
+  if (!text) throw new Error(payload.error?.message || "gateway returned an empty response");
+  return text;
+}
+
+const delay = (milliseconds: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 
 function clamp(result: z.infer<typeof markSchema>, maxMarks: number): MarkResult {
   const awarded = Math.max(0, Math.min(maxMarks, Math.round(result.awardedMarks * 2) / 2));

@@ -7,7 +7,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { questionLabel } from "@/lib/question-label";
+import { questionLabel, resolveQuestionLabels } from "@/lib/question-label";
 import type { PhotoMode } from "@/lib/photo-mode";
 import { photoAvailability } from "@/lib/photo-mode";
 import { ENGLISH_ONLY_MESSAGE, isEnglishOnly } from "@/lib/language";
@@ -22,6 +22,7 @@ import {
   QuestionExperience,
 } from "@/components/assignments/QuestionExperience";
 import { PAD_FILE_NAME } from "@/components/assignments/DrawingPad";
+import { PhotoPageMode, PHOTO_PAGE_FILE_PREFIX } from "@/components/assignments/PhotoPageMode";
 import { parseSnipBand } from "@/components/assignments/QuestionSnip";
 import {
   HELP_PILL,
@@ -78,11 +79,10 @@ export const Route = createFileRoute("/_authenticated/assignments/$assignmentId/
 
 function AssignmentPage() {
   const { assignmentId } = Route.useParams();
-  const [viewMode, setViewMode] = useState<"questions" | "paper">(() => {
+  const [viewMode, setViewMode] = useState<"questions" | "paper" | "photo">(() => {
     if (typeof window === "undefined") return "questions";
-    return window.localStorage.getItem(`homework-view:${assignmentId}`) === "paper"
-      ? "paper"
-      : "questions";
+    const saved = window.localStorage.getItem(`homework-view:${assignmentId}`);
+    return saved === "paper" || saved === "photo" ? saved : "questions";
   });
   const queryClient = useQueryClient();
   const queryKey = ["workspace", assignmentId];
@@ -112,7 +112,7 @@ function AssignmentPage() {
   return (
     <div className="min-h-screen">
       <AppHeader role="student" />
-      <main className={`mx-auto px-4 py-8 ${viewMode === "paper" ? "max-w-7xl" : "max-w-3xl"}`}>
+      <main className={`mx-auto px-4 py-8 ${viewMode === "questions" ? "max-w-3xl" : "max-w-7xl"}`}>
         <Link to="/dashboard" className="text-sm text-muted-foreground hover:underline">
           ← Your homework
         </Link>
@@ -173,6 +173,16 @@ function AssignmentPage() {
                   }}
                 >
                   Paper mode
+                </Button>
+                <Button
+                  size="sm"
+                  variant={viewMode === "photo" ? "default" : "ghost"}
+                  onClick={() => {
+                    setViewMode("photo");
+                    window.localStorage.setItem(`homework-view:${assignmentId}`, "photo");
+                  }}
+                >
+                  Photo mode
                 </Button>
               </div>
               {Number(data.submission.penalty_percent ?? 0) > 0 ? (
@@ -237,7 +247,7 @@ function AssignmentPage() {
             ) : null}
 
             <div
-              className={`${viewMode === "paper" ? "hidden" : "mt-8 space-y-6"} ${protection.protectedClassName} ${
+              className={`${viewMode !== "questions" ? "hidden" : "mt-8 space-y-6"} ${protection.protectedClassName} ${
                 protection.concealed ? "pointer-events-none blur-lg" : ""
               }`}
             >
@@ -257,6 +267,9 @@ function AssignmentPage() {
                       className={data.assignment.className}
                       assignmentTitle={data.assignment.title}
                       index={index}
+                      label={
+                        resolveQuestionLabels(data.questions.map((q) => q.question_text))[index]
+                      }
                       question={question}
                       locked={Boolean(data.submission.locked_at) || data.assignment.pastDue}
                       answer={data.answers.find((a) => a.question_id === question.id) ?? null}
@@ -297,6 +310,31 @@ function AssignmentPage() {
                   settings={settings}
                   revealOnFullMarks={Boolean(data.assignment.revealOnFullMarks)}
                   markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
+                  queryKey={queryKey}
+                  classId={data.assignment.classId}
+                  className={data.assignment.className}
+                  assignmentTitle={data.assignment.title}
+                />
+              </div>
+            ) : null}
+            {viewMode === "photo" ? (
+              <div
+                className={`mt-6 ${protection.protectedClassName} ${
+                  protection.concealed ? "pointer-events-none blur-lg" : ""
+                }`}
+              >
+                <PhotoPageMode
+                  assignmentId={assignmentId}
+                  questions={data.questions.map((question) => ({
+                    ...question,
+                    imageUrls: snipsFor(question),
+                  }))}
+                  answers={data.answers}
+                  locked={Boolean(data.submission.locked_at) || data.assignment.pastDue}
+                  revealOnFullMarks={Boolean(data.assignment.revealOnFullMarks)}
+                  markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
+                  allowHint={settings?.allowHint !== false}
+                  allowSteps={settings?.allowSteps !== false}
                   queryKey={queryKey}
                 />
               </div>
@@ -393,6 +431,7 @@ function QuestionCard({
   className,
   assignmentTitle,
   index,
+  label,
   question,
   answer,
   referenceImageUrls,
@@ -410,6 +449,8 @@ function QuestionCard({
   className: string;
   assignmentTitle: string;
   index: number;
+  /** The paper's own printed number for this question. */
+  label?: string | undefined;
   question: Question;
   answer: Answer | null;
   referenceImageUrls: string[];
@@ -446,7 +487,9 @@ function QuestionCard({
   const gradeMutation = useMutation({
     mutationFn: async () => {
       if (!isEnglishOnly(draft)) throw new Error(ENGLISH_ONLY_MESSAGE);
-      let imagePaths = answer?.image_paths ?? [];
+      let imagePaths = (answer?.image_paths ?? []).filter(
+        (path) => !path.includes(PHOTO_PAGE_FILE_PREFIX),
+      );
       if (photos.length > 0) {
         const { data: userData } = await supabase.auth.getUser();
         const userId = userData.user?.id;
@@ -517,7 +560,7 @@ function QuestionCard({
         showPhoto={showPhoto}
         onShowPhoto={() => setShowPhoto(true)}
         photoCount={photos.length}
-        photoUrls={answer?.imageUrls ?? []}
+        photoUrls={(answer?.imageUrls ?? []).filter((url) => !url.includes(PHOTO_PAGE_FILE_PREFIX))}
         photoFiles={photoPreviews}
         onRemovePhoto={(name) => setPhotos((prev) => prev.filter((item) => item.name !== name))}
         onPhotosChange={(files) => {
@@ -563,6 +606,7 @@ function QuestionCard({
         tutorError={tutorMutation.isError ? (tutorMutation.error as Error).message : undefined}
         onSend={() => tutorMutation.mutate()}
         locked={locked}
+        label={label}
         keywordTranslation={keywordTranslation}
         allowHint={allowHint}
         allowSteps={allowSteps}
@@ -578,7 +622,7 @@ function QuestionCard({
             preset={{
               assignmentId,
               questionId: question.id,
-              topic: `${assignmentTitle} · Question ${questionLabel(question.question_text, index)}`,
+              topic: `${assignmentTitle} · Question ${label ?? questionLabel(question.question_text, index)}`,
             }}
             trigger={
               <button

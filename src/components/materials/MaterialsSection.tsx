@@ -109,7 +109,7 @@ export function MaterialsSection({
 }: {
   classId: string;
   role: "teacher" | "student";
-  mirrorUnitId?: string;
+  mirrorUnitId?: string | undefined;
 }) {
   const classes = useQuery({
     queryKey: ["material-classes"],
@@ -146,7 +146,7 @@ function UnitList({
 }: {
   classId: string;
   canManage: boolean;
-  mirrorUnitId?: string;
+  mirrorUnitId?: string | undefined;
 }) {
   const queryClient = useQueryClient();
   const fetchUnits = useServerFn(listUnits);

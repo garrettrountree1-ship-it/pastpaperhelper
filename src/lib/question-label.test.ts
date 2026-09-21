@@ -1,0 +1,67 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  formatLabel,
+  parseLabelString,
+  questionBody,
+  questionLabel,
+  resolveQuestionLabels,
+} from "./question-label";
+
+test("keeps compact printed letter and roman sub-parts", () => {
+  assert.equal(questionLabel("1(ai) State one reason", 0), "1a(i)");
+  assert.equal(questionLabel("1 (a)(ii) Explain why", 0), "1a(ii)");
+  assert.equal(questionLabel("7biii Calculate", 0), "7b(iii)");
+});
+
+test("compact display labels remain editable and parseable", () => {
+  assert.deepEqual(parseLabelString("12(aiii)"), { main: 12, parts: ["a", "iii"] });
+  assert.equal(formatLabel(12, ["a", "iii"]), "12a(iii)");
+});
+
+test("fills in missing labels from the question above", () => {
+  assert.deepEqual(
+    resolveQuestionLabels(["1(a) State one", "(b) Explain", "Calculate the mass", "2 Describe"]),
+    ["1a", "1b", "1c", "2"],
+  );
+});
+
+test("numbers an unlabelled paper in order", () => {
+  assert.deepEqual(resolveQuestionLabels(["State one", "Explain"]), ["1", "2"]);
+});
+
+test("repairs legacy running numbers placed before dotted sub-parts", () => {
+  assert.deepEqual(
+    resolveQuestionLabels([
+      "4 A standalone question",
+      "5 A shared stem\n\n(a.ii) Calculate the amount",
+      "6 (b.i) (b.i) Sketch the curve",
+      "7 (b.ii) Explain the change",
+      "8 A new standalone question",
+    ]),
+    ["4", "5a(ii)", "5b(i)", "5b(ii)", "6"],
+  );
+});
+
+test("does not fold a genuine next main question into the previous sub-parts", () => {
+  assert.deepEqual(resolveQuestionLabels(["1(b) Explain", "2(a) Calculate"]), ["1b", "2a"]);
+});
+
+test("parses dotted sub-parts without losing letter or roman numbering", () => {
+  assert.equal(questionLabel("6 (b.ii) Explain", 5), "6b(ii)");
+  assert.deepEqual(parseLabelString("6(b.ii)"), { main: 6, parts: ["b", "ii"] });
+});
+
+test("prefers the real punctuated paper number over a legacy running prefix", () => {
+  assert.equal(questionLabel("9 7. The acid-catalysed reaction", 8), "7");
+  assert.equal(questionBody("9 7. The acid-catalysed reaction"), "The acid-catalysed reaction");
+  assert.deepEqual(
+    resolveQuestionLabels([
+      "8 Explain",
+      "9 7. The acid-catalysed reaction",
+      "10 (a)(i) (a)(i) Calculate",
+    ]),
+    ["8", "7", "7a(i)"],
+  );
+});

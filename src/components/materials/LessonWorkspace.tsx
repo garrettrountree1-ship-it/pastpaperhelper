@@ -651,9 +651,6 @@ export function LessonWorkspace({
             </span>
             <span className="mt-1 block text-lg font-black tracking-[0.2em]">
               CODE: {presentationClass.data.code}
-            <span className="block font-medium">Class Mirror: this website + /mirror</span>
-            <span className="block text-muted-foreground">
-              Code {presentationClass.data.code} · click to copy
             </span>
             <span className="mt-1 block text-[11px] opacity-90">Click to copy the address</span>
           </button>

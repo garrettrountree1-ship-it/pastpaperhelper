@@ -107,28 +107,51 @@ function lovableChatRequest() {
 export async function postChatCompletion(
   body: Record<string, unknown>,
 ): Promise<{ response: Response; detail: string }> {
+  if (usingOwnOpenAi()) {
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${ownKey()}`,
+    } as Record<string, string>;
+    const payload = JSON.stringify({ ...body, model: OPENAI_MODEL });
+    let lastResponse: Response | null = null;
+    let lastDetail = "";
+    for (const base of openAiBaseUrls()) {
+      const response = await fetch(`${base}/chat/completions`, {
+        method: "POST",
+        headers,
+        body: payload,
+      });
+      if (response.ok) return { response, detail: "" };
+      const detail = await response.text();
+      lastResponse = response;
+      lastDetail = detail;
+      if (!isRegionBlocked(response.status, detail)) break;
+      console.warn(`OpenAI refused the region of relay ${base}`);
+    }
+    if (lastResponse && fallbackAllowed() && isRegionBlocked(lastResponse.status, lastDetail)) {
+      console.warn("OpenAI blocked this region; retrying through the Lovable AI Gateway");
+      const fallback = lovableChatRequest();
+      const response = await fetch(fallback.url, {
+        method: "POST",
+        headers: fallback.headers,
+        body: JSON.stringify({ ...body, model: fallback.model }),
+      });
+      if (response.ok) return { response, detail: "" };
+      return { response, detail: await response.text() };
+    }
+    return { response: lastResponse!, detail: lastDetail };
+  }
+
   const primary = chatRequest();
-  let response = await fetch(primary.url, {
+  const response = await fetch(primary.url, {
     method: "POST",
     headers: primary.headers,
     body: JSON.stringify({ ...body, model: primary.model }),
   });
   if (response.ok) return { response, detail: "" };
-
-  let detail = await response.text();
-  if (usingOwnOpenAi() && fallbackAllowed() && isRegionBlocked(response.status, detail)) {
-    console.warn("OpenAI blocked this region; retrying through the Lovable AI Gateway");
-    const fallback = lovableChatRequest();
-    response = await fetch(fallback.url, {
-      method: "POST",
-      headers: fallback.headers,
-      body: JSON.stringify({ ...body, model: fallback.model }),
-    });
-    if (response.ok) return { response, detail: "" };
-    detail = await response.text();
-  }
-  return { response, detail };
+  return { response, detail: await response.text() };
 }
+
 
 /** Endpoint + headers + model for a raw chat-completions request. */
 export function chatRequest() {

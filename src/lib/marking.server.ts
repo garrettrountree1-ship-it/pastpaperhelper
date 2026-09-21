@@ -129,7 +129,6 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
         questionImages: attempt < 2 ? questionImages.length : 0,
         schemeImages: schemeImages.length,
         answerImages: images.length,
-        error: error instanceof Error ? error.message : String(error),
         error: lastError,
       });
       if (attempt < 2) await delay(400 * 2 ** attempt);
@@ -159,32 +158,6 @@ async function requestMarkingJson({
   schemeImages: string[];
   answerImages: string[];
 }): Promise<string> {
-  const key = process.env["LOVABLE_API_KEY"];
-  if (!key) throw new Error("AI is not configured yet. Missing LOVABLE_API_KEY.");
-  const image = (url: string) => ({ type: "image_url", image_url: { url } });
-  const response = await fetch(GATEWAY, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
-    body: JSON.stringify({
-      model: TUTOR_MODEL,
-      max_tokens: 1600,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: system },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            ...questionImages.map(image),
-            ...schemeImages.map(image),
-            ...answerImages.map(image),
-          ],
-        },
-      ],
-    }),
-  });
-  if (!response.ok) {
-    const detail = await response.text();
   const image = (url: string) => ({ type: "image_url", image_url: { url } });
   const { response, detail } = await postChatCompletion({
     max_tokens: 1600,

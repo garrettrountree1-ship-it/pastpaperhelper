@@ -73,9 +73,6 @@ function PublicMirrorPage() {
     const trusted = new Set(joined.presenterIds);
 
     void (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.access_token) await supabase.realtime.setAuth(data.session.access_token);
-      if (cancelled) return;
       channel = supabase.channel(`lesson-mirror:${joined.classId}`, {
         config: { broadcast: { self: false } },
       });

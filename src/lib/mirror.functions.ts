@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { uniqueAlias } from "@/lib/game-alias";
+import { answerFormativeCore, getActiveFormativeCore } from "@/lib/formative.functions";
 
 const presentationInput = z.union([
   z.object({ classId: z.string().uuid() }),
@@ -12,110 +13,118 @@ const presentationInput = z.union([
 const publicMirrorInput = z.object({
   code: z.string().trim().min(4).max(10),
   name: z.string().trim().min(2).max(80),
-  accessToken: z.string().min(20),
+  /** A token this browser already holds, so a reload keeps the same seat. */
+  claimToken: z.string().min(10).optional(),
 });
 
+/** A claim goes stale when the tab stops checking in. */
+const CLAIM_STALE_MINUTES = 3;
+
+async function adminDb() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
+}
+
+/** Resolves a mirror claim token to its class and roster student. */
+async function resolveClaim(token: string) {
+  const db = await adminDb();
+  const { data: claim } = await db
+    .from("mirror_claims")
+    .select("id, class_id, student_id")
+    .eq("token", token)
+    .maybeSingle();
+  if (!claim) throw new Error("This class viewer has expired. Enter the class code again.");
+  await db
+    .from("mirror_claims")
+    .update({ last_seen_at: new Date().toISOString() })
+    .eq("id", claim.id);
+  return {
+    db,
+    classId: claim.class_id as string,
+    studentId: claim.student_id as string,
+  };
+}
+
 /**
- * Gives a browser-only anonymous Supabase user access to the dedicated mirror.
- * Students identify themselves by their roster name, so formative responses are
- * recorded under that name without requiring a normal account sign-in.
+ * Lets a student watch the class mirror with nothing but the class code and
+ * their roster name. No sign-in and no anonymous account is created, so a
+ * student signed into their own account in another tab stays signed in.
  */
 export const joinPublicMirror = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => publicMirrorInput.parse(input))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: auth, error: authError } = await supabaseAdmin.auth.getUser(data.accessToken);
-    const guestId = auth.user?.id;
-    if (authError || !guestId) {
-      throw new Error("Could not start this class viewer. Please try again.");
-    }
-    const isAnonymous = Boolean(auth.user?.is_anonymous);
+    const db = await adminDb();
 
-    const { data: klass } = await supabaseAdmin
+    const { data: klass } = await db
       .from("classes")
       .select("id, name, join_code, teacher_id")
       .eq("join_code", data.code.toUpperCase())
       .maybeSingle();
     if (!klass) throw new Error("That class code was not found.");
 
-    const { data: members } = await supabaseAdmin
+    const { data: members } = await db
       .from("class_members")
       .select("student_id")
       .eq("class_id", klass.id);
     const memberIds = (members ?? []).map((row) => row.student_id as string);
     const { data: profiles } = memberIds.length
-      ? await supabaseAdmin.from("profiles").select("id, full_name").in("id", memberIds)
+      ? await db.from("profiles").select("id, full_name").in("id", memberIds)
       : { data: [] };
     const rosterProfile = (profiles ?? []).find(
-      (profile) => profile.full_name.trim().toLowerCase() === data.name.toLowerCase(),
+      (profile) => profile.full_name.trim().toLowerCase() === data.name.trim().toLowerCase(),
     );
     if (!rosterProfile) {
       throw new Error("Enter your name exactly as it appears on your teacher's class roster.");
     }
-    if (!isAnonymous && rosterProfile.id !== guestId) {
-      throw new Error("Use the roster name belonging to your signed-in account.");
-    }
 
-    if (isAnonymous) {
-      const { error: metadataError } = await supabaseAdmin.auth.admin.updateUserById(guestId, {
-        app_metadata: { mirror_only: true },
-      });
-      if (metadataError) throw new Error(metadataError.message);
-      const [{ error: profileError }, { error: memberError }] = await Promise.all([
-        supabaseAdmin
-          .from("profiles")
-          .upsert({ id: guestId, full_name: rosterProfile.full_name, email: null }),
-        supabaseAdmin
-          .from("class_members")
-          .upsert(
-            { class_id: klass.id, student_id: guestId },
-            { onConflict: "class_id,student_id" },
-          ),
-      ]);
-      if (profileError) throw new Error(profileError.message);
-      if (memberError) throw new Error(memberError.message);
-    }
-
-    const { data: existingGuestProfile } = await supabaseAdmin
-      .from("game_profiles")
-      .select("id")
+    // One live seat per roster name. A stale seat (closed tab) is reclaimed.
+    const staleBefore = new Date(Date.now() - CLAIM_STALE_MINUTES * 60_000).toISOString();
+    const { data: existing } = await db
+      .from("mirror_claims")
+      .select("id, token, last_seen_at")
       .eq("class_id", klass.id)
-      .eq("student_id", guestId)
+      .eq("student_id", rosterProfile.id)
       .maybeSingle();
-    let viewerAlias: string | null = null;
-    if (isAnonymous && !existingGuestProfile) {
-      const { data: rosterGameProfile } = await supabaseAdmin
-        .from("game_profiles")
-        .select("alias")
-        .eq("class_id", klass.id)
-        .eq("student_id", rosterProfile.id)
-        .maybeSingle();
-      const { data: aliases } = await supabaseAdmin
+
+    let token = existing?.token as string | undefined;
+    const mine = Boolean(data.claimToken && existing?.token === data.claimToken);
+    if (existing && !mine && (existing.last_seen_at as string) > staleBefore) {
+      throw new Error("Someone is already using this name in the class viewer.");
+    }
+    if (existing) {
+      await db
+        .from("mirror_claims")
+        .update({ last_seen_at: new Date().toISOString() })
+        .eq("id", existing.id);
+    } else {
+      const { data: created, error } = await db
+        .from("mirror_claims")
+        .insert({ class_id: klass.id, student_id: rosterProfile.id })
+        .select("token")
+        .single();
+      if (error) throw new Error(error.message);
+      token = created.token as string;
+    }
+
+    const { data: gameProfile } = await db
+      .from("game_profiles")
+      .select("alias")
+      .eq("class_id", klass.id)
+      .eq("student_id", rosterProfile.id)
+      .maybeSingle();
+    let alias = (gameProfile?.alias ?? null) as string | null;
+    if (!alias) {
+      const { data: aliases } = await db
         .from("game_profiles")
         .select("alias")
         .eq("class_id", klass.id);
-      const taken = new Set((aliases ?? []).map((row) => row.alias as string));
-      let alias = rosterGameProfile?.alias as string | undefined;
-      // Retain the enrolled student's animal/avatar. If aliases are unique in
-      // this deployment, a suffix distinguishes this browser-only viewer while
-      // AliasAvatar still recognises the same animal name.
-      if (alias && taken.has(alias)) alias = `${alias}Viewer`;
-      if (!alias || taken.has(alias)) alias = uniqueAlias(taken);
-      await supabaseAdmin
+      alias = uniqueAlias(new Set((aliases ?? []).map((row) => row.alias as string)));
+      await db
         .from("game_profiles")
-        .insert({ class_id: klass.id, student_id: guestId, alias });
-      viewerAlias = alias;
-    } else {
-      const { data: profile } = await supabaseAdmin
-        .from("game_profiles")
-        .select("alias")
-        .eq("class_id", klass.id)
-        .eq("student_id", guestId)
-        .maybeSingle();
-      viewerAlias = (profile?.alias as string | undefined) ?? null;
+        .insert({ class_id: klass.id, student_id: rosterProfile.id, alias });
     }
 
-    const { data: coteachers } = await supabaseAdmin
+    const { data: coteachers } = await db
       .from("class_coteachers")
       .select("teacher_id")
       .eq("class_id", klass.id);
@@ -125,13 +134,49 @@ export const joinPublicMirror = createServerFn({ method: "POST" })
       className: klass.name as string,
       code: klass.join_code as string,
       studentName: rosterProfile.full_name as string,
-      alias: viewerAlias,
+      claimToken: token!,
+      alias,
       presenterIds: [
         klass.teacher_id as string,
         ...(coteachers ?? []).map((row) => row.teacher_id as string),
       ],
     };
   });
+
+/** Keeps a mirror seat alive while the tab is open. */
+export const mirrorHeartbeat = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ claimToken: z.string().min(10) }).parse(input))
+  .handler(async ({ data }) => {
+    await resolveClaim(data.claimToken);
+    return { ok: true };
+  });
+
+/** The live class question, read for a mirror viewer by their claim token. */
+export const mirrorGetActiveCheck = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ claimToken: z.string().min(10) }).parse(input))
+  .handler(async ({ data }) => {
+    const { db, classId, studentId } = await resolveClaim(data.claimToken);
+    return getActiveFormativeCore(db, classId, studentId);
+  });
+
+/** A mirror viewer answers the live class question, saved under their name. */
+export const mirrorAnswerCheck = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        claimToken: z.string().min(10),
+        checkId: z.string().uuid(),
+        answer: z.string().min(1).max(4000),
+        partAnswers: z.record(z.string(), z.string().max(2000)).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { db, studentId } = await resolveClaim(data.claimToken);
+    const { claimToken: _token, ...payload } = data;
+    return answerFormativeCore(db, studentId, payload);
+  });
+
 
 /** Resolves the short, keyboard-friendly link used by the dedicated class viewer. */
 export const getPresentationClass = createServerFn({ method: "POST" })

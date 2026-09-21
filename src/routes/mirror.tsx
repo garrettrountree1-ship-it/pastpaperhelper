@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { joinPublicMirror } from "@/lib/mirror.functions";
+import { joinPublicMirror, mirrorHeartbeat } from "@/lib/mirror.functions";
 
 type JoinedMirror = {
   classId: string;
@@ -42,6 +42,7 @@ export const Route = createFileRoute("/mirror")({
 
 function PublicMirrorPage() {
   const join = useServerFn(joinPublicMirror);
+  const heartbeat = useServerFn(mirrorHeartbeat);
   const [code, setCode] = useState(() =>
     typeof window === "undefined" ? "" : (window.localStorage.getItem("class-mirror-code") ?? ""),
   );

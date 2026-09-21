@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { joinPublicMirror } from "@/lib/mirror.functions";
+import { joinPublicMirror, mirrorHeartbeat } from "@/lib/mirror.functions";
 
 type JoinedMirror = {
   classId: string;
@@ -60,6 +60,22 @@ function PublicMirrorPage() {
     document.addEventListener("fullscreenchange", onChange);
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
+
+  // Keep the roster-name seat claimed while this tab is open; if the seat is
+  // lost (e.g. claimed elsewhere after this tab slept), return to the join form.
+  const heartbeat = useServerFn(mirrorHeartbeat);
+  useEffect(() => {
+    if (!joined) return;
+    const timer = window.setInterval(() => {
+      heartbeat({ data: { claimToken: joined.claimToken } }).catch(() => {
+        window.localStorage.removeItem(claimKey(joined.code, joined.studentName));
+        setJoined(null);
+        toast.message("Your mirror seat expired. Join again to continue.");
+      });
+    }, 20_000);
+    return () => window.clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [joined?.claimToken]);
 
   useEffect(() => {
     if (!joined) return;

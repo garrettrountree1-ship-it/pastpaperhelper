@@ -654,20 +654,22 @@ export function FormativeCheckPanel({
   });
 
   const send = useMutation({
-    mutationFn: () =>
-      submit({
-        data: {
-          checkId: check!.id,
-          answer: combined.trim(),
-          ...(parts.length
-            ? {
-                partAnswers: Object.fromEntries(
-                  openParts.map((label) => [label, (partAnswers[label] ?? "").trim()]),
-                ),
-              }
-            : {}),
-        },
-      }),
+    mutationFn: () => {
+      const payload = {
+        checkId: check!.id,
+        answer: combined.trim(),
+        ...(parts.length
+          ? {
+              partAnswers: Object.fromEntries(
+                openParts.map((label) => [label, (partAnswers[label] ?? "").trim()]),
+              ),
+            }
+          : {}),
+      };
+      return mirrorToken
+        ? submitMirror({ data: { claimToken: mirrorToken, ...payload } })
+        : submit({ data: payload });
+    },
     onSuccess: async (result) => {
       if (result.awardedPoints > 0) toast.success(`+${result.awardedPoints} points!`);
       // Only clear the boxes that are now right; wrong ones stay for editing.

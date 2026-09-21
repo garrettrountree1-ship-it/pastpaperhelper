@@ -103,6 +103,18 @@ function PublicMirrorPage() {
     setJoining(true);
     try {
       let { data } = await supabase.auth.getSession();
+      const typed = name.trim().toLowerCase();
+      if (data.session && !data.session.user.is_anonymous) {
+        const signedInName = String(data.session.user.user_metadata?.["full_name"] ?? "")
+          .trim()
+          .toLowerCase();
+        // This viewer page is name-based, so a leftover account session in this
+        // browser must not block a student joining under their roster name.
+        if (signedInName !== typed) {
+          await supabase.auth.signOut();
+          data = { session: null };
+        }
+      }
       if (!data.session) {
         const anonymous = await supabase.auth.signInAnonymously({
           options: { data: { full_name: name.trim() } },

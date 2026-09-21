@@ -28,9 +28,25 @@ function openAiBaseUrl() {
   return raw || "https://api.openai.com/v1";
 }
 
+/**
+ * Optional extra relays (comma separated) tried in order when the first one
+ * reports that OpenAI refuses its region.
+ */
+function extraOpenAiBaseUrls() {
+  return (process.env["OPENAI_BASE_URL_FALLBACK"] || "")
+    .split(",")
+    .map((value) => value.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+}
+
+function openAiBaseUrls() {
+  return [openAiBaseUrl(), ...extraOpenAiBaseUrls()];
+}
+
 function usingRelay() {
   return openAiBaseUrl() !== "https://api.openai.com/v1";
 }
+
 
 /** Lovable credits are only spent when there is no relay configured. */
 function fallbackAllowed() {

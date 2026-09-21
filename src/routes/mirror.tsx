@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { joinPublicMirror } from "@/lib/mirror.functions";
 import { joinPublicMirror, mirrorHeartbeat } from "@/lib/mirror.functions";
 
 type JoinedMirror = {
@@ -21,9 +20,6 @@ type JoinedMirror = {
   code: string;
   studentName: string;
   alias: string | null;
-  presenterIds: string[];
-};
-
   claimToken: string;
   presenterIds: string[];
 };

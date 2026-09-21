@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { joinPublicMirror } from "@/lib/mirror.functions";
+import { joinPublicMirror, mirrorHeartbeat } from "@/lib/mirror.functions";
 
 type JoinedMirror = {
   classId: string;
@@ -20,8 +20,13 @@ type JoinedMirror = {
   code: string;
   studentName: string;
   alias: string | null;
+  claimToken: string;
   presenterIds: string[];
 };
+
+/** Where this tab's mirror seat token is remembered, keyed per roster name. */
+const claimKey = (code: string, name: string) =>
+  `class-mirror-claim:${code.trim().toUpperCase()}:${name.trim().toLowerCase()}`;
 
 type Announcement = {
   from?: string;

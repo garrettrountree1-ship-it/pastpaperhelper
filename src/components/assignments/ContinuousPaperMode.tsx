@@ -419,7 +419,12 @@ function PaperAnswerArea({
           event.currentTarget.setPointerCapture(event.pointerId);
           current.current = {
             color,
-            width: tool === "eraser" ? 24 : 3,
+            width:
+              tool === "eraser"
+                ? 24
+                : event.pointerType === "pen"
+                  ? Math.max(2.2, 1.4 + (event.pressure > 0 ? event.pressure * 3 : 1.4))
+                  : 3,
             erase: tool === "eraser",
             points: [point(event)],
           };
@@ -427,7 +432,22 @@ function PaperAnswerArea({
         }}
         onPointerMove={(event) => {
           if (!current.current) return;
-          current.current.points.push(point(event));
+          // Replay every coalesced sample so fast pen strokes are never lost.
+          const samples =
+            typeof event.nativeEvent.getCoalescedEvents === "function"
+              ? event.nativeEvent.getCoalescedEvents()
+              : [];
+          if (samples.length > 0) {
+            const rect = event.currentTarget.getBoundingClientRect();
+            for (const sample of samples) {
+              current.current.points.push({
+                x: ((sample.clientX - rect.left) / rect.width) * event.currentTarget.width,
+                y: ((sample.clientY - rect.top) / rect.height) * event.currentTarget.height,
+              });
+            }
+          } else {
+            current.current.points.push(point(event));
+          }
           redraw();
         }}
         onPointerUp={() => {

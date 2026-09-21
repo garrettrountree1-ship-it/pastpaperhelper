@@ -107,6 +107,7 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
   // request itself was valid. Non-streaming responses avoid that failure mode.
   // Retry transient gateway failures; on the last attempt omit only the
   // question-page pictures (the question text remains) to reduce payload size.
+  let lastError = "";
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const text = await requestMarkingJson({
@@ -119,20 +120,27 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
       const parsed = markSchema.parse(JSON.parse(extractJson(text)));
       return clamp(parsed, input.marks);
     } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
       console.error("AI marking attempt failed", {
         attempt: attempt + 1,
         questionImages: attempt < 2 ? questionImages.length : 0,
         schemeImages: schemeImages.length,
         answerImages: images.length,
-        error: error instanceof Error ? error.message : String(error),
+        error: lastError,
       });
       if (attempt < 2) await delay(400 * 2 ** attempt);
     }
+  }
+  if (/unsupported_country_region_territory|country, region, or territory/i.test(lastError)) {
+    throw new Error(
+      "Marking is blocked because the AI provider does not accept requests from this server's location. Your attempt was not counted. Please tell your teacher.",
+    );
   }
   throw new Error(
     "We couldn't mark that answer because the marking service returned no result. Your attempt was not counted. Please wait a moment and try again.",
   );
 }
+
 
 async function requestMarkingJson({
   system,

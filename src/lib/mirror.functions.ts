@@ -28,12 +28,6 @@ const mirrorAnswerInput = z.object({
 /** A mirror seat expires after this much silence so a closed tab frees the name. */
 const CLAIM_TTL_MS = 60_000;
 
-type AdminClient = Awaited<
-  ReturnType<typeof import("@/integrations/supabase/client.server")>
->["supabaseAdmin"] extends infer T
-  ? T
-  : never;
-
 async function resolveClaim(claimToken: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: claim } = await supabaseAdmin

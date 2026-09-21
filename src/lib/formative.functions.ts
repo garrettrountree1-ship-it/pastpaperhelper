@@ -171,7 +171,7 @@ export async function getActiveFormativeCore(db: Db, classId: string, userId: st
       .select(
         "id, question, question_image, seconds, count_up, created_at, ends_at, teacher_id, expected_answer, released_answer, answer_released_at, parts, max_attempts, target_student_id, target_student_ids",
       )
-      .eq("class_id", data.classId)
+      .eq("class_id", classId)
       .is("closed_at", null)
       .or(
         `and(target_student_id.is.null,target_student_ids.eq.{}),target_student_ids.cs.{${userId}},target_student_id.eq.${userId},teacher_id.eq.${userId}`,
@@ -229,8 +229,16 @@ export async function getActiveFormativeCore(db: Db, classId: string, userId: st
         partVerdicts: ((r.part_verdicts ?? {}) as Record<string, string>),
       })),
     };
-  });
+  }
+}
 
+const answerInputSchema = z.object({
+  checkId: z.string().uuid(),
+  answer: z.string().min(1).max(4000),
+  /** Multi-part questions send one answer per part label. */
+  partAnswers: z.record(z.string(), z.string().max(2000)).optional(),
+  practice: z.boolean().optional(),
+});
 
 /**
  * Student answers a class question; AI marks it and returns encouraging
@@ -239,19 +247,23 @@ export async function getActiveFormativeCore(db: Db, classId: string, userId: st
  */
 export const answerFormativeCheck = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
-    z
-      .object({
-        checkId: z.string().uuid(),
-        answer: z.string().min(1).max(4000),
-        /** Multi-part questions send one answer per part label. */
-        partAnswers: z.record(z.string(), z.string().max(2000)).optional(),
-        practice: z.boolean().optional(),
-      })
-      .parse(input),
-  )
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
+  .inputValidator((input: unknown) => answerInputSchema.parse(input))
+  .handler(async ({ data, context }) =>
+    answerFormativeCore(context.supabase, context.userId, data),
+  );
+
+/**
+ * Shared marking/recording path for a formative answer. The class mirror calls
+ * this with the service client and the roster student's id, so mirror answers
+ * are saved under that student without any sign-in.
+ */
+export async function answerFormativeCore(
+  db: Db,
+  userId: string,
+  data: z.infer<typeof answerInputSchema>,
+) {
+  {
+    const supabase = db;
     const { data: check } = await supabase
       .from("formative_checks")
       .select(

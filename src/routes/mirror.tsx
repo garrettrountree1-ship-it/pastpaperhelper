@@ -107,7 +107,6 @@ function PublicMirrorPage() {
     })();
 
     return () => {
-      cancelled = true;
       if (helloTimer) window.clearInterval(helloTimer);
       channelRef.current = null;
       if (channel) void supabase.removeChannel(channel);

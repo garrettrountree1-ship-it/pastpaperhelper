@@ -140,7 +140,7 @@ export function chatRequest() {
 export function transcriptionRequest() {
   if (usingOwnOpenAi()) {
     return {
-      url: "https://api.openai.com/v1/audio/transcriptions",
+      url: `${openAiBaseUrl()}/audio/transcriptions`,
       headers: { Authorization: `Bearer ${ownKey()}` } as Record<string, string>,
       model: "gpt-4o-transcribe",
     };

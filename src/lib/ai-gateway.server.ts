@@ -202,9 +202,11 @@ function openAiFetchWithGatewayFallback(): typeof fetch {
 /** The AI SDK model every text/vision feature uses. */
 export function gatewayModel() {
   if (usingOwnOpenAi()) {
-    return createOpenAI({ apiKey: ownKey(), fetch: openAiFetchWithGatewayFallback() })(
-      OPENAI_MODEL,
-    );
+    return createOpenAI({
+      apiKey: ownKey(),
+      baseURL: openAiBaseUrl(),
+      fetch: openAiFetchWithGatewayFallback(),
+    })(OPENAI_MODEL);
   }
   return createLovableAiGatewayProvider(aiApiKey())(LOVABLE_MODEL);
 }
@@ -212,7 +214,9 @@ export function gatewayModel() {
 /** Reasoning-style provider for the streaming tutor paths. */
 export function gatewayResponsesModel() {
   if (usingOwnOpenAi()) {
-    return createOpenAI({ apiKey: ownKey() }).responses(OPENAI_MODEL);
+    return createOpenAI({ apiKey: ownKey(), baseURL: openAiBaseUrl() }).responses(
+      OPENAI_MODEL,
+    );
   }
   const key = aiApiKey();
   return createOpenAI({

@@ -131,11 +131,6 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
       if (attempt < 2) await delay(400 * 2 ** attempt);
     }
   }
-  if (/unsupported_country_region_territory|country, region, or territory/i.test(lastError)) {
-    throw new Error(
-      "Marking is blocked because the AI provider does not accept requests from this server's location. Your attempt was not counted. Please tell your teacher.",
-    );
-  }
   throw new Error(
     "We couldn't mark that answer because the marking service returned no result. Your attempt was not counted. Please wait a moment and try again.",
   );

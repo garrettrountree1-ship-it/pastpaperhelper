@@ -149,6 +149,9 @@ export function SlideAnnotations({
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const drawing = useRef(false);
+  const erasing = useRef(false);
+  const touchPointers = useRef(new Set<number>());
+  const multiTouch = useRef(false);
   const [live, setLive] = useState<SlideStroke | null>(null);
   const [activeText, setActiveText] = useState<number | null>(null);
   // Text boxes only accept clicks when the pointer isn't being used to mark up.
@@ -351,8 +354,41 @@ export function SlideAnnotations({
     return { x: (event.clientX - rect.left) / scale, y: (event.clientY - rect.top) / scale };
   }
 
+  function eraseAt(point: { x: number; y: number }) {
+    const radius = 20;
+    const strokes = valueRef.current.strokes.flatMap((stroke) => {
+      const pieces: SlideStroke[] = [];
+      let points: SlideStroke["points"] = [];
+      for (const current of stroke.points) {
+        if (Math.hypot(current.x - point.x, current.y - point.y) < radius) {
+          if (points.length > 1) pieces.push({ ...stroke, points });
+          points = [];
+        } else {
+          points.push(current);
+        }
+      }
+      if (points.length > 1) pieces.push({ ...stroke, points });
+      return pieces;
+    });
+    const current = valueRef.current;
+    const beforePoints = current.strokes.reduce((sum, stroke) => sum + stroke.points.length, 0);
+    const afterPoints = strokes.reduce((sum, stroke) => sum + stroke.points.length, 0);
+    if (afterPoints !== beforePoints) onChange({ ...current, strokes });
+  }
+
   function down(event: React.PointerEvent) {
     if (tool === "none") return;
+    if (event.pointerType === "touch") {
+      touchPointers.current.add(event.pointerId);
+      if (touchPointers.current.size > 1) {
+        multiTouch.current = true;
+        drawing.current = false;
+        erasing.current = false;
+        setLive(null);
+        return;
+      }
+      if (multiTouch.current) return;
+    }
     const point = pointOf(event);
 
     if (tool === "text") {
@@ -364,15 +400,10 @@ export function SlideAnnotations({
     }
 
     if (tool === "erase") {
-      // Remove any stroke passing near the tap.
-      const kept = value.strokes.filter(
-        (stroke) => !stroke.points.some((p) => Math.hypot(p.x - point.x, p.y - point.y) < 24),
-      );
-      if (kept.length !== value.strokes.length) {
-        onChange({ ...value, strokes: kept });
-        return;
-      }
-      // Nothing drawn there: rub out a pasted picture under the tap instead.
+      event.currentTarget.setPointerCapture(event.pointerId);
+      erasing.current = true;
+      eraseAt(point);
+      // A tap on a picture still removes that picture.
       const keptImages = images.filter(
         (picture) =>
           !(
@@ -401,13 +432,26 @@ export function SlideAnnotations({
   }
 
   function move(event: React.PointerEvent) {
+    if (multiTouch.current) return;
+    if (erasing.current) {
+      eraseAt(pointOf(event));
+      return;
+    }
     if (!drawing.current) return;
     event.preventDefault();
     const point = pointOf(event);
     setLive((current) => (current ? { ...current, points: [...current.points, point] } : current));
   }
 
-  function up() {
+  function up(event: React.PointerEvent) {
+    if (event.pointerType === "touch") {
+      touchPointers.current.delete(event.pointerId);
+      if (touchPointers.current.size === 0) multiTouch.current = false;
+    }
+    if (erasing.current) {
+      erasing.current = false;
+      return;
+    }
     if (!drawing.current) return;
     drawing.current = false;
     if (live && live.points.length > 1) onChange({ ...value, strokes: [...value.strokes, live] });
@@ -438,12 +482,19 @@ export function SlideAnnotations({
             : tool === "text"
               ? "text"
               : "default",
-        touchAction: tool === "none" || tool === "edit" ? undefined : "none",
+        touchAction: tool === "none" || tool === "edit" ? undefined : "pinch-zoom",
       }}
       onPointerDown={down}
       onPointerMove={move}
       onPointerUp={up}
       onPointerCancel={up}
+      onTouchStart={(event) => {
+        if (event.touches.length < 2) return;
+        multiTouch.current = true;
+        drawing.current = false;
+        erasing.current = false;
+        setLive(null);
+      }}
     >
       {/* Pasted pictures sit under the ink, so they can be drawn on. */}
       {images.map((picture, index) => (

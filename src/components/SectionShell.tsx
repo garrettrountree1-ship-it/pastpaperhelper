@@ -15,7 +15,6 @@ import type { ReactNode } from "react";
 import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
-import { ClassLessonMirror } from "@/components/materials/ClassLessonMirror";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -81,7 +80,6 @@ export function SectionShell({
 
   return (
     <div className="min-h-screen">
-      <ClassLessonMirror classId={classId} isStudent={role === "student"} />
       <AppHeader name={me.data?.fullName || me.data?.email} role={role} />
       <div className="mx-auto flex max-w-6xl gap-4 px-3 py-4 sm:px-4 sm:py-6">
         <SectionRibbon classId={classId} current={current} role={role} />

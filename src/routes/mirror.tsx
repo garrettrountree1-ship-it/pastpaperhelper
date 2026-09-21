@@ -69,9 +69,6 @@ function PublicMirrorPage() {
     const trusted = new Set(joined.presenterIds);
 
     void (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.access_token) await supabase.realtime.setAuth(data.session.access_token);
-      if (cancelled) return;
       channel = supabase.channel(`lesson-mirror:${joined.classId}`, {
         config: { broadcast: { self: false } },
       });
@@ -99,36 +96,20 @@ function PublicMirrorPage() {
     };
   }, [joined]);
 
+  const claimKey = (classCode: string, rosterName: string) =>
+    `class-mirror-claim:${classCode.toUpperCase()}:${rosterName.trim().toLowerCase()}`;
+
   const enter = async () => {
     if (!code.trim() || !name.trim()) return;
     setJoining(true);
     try {
-      let { data } = await supabase.auth.getSession();
-      const typed = name.trim().toLowerCase();
-      if (data.session && !data.session.user.is_anonymous) {
-        const signedInName = String(data.session.user.user_metadata?.["full_name"] ?? "")
-          .trim()
-          .toLowerCase();
-        // This viewer page is name-based, so a leftover account session in this
-        // browser must not block a student joining under their roster name.
-        if (signedInName !== typed) {
-          await supabase.auth.signOut();
-          data = { session: null };
-        }
-      }
-      if (!data.session) {
-        const anonymous = await supabase.auth.signInAnonymously({
-          options: { data: { full_name: name.trim() } },
-        });
-        if (anonymous.error) throw anonymous.error;
-        data = { session: anonymous.data.session };
-      }
-      const accessToken = data.session?.access_token;
-      if (!accessToken) throw new Error("Could not start an anonymous class viewer.");
-      const result = await join({ data: { code, name, accessToken } });
-      if (data.session?.user.is_anonymous) await supabase.auth.refreshSession();
+      // No sign-in of any kind: the server checks the roster and hands back a
+      // claim token. A student's account session in another tab is untouched.
+      const savedToken = window.localStorage.getItem(claimKey(code, name)) ?? undefined;
+      const result = await join({ data: { code, name, claimToken: savedToken } });
       window.localStorage.setItem("class-mirror-code", result.code);
       window.localStorage.setItem("class-mirror-name", result.studentName);
+      window.localStorage.setItem(claimKey(result.code, result.studentName), result.claimToken);
       setJoined(result);
     } catch (error) {
       toast.error((error as Error).message);
@@ -190,7 +171,7 @@ function PublicMirrorPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <FormativeCheckPanel classId={joined.classId} asStudent />
+      <FormativeCheckPanel classId={joined.classId} asStudent mirrorToken={joined.claimToken} />
       <div className="fixed right-3 top-3 z-[100] flex gap-2">
         <Button
           size="sm"

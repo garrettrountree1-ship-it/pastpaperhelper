@@ -57,6 +57,8 @@ export function DrawingPad({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const strokesRef = useRef<Stroke[]>([]);
   const drawing = useRef(false);
+  const touchPointers = useRef(new Set<number>());
+  const multiTouch = useRef(false);
   const panning = useRef<{ x: number; y: number } | null>(null);
   const resizing = useRef<{
     startX: number;
@@ -389,6 +391,19 @@ export function DrawingPad({
 
   function start(event: React.PointerEvent<HTMLCanvasElement>) {
     if (disabled) return;
+    if (event.pointerType === "touch") {
+      touchPointers.current.add(event.pointerId);
+      if (touchPointers.current.size > 1) {
+        multiTouch.current = true;
+        if (drawing.current) strokesRef.current.pop();
+        drawing.current = false;
+        panning.current = null;
+        resizing.current = null;
+        redraw();
+        return;
+      }
+      if (multiTouch.current) return;
+    }
     event.currentTarget.setPointerCapture(event.pointerId);
     const point = positionOf(event);
     const rect = pictureRect();
@@ -451,6 +466,7 @@ export function DrawingPad({
   }
 
   function move(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (multiTouch.current) return;
     if (resizing.current) {
       event.preventDefault();
       const grab = resizing.current;
@@ -517,7 +533,11 @@ export function DrawingPad({
     redraw();
   }
 
-  function end() {
+  function end(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (event.pointerType === "touch") {
+      touchPointers.current.delete(event.pointerId);
+      if (touchPointers.current.size === 0) multiTouch.current = false;
+    }
     if (drawing.current) {
       setSaved(false);
       scheduleSave();
@@ -757,8 +777,16 @@ export function DrawingPad({
           onPointerUp={end}
           onPointerLeave={end}
           onPointerCancel={end}
-          style={{ height: sheetHeight ? `${sheetHeight}px` : "100%" }}
-          className={`block w-full max-w-full touch-none rounded-md border border-border bg-white ${
+          onTouchStart={(event) => {
+            if (event.touches.length < 2) return;
+            multiTouch.current = true;
+            if (drawing.current) strokesRef.current.pop();
+            drawing.current = false;
+            panning.current = null;
+            resizing.current = null;
+            redraw();
+          }}
+          className={`block w-full max-w-full rounded-md border border-border bg-white ${
             hoverCorner
               ? {
                   nw: "cursor-nwse-resize",
@@ -770,6 +798,10 @@ export function DrawingPad({
                 ? "cursor-grab"
                 : "cursor-crosshair"
           }`}
+          style={{
+            height: sheetHeight ? `${sheetHeight}px` : "100%",
+            touchAction: "pinch-zoom",
+          }}
         />
       </div>
 

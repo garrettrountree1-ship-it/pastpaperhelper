@@ -56,6 +56,8 @@ function PaperAnswerArea({
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const strokes = useRef<Stroke[]>([]);
   const current = useRef<Stroke | null>(null);
+  const touchPointers = useRef(new Set<number>());
+  const multiTouch = useRef(false);
   const [color, setColor] = useState(COLORS[0]!);
   const [tool, setTool] = useState<"pen" | "eraser" | "text">("pen");
   const [text, setText] = useState(initialText);
@@ -253,9 +255,22 @@ function PaperAnswerArea({
       ) : null}
       <canvas
         ref={canvasRef}
-        className={`block h-[440px] w-full touch-none ${lined ? "bg-[repeating-linear-gradient(to_bottom,white_0px,white_35px,#d1d5db_36px)]" : "bg-white"}`}
+        className={`block h-[440px] w-full ${lined ? "bg-[repeating-linear-gradient(to_bottom,white_0px,white_35px,#d1d5db_36px)]" : "bg-white"}`}
+        style={{ touchAction: "pinch-zoom" }}
         onPointerDown={(event) => {
           if (disabled || tool === "text") return;
+          if (event.pointerType === "touch") {
+            touchPointers.current.add(event.pointerId);
+            if (touchPointers.current.size > 1) {
+              multiTouch.current = true;
+              if (current.current)
+                strokes.current = strokes.current.filter((s) => s !== current.current);
+              current.current = null;
+              redraw();
+              return;
+            }
+            if (multiTouch.current) return;
+          }
           event.currentTarget.setPointerCapture(event.pointerId);
           current.current = {
             color: tool === "eraser" ? "#ffffff" : color,
@@ -270,6 +285,7 @@ function PaperAnswerArea({
           strokes.current.push(current.current);
         }}
         onPointerMove={(event) => {
+          if (multiTouch.current) return;
           if (!current.current) return;
           // Replay every coalesced sample so fast pen strokes are never lost.
           const samples =
@@ -289,13 +305,29 @@ function PaperAnswerArea({
           }
           redraw();
         }}
-        onPointerUp={() => {
+        onPointerUp={(event) => {
+          if (event.pointerType === "touch") {
+            touchPointers.current.delete(event.pointerId);
+            if (touchPointers.current.size === 0) multiTouch.current = false;
+          }
           current.current = null;
           persist();
         }}
-        onPointerCancel={() => {
+        onPointerCancel={(event) => {
+          if (event.pointerType === "touch") {
+            touchPointers.current.delete(event.pointerId);
+            if (touchPointers.current.size === 0) multiTouch.current = false;
+          }
           current.current = null;
           persist();
+        }}
+        onTouchStart={(event) => {
+          if (event.touches.length < 2) return;
+          multiTouch.current = true;
+          if (current.current)
+            strokes.current = strokes.current.filter((s) => s !== current.current);
+          current.current = null;
+          redraw();
         }}
       />
     </div>
@@ -368,6 +400,8 @@ function ContinuousPaper({
               <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2">
                 <Badge>Paper Q{index + 1}</Badge>
                 <span className="text-xs text-muted-foreground">
+                  Printed label:{" "}
+                  {resolveQuestionLabels(questions.map((q) => q.question_text))[index]}
                   Printed label: {resolveQuestionLabels(questions.map((q) => q.question_text))[index]}
                 </span>
                 <Badge variant="outline" className="ml-auto">

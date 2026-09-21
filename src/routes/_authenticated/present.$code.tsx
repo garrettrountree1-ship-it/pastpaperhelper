@@ -1,26 +1,15 @@
-import type { RealtimeChannel } from "@supabase/supabase-js";
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
-import { MonitorPlay } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { AppHeader } from "@/components/AppHeader";
-import { MaterialsSection } from "@/components/materials/MaterialsSection";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { supabase } from "@/integrations/supabase/client";
-import { getPresentationClass } from "@/lib/mirror.functions";
-
-type Announcement = {
-  from?: string;
-  viewActive?: boolean;
-  view?: Record<string, unknown>;
-};
-
+/**
+ * The former signed-in presentation page now forwards everyone to the single
+ * public Class Mirror entrance. Keeping the old URL as a redirect means saved
+ * bookmarks still work without maintaining a second mirror implementation.
+ */
 export const Route = createFileRoute("/_authenticated/present/$code")({
-  head: () => ({ meta: [{ title: "Class presentation · PastPaperHelper.AI" }] }),
-  component: PresentationPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/mirror" });
+  },
+  component: () => null,
 });
 
 /** A stable destination students can type once and leave open for the lesson. */

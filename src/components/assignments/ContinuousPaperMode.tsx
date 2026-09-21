@@ -122,6 +122,8 @@ function PaperAnswerArea({
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const strokes = useRef<Stroke[]>([]);
   const current = useRef<Stroke | null>(null);
+  const touchPointers = useRef(new Set<number>());
+  const multiTouch = useRef(false);
   const [text, setText] = useState(initialText);
   const [height, setHeight] = useState(answerHeight);
   const [textBoxes, setTextBoxes] = useState<PaperTextBox[]>([]);
@@ -401,11 +403,24 @@ function PaperAnswerArea({
       ) : null}
       <canvas
         ref={canvasRef}
-        className={`absolute inset-0 z-10 h-full w-full touch-none ${
+        className={`absolute inset-0 z-10 h-full w-full ${
           tool === "text" ? "pointer-events-none" : "pointer-events-auto"
         }`}
+        style={{ touchAction: "pinch-zoom" }}
         onPointerDown={(event) => {
           if (disabled || tool === "text") return;
+          if (event.pointerType === "touch") {
+            touchPointers.current.add(event.pointerId);
+            if (touchPointers.current.size > 1) {
+              multiTouch.current = true;
+              if (current.current)
+                strokes.current = strokes.current.filter((s) => s !== current.current);
+              current.current = null;
+              redraw();
+              return;
+            }
+            if (multiTouch.current) return;
+          }
           onSelect();
           if (tool === "textbox") {
             const location = point(event);
@@ -431,6 +446,7 @@ function PaperAnswerArea({
           strokes.current.push(current.current);
         }}
         onPointerMove={(event) => {
+          if (multiTouch.current) return;
           if (!current.current) return;
           // Replay every coalesced sample so fast pen strokes are never lost.
           const samples =
@@ -450,13 +466,29 @@ function PaperAnswerArea({
           }
           redraw();
         }}
-        onPointerUp={() => {
+        onPointerUp={(event) => {
+          if (event.pointerType === "touch") {
+            touchPointers.current.delete(event.pointerId);
+            if (touchPointers.current.size === 0) multiTouch.current = false;
+          }
           current.current = null;
           persist();
         }}
-        onPointerCancel={() => {
+        onPointerCancel={(event) => {
+          if (event.pointerType === "touch") {
+            touchPointers.current.delete(event.pointerId);
+            if (touchPointers.current.size === 0) multiTouch.current = false;
+          }
           current.current = null;
           persist();
+        }}
+        onTouchStart={(event) => {
+          if (event.touches.length < 2) return;
+          multiTouch.current = true;
+          if (current.current)
+            strokes.current = strokes.current.filter((s) => s !== current.current);
+          current.current = null;
+          redraw();
         }}
       />
       {textBoxes.map((box) => (

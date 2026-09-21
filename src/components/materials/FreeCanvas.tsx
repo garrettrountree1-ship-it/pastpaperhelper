@@ -395,6 +395,8 @@ export function FreeCanvas({
   }, [canEdit, selectedId, blocks, undo, redo]);
 
   const erasing = useRef(false);
+  const inkTouchPointers = useRef(new Set<number>());
+  const inkMultiTouch = useRef(false);
 
   function eraseAt(at: { x: number; y: number }) {
     const next = blocks.filter((block) => block.type !== "ink" || !strokeHit(block, at));
@@ -403,6 +405,17 @@ export function FreeCanvas({
 
   function startInk(event: React.PointerEvent) {
     if (!canEdit || (mode !== "draw" && mode !== "highlight" && mode !== "erase")) return;
+    if (event.pointerType === "touch") {
+      inkTouchPointers.current.add(event.pointerId);
+      if (inkTouchPointers.current.size > 1) {
+        inkMultiTouch.current = true;
+        drawing.current = false;
+        erasing.current = false;
+        setLive(null);
+        return;
+      }
+      if (inkMultiTouch.current) return;
+    }
     event.preventDefault();
     (event.target as Element).setPointerCapture?.(event.pointerId);
     if (mode === "erase") {
@@ -415,6 +428,7 @@ export function FreeCanvas({
   }
 
   function moveInk(event: React.PointerEvent) {
+    if (inkMultiTouch.current) return;
     if (erasing.current) {
       eraseAt(point(event));
       return;
@@ -424,7 +438,11 @@ export function FreeCanvas({
     setLive((current) => (current ? [...current, next] : [next]));
   }
 
-  function endInk() {
+  function endInk(event: React.PointerEvent) {
+    if (event.pointerType === "touch") {
+      inkTouchPointers.current.delete(event.pointerId);
+      if (inkTouchPointers.current.size === 0) inkMultiTouch.current = false;
+    }
     if (erasing.current) {
       erasing.current = false;
       return;
@@ -512,7 +530,7 @@ export function FreeCanvas({
               canEdit && (mode === "draw" || mode === "highlight" || mode === "erase")
                 ? "auto"
                 : "none",
-            touchAction: "none",
+            touchAction: "pinch-zoom",
             zIndex: 20,
             cursor: canEdit && mode === "erase" ? "crosshair" : undefined,
           }}
@@ -521,6 +539,13 @@ export function FreeCanvas({
           onPointerUp={endInk}
           onPointerLeave={endInk}
           onPointerCancel={endInk}
+          onTouchStart={(event) => {
+            if (event.touches.length < 2) return;
+            inkMultiTouch.current = true;
+            drawing.current = false;
+            erasing.current = false;
+            setLive(null);
+          }}
         >
           {/* Highlighter blends with the text underneath so it stays readable. */}
           <g style={{ mixBlendMode: "multiply" }}>

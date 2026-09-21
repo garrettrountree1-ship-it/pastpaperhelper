@@ -637,18 +637,25 @@ export function LessonWorkspace({
         {canManage && presentationClass.data ? (
           <button
             type="button"
-            className="fixed bottom-3 right-3 z-[90] rounded-lg border bg-background/95 px-3 py-2 text-left text-xs shadow-lg backdrop-blur hover:border-primary"
-            title="Copy the stable student presentation link"
+            className="fixed bottom-4 right-4 z-[90] rounded-xl border-2 border-primary bg-primary px-5 py-4 text-left text-primary-foreground shadow-2xl ring-4 ring-primary/20 transition hover:brightness-110"
+            title="Copy the Class Mirror address"
             onClick={() => {
               const link = `${window.location.origin}/mirror`;
               void navigator.clipboard.writeText(link);
               toast.success("Class Mirror link copied");
             }}
           >
+            <span className="block text-sm font-bold">Join Class Mirror</span>
+            <span className="block text-base font-semibold">
+              pastpaperhelperai.lovable.app/mirror
+            </span>
+            <span className="mt-1 block text-lg font-black tracking-[0.2em]">
+              CODE: {presentationClass.data.code}
             <span className="block font-medium">Class Mirror: this website + /mirror</span>
             <span className="block text-muted-foreground">
               Code {presentationClass.data.code} · click to copy
             </span>
+            <span className="mt-1 block text-[11px] opacity-90">Click to copy the address</span>
           </button>
         ) : null}
         {mirror.sending || mirror.receiving ? (

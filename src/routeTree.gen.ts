@@ -24,6 +24,7 @@ import { Route as AuthenticatedAssignmentsAssignmentIdRouteImport } from './rout
 import { Route as AuthenticatedChallengeMatchIdRouteImport } from './routes/_authenticated/challenge.$matchId'
 import { Route as AuthenticatedPresentCodeRouteImport } from './routes/_authenticated/present.$code'
 import { Route as AuthenticatedQuizQuizIdRouteImport } from './routes/_authenticated/quiz.$quizId'
+import { Route as ApiPublicAiHealthRouteImport } from './routes/api/public/ai-health'
 import { Route as OauthGoogleDriveReturnRouteImport } from './routes/oauth/google-drive.return'
 import { Route as AuthenticatedAssignmentsAssignmentIdIndexRouteImport } from './routes/_authenticated/assignments.$assignmentId.index'
 import { Route as AuthenticatedAssignmentsAssignmentIdPreviewRouteImport } from './routes/_authenticated/assignments.$assignmentId.preview'
@@ -113,6 +114,11 @@ const AuthenticatedQuizQuizIdRoute = AuthenticatedQuizQuizIdRouteImport.update({
   path: '/quiz/$quizId',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicAiHealthRoute = ApiPublicAiHealthRouteImport.update({
+  id: '/api/public/ai-health',
+  path: '/api/public/ai-health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OauthGoogleDriveReturnRoute = OauthGoogleDriveReturnRouteImport.update({
   id: '/oauth/google-drive/return',
   path: '/oauth/google-drive/return',
@@ -182,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/challenge/$matchId': typeof AuthenticatedChallengeMatchIdRoute
   '/present/$code': typeof AuthenticatedPresentCodeRoute
   '/quiz/$quizId': typeof AuthenticatedQuizQuizIdRoute
+  '/api/public/ai-health': typeof ApiPublicAiHealthRoute
   '/oauth/google-drive/return': typeof OauthGoogleDriveReturnRoute
   '/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
   '/classes/$classId/games': typeof AuthenticatedClassesClassIdGamesRoute
@@ -206,6 +213,7 @@ export interface FileRoutesByTo {
   '/challenge/$matchId': typeof AuthenticatedChallengeMatchIdRoute
   '/present/$code': typeof AuthenticatedPresentCodeRoute
   '/quiz/$quizId': typeof AuthenticatedQuizQuizIdRoute
+  '/api/public/ai-health': typeof ApiPublicAiHealthRoute
   '/oauth/google-drive/return': typeof OauthGoogleDriveReturnRoute
   '/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
   '/classes/$classId/games': typeof AuthenticatedClassesClassIdGamesRoute
@@ -233,6 +241,7 @@ export interface FileRoutesById {
   '/_authenticated/challenge/$matchId': typeof AuthenticatedChallengeMatchIdRoute
   '/_authenticated/present/$code': typeof AuthenticatedPresentCodeRoute
   '/_authenticated/quiz/$quizId': typeof AuthenticatedQuizQuizIdRoute
+  '/api/public/ai-health': typeof ApiPublicAiHealthRoute
   '/oauth/google-drive/return': typeof OauthGoogleDriveReturnRoute
   '/_authenticated/assignments/$assignmentId/preview': typeof AuthenticatedAssignmentsAssignmentIdPreviewRoute
   '/_authenticated/classes/$classId/games': typeof AuthenticatedClassesClassIdGamesRoute
@@ -260,6 +269,7 @@ export interface FileRouteTypes {
     | '/challenge/$matchId'
     | '/present/$code'
     | '/quiz/$quizId'
+    | '/api/public/ai-health'
     | '/oauth/google-drive/return'
     | '/assignments/$assignmentId/preview'
     | '/classes/$classId/games'
@@ -284,6 +294,7 @@ export interface FileRouteTypes {
     | '/challenge/$matchId'
     | '/present/$code'
     | '/quiz/$quizId'
+    | '/api/public/ai-health'
     | '/oauth/google-drive/return'
     | '/assignments/$assignmentId/preview'
     | '/classes/$classId/games'
@@ -310,6 +321,7 @@ export interface FileRouteTypes {
     | '/_authenticated/challenge/$matchId'
     | '/_authenticated/present/$code'
     | '/_authenticated/quiz/$quizId'
+    | '/api/public/ai-health'
     | '/oauth/google-drive/return'
     | '/_authenticated/assignments/$assignmentId/preview'
     | '/_authenticated/classes/$classId/games'
@@ -327,6 +339,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   MirrorRoute: typeof MirrorRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiPublicAiHealthRoute: typeof ApiPublicAiHealthRoute
   OauthGoogleDriveReturnRoute: typeof OauthGoogleDriveReturnRoute
 }
 
@@ -436,6 +449,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/quiz/$quizId'
       preLoaderRoute: typeof AuthenticatedQuizQuizIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/ai-health': {
+      id: '/api/public/ai-health'
+      path: '/api/public/ai-health'
+      fullPath: '/api/public/ai-health'
+      preLoaderRoute: typeof ApiPublicAiHealthRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/oauth/google-drive/return': {
       id: '/oauth/google-drive/return'
@@ -573,6 +593,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   MirrorRoute: MirrorRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiPublicAiHealthRoute: ApiPublicAiHealthRoute,
   OauthGoogleDriveReturnRoute: OauthGoogleDriveReturnRoute,
 }
 export const routeTree = rootRouteImport

@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   CheckCircle2,
@@ -28,6 +28,7 @@ import {
   TeacherIcon,
 } from "@/components/assignments/QuestionHelpDialog";
 import { PAD_FILE_NAME } from "@/components/assignments/DrawingPad";
+import { QuestionVocabBox } from "@/components/assignments/QuestionVocabBox";
 import { MessageTeacherDialog } from "@/components/messaging/MessageTeacherDialog";
 import {
   mergeSnipPieces,
@@ -44,6 +45,7 @@ import { questionPagesOnly } from "@/lib/answer-key";
 import { NO_PASTE_MESSAGE } from "@/lib/integrity";
 import { COVERED_MARK_SCHEME_PERCENT } from "@/lib/mark-scheme-reveal";
 import { resolveQuestionLabels } from "@/lib/question-label";
+import { getQuestionGlossary } from "@/lib/tutor-settings.functions";
 
 type Point = { x: number; y: number };
 type Stroke = { color: string; width: number; points: Point[]; erase?: boolean };
@@ -85,6 +87,32 @@ type PaperResult = {
 };
 
 const COLORS = ["#111827", "#2563eb", "#dc2626", "#16a34a", "#7c3aed", "#ea580c"];
+
+function PaperQuestionVocabulary({
+  questionId,
+  enabled,
+}: {
+  questionId: string;
+  enabled: boolean;
+}) {
+  const glossary = useQuery({
+    queryKey: ["question-glossary", questionId],
+    queryFn: () => getQuestionGlossary({ data: { questionId } }),
+    enabled,
+    staleTime: Infinity,
+  });
+  if (!enabled) return null;
+  if (glossary.isPending) {
+    return <p className="border-t px-5 py-3 text-xs text-muted-foreground">Preparing key words…</p>;
+  }
+  return (
+    <QuestionVocabBox
+      className="mx-4 mb-4"
+      terms={glossary.data?.terms ?? []}
+      language={glossary.data?.language ?? "Chinese (Simplified)"}
+    />
+  );
+}
 
 function PaperAnswerArea({
   storageKey,
@@ -699,6 +727,7 @@ function ContinuousPaper({
   locked,
   allowHint,
   allowSteps,
+  keywordTranslation,
   revealOnFullMarks,
   markSchemeRevealed,
   teacherMessage,
@@ -710,6 +739,7 @@ function ContinuousPaper({
   locked: boolean;
   allowHint: boolean;
   allowSteps: boolean;
+  keywordTranslation: boolean;
   revealOnFullMarks: boolean;
   markSchemeRevealed: boolean;
   teacherMessage?: { classId: string; className: string; assignmentTitle: string };
@@ -943,6 +973,7 @@ function ContinuousPaper({
                     clearers.current[question.id] = clear;
                   }}
                 />
+                <PaperQuestionVocabulary questionId={question.id} enabled={keywordTranslation} />
                 {showAnswerHere ? (
                   <div className="border-t bg-primary/5 p-4">
                     <PaperMarkScheme urls={question.answerImageUrls ?? []} />
@@ -1170,7 +1201,7 @@ export function StudentPaperMode({
   questions: PaperQuestion[];
   answers: PaperAnswer[];
   locked: boolean;
-  settings: { allowHint?: boolean; allowSteps?: boolean } | undefined;
+  settings: { allowHint?: boolean; allowSteps?: boolean; keywordTranslation?: boolean } | undefined;
   revealOnFullMarks: boolean;
   markSchemeRevealed: boolean;
   queryKey: string[];
@@ -1188,6 +1219,7 @@ export function StudentPaperMode({
       locked={locked}
       allowHint={settings?.allowHint !== false}
       allowSteps={settings?.allowSteps !== false}
+      keywordTranslation={Boolean(settings?.keywordTranslation)}
       revealOnFullMarks={revealOnFullMarks}
       markSchemeRevealed={markSchemeRevealed}
       teacherMessage={{ classId, className, assignmentTitle }}
@@ -1243,6 +1275,7 @@ export function ReadOnlyPaperMode({
       locked
       allowHint={false}
       allowSteps={false}
+      keywordTranslation={false}
       revealOnFullMarks={false}
       // The server only sends answer images that this student is entitled to
       // see. Mirroring that payload lets the teacher's student view show the
@@ -1266,7 +1299,7 @@ export function PreviewPaperMode({
 }: {
   assignmentId: string;
   questions: PaperQuestion[];
-  settings: { allowHint?: boolean; allowSteps?: boolean } | undefined;
+  settings: { allowHint?: boolean; allowSteps?: boolean; keywordTranslation?: boolean } | undefined;
   revealOnFullMarks: boolean;
   markSchemeRevealed: boolean;
   /** Marks already earned in the other view of this same test session. */
@@ -1281,6 +1314,7 @@ export function PreviewPaperMode({
       locked={false}
       allowHint={settings?.allowHint !== false}
       allowSteps={settings?.allowSteps !== false}
+      keywordTranslation={Boolean(settings?.keywordTranslation)}
       revealOnFullMarks={revealOnFullMarks}
       markSchemeRevealed={markSchemeRevealed}
       onMark={async (question, text, file) => {

@@ -17,6 +17,26 @@ function ownKey() {
   return process.env["OPENAI_API_KEY"] || "";
 }
 
+/**
+ * Optional OpenAI-compatible relay in a region OpenAI permits (e.g. a small
+ * worker/server the owner runs in the US or Singapore). When set, every OpenAI
+ * call goes there instead of api.openai.com, and the Lovable credit fallback is
+ * switched off entirely. Value should be an origin ending in /v1.
+ */
+function openAiBaseUrl() {
+  const raw = (process.env["OPENAI_BASE_URL"] || "").trim().replace(/\/+$/, "");
+  return raw || "https://api.openai.com/v1";
+}
+
+function usingRelay() {
+  return openAiBaseUrl() !== "https://api.openai.com/v1";
+}
+
+/** Lovable credits are only spent when there is no relay configured. */
+function fallbackAllowed() {
+  return !usingRelay() && lovableKey().length > 0;
+}
+
 function lovableKey() {
   return process.env["LOVABLE_API_KEY"] || "";
 }
@@ -80,7 +100,7 @@ export async function postChatCompletion(
   if (response.ok) return { response, detail: "" };
 
   let detail = await response.text();
-  if (usingOwnOpenAi() && lovableKey() && isRegionBlocked(response.status, detail)) {
+  if (usingOwnOpenAi() && fallbackAllowed() && isRegionBlocked(response.status, detail)) {
     console.warn("OpenAI blocked this region; retrying through the Lovable AI Gateway");
     const fallback = lovableChatRequest();
     response = await fetch(fallback.url, {
@@ -98,7 +118,7 @@ export async function postChatCompletion(
 export function chatRequest() {
   if (usingOwnOpenAi()) {
     return {
-      url: "https://api.openai.com/v1/chat/completions",
+      url: `${openAiBaseUrl()}/chat/completions`,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${ownKey()}`,
@@ -120,7 +140,7 @@ export function chatRequest() {
 export function transcriptionRequest() {
   if (usingOwnOpenAi()) {
     return {
-      url: "https://api.openai.com/v1/audio/transcriptions",
+      url: `${openAiBaseUrl()}/audio/transcriptions`,
       headers: { Authorization: `Bearer ${ownKey()}` } as Record<string, string>,
       model: "gpt-4o-transcribe",
     };
@@ -150,7 +170,7 @@ export function createLovableAiGatewayProvider(apiKey: string) {
 function openAiFetchWithGatewayFallback(): typeof fetch {
   return async (input, init) => {
     const response = await fetch(input as RequestInfo, init);
-    if (response.ok || response.status !== 403 || !lovableKey()) return response;
+    if (response.ok || response.status !== 403 || !fallbackAllowed()) return response;
 
     const detail = await response.clone().text();
     if (!isRegionBlocked(response.status, detail)) return response;
@@ -182,9 +202,11 @@ function openAiFetchWithGatewayFallback(): typeof fetch {
 /** The AI SDK model every text/vision feature uses. */
 export function gatewayModel() {
   if (usingOwnOpenAi()) {
-    return createOpenAI({ apiKey: ownKey(), fetch: openAiFetchWithGatewayFallback() })(
-      OPENAI_MODEL,
-    );
+    return createOpenAI({
+      apiKey: ownKey(),
+      baseURL: openAiBaseUrl(),
+      fetch: openAiFetchWithGatewayFallback(),
+    })(OPENAI_MODEL);
   }
   return createLovableAiGatewayProvider(aiApiKey())(LOVABLE_MODEL);
 }
@@ -192,7 +214,9 @@ export function gatewayModel() {
 /** Reasoning-style provider for the streaming tutor paths. */
 export function gatewayResponsesModel() {
   if (usingOwnOpenAi()) {
-    return createOpenAI({ apiKey: ownKey() }).responses(OPENAI_MODEL);
+    return createOpenAI({ apiKey: ownKey(), baseURL: openAiBaseUrl() }).responses(
+      OPENAI_MODEL,
+    );
   }
   const key = aiApiKey();
   return createOpenAI({

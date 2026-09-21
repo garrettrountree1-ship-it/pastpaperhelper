@@ -65,9 +65,23 @@ function PublicMirrorPage() {
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
 
+  // Keep this tab's seat alive; an expired seat sends the student back to join.
   useEffect(() => {
     if (!joined) return;
-    let cancelled = false;
+    const beat = useServerFn(mirrorHeartbeat);
+    const ping = () =>
+      void beat({ data: { claimToken: joined.claimToken } }).catch(() => {
+        window.localStorage.removeItem(claimKey(joined.code, joined.studentName));
+        setJoined(null);
+        toast.info("This mirror seat expired — join again.");
+      });
+    ping();
+    const timer = window.setInterval(ping, 20_000);
+    return () => window.clearInterval(timer);
+  }, [joined]);
+
+  useEffect(() => {
+    if (!joined) return;
     let channel: RealtimeChannel | null = null;
     let helloTimer: number | null = null;
     const trusted = new Set(joined.presenterIds);

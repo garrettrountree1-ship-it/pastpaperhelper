@@ -57,8 +57,13 @@ function lovableKey() {
   return process.env["LOVABLE_API_KEY"] || "";
 }
 
+/**
+ * The app runs on the Lovable AI Gateway by default. The owner's own OpenAI key
+ * is only used when AI_PROVIDER is explicitly set to "openai" (their key is kept
+ * stored so this can be switched back on at any time).
+ */
 export function usingOwnOpenAi() {
-  return ownKey().length > 0;
+  return (process.env["AI_PROVIDER"] || "").trim().toLowerCase() === "openai" && ownKey().length > 0;
 }
 
 /** The model id to send on raw chat-completions calls. */

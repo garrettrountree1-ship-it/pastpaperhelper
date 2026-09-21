@@ -2,7 +2,7 @@ import { unzipSync } from "fflate";
 import { cleanMathText } from "@/lib/math-text";
 import { extractChoiceAnswer, looksNumericalQuestion } from "@/lib/deterministic-marking";
 
-import { TUTOR_MODEL } from "./ai-gateway.server";
+import { aiApiKey, chatRequest } from "./ai-gateway.server";
 
 export type QuestionCrop = {
   /** Which upload the page belongs to: the paper, or the mark scheme/answer file. */
@@ -59,7 +59,6 @@ type InventoryItem = {
   kind?: string;
 };
 
-const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const BATCH_SIZE = 6;
 const MAX_ITEMS = 300;
 
@@ -173,8 +172,7 @@ const CROSSCHECK_SYSTEM = [
 ].join(" ");
 
 export async function extractQuestionsFromPapers(input: ExtractInput): Promise<ExtractionResult> {
-  const key = process.env["LOVABLE_API_KEY"];
-  if (!key) throw new Error("AI is not configured yet. Missing LOVABLE_API_KEY.");
+  const key = aiApiKey();
 
   const documents = buildDocumentContent(input);
   const header = [

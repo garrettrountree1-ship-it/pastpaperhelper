@@ -110,12 +110,6 @@ function PublicMirrorPage() {
         if (anonymous.error) throw anonymous.error;
         data = { session: anonymous.data.session };
       }
-      const accessToken = data.session?.access_token;
-      if (!accessToken) throw new Error("Could not start an anonymous class viewer.");
-      const result = await join({ data: { code, name, accessToken } });
-      if (data.session?.user.is_anonymous) await supabase.auth.refreshSession();
-      window.localStorage.setItem("class-mirror-code", result.code);
-      window.localStorage.setItem("class-mirror-name", result.studentName);
       // No sign-in of any kind: the server checks the roster and hands back a
       // claim token. A student's account session in another tab is untouched.
       const savedToken = window.localStorage.getItem(claimKey(code, name)) ?? undefined;

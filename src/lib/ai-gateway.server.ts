@@ -242,8 +242,8 @@ function openAiFetchWithGatewayFallback(): typeof fetch {
     const headers = new Headers(init?.headers);
     headers.delete("authorization");
     headers.set("Lovable-API-Key", lovableKey());
-    const requested = new URL(input instanceof Request ? input.url : String(input));
-    const path = requested.pathname.replace(/^\/v1/, "");
+    const path = requestedUrl.pathname.replace(/^\/v1/, "");
+
     return fetch(`https://ai.gateway.lovable.dev/v1${path}`, {
       ...init,
       headers,

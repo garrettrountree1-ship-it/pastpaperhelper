@@ -43,6 +43,9 @@ import {
   listMyFormativeChecks,
   releaseFormativeAnswer,
   resetFormativePoints,
+} from "@/lib/formative.functions";
+import { mirrorAnswerCheck, mirrorGetActiveCheck } from "@/lib/mirror.functions";
+import {
   revealFormativeAnswerForMe,
   setFormativeLeaderboard,
 } from "@/lib/formative.functions";
@@ -570,24 +573,32 @@ export function FormativeCheckPanel({
   classId,
   asStudent = false,
   showPopup = true,
+  mirrorToken,
 }: {
   classId: string;
   /** Demo accounts viewing the class as a student answer like a student. */
   asStudent?: boolean;
   /** The popup only appears inside the open lesson notes workspace. */
   showPopup?: boolean;
+  /** Name-based class mirror seat: answers are saved under the roster name. */
+  mirrorToken?: string;
 }) {
   const queryClient = useQueryClient();
   const fetchActive = useServerFn(getActiveFormativeCheck);
+  const fetchMirrorActive = useServerFn(mirrorGetActiveCheck);
   const fetchResults = useServerFn(listFormativeResults);
   const submit = useServerFn(answerFormativeCheck);
+  const submitMirror = useServerFn(mirrorAnswerCheck);
   const close = useServerFn(closeFormativeCheck);
   const addTime = useServerFn(extendFormativeCheck);
   const release = useServerFn(releaseFormativeAnswer);
 
   const active = useQuery({
-    queryKey: ["formative-active", classId],
-    queryFn: () => fetchActive({ data: { classId } }),
+    queryKey: ["formative-active", classId, mirrorToken ?? "account"],
+    queryFn: () =>
+      mirrorToken
+        ? fetchMirrorActive({ data: { claimToken: mirrorToken } })
+        : fetchActive({ data: { classId } }),
     refetchInterval: 5000,
   });
   const raw = active.data ?? null;
@@ -643,20 +654,22 @@ export function FormativeCheckPanel({
   });
 
   const send = useMutation({
-    mutationFn: () =>
-      submit({
-        data: {
-          checkId: check!.id,
-          answer: combined.trim(),
-          ...(parts.length
-            ? {
-                partAnswers: Object.fromEntries(
-                  openParts.map((label) => [label, (partAnswers[label] ?? "").trim()]),
-                ),
-              }
-            : {}),
-        },
-      }),
+    mutationFn: () => {
+      const payload = {
+        checkId: check!.id,
+        answer: combined.trim(),
+        ...(parts.length
+          ? {
+              partAnswers: Object.fromEntries(
+                openParts.map((label) => [label, (partAnswers[label] ?? "").trim()]),
+              ),
+            }
+          : {}),
+      };
+      return mirrorToken
+        ? submitMirror({ data: { claimToken: mirrorToken, ...payload } })
+        : submit({ data: payload });
+    },
     onSuccess: async (result) => {
       if (result.awardedPoints > 0) toast.success(`+${result.awardedPoints} points!`);
       // Only clear the boxes that are now right; wrong ones stay for editing.
@@ -673,7 +686,9 @@ export function FormativeCheckPanel({
         setAnswer("");
       }
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["formative-active", classId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["formative-active", classId, mirrorToken ?? "account"],
+        }),
         queryClient.invalidateQueries({ queryKey: ["formative-leaderboard", classId] }),
       ]);
     },

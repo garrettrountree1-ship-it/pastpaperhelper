@@ -19,6 +19,7 @@ type JoinedMirror = {
   className: string;
   code: string;
   studentName: string;
+  claimToken: string;
   alias: string | null;
   presenterIds: string[];
 };
@@ -68,8 +69,6 @@ function PublicMirrorPage() {
     const trusted = new Set(joined.presenterIds);
 
     void (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.access_token) await supabase.realtime.setAuth(data.session.access_token);
       if (cancelled) return;
       channel = supabase.channel(`lesson-mirror:${joined.classId}`, {
         config: { broadcast: { self: false } },
@@ -102,20 +101,13 @@ function PublicMirrorPage() {
     if (!code.trim() || !name.trim()) return;
     setJoining(true);
     try {
-      let { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        const anonymous = await supabase.auth.signInAnonymously({
-          options: { data: { full_name: name.trim() } },
-        });
-        if (anonymous.error) throw anonymous.error;
-        data = { session: anonymous.data.session };
-      }
-      const accessToken = data.session?.access_token;
-      if (!accessToken) throw new Error("Could not start an anonymous class viewer.");
-      const result = await join({ data: { code, name, accessToken } });
-      if (data.session?.user.is_anonymous) await supabase.auth.refreshSession();
+      const saved = window.localStorage.getItem("class-mirror-token") ?? undefined;
+      const result = await join({
+        data: { code, name, ...(saved ? { claimToken: saved } : {}) },
+      });
       window.localStorage.setItem("class-mirror-code", result.code);
       window.localStorage.setItem("class-mirror-name", result.studentName);
+      window.localStorage.setItem("class-mirror-token", result.claimToken);
       setJoined(result);
     } catch (error) {
       toast.error((error as Error).message);
@@ -177,7 +169,7 @@ function PublicMirrorPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <FormativeCheckPanel classId={joined.classId} asStudent />
+      <FormativeCheckPanel classId={joined.classId} asStudent mirrorToken={joined.claimToken} />
       <div className="fixed right-3 top-3 z-[100] flex gap-2">
         <Button
           size="sm"

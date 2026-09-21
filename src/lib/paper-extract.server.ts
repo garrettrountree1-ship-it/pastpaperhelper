@@ -2,7 +2,7 @@ import { unzipSync } from "fflate";
 import { cleanMathText } from "@/lib/math-text";
 import { extractChoiceAnswer, looksNumericalQuestion } from "@/lib/deterministic-marking";
 
-import { aiApiKey, chatRequest } from "./ai-gateway.server";
+import { aiApiKey, postChatCompletion } from "./ai-gateway.server";
 
 export type QuestionCrop = {
   /** Which upload the page belongs to: the paper, or the mark scheme/answer file. */

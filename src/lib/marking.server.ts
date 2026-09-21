@@ -1,7 +1,7 @@
 import { generateText } from "ai";
 import { z } from "zod";
 
-import { chatRequest, gatewayModel } from "./ai-gateway.server";
+import { gatewayModel, postChatCompletion } from "./ai-gateway.server";
 
 export type MarkPoint = { point: string; marks: number; awarded: boolean };
 

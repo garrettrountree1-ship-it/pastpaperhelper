@@ -149,14 +149,13 @@ async function requestMarkingJson({
   schemeImages: string[];
   answerImages: string[];
 }): Promise<string> {
-  const key = process.env["LOVABLE_API_KEY"];
-  if (!key) throw new Error("AI is not configured yet. Missing LOVABLE_API_KEY.");
+  const request = chatRequest();
   const image = (url: string) => ({ type: "image_url", image_url: { url } });
-  const response = await fetch(GATEWAY, {
+  const response = await fetch(request.url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
+    headers: request.headers,
     body: JSON.stringify({
-      model: TUTOR_MODEL,
+      model: request.model,
       max_tokens: 1600,
       response_format: { type: "json_object" },
       messages: [

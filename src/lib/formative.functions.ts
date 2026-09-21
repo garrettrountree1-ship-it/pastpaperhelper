@@ -148,12 +148,23 @@ export const releaseFormativeAnswer = createServerFn({ method: "POST" })
     return { answer };
   });
 
+type Db = Awaited<ReturnType<typeof admin>>;
+
 /** The live check for a class (if any), plus the caller's own attempts. */
 export const getActiveFormativeCheck = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ classId: z.string().uuid() }).parse(input))
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
+  .handler(async ({ data, context }) =>
+    getActiveFormativeCore(context.supabase, data.classId, context.userId),
+  );
+
+/**
+ * Shared reader for the live check. Used by signed-in students and by the
+ * name-based class mirror (which passes the roster student's id).
+ */
+export async function getActiveFormativeCore(db: Db, classId: string, userId: string) {
+  {
+    const supabase = db;
     // No end-time filter: the popup stays up until the teacher closes it.
     const { data: check } = await supabase
       .from("formative_checks")

@@ -39,6 +39,9 @@ export function AccessControlsDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [classDue, setClassDue] = useState<string | null>(null);
+  /** Student due-date edits waiting for the bottom Save button (local input strings). */
+  const [studentDueEdits, setStudentDueEdits] = useState<Record<string, string>>({});
+  const [savingAll, setSavingAll] = useState(false);
   const queryClient = useQueryClient();
   const load = useServerFn(getAssignmentAccessControls);
   const saveClass = useServerFn(setAssignmentAccess);
@@ -86,13 +89,43 @@ export function AccessControlsDialog({
 
   const data = controls.data;
   const classDueValue = classDue ?? toLocalInput(data?.dueAt ?? null);
+  const hasUnsavedChanges = classDue !== null || Object.keys(studentDueEdits).length > 0;
+
+  /** Bottom Save: persists the class due date and every edited student at once. */
+  async function saveAll() {
+    if (!data) return;
+    setSavingAll(true);
+    try {
+      const jobs: Array<Promise<unknown>> = [];
+      if (classDue !== null) {
+        jobs.push(saveClass({ data: { assignmentId, dueAt: fromLocalInput(classDueValue) } }));
+      }
+      for (const [studentId, value] of Object.entries(studentDueEdits)) {
+        jobs.push(
+          saveStudent({ data: { assignmentId, studentId, dueAt: fromLocalInput(value) } }),
+        );
+      }
+      await Promise.all(jobs);
+      toast.success("Due dates saved");
+      setClassDue(null);
+      setStudentDueEdits({});
+      refresh();
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setSavingAll(false);
+    }
+  }
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) setClassDue(null);
+        if (!next) {
+          setClassDue(null);
+          setStudentDueEdits({});
+        }
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -197,13 +230,33 @@ export function AccessControlsDialog({
                       classDueAt={data.dueAt}
                       classRevealed={data.markSchemeRevealed}
                       classFullMarks={data.revealOnFullMarks}
-                      saving={studentMutation.isPending}
-                      onSave={(input) => studentMutation.mutate({ studentId: student.id, ...input })}
+                      saving={studentMutation.isPending || savingAll}
+                      dueEdit={studentDueEdits[student.id] ?? null}
+                      onEditDue={(value) =>
+                        setStudentDueEdits((prev) => ({ ...prev, [student.id]: value }))
+                      }
+                      onSave={(input) => {
+                        setStudentDueEdits((prev) => {
+                          const next = { ...prev };
+                          delete next[student.id];
+                          return next;
+                        });
+                        studentMutation.mutate({ studentId: student.id, ...input });
+                      }}
                     />
                   ))}
                 </div>
               )}
             </section>
+
+            <div className="flex items-center justify-end gap-2">
+              {hasUnsavedChanges ? (
+                <span className="text-xs text-muted-foreground">You have unsaved changes</span>
+              ) : null}
+              <Button onClick={saveAll} disabled={savingAll || !hasUnsavedChanges}>
+                {savingAll ? "Saving…" : "Save"}
+              </Button>
+            </div>
           </div>
         ) : null}
       </DialogContent>
@@ -217,6 +270,8 @@ function StudentRow({
   classRevealed,
   classFullMarks,
   saving,
+  dueEdit,
+  onEditDue,
   onSave,
 }: {
   student: {
@@ -230,14 +285,16 @@ function StudentRow({
   classRevealed: boolean;
   classFullMarks: boolean;
   saving: boolean;
+  /** Pending due-date edit saved by the dialog's bottom Save button. */
+  dueEdit: string | null;
+  onEditDue: (value: string) => void;
   onSave: (input: {
     dueAt?: string | null;
     markSchemeRevealed?: boolean;
     revealOnFullMarks?: boolean;
   }) => void;
 }) {
-  const [due, setDue] = useState<string | null>(null);
-  const value = due ?? toLocalInput(student.dueAt);
+  const value = dueEdit ?? toLocalInput(student.dueAt);
   const effective = student.dueAt ?? classDueAt;
 
   return (
@@ -247,23 +304,17 @@ function StudentRow({
         <Badge variant="secondary">Due: {formatDueDate(effective)}</Badge>
       </div>
       <div className="mt-2 flex flex-wrap items-end gap-2">
-        <DateTime24Input value={value} onChange={setDue} />
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={saving}
-          onClick={() => onSave({ dueAt: fromLocalInput(value) })}
-        >
-          Save
-        </Button>
+        <DateTime24Input value={value} onChange={onEditDue} />
+        {dueEdit !== null ? (
+          <Badge variant="outline" className="self-center">
+            Unsaved
+          </Badge>
+        ) : null}
         <Button
           size="sm"
           variant="ghost"
           disabled={saving || !student.dueAt}
-          onClick={() => {
-            setDue("");
-            onSave({ dueAt: null });
-          }}
+          onClick={() => onSave({ dueAt: null })}
         >
           Use class due date
         </Button>

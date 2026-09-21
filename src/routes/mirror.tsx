@@ -116,6 +116,13 @@ function PublicMirrorPage() {
       if (data.session?.user.is_anonymous) await supabase.auth.refreshSession();
       window.localStorage.setItem("class-mirror-code", result.code);
       window.localStorage.setItem("class-mirror-name", result.studentName);
+      // No sign-in of any kind: the server checks the roster and hands back a
+      // claim token. A student's account session in another tab is untouched.
+      const savedToken = window.localStorage.getItem(claimKey(code, name)) ?? undefined;
+      const result = await join({ data: { code, name, claimToken: savedToken } });
+      window.localStorage.setItem("class-mirror-code", result.code);
+      window.localStorage.setItem("class-mirror-name", result.studentName);
+      window.localStorage.setItem(claimKey(result.code, result.studentName), result.claimToken);
       setJoined(result);
     } catch (error) {
       toast.error((error as Error).message);
@@ -178,6 +185,7 @@ function PublicMirrorPage() {
   return (
     <main className="min-h-screen bg-background">
       <FormativeCheckPanel classId={joined.classId} asStudent />
+      <FormativeCheckPanel classId={joined.classId} asStudent mirrorToken={joined.claimToken} />
       <div className="fixed right-3 top-3 z-[100] flex gap-2">
         <Button
           size="sm"
@@ -207,6 +215,10 @@ function PublicMirrorPage() {
             <p className="mt-4 text-xs text-muted-foreground">
               Keeping the mirror teacher-controlled reduces bandwidth. Live mirroring itself uses no
               AI tokens; AI is used only when a formative answer is marked.
+            <p className="mt-4 font-medium">Waiting for teacher mirror…</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Your answers are saved under this roster name. The lesson appears here as soon as your
+              teacher turns mirroring on.
             </p>
           </div>
         </div>

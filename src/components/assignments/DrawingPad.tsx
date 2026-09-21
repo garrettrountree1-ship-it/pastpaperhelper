@@ -440,7 +440,12 @@ export function DrawingPad({
       redraw();
     }
     drawing.current = true;
-    const width = event.pointerType === "pen" ? Math.max(1.2, event.pressure * 4 || 2) : 2.4;
+    // Pens report pressure on a light touch too; keep a generous floor so a
+    // soft stroke is never invisible, and let pressure thicken the line.
+    const width =
+      event.pointerType === "pen"
+        ? Math.max(2, 1.2 + (event.pressure > 0 ? event.pressure * 4 : 1.6))
+        : 2.4;
     strokesRef.current.push({ points: [point], width, color: colorRef.current });
     setHasInk(true);
   }

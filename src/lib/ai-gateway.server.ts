@@ -170,7 +170,7 @@ export function createLovableAiGatewayProvider(apiKey: string) {
 function openAiFetchWithGatewayFallback(): typeof fetch {
   return async (input, init) => {
     const response = await fetch(input as RequestInfo, init);
-    if (response.ok || response.status !== 403 || !lovableKey()) return response;
+    if (response.ok || response.status !== 403 || !fallbackAllowed()) return response;
 
     const detail = await response.clone().text();
     if (!isRegionBlocked(response.status, detail)) return response;

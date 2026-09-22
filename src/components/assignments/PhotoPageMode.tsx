@@ -502,7 +502,7 @@ function PhotoTutorConversation({
   answer: PhotoAnswer;
   messages: PhotoMessage[];
   locked: boolean;
-  queryKey?: string[];
+  queryKey?: string[] | undefined;
 }) {
   const tutor = useServerFn(sendTutorMessage);
   const queryClient = useQueryClient();

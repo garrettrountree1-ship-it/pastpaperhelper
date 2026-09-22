@@ -1,4 +1,3 @@
-import type { RealtimeChannel } from "@supabase/supabase-js";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Maximize, Minimize, MonitorPlay } from "lucide-react";
@@ -11,8 +10,9 @@ import { FormativeCheckPanel } from "@/components/materials/FormativeCheck";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
+import { openMirrorChannel, type MirrorHandle } from "@/lib/mirror-channel";
 import { joinPublicMirror, mirrorHeartbeat } from "@/lib/mirror.functions";
+
 
 type JoinedMirror = {
   classId: string;

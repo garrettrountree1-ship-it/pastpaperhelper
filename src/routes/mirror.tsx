@@ -43,18 +43,20 @@ export const Route = createFileRoute("/mirror")({
 function PublicMirrorPage() {
   const join = useServerFn(joinPublicMirror);
   const heartbeat = useServerFn(mirrorHeartbeat);
-  const [code, setCode] = useState(() =>
-    typeof window === "undefined" ? "" : (window.localStorage.getItem("class-mirror-code") ?? ""),
-  );
-  const [name, setName] = useState(() =>
-    typeof window === "undefined" ? "" : (window.localStorage.getItem("class-mirror-name") ?? ""),
-  );
+  const [code, setCode] = useState("");
+  const [name, setName] = useState("");
   const [joining, setJoining] = useState(false);
   const [joined, setJoined] = useState<JoinedMirror | null>(null);
   const [unitId, setUnitId] = useState<string | null>(null);
   const [live, setLive] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
   const handleRef = useRef<MirrorHandle | null>(null);
+  const joinAttemptRef = useRef(0);
+
+  useEffect(() => {
+    setCode(window.localStorage.getItem("class-mirror-code") ?? "");
+    setName(window.localStorage.getItem("class-mirror-name") ?? "");
+  }, []);
 
   useEffect(() => {
     const onChange = () => setFullScreen(Boolean(document.fullscreenElement));
@@ -124,29 +126,32 @@ function PublicMirrorPage() {
 
 
   const enter = async () => {
-    if (!code.trim() || !name.trim() || joining) return;
+    if (!code.trim() || !name.trim()) return;
+    const attempt = joinAttemptRef.current + 1;
+    joinAttemptRef.current = attempt;
     setJoining(true);
+    let timeoutId: number | undefined;
     try {
       const saved = window.localStorage.getItem("class-mirror-token") ?? undefined;
-      // A stalled network request must never leave the button greyed out for
-      // good, so joining always finishes within a few seconds.
       const result = await Promise.race([
         join({ data: { code, name, ...(saved ? { claimToken: saved } : {}) } }),
         new Promise<never>((_resolve, reject) =>
-          window.setTimeout(
+          { timeoutId = window.setTimeout(
             () => reject(new Error("The class viewer did not answer. Tap Watch class again.")),
-            15_000,
-          ),
+            10_000,
+          ); },
         ),
       ]);
+      if (attempt !== joinAttemptRef.current) return;
       window.localStorage.setItem("class-mirror-code", result.code);
       window.localStorage.setItem("class-mirror-name", result.studentName);
       window.localStorage.setItem("class-mirror-token", result.claimToken);
       setJoined(result);
     } catch (error) {
-      toast.error((error as Error).message);
+      if (attempt === joinAttemptRef.current) toast.error((error as Error).message);
     } finally {
-      setJoining(false);
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+      if (attempt === joinAttemptRef.current) setJoining(false);
     }
   };
 
@@ -191,9 +196,9 @@ function PublicMirrorPage() {
             <Button
               className="w-full"
               type="submit"
-              disabled={joining || !code.trim() || !name.trim()}
+              disabled={!code.trim() || !name.trim()}
             >
-              {joining ? "Joining…" : "Watch class"}
+              {joining ? "Try again" : "Watch class"}
             </Button>
           </div>
         </form>

@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, CircleDashed, Eye, EyeOff, ImageUp, XCircle } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CheckCircle2, CircleDashed, Crop, Eye, EyeOff, ImageUp, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { QuestionHelpButtons } from "@/components/assignments/QuestionHelpDialog";
@@ -68,10 +68,62 @@ function pageGroups(questions: PhotoQuestion[]) {
 async function loadImage(url: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
+    image.crossOrigin = "anonymous";
     image.onload = () => resolve(image);
     image.onerror = () => reject(new Error("The photographed page could not be read."));
     image.src = url;
   });
+}
+
+async function imageFingerprint(source: File | string) {
+  const objectUrl = source instanceof File ? URL.createObjectURL(source) : source;
+  try {
+    const image = await loadImage(objectUrl);
+    const canvas = document.createElement("canvas");
+    canvas.width = 16;
+    canvas.height = 16;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) return [];
+    context.drawImage(image, 0, 0, 16, 16);
+    const pixels = context.getImageData(0, 0, 16, 16).data;
+    return Array.from({ length: 256 }, (_, index) => {
+      const offset = index * 4;
+      return (
+        ((pixels[offset] ?? 0) * 3 + (pixels[offset + 1] ?? 0) * 6 + (pixels[offset + 2] ?? 0)) / 10
+      );
+    });
+  } finally {
+    if (source instanceof File) URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function fingerprintDistance(left: number[], right: number[]) {
+  if (left.length !== right.length || left.length === 0) return Number.POSITIVE_INFINITY;
+  const leftMean = left.reduce((sum, value) => sum + value, 0) / left.length;
+  const rightMean = right.reduce((sum, value) => sum + value, 0) / right.length;
+  return left.reduce(
+    (distance, value, index) =>
+      distance + Math.abs((value >= leftMean ? 1 : 0) - ((right[index] ?? 0) >= rightMean ? 1 : 0)),
+    0,
+  );
+}
+
+async function identifyPage(file: File, groups: ReturnType<typeof pageGroups>) {
+  const uploaded = await imageFingerprint(file);
+  const matches = await Promise.all(
+    groups.map(async (group) => {
+      try {
+        return {
+          key: group.key,
+          distance: fingerprintDistance(uploaded, await imageFingerprint(group.referenceUrl)),
+        };
+      } catch {
+        return { key: group.key, distance: Number.POSITIVE_INFINITY };
+      }
+    }),
+  );
+  const best = matches.sort((left, right) => left.distance - right.distance)[0];
+  return best && Number.isFinite(best.distance) ? best.key : null;
 }
 
 async function cropQuestion(
@@ -194,8 +246,14 @@ export function PhotoPageMode({
     Record<string, { top: number; bottom: number }>
   >({});
   const [adjusting, setAdjusting] = useState(false);
+  const [detectingPage, setDetectingPage] = useState(false);
   const [marking, setMarking] = useState(false);
   const [localResults, setLocalResults] = useState<Record<string, PhotoResult>>({});
+  const [recutQuestions, setRecutQuestions] = useState<Set<string>>(() => new Set());
+  const [cropUrls, setCropUrls] = useState<Record<string, string>>({});
+  const [selectedQuestionId, setSelectedQuestionId] = useState(questions[0]?.id ?? "");
+  const questionRefs = useRef<Record<string, HTMLElement | null>>({});
+  const uploadRef = useRef<HTMLDivElement | null>(null);
   const group = groups.find((item) => item.key === pageKeyValue) ?? groups[0];
 
   useEffect(
@@ -203,6 +261,52 @@ export function PhotoPageMode({
       if (photoUrl) URL.revokeObjectURL(photoUrl);
     },
     [photoUrl],
+  );
+
+  useEffect(() => {
+    if (!photo || !group) {
+      setCropUrls({});
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        const next: Record<string, string> = {};
+        for (const question of group.questions) {
+          const sourceUrl = (question.imageUrls ?? []).find(
+            (url) => pageKey(url) === group.key && parseSnipBand(url),
+          );
+          const automatic = sourceUrl ? parseSnipBand(sourceUrl) : null;
+          if (!automatic) continue;
+          const crop = await cropQuestion(
+            photo,
+            questionBands[question.id] ?? automatic,
+            trim,
+            `preview-${question.id}.jpg`,
+          );
+          next[question.id] = URL.createObjectURL(crop);
+        }
+        if (cancelled) {
+          Object.values(next).forEach(URL.revokeObjectURL);
+          return;
+        }
+        setCropUrls((current) => {
+          Object.values(current).forEach(URL.revokeObjectURL);
+          return next;
+        });
+      })();
+    }, 150);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [photo, group, questionBands, trim]);
+
+  useEffect(
+    () => () => {
+      Object.values(cropUrls).forEach(URL.revokeObjectURL);
+    },
+    [cropUrls],
   );
 
   const resultFor = (question: PhotoQuestion) => {
@@ -218,22 +322,10 @@ export function PhotoPageMode({
       : undefined;
   };
 
-  if (groups.length === 0) {
-    return (
-      <div className="paper p-6 text-sm">
-        <p className="font-medium">Photo mode needs the original question-paper pages.</p>
-        <p className="mt-2 text-muted-foreground">
-          Ask the teacher to upload the blank question paper separately from the mark scheme and
-          verify its question cuts. The other two homework modes remain available.
-        </p>
-      </div>
-    );
-  }
-
   const markPage = async () => {
     if (!photo || !group) return;
     const remaining = group.questions.filter(
-      (question) => resultFor(question)?.verdict !== "correct",
+      (question) => resultFor(question)?.verdict !== "correct" || recutQuestions.has(question.id),
     );
     if (remaining.length === 0) {
       toast.success("Every question on this page is already correct.");
@@ -294,6 +386,11 @@ export function PhotoPageMode({
           });
         }
         setLocalResults((current) => ({ ...current, [question.id]: result }));
+        setRecutQuestions((current) => {
+          const next = new Set(current);
+          next.delete(question.id);
+          return next;
+        });
       }
       if (!preview && queryKey) await queryClient.refetchQueries({ queryKey, type: "active" });
       toast.success("Page marked. Correct questions will be skipped next time.");
@@ -307,36 +404,27 @@ export function PhotoPageMode({
   return (
     <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_19rem]">
       <div className="space-y-4">
-        <div className="paper p-5">
+        <div ref={uploadRef} className="paper p-5">
           <h2 className="font-display text-xl">Photograph a completed paper page</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Choose the matching blank page, upload one clear full-page photo, then confirm the page
-            edges. Previously correct questions are never marked again.
+            Upload any completed page from this homework. Photo mode matches it to the prepared
+            question cuts automatically, and previously correct questions are never marked again.
           </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <label className="text-sm font-medium">
-              Matching paper page
-              <select
-                className="mt-1 h-10 w-full rounded-md border bg-background px-3"
-                value={group?.key ?? ""}
-                onChange={(event) => setPageKeyValue(event.target.value)}
-              >
-                {groups.map((item) => (
-                  <option key={item.key} value={item.key}>
-                    {item.label} · {item.questions.length} question
-                    {item.questions.length === 1 ? "" : "s"}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="text-sm font-medium">
+          {groups.length === 0 ? (
+            <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+              The questions are listed below, but photos cannot be matched until the teacher
+              confirms their question cuts.
+            </div>
+          ) : null}
+          <div className="mt-4">
+            <label className="block text-sm font-medium">
               Completed page photo
               <Input
                 className="mt-1"
                 type="file"
                 accept="image/*,.heic,.heif"
                 capture="environment"
-                disabled={locked}
+                disabled={locked || groups.length === 0}
                 onChange={(event) => {
                   const selected = event.target.files?.[0];
                   if (!selected) return;
@@ -345,6 +433,18 @@ export function PhotoPageMode({
                     if (photoUrl) URL.revokeObjectURL(photoUrl);
                     setPhoto(ready);
                     setPhotoUrl(URL.createObjectURL(ready));
+                    setDetectingPage(true);
+                    void identifyPage(ready, groups)
+                      .then((matchedKey) => {
+                        if (!matchedKey) throw new Error("No matching paper page was found.");
+                        setPageKeyValue(matchedKey);
+                      })
+                      .catch(() => {
+                        toast.error("This page could not be matched. Please try a clearer photo.");
+                        setPhoto(null);
+                        setPhotoUrl("");
+                      })
+                      .finally(() => setDetectingPage(false));
                   });
                 }}
               />
@@ -352,27 +452,38 @@ export function PhotoPageMode({
           </div>
           {photoUrl ? (
             <div className="mt-4">
-              <div className="relative overflow-hidden rounded-lg border bg-muted">
-                <img src={photoUrl} alt="Completed full paper page" className="w-full" />
-                <div
-                  className="pointer-events-none absolute inset-x-0 top-0 bg-destructive/20"
-                  style={{ height: `${trim.top * 100}%` }}
-                />
-                <div
-                  className="pointer-events-none absolute inset-x-0 bottom-0 bg-destructive/20"
-                  style={{ height: `${(1 - trim.bottom) * 100}%` }}
-                />
-              </div>
+              <p className="mb-2 text-sm text-muted-foreground" aria-live="polite">
+                {detectingPage
+                  ? "Matching this photo to the paper…"
+                  : `Matched to ${group?.label ?? "a paper page"} · ${group?.questions.length ?? 0} question${group?.questions.length === 1 ? "" : "s"}`}
+              </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button variant="outline" onClick={() => setAdjusting((value) => !value)}>
-                  {adjusting ? "Finish adjusting page" : "Adjust page crop"}
+                  <Crop className="size-4" />
+                  {adjusting ? "Finish adjusting cuts" : "Adjust question cuts"}
                 </Button>
-                <Button onClick={markPage} disabled={locked || marking}>
-                  <ImageUp className="size-4" /> {marking ? "Marking page…" : "Mark this page"}
+                <Button onClick={markPage} disabled={locked || marking || detectingPage}>
+                  <ImageUp className="size-4" />
+                  {detectingPage ? "Matching page…" : marking ? "Marking page…" : "Mark this page"}
                 </Button>
               </div>
               {adjusting ? (
                 <div className="mt-3 space-y-4 rounded-lg border p-3">
+                  <div className="relative overflow-hidden rounded-lg border bg-muted">
+                    <img
+                      src={photoUrl}
+                      alt="Completed full paper page for crop adjustment"
+                      className="w-full"
+                    />
+                    <div
+                      className="pointer-events-none absolute inset-x-0 top-0 bg-destructive/20"
+                      style={{ height: `${trim.top * 100}%` }}
+                    />
+                    <div
+                      className="pointer-events-none absolute inset-x-0 bottom-0 bg-destructive/20"
+                      style={{ height: `${(1 - trim.bottom) * 100}%` }}
+                    />
+                  </div>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="text-xs">
                       Page top edge
@@ -381,12 +492,19 @@ export function PhotoPageMode({
                         min={0}
                         max={35}
                         value={Math.round(trim.top * 100)}
-                        onChange={(event) =>
+                        onChange={(event) => {
                           setTrim((current) => ({
                             ...current,
                             top: Math.min(current.bottom - 0.2, Number(event.target.value) / 100),
-                          }))
-                        }
+                          }));
+                          setRecutQuestions(
+                            (current) =>
+                              new Set([
+                                ...current,
+                                ...(group?.questions.map((item) => item.id) ?? []),
+                              ]),
+                          );
+                        }}
                         className="w-full"
                       />
                     </label>
@@ -397,12 +515,19 @@ export function PhotoPageMode({
                         min={65}
                         max={100}
                         value={Math.round(trim.bottom * 100)}
-                        onChange={(event) =>
+                        onChange={(event) => {
                           setTrim((current) => ({
                             ...current,
                             bottom: Math.max(current.top + 0.2, Number(event.target.value) / 100),
-                          }))
-                        }
+                          }));
+                          setRecutQuestions(
+                            (current) =>
+                              new Set([
+                                ...current,
+                                ...(group?.questions.map((item) => item.id) ?? []),
+                              ]),
+                          );
+                        }}
                         className="w-full"
                       />
                     </label>
@@ -430,7 +555,7 @@ export function PhotoPageMode({
                             min={0}
                             max={98}
                             value={Math.round(selectedBand.top * 100)}
-                            onChange={(event) =>
+                            onChange={(event) => {
                               setQuestionBands((current) => ({
                                 ...current,
                                 [question.id]: {
@@ -440,8 +565,9 @@ export function PhotoPageMode({
                                     Number(event.target.value) / 100,
                                   ),
                                 },
-                              }))
-                            }
+                              }));
+                              setRecutQuestions((current) => new Set(current).add(question.id));
+                            }}
                             className="w-full"
                           />
                         </label>
@@ -452,7 +578,7 @@ export function PhotoPageMode({
                             min={2}
                             max={100}
                             value={Math.round(selectedBand.bottom * 100)}
-                            onChange={(event) =>
+                            onChange={(event) => {
                               setQuestionBands((current) => ({
                                 ...current,
                                 [question.id]: {
@@ -462,8 +588,9 @@ export function PhotoPageMode({
                                     Number(event.target.value) / 100,
                                   ),
                                 },
-                              }))
-                            }
+                              }));
+                              setRecutQuestions((current) => new Set(current).add(question.id));
+                            }}
                             className="w-full"
                           />
                         </label>
@@ -476,57 +603,93 @@ export function PhotoPageMode({
           ) : null}
         </div>
 
-        {group?.questions.map((question) => {
+        {questions.map((question) => {
           const result = resultFor(question);
           const answer = answers.find((item) => item.question_id === question.id);
           const savedPhotos = (answer?.imageUrls ?? []).filter((url) =>
             url.includes(PHOTO_PAGE_FILE_PREFIX),
           );
+          const currentCropUrl = cropUrls[question.id];
           const index = questions.indexOf(question);
           const showScheme =
             (markSchemeRevealed ||
               (revealOnFullMarks && result?.awardedMarks === question.marks)) &&
             Boolean(question.answerImageUrls?.length);
           return (
-            <section key={question.id} className="paper space-y-3 p-4">
-              <div className="flex items-center justify-between gap-2">
-                <p className="font-medium">Question {labels[index] ?? index + 1}</p>
-                <Badge>
-                  {result?.awardedMarks ?? 0}/{question.marks}
-                </Badge>
-              </div>
-              {savedPhotos.length ? (
+            <section
+              key={question.id}
+              ref={(node) => {
+                questionRefs.current[question.id] = node;
+              }}
+              className={`paper scroll-mt-4 space-y-3 p-4 ${
+                selectedQuestionId === question.id ? "ring-2 ring-primary/40" : ""
+              }`}
+            >
+              <p className="font-medium">Question {labels[index] ?? index + 1}</p>
+              {currentCropUrl ? (
+                <img
+                  src={currentCropUrl}
+                  alt={`Extracted answer for question ${labels[index] ?? index + 1}`}
+                  className="w-full rounded-lg border bg-white object-contain"
+                />
+              ) : savedPhotos.length ? (
                 <QuestionSnipStack urls={savedPhotos} alt="Your photographed answer" />
               ) : (
                 <p className="text-sm text-muted-foreground">
                   Your answer will appear here after this page is marked.
                 </p>
               )}
-              {result?.feedback ? <p className="text-sm">{result.feedback}</p> : null}
-              {result && result.verdict !== "correct" ? (
-                <QuestionHelpButtons
-                  questionId={question.id}
-                  answerDraft="Photographed handwritten answer"
-                  allowHint={allowHint}
-                  allowSteps={allowSteps}
-                />
-              ) : null}
               {showScheme ? <CoveredScheme urls={question.answerImageUrls ?? []} /> : null}
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+                <Badge>
+                  {result?.awardedMarks ?? 0}/{question.marks}
+                </Badge>
+                {photo && group?.questions.some((item) => item.id === question.id) ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedQuestionId(question.id);
+                      setAdjusting(true);
+                      uploadRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                  >
+                    <Crop className="size-3.5" /> Adjust this cut
+                  </Button>
+                ) : null}
+              </div>
+              {result?.feedback ? <p className="text-sm">{result.feedback}</p> : null}
+              <QuestionHelpButtons
+                questionId={question.id}
+                answerDraft="Photographed handwritten answer"
+                allowHint={allowHint}
+                allowSteps={allowSteps}
+              />
             </section>
           );
         })}
       </div>
 
       <aside className="paper sticky top-4 p-3">
-        <p className="font-display text-lg">This page</p>
+        <p className="font-display text-lg">All questions</p>
         <div className="mt-3 grid grid-cols-3 gap-1">
-          {group?.questions.map((question) => {
+          {questions.map((question) => {
             const result = resultFor(question);
             const index = questions.indexOf(question);
             return (
-              <div
-                className="flex items-center gap-1 rounded-md border px-2 py-1.5 text-xs"
+              <Button
+                type="button"
+                size="sm"
+                variant={selectedQuestionId === question.id ? "default" : "outline"}
+                className="h-auto justify-start gap-1 px-2 py-1.5 text-xs"
                 key={question.id}
+                onClick={() => {
+                  setSelectedQuestionId(question.id);
+                  questionRefs.current[question.id]?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                }}
               >
                 {result?.verdict === "correct" ? (
                   <CheckCircle2 className="size-4 text-emerald-600" />
@@ -536,10 +699,24 @@ export function PhotoPageMode({
                   <XCircle className="size-4 text-destructive" />
                 ) : null}
                 Q{labels[index] ?? index + 1}
-              </div>
+              </Button>
             );
           })}
         </div>
+        {selectedQuestionId ? (
+          <div className="mt-4 border-t pt-4">
+            <p className="mb-2 text-sm font-medium">
+              Help with Question{" "}
+              {labels[questions.findIndex((item) => item.id === selectedQuestionId)]}
+            </p>
+            <QuestionHelpButtons
+              questionId={selectedQuestionId}
+              answerDraft="Photographed handwritten answer"
+              allowHint={allowHint}
+              allowSteps={allowSteps}
+            />
+          </div>
+        ) : null}
       </aside>
     </div>
   );

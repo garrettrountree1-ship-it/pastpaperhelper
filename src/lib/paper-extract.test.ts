@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { renumberQuestions, separateQuestionCrops } from "./paper-extract.server";
+import {
+  dedupeExtractedQuestions,
+  renumberQuestions,
+  separateQuestionCrops,
+} from "./paper-extract.server";
 
 const question = (questionText: string, top: number, bottom: number) => ({
   questionText,
@@ -13,7 +17,7 @@ const question = (questionText: string, top: number, bottom: number) => ({
 });
 
 describe("paper extraction safeguards", () => {
-  test("keeps the number visible in each cut instead of inventing a sequence", () => {
+  test("keeps extracted questions in a contiguous logical sequence", () => {
     const result = renumberQuestions([
       question("1 First compiled question", 0.1, 0.2),
       question("1 Second compiled question", 0.3, 0.4),
@@ -22,7 +26,7 @@ describe("paper extraction safeguards", () => {
 
     assert.deepEqual(
       result.map((item) => item.questionText),
-      ["1 First compiled question", "1 Second compiled question", "2 Third compiled question"],
+      ["1 First compiled question", "2 Second compiled question", "3 Third compiled question"],
     );
   });
 
@@ -35,4 +39,24 @@ describe("paper extraction safeguards", () => {
     assert.equal(result[0]?.crops?.length, 1);
     assert.equal(result[1]?.crops?.length, 1);
   });
+});
+
+test("keeps printed sub-part lettering while closing main-number gaps", () => {
+  const result = renumberQuestions([
+    question("4(a) First part", 0.1, 0.2),
+    question("4(b)(i) Nested part", 0.2, 0.3),
+    question("9 Next question", 0.3, 0.4),
+  ]);
+  assert.deepEqual(
+    result.map((item) => item.questionText),
+    ["4(a) First part", "4(b)(i) Nested part", "5 Next question"],
+  );
+});
+
+test("removes retry duplicates even when their labels and crop edges drift", () => {
+  const result = dedupeExtractedQuestions([
+    question("3 Explain why the reaction rate decreases as the reactants are used up", 0.1, 0.3),
+    question("17 Explain why the reaction rate decreases as reactants are used up", 0.11, 0.31),
+  ]);
+  assert.equal(result.length, 1);
 });

@@ -502,7 +502,6 @@ function PhotoTutorConversation({
   answer: PhotoAnswer;
   messages: PhotoMessage[];
   locked: boolean;
-  queryKey?: string[];
   queryKey?: string[] | undefined;
 }) {
   const tutor = useServerFn(sendTutorMessage);
@@ -746,7 +745,7 @@ export function PhotoPageMode({
         const band = sourceUrl ? parseSnipBand(sourceUrl) : null;
         if (!band) continue;
         const filename = `${PHOTO_PAGE_FILE_PREFIX}${Date.now()}-${question.id}.jpg`;
-        const crop = await cropQuestion(photo, questionBands[question.id] ?? band, filename);
+        const crop = await cropQuestion(photo, questionBands[question.id] ?? band, trim, filename);
         let result: PhotoResult;
         if (preview) {
           const dataUrl = await new Promise<string>((resolve, reject) => {

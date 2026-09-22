@@ -136,21 +136,17 @@ export function useLessonMirrorState({
   useEffect(() => {
     if (!isTeacher || !selfId) return;
     if (sendingRef.current && !sessionId.current) sessionId.current = crypto.randomUUID();
-    let cancelled = false;
-    let channel: RealtimeChannel | null = null;
     let timer: ReturnType<typeof setInterval> | null = null;
+    let handle: MirrorHandle | null = null;
 
     const send = (payload: Payload) => {
-      void channel?.send({
-        type: "broadcast",
-        event: "lesson",
-        payload: { from: selfId, ...payload },
-      });
+      handle?.send("lesson", { from: selfId, ...payload });
     };
     const meta = () => ({
       ...(sessionId.current ? { sessionId: sessionId.current } : {}),
       viewActive: sendingRef.current,
     });
+
 
     const sendChunked = (scope: MirrorScope, key: string, value: unknown) => {
       const json = JSON.stringify(value ?? null);

@@ -280,9 +280,8 @@ export function useLessonMirrorState({
 
   useEffect(() => {
     if (isTeacher) return;
-    let cancelled = false;
-    let channel: RealtimeChannel | null = null;
     const partials = new Map<string, string[]>();
+
 
     const receive = ({ payload }: { payload: unknown }) => {
       const message = payload as Payload;

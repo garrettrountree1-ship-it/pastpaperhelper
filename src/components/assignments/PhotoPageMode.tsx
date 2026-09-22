@@ -831,6 +831,7 @@ export function PhotoPageMode({
                     setRecutQuestions((current) => new Set(current).add(questionId));
                   }}
                 />
+              ) : null}
               {adjusting ? (
                 <div className="mt-3 space-y-4 rounded-lg border p-3">
                   <div className="relative overflow-hidden rounded-lg border bg-muted">
@@ -995,7 +996,6 @@ export function PhotoPageMode({
                   src={currentCropUrl}
                   alt={`Extracted answer for question ${labels[index] ?? index + 1}`}
                   className="max-h-96 w-full rounded-lg border bg-white object-contain"
-                  className="w-full rounded-lg border bg-white object-contain"
                 />
               ) : savedPhotos.length ? (
                 <QuestionSnipStack urls={savedPhotos} alt="Your photographed answer" />

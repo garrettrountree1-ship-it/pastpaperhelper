@@ -91,15 +91,28 @@ export const joinPublicMirror = createServerFn({ method: "POST" })
       .eq("student_id", rosterProfile.id)
       .maybeSingle();
 
-    let token = existing?.token as string | undefined;
+    let token: string | undefined;
     const mine = Boolean(data.claimToken && existing?.token === data.claimToken);
     if (existing && mine) {
       await db
         .from("mirror_claims")
         .update({ last_seen_at: new Date().toISOString() })
         .eq("id", existing.id);
+      token = existing.token as string;
+    } else if (existing) {
+      // Refresh the existing row in place. Delete-then-insert briefly removed
+      // the seat and could strand a returning student if the second request
+      // failed or raced another tab.
+      const replacementToken = crypto.randomUUID();
+      const { data: refreshed, error } = await db
+        .from("mirror_claims")
+        .update({ token: replacementToken, last_seen_at: new Date().toISOString() })
+        .eq("id", existing.id)
+        .select("token")
+        .single();
+      if (error) throw new Error(error.message);
+      token = refreshed.token as string;
     } else {
-      if (existing) await db.from("mirror_claims").delete().eq("id", existing.id);
       const { data: created, error } = await db
         .from("mirror_claims")
         .insert({ class_id: klass.id, student_id: rosterProfile.id })
@@ -108,6 +121,7 @@ export const joinPublicMirror = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
       token = created.token as string;
     }
+    if (!token) throw new Error("The class viewer could not reserve this roster name. Please try again.");
 
     const { data: gameProfile } = await db
       .from("game_profiles")
@@ -137,7 +151,7 @@ export const joinPublicMirror = createServerFn({ method: "POST" })
       className: klass.name as string,
       code: klass.join_code as string,
       studentName: rosterProfile.full_name as string,
-      claimToken: token!,
+      claimToken: token,
       alias,
       presenterIds: [
         klass.teacher_id as string,

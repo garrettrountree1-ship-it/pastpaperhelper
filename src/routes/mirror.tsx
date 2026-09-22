@@ -54,7 +54,7 @@ function PublicMirrorPage() {
   const [unitId, setUnitId] = useState<string | null>(null);
   const [live, setLive] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
-  const channelRef = useRef<RealtimeChannel | null>(null);
+  const handleRef = useRef<MirrorHandle | null>(null);
 
   useEffect(() => {
     const onChange = () => setFullScreen(Boolean(document.fullscreenElement));

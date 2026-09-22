@@ -1,7 +1,8 @@
-import type { RealtimeChannel } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { openMirrorChannel, type MirrorHandle } from "@/lib/mirror-channel";
+
 
 /**
  * Live lesson sharing.

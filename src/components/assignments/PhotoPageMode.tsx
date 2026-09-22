@@ -532,6 +532,7 @@ export function PhotoPageMode({
   const [questionBands, setQuestionBands] = useState<
     Record<string, { top: number; bottom: number }>
   >({});
+  const [trim, setTrim] = useState({ top: 0, bottom: 1 });
   const [adjusting, setAdjusting] = useState(false);
   const [detectingPage, setDetectingPage] = useState(false);
   const [marking, setMarking] = useState(false);

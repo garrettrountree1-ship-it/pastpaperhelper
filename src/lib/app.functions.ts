@@ -2363,6 +2363,7 @@ export const gradeAnswer = createServerFn({ method: "POST" })
         // against this question's saved mark-scheme block so method marks count.
         finalNumericOnly: false,
         expectedAnswer,
+        requireVisualVerification: imagePaths.some((path) => path.includes("photo-page-answer-")),
       }));
 
     const submission = await ensureSubmission(db, data.assignmentId, userId);
@@ -2614,7 +2615,9 @@ export const sendTutorMessage = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: answerRow } = await db
       .from("answers")
-      .select("id, answer_text, question_id, submission_id, awarded_marks, mark_breakdown")
+      .select(
+        "id, answer_text, feedback, question_id, submission_id, awarded_marks, mark_breakdown",
+      )
       .eq("id", data.answerId)
       .single();
     const answer = answerRow!;
@@ -2662,7 +2665,10 @@ export const sendTutorMessage = createServerFn({ method: "POST" })
       question: question.question_text,
       markScheme: question.mark_scheme,
       marks: question.marks,
-      studentAnswer: answer.answer_text,
+      // Photo mode has no typed answer; its saved feedback includes the model's
+      // read-back of the handwriting, keeping follow-up tutoring anchored to
+      // what the student actually wrote rather than an empty answer.
+      studentAnswer: answer.answer_text || answer.feedback || "Photographed handwritten work",
       awardedMarks: answer.awarded_marks ?? 0,
       markBreakdown: Array.isArray(answer.mark_breakdown)
         ? (answer.mark_breakdown as Array<{ point: string; marks: number; awarded: boolean }>)

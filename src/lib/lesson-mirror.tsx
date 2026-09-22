@@ -357,7 +357,8 @@ export function useLessonMirrorState({
     };
 
     const handle = openMirrorChannel(topic, {
-      onLesson: (payload) => receive({ payload }),
+      onLesson: (payload: unknown) => receive({ payload }),
+
       onSubscribed: () => handle.send("hello", {}),
     });
     studentHandle.current = handle;

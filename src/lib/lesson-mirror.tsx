@@ -374,8 +374,8 @@ export function useLessonMirrorState({
   // enter while the teacher's channel is reconnecting or has not subscribed yet.
   useEffect(() => {
     if (isTeacher) return;
-    const ask = () =>
-      void studentChannel.current?.send({ type: "broadcast", event: "hello", payload: {} });
+    const ask = () => studentHandle.current?.send("hello", {});
+
     ask();
     // Keep asking, even while following, so a shared screen that was switched
     // off and on again is always picked back up.

@@ -422,6 +422,12 @@ export function PhotoPageMode({
             Upload any completed page from this homework. Photo mode matches it to the prepared
             question cuts automatically, and previously correct questions are never marked again.
           </p>
+          {groups.length === 0 ? (
+            <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+              The questions are listed below, but photos cannot be matched until the teacher
+              confirms their question cuts.
+            </div>
+          ) : null}
           <div className="mt-4">
             <label className="block text-sm font-medium">
               Completed page photo
@@ -430,7 +436,7 @@ export function PhotoPageMode({
                 type="file"
                 accept="image/*,.heic,.heif"
                 capture="environment"
-                disabled={locked}
+                disabled={locked || groups.length === 0}
                 onChange={(event) => {
                   const selected = event.target.files?.[0];
                   if (!selected) return;

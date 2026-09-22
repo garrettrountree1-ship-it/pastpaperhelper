@@ -243,51 +243,31 @@ function leadingPartsOnly(questionText: string): string[] {
 export function resolveQuestionLabels(questionTexts: string[]): string[] {
   const labels: string[] = [];
   let previous: string | null = null;
-  let legacyMultipartMain: number | null = null;
+
   questionTexts.forEach((text, index) => {
+    // A number/letter already stored in the question may have come directly
+    // from the paper or from a teacher. In either case it is authoritative:
+    // never renumber it merely because another row was edited.
     const printed = printedLabel(text);
-    const printedParts = printed ? parseLabelString(printed).parts : [];
-    const recoveredParts = printedParts.length > 0 ? printedParts : embeddedParts(text);
-    if (recoveredParts.length > 0) {
-      const printedMain = printed ? parseLabelString(printed).main : null;
-      const previousParsed = previous ? parseLabelString(previous) : null;
-      const bodyAfterPrinted = authoritativeParse(text)?.rest ?? "";
-      const repeatedPart = leadingPartsOnly(bodyAfterPrinted);
-      const legacyRunningPrefix =
-        printedParts.length > 0 &&
-        printedMain !== null &&
-        previousParsed !== null &&
-        previousParsed.main !== null &&
-        (legacyMultipartMain !== null ||
-          repeatedPart.length > 0 ||
-          printedMain > previousParsed.main + 1);
-      const main = legacyRunningPrefix
-        ? (legacyMultipartMain ?? previousParsed.main)
-        : printedParts.length > 0
-          ? printedMain
-          : previousParsed?.parts.length
-            ? previousParsed.main
-            : (printedMain ?? (previousParsed?.main ?? index) + 1);
-      const label = formatLabel(main, recoveredParts);
-      labels.push(label);
-      previous = label;
-      if (printedParts.length === 0 && recoveredParts.length > 0) legacyMultipartMain = main;
-      return;
-    }
     if (printed) {
-      const printedMain = parseLabelString(printed).main;
-      const previousParsed = previous ? parseLabelString(previous) : null;
+      const parsed = parseLabelString(printed);
+      const repeatedParts = leadingPartsOnly(authoritativeParse(text)?.rest ?? "");
+      const legacyRepeatedLabel = /^\s*\d{1,3}\s*(?:\([^)]+\)){1,3}\s+\(/.test(text);
+      const previousMain = previous ? parseLabelString(previous).main : null;
+      // Repair only the old importer signature "10 (a)(i) (a)(i) …". A
+      // normal explicit label has no repeated copy in the body and is therefore
+      // preserved exactly, including a teacher's manual edit.
       const label =
-        legacyMultipartMain !== null
-          ? formatLabel(legacyMultipartMain + 1, [])
-          : previousParsed?.parts.length && previousParsed.main !== null
-            ? formatLabel(previousParsed.main + 1, [])
-            : formatLabel(printedMain, []);
+        parsed.parts.length > 0 &&
+        (repeatedParts.length > 0 || legacyRepeatedLabel) &&
+        previousMain !== null
+          ? formatLabel(previousMain, parsed.parts)
+          : printed;
       labels.push(label);
       previous = label;
-      legacyMultipartMain = null;
       return;
     }
+
     const parts = leadingPartsOnly(text);
     const previousMain = previous ? parseLabelString(previous).main : null;
     if (parts.length > 0 && previousMain !== null) {
@@ -296,9 +276,11 @@ export function resolveQuestionLabels(questionTexts: string[]): string[] {
       previous = label;
       return;
     }
+
     const label = previous ? nextLabelAfter(previous) : String(index + 1);
     labels.push(label);
     previous = label;
   });
+
   return labels;
 }

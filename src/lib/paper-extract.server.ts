@@ -205,7 +205,7 @@ export async function extractQuestionsFromPapers(input: ExtractInput): Promise<E
     // Fall back to a single-pass extraction if the index could not be built.
     return {
       questions: separateQuestionCrops(
-        dedupe(await runDetail(key, header, documents, [], true, hasAnswerPages)),
+        dedupeExtractedQuestions(await runDetail(key, header, documents, [], true, hasAnswerPages)),
       ),
       warnings: [],
     };
@@ -254,7 +254,7 @@ export async function extractQuestionsFromPapers(input: ExtractInput): Promise<E
   }
 
   return {
-    questions: renumberQuestions(separateQuestionCrops(dedupe(results))),
+    questions: renumberQuestions(separateQuestionCrops(dedupeExtractedQuestions(results))),
     warnings: [...new Set(warnings)].slice(0, 20),
   };
 }
@@ -550,23 +550,37 @@ function readLeadingQuestionLabel(text: string): LeadingQuestionLabel | null {
  * never silently changed just because another crop appeared before it.
  */
 export function renumberQuestions(items: ExtractedQuestion[]): ExtractedQuestion[] {
-  let activeMain: string | null = null;
+  let displayedMain: number | null = null;
+  let sourceMain: string | null = null;
   let activeLetter: string | null = null;
 
   return items.map((item) => {
     const parsed = readLeadingQuestionLabel(item.questionText);
-    if (parsed?.main) {
-      if (parsed.main !== activeMain) activeLetter = null;
-      activeMain = parsed.main;
-    }
-    if (parsed?.letter) activeLetter = parsed.letter;
+    const hasPart = Boolean(parsed?.letter || parsed?.roman);
+    const continuesSourceQuestion =
+      hasPart && parsed?.main !== null && parsed?.main === sourceMain && displayedMain !== null;
 
+    if (parsed?.main && !continuesSourceQuestion) {
+      // Start at the first number actually printed, then keep later main
+      // questions contiguous. Compiled papers frequently restart or skip
+      // numbers; preserving their letters while normalising the main sequence
+      // produces a stable editor order with no duplicates or gaps.
+      displayedMain = displayedMain === null ? Number(parsed.main) : displayedMain + 1;
+      sourceMain = parsed.main;
+      activeLetter = null;
+    } else if (!parsed?.main && !hasPart) {
+      displayedMain = (displayedMain ?? 0) + 1;
+      sourceMain = null;
+      activeLetter = null;
+    }
+
+    if (parsed?.letter) activeLetter = parsed.letter;
     const letter = parsed?.letter ?? (parsed?.roman ? activeLetter : null);
     const sub = `${letter ? `(${letter})` : ""}${parsed?.roman ? `(${parsed.roman})` : ""}`;
     const body = parsed
       ? item.questionText.slice(parsed.consumed).replace(/^[\s.):-]+/, "")
       : item.questionText;
-    const label = `${activeMain ?? item.pages[0] ?? 1}${sub}`;
+    const label = `${displayedMain ?? 1}${sub}`;
     return { ...item, questionText: `${label} ${body}`.trim() };
   });
 }
@@ -1159,20 +1173,59 @@ function cropSignature(item: ExtractedQuestion | DetailResult): string | null {
     .join("|");
 }
 
-function dedupe(items: Array<ExtractedQuestion | DetailResult>): ExtractedQuestion[] {
+function duplicateTextFingerprint(questionText: string): string {
+  const parsed = readLeadingQuestionLabel(questionText);
+  const body = parsed ? questionText.slice(parsed.consumed) : questionText;
+  return body
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function textSimilarity(left: string, right: string): number {
+  const a = new Set(left.split(" ").filter(Boolean));
+  const b = new Set(right.split(" ").filter(Boolean));
+  if (a.size < 6 || b.size < 6) return 0;
+  let common = 0;
+  for (const token of a) if (b.has(token)) common += 1;
+  return common / Math.max(a.size, b.size);
+}
+
+function cropsOverlap(left: ExtractedQuestion, right: ExtractedQuestion): boolean {
+  return (left.crops ?? []).some((a) =>
+    (right.crops ?? []).some((b) => {
+      if (a.page !== b.page) return false;
+      const overlap = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+      const smaller = Math.min(a.bottom - a.top, b.bottom - b.top);
+      return smaller > 0 && overlap / smaller >= 0.65;
+    }),
+  );
+}
+
+export function dedupeExtractedQuestions(
+  items: Array<ExtractedQuestion | DetailResult>,
+): ExtractedQuestion[] {
   const seen = new Set<string>();
   const seenRegions = new Set<string>();
   const out: ExtractedQuestion[] = [];
   for (const item of items) {
     if (!item.questionText) continue;
-    // Compilations legitimately repeat similar openings, so compare the whole
-    // wording (whitespace-normalised) instead of the first few words.
-    const fingerprint = item.questionText.replace(/\s+/g, " ").trim().toLowerCase();
+    // Ignore labels when comparing wording: retry passes sometimes return the
+    // same crop with a different invented number and used to append it at the
+    // end of the homework.
+    const fingerprint = duplicateTextFingerprint(item.questionText);
     if (seen.has(fingerprint)) continue;
-    // The same picture must never be published twice, even when the wording the
-    // reader returned for it differs slightly between passes.
     const region = cropSignature(item);
     if (region && seenRegions.has(region)) continue;
+    const duplicate = out.some((existing) => {
+      const existingFingerprint = duplicateTextFingerprint(existing.questionText);
+      return (
+        textSimilarity(fingerprint, existingFingerprint) >= 0.92 ||
+        (cropsOverlap(existing, item) && textSimilarity(fingerprint, existingFingerprint) >= 0.72)
+      );
+    });
+    if (duplicate) continue;
     seen.add(fingerprint);
     if (region) seenRegions.add(region);
     out.push({

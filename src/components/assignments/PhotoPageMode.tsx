@@ -699,7 +699,6 @@ export function PhotoPageMode({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [photo, group, questionBands]);
   }, [photo, group, questionBands, trim]);
 
   useEffect(

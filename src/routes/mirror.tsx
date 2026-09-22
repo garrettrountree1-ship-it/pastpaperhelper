@@ -54,8 +54,10 @@ function PublicMirrorPage() {
   const joinAttemptRef = useRef(0);
 
   useEffect(() => {
-    setCode(window.localStorage.getItem("class-mirror-code") ?? "");
-    setName(window.localStorage.getItem("class-mirror-name") ?? "");
+    const savedCode = window.localStorage.getItem("class-mirror-code") ?? "";
+    const savedName = window.localStorage.getItem("class-mirror-name") ?? "";
+    setCode((current) => current || savedCode);
+    setName((current) => current || savedName);
   }, []);
 
   useEffect(() => {

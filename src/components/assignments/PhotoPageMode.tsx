@@ -251,13 +251,23 @@ async function identifyPage(file: File, groups: ReturnType<typeof pageGroups>) {
   return best && Number.isFinite(best.distance) ? best.key : null;
 }
 
-async function cropQuestion(file: File, band: { top: number; bottom: number }, name: string) {
+async function cropQuestion(
+  file: File,
+  band: { top: number; bottom: number },
+  trim: { top: number; bottom: number },
+  name: string,
+) {
   const objectUrl = URL.createObjectURL(file);
   try {
     const image = await loadImage(objectUrl);
+    // The teacher's page-edge trim narrows the sheet first; the question band
+    // is then measured inside the trimmed area.
+    const span = Math.max(0.05, trim.bottom - trim.top);
+    const relativeTop = trim.top + band.top * span;
+    const relativeBottom = trim.top + band.bottom * span;
     // A small safety margin protects handwriting touching the prepared cut.
-    const top = Math.max(0, Math.min(0.98, band.top - 0.008));
-    const bottom = Math.max(top + 0.02, Math.min(1, band.bottom + 0.008));
+    const top = Math.max(0, Math.min(0.98, relativeTop - 0.008));
+    const bottom = Math.max(top + 0.02, Math.min(1, relativeBottom + 0.008));
     const canvas = document.createElement("canvas");
     canvas.width = image.naturalWidth;
     canvas.height = Math.max(1, Math.round((bottom - top) * image.naturalHeight));

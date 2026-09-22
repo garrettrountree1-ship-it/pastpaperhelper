@@ -3,7 +3,12 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { uniqueAlias } from "@/lib/game-alias";
-import { answerFormativeCore, getActiveFormativeCore } from "@/lib/formative.functions";
+import {
+  answerFormativeCore,
+  formativeLeaderboardCore,
+  getActiveFormativeCore,
+} from "@/lib/formative.functions";
+
 
 const presentationInput = z.union([
   z.object({ classId: z.string().uuid() }),
@@ -150,6 +155,16 @@ export const mirrorHeartbeat = createServerFn({ method: "POST" })
     await resolveClaim(data.claimToken);
     return { ok: true };
   });
+
+/** The class leaderboard, read for a mirror viewer by their claim token. */
+export const mirrorGetLeaderboard = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ claimToken: z.string().min(10) }).parse(input))
+  .handler(async ({ data }) => {
+    const { classId, studentId } = await resolveClaim(data.claimToken);
+    return formativeLeaderboardCore(classId, studentId, { isTeacher: false, isMember: true });
+  });
+
+
 
 /** The live class question, read for a mirror viewer by their claim token. */
 export const mirrorGetActiveCheck = createServerFn({ method: "POST" })

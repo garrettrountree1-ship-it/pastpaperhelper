@@ -473,6 +473,42 @@ async function ensureAlias(classId: string, studentId: string) {
   return alias;
 }
 
+/**
+ * Shared leaderboard reader. Used by signed-in students/teachers and by the
+ * name-based class mirror (which passes the roster student's id).
+ */
+export async function formativeLeaderboardCore(
+  classId: string,
+  userId: string,
+  options: { isTeacher: boolean; isMember: boolean },
+) {
+  const db = await admin();
+  const { data: klass } = await db
+    .from("classes")
+    .select("formative_leaderboard")
+    .eq("id", classId)
+    .maybeSingle();
+  const enabled = Boolean(klass?.formative_leaderboard);
+
+  if (options.isMember) await ensureAlias(classId, userId);
+  const [{ data: members }, { data: profiles }, { data: points }] = await Promise.all([
+    db.from("class_members").select("student_id").eq("class_id", classId),
+    db.from("game_profiles").select("student_id, alias").eq("class_id", classId),
+    db.from("formative_points").select("student_id, points").eq("class_id", classId),
+  ]);
+
+  const rows = (members ?? []).map((m) => {
+    const id = m.student_id as string;
+    return {
+      alias: ((profiles ?? []).find((p) => p.student_id === id)?.alias as string) ?? "Student",
+      points: ((points ?? []).find((p) => p.student_id === id)?.points as number) ?? 0,
+      isMe: id === userId,
+    };
+  });
+  rows.sort((a, b) => b.points - a.points || a.alias.localeCompare(b.alias));
+  return { enabled, isTeacher: options.isTeacher, rows };
+}
+
 /** The formative leaderboard for a class: nicknames only, highest points first. */
 export const getFormativeLeaderboard = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -485,32 +521,12 @@ export const getFormativeLeaderboard = createServerFn({ method: "POST" })
     ]);
     if (!isTeacher && !isMember) throw new Error("You are not in this class.");
 
-    const db = await admin();
-    const { data: klass } = await db
-      .from("classes")
-      .select("formative_leaderboard")
-      .eq("id", data.classId)
-      .maybeSingle();
-    const enabled = Boolean(klass?.formative_leaderboard);
-
-    if (isMember) await ensureAlias(data.classId, userId);
-    const [{ data: members }, { data: profiles }, { data: points }] = await Promise.all([
-      db.from("class_members").select("student_id").eq("class_id", data.classId),
-      db.from("game_profiles").select("student_id, alias").eq("class_id", data.classId),
-      db.from("formative_points").select("student_id, points").eq("class_id", data.classId),
-    ]);
-
-    const rows = (members ?? []).map((m) => {
-      const id = m.student_id as string;
-      return {
-        alias: ((profiles ?? []).find((p) => p.student_id === id)?.alias as string) ?? "Student",
-        points: ((points ?? []).find((p) => p.student_id === id)?.points as number) ?? 0,
-        isMe: id === userId,
-      };
+    return formativeLeaderboardCore(data.classId, userId, {
+      isTeacher: Boolean(isTeacher),
+      isMember: Boolean(isMember),
     });
-    rows.sort((a, b) => b.points - a.points || a.alias.localeCompare(b.alias));
-    return { enabled, isTeacher: Boolean(isTeacher), rows };
   });
+
 
 /** Teacher turns the formative leaderboard on or off for the class. */
 export const setFormativeLeaderboard = createServerFn({ method: "POST" })

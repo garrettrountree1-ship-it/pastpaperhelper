@@ -63,14 +63,38 @@ function PublicMirrorPage() {
   }, []);
 
   // Keeps this seat alive so the same roster name cannot be taken elsewhere.
+  // A dropped connection or an expired seat quietly re-joins with the same
+  // name instead of leaving the page stuck on a failed request.
   useEffect(() => {
     if (!joined?.claimToken) return;
     const token = joined.claimToken;
-    const timer = window.setInterval(() => {
-      void heartbeat({ data: { claimToken: token } }).catch(() => undefined);
-    }, 60_000);
-    return () => window.clearInterval(timer);
-  }, [joined?.claimToken, heartbeat]);
+    const rejoin = async () => {
+      try {
+        const result = await join({
+          data: { code: joined.code, name: joined.studentName, claimToken: token },
+        });
+        window.localStorage.setItem("class-mirror-token", result.claimToken);
+        setJoined(result);
+      } catch {
+        // Try again on the next check-in.
+      }
+    };
+    const beat = () => {
+      void heartbeat({ data: { claimToken: token } }).catch(() => rejoin());
+    };
+    const timer = window.setInterval(beat, 30_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") beat();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", beat);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", beat);
+    };
+  }, [joined?.claimToken, joined?.code, joined?.studentName, heartbeat, join]);
+
 
   useEffect(() => {
     if (!joined) return;

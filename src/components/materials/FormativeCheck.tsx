@@ -44,7 +44,12 @@ import {
   releaseFormativeAnswer,
   resetFormativePoints,
 } from "@/lib/formative.functions";
-import { mirrorAnswerCheck, mirrorGetActiveCheck } from "@/lib/mirror.functions";
+import {
+  mirrorAnswerCheck,
+  mirrorGetActiveCheck,
+  mirrorGetLeaderboard,
+} from "@/lib/mirror.functions";
+
 import {
   revealFormativeAnswerForMe,
   setFormativeLeaderboard,
@@ -600,6 +605,9 @@ export function FormativeCheckPanel({
         ? fetchMirrorActive({ data: { claimToken: mirrorToken } })
         : fetchActive({ data: { classId } }),
     refetchInterval: 5000,
+    // Brief network drops on school Wi-Fi must not empty the question panel.
+    retry: 3,
+
   });
   const raw = active.data ?? null;
   const check = raw ? { ...raw, isTeacher: raw.isTeacher && !asStudent } : null;
@@ -715,15 +723,23 @@ export function FormativeCheckPanel({
   });
 
   const fetchBoard = useServerFn(getFormativeLeaderboard);
+  const fetchMirrorBoard = useServerFn(mirrorGetLeaderboard);
   const toggleBoard = useServerFn(setFormativeLeaderboard);
   const zeroBoard = useServerFn(resetFormativePoints);
 
   const board = useQuery({
-    queryKey: ["formative-leaderboard", classId],
-    queryFn: () => fetchBoard({ data: { classId } }),
+    queryKey: ["formative-leaderboard", classId, mirrorToken ?? "account"],
+    // Class-mirror viewers are not signed in, so they read the board through
+    // their roster seat; the signed-in reader would fail every refresh.
+    queryFn: () =>
+      mirrorToken
+        ? fetchMirrorBoard({ data: { claimToken: mirrorToken } })
+        : fetchBoard({ data: { classId } }),
     enabled: Boolean(check?.id),
     refetchInterval: 1500,
+    retry: 3,
   });
+
 
   const setBoard = useMutation({
     mutationFn: (enabled: boolean) => toggleBoard({ data: { classId, enabled } }),

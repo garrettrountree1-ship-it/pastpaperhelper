@@ -356,31 +356,20 @@ export function useLessonMirrorState({
       }
     };
 
-    void (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.access_token) {
-        await supabase.realtime.setAuth(data.session.access_token);
-      }
-      if (cancelled) return;
-
-      channel = supabase.channel(topic, { config: { broadcast: { self: false } } });
-      studentChannel.current = channel;
-      channel.on("broadcast", { event: "lesson" }, receive);
-      channel.subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          void channel?.send({ type: "broadcast", event: "hello", payload: {} });
-        }
-      });
-    })();
+    const handle = openMirrorChannel(topic, {
+      onLesson: (payload) => receive({ payload }),
+      onSubscribed: () => handle.send("hello", {}),
+    });
+    studentHandle.current = handle;
     return () => {
-      cancelled = true;
-      studentChannel.current = null;
+      studentHandle.current = null;
       activePresenter.current = null;
       activeSession.current = null;
       setViewActive(false);
-      if (channel) void supabase.removeChannel(channel);
+      handle.close();
     };
   }, [isTeacher, topic]);
+
 
   // Ask repeatedly until the active teacher answers. This covers students who
   // enter while the teacher's channel is reconnecting or has not subscribed yet.

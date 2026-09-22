@@ -22,8 +22,6 @@ const publicMirrorInput = z.object({
   claimToken: z.string().min(10).optional(),
 });
 
-/** A claim goes stale when the tab stops checking in. */
-const CLAIM_STALE_MINUTES = 3;
 
 async function adminDb() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

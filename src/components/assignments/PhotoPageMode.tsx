@@ -12,6 +12,7 @@ import {
   Plus,
   XCircle,
 } from "lucide-react";
+import { CheckCircle2, CircleDashed, Crop, Eye, EyeOff, ImageUp, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { QuestionHelpButtons } from "@/components/assignments/QuestionHelpDialog";
@@ -88,6 +89,63 @@ async function loadImage(url: string) {
 
 /** Finds the rectangular sheet against its surroundings and returns only the page. */
 async function trimPhotoToPage(file: File): Promise<File> {
+async function imageFingerprint(source: File | string) {
+  const objectUrl = source instanceof File ? URL.createObjectURL(source) : source;
+  try {
+    const image = await loadImage(objectUrl);
+    const canvas = document.createElement("canvas");
+    canvas.width = 16;
+    canvas.height = 16;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) return [];
+    context.drawImage(image, 0, 0, 16, 16);
+    const pixels = context.getImageData(0, 0, 16, 16).data;
+    return Array.from({ length: 256 }, (_, index) => {
+      const offset = index * 4;
+      return (
+        ((pixels[offset] ?? 0) * 3 + (pixels[offset + 1] ?? 0) * 6 + (pixels[offset + 2] ?? 0)) / 10
+      );
+    });
+  } finally {
+    if (source instanceof File) URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function fingerprintDistance(left: number[], right: number[]) {
+  if (left.length !== right.length || left.length === 0) return Number.POSITIVE_INFINITY;
+  const leftMean = left.reduce((sum, value) => sum + value, 0) / left.length;
+  const rightMean = right.reduce((sum, value) => sum + value, 0) / right.length;
+  return left.reduce(
+    (distance, value, index) =>
+      distance + Math.abs((value >= leftMean ? 1 : 0) - ((right[index] ?? 0) >= rightMean ? 1 : 0)),
+    0,
+  );
+}
+
+async function identifyPage(file: File, groups: ReturnType<typeof pageGroups>) {
+  const uploaded = await imageFingerprint(file);
+  const matches = await Promise.all(
+    groups.map(async (group) => {
+      try {
+        return {
+          key: group.key,
+          distance: fingerprintDistance(uploaded, await imageFingerprint(group.referenceUrl)),
+        };
+      } catch {
+        return { key: group.key, distance: Number.POSITIVE_INFINITY };
+      }
+    }),
+  );
+  const best = matches.sort((left, right) => left.distance - right.distance)[0];
+  return best && Number.isFinite(best.distance) ? best.key : null;
+}
+
+async function cropQuestion(
+  file: File,
+  band: { top: number; bottom: number },
+  trim: { top: number; bottom: number },
+  name: string,
+) {
   const objectUrl = URL.createObjectURL(file);
   try {
     const image = await loadImage(objectUrl);
@@ -558,6 +616,7 @@ export function PhotoPageMode({
           const crop = await cropQuestion(
             photo,
             questionBands[question.id] ?? automatic,
+            trim,
             `preview-${question.id}.jpg`,
           );
           next[question.id] = URL.createObjectURL(crop);
@@ -577,6 +636,7 @@ export function PhotoPageMode({
       window.clearTimeout(timer);
     };
   }, [photo, group, questionBands]);
+  }, [photo, group, questionBands, trim]);
 
   useEffect(
     () => () => {
@@ -597,6 +657,18 @@ export function PhotoPageMode({
         }
       : undefined;
   };
+
+  if (groups.length === 0) {
+    return (
+      <div className="paper p-6 text-sm">
+        <p className="font-medium">Photo mode needs confirmed question cuts.</p>
+        <p className="mt-2 text-muted-foreground">
+          Ask the teacher to verify the question and mark-scheme cuts. They may come from separate
+          documents or one mixed upload.
+        </p>
+      </div>
+    );
+  }
 
   const markPage = async () => {
     if (!photo || !group) return;
@@ -760,6 +832,137 @@ export function PhotoPageMode({
                     setRecutQuestions((current) => new Set(current).add(questionId));
                   }}
                 />
+              {adjusting ? (
+                <div className="mt-3 space-y-4 rounded-lg border p-3">
+                  <div className="relative overflow-hidden rounded-lg border bg-muted">
+                    <img
+                      src={photoUrl}
+                      alt="Completed full paper page for crop adjustment"
+                      className="w-full"
+                    />
+                    <div
+                      className="pointer-events-none absolute inset-x-0 top-0 bg-destructive/20"
+                      style={{ height: `${trim.top * 100}%` }}
+                    />
+                    <div
+                      className="pointer-events-none absolute inset-x-0 bottom-0 bg-destructive/20"
+                      style={{ height: `${(1 - trim.bottom) * 100}%` }}
+                    />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="text-xs">
+                      Page top edge
+                      <input
+                        type="range"
+                        min={0}
+                        max={35}
+                        value={Math.round(trim.top * 100)}
+                        onChange={(event) => {
+                          setTrim((current) => ({
+                            ...current,
+                            top: Math.min(current.bottom - 0.2, Number(event.target.value) / 100),
+                          }));
+                          setRecutQuestions(
+                            (current) =>
+                              new Set([
+                                ...current,
+                                ...(group?.questions.map((item) => item.id) ?? []),
+                              ]),
+                          );
+                        }}
+                        className="w-full"
+                      />
+                    </label>
+                    <label className="text-xs">
+                      Page bottom edge
+                      <input
+                        type="range"
+                        min={65}
+                        max={100}
+                        value={Math.round(trim.bottom * 100)}
+                        onChange={(event) => {
+                          setTrim((current) => ({
+                            ...current,
+                            bottom: Math.max(current.top + 0.2, Number(event.target.value) / 100),
+                          }));
+                          setRecutQuestions(
+                            (current) =>
+                              new Set([
+                                ...current,
+                                ...(group?.questions.map((item) => item.id) ?? []),
+                              ]),
+                          );
+                        }}
+                        className="w-full"
+                      />
+                    </label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    If one automatic question cut is wrong, adjust only that cut below.
+                  </p>
+                  {group?.questions.map((question) => {
+                    const sourceUrl = (question.imageUrls ?? []).find(
+                      (url) => pageKey(url) === group.key && parseSnipBand(url),
+                    );
+                    const automatic = sourceUrl ? parseSnipBand(sourceUrl) : null;
+                    if (!automatic) return null;
+                    const selectedBand = questionBands[question.id] ?? automatic;
+                    const questionIndex = questions.indexOf(question);
+                    return (
+                      <div key={question.id} className="grid gap-2 border-t pt-3 sm:grid-cols-2">
+                        <p className="text-xs font-medium sm:col-span-2">
+                          Question {labels[questionIndex] ?? questionIndex + 1}
+                        </p>
+                        <label className="text-xs">
+                          Cut starts
+                          <input
+                            type="range"
+                            min={0}
+                            max={98}
+                            value={Math.round(selectedBand.top * 100)}
+                            onChange={(event) => {
+                              setQuestionBands((current) => ({
+                                ...current,
+                                [question.id]: {
+                                  ...selectedBand,
+                                  top: Math.min(
+                                    selectedBand.bottom - 0.02,
+                                    Number(event.target.value) / 100,
+                                  ),
+                                },
+                              }));
+                              setRecutQuestions((current) => new Set(current).add(question.id));
+                            }}
+                            className="w-full"
+                          />
+                        </label>
+                        <label className="text-xs">
+                          Cut ends
+                          <input
+                            type="range"
+                            min={2}
+                            max={100}
+                            value={Math.round(selectedBand.bottom * 100)}
+                            onChange={(event) => {
+                              setQuestionBands((current) => ({
+                                ...current,
+                                [question.id]: {
+                                  ...selectedBand,
+                                  bottom: Math.max(
+                                    selectedBand.top + 0.02,
+                                    Number(event.target.value) / 100,
+                                  ),
+                                },
+                              }));
+                              setRecutQuestions((current) => new Set(current).add(question.id));
+                            }}
+                            className="w-full"
+                          />
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
               ) : null}
             </div>
           ) : null}
@@ -793,6 +996,7 @@ export function PhotoPageMode({
                   src={currentCropUrl}
                   alt={`Extracted answer for question ${labels[index] ?? index + 1}`}
                   className="max-h-96 w-full rounded-lg border bg-white object-contain"
+                  className="w-full rounded-lg border bg-white object-contain"
                 />
               ) : savedPhotos.length ? (
                 <QuestionSnipStack urls={savedPhotos} alt="Your photographed answer" />

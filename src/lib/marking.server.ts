@@ -94,6 +94,10 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
       : "Transcribe or concisely describe any student handwriting you use for marking.",
     "Respond with ONLY a JSON object (no markdown fences, no commentary) of exactly this shape:",
     `{"verdict":"correct|partial|incorrect","awardedMarks":number,"feedback":"string","explanation":"string","leadingQuestion":"string","studentWorkRead":"exact text/numbers read from the student's image, or concise diagram description","studentWorkReadable":true,"questionImageMatches":true,"markSchemeImageMatches":true,"studentWorkMatchesQuestion":true,"markPoints":[{"point":"string","marks":number,"awarded":true}]}`,
+      ? "Before marking, independently verify that the question picture matches the Question text, the official-answer picture answers that same question, and the student photo contains readable work for that question. Transcribe or concisely describe exactly what you can read in the student's photo. If any check fails, set its boolean false and do not guess."
+      : "Transcribe or concisely describe any student handwriting you use for marking.",
+    "Respond with ONLY a JSON object (no markdown fences, no commentary) of exactly this shape:",
+    `{"verdict":"correct|partial|incorrect","awardedMarks":number,"feedback":"string","explanation":"string","leadingQuestion":"string","studentWorkRead":"exact text/numbers read from the student's image, or concise diagram description","studentWorkReadable":true,"questionImageMatches":true,"markSchemeImageMatches":true,"markPoints":[{"point":"string","marks":number,"awarded":true}]}`,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -160,6 +164,7 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
         lastError.startsWith("The question and answer-key pictures") ||
         lastError.startsWith("The handwriting") ||
         lastError.startsWith("The photographed work")
+        lastError.startsWith("The handwriting")
       ) {
         throw error;
       }

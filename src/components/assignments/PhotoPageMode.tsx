@@ -269,6 +269,23 @@ async function cropQuestion(file: File, band: { top: number; bottom: number }, n
     // A small safety margin protects handwriting touching the prepared cut.
     const top = Math.max(0, Math.min(0.98, band.top - 0.008));
     const bottom = Math.max(top + 0.02, Math.min(1, band.bottom + 0.008));
+async function cropQuestion(
+  file: File,
+  band: { top: number; bottom: number },
+  trim: { top: number; bottom: number },
+  name: string,
+) {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await loadImage(objectUrl);
+    // The teacher's page-edge trim narrows the sheet first; the question band
+    // is then measured inside the trimmed area.
+    const span = Math.max(0.05, trim.bottom - trim.top);
+    const relativeTop = trim.top + band.top * span;
+    const relativeBottom = trim.top + band.bottom * span;
+    // A small safety margin protects handwriting touching the prepared cut.
+    const top = Math.max(0, Math.min(0.98, relativeTop - 0.008));
+    const bottom = Math.max(top + 0.02, Math.min(1, relativeBottom + 0.008));
     const canvas = document.createElement("canvas");
     canvas.width = image.naturalWidth;
     canvas.height = Math.max(1, Math.round((bottom - top) * image.naturalHeight));
@@ -493,6 +510,7 @@ function PhotoTutorConversation({
   messages: PhotoMessage[];
   locked: boolean;
   queryKey?: string[];
+  queryKey?: string[] | undefined;
 }) {
   const tutor = useServerFn(sendTutorMessage);
   const queryClient = useQueryClient();
@@ -625,6 +643,7 @@ export function PhotoPageMode({
   const [questionBands, setQuestionBands] = useState<
     Record<string, { top: number; bottom: number }>
   >({});
+  const [trim, setTrim] = useState({ top: 0, bottom: 1 });
   const [adjusting, setAdjusting] = useState(false);
   const [detectingPage, setDetectingPage] = useState(false);
   const [marking, setMarking] = useState(false);
@@ -661,6 +680,7 @@ export function PhotoPageMode({
           const crop = await cropQuestion(
             photo,
             questionBands[question.id] ?? automatic,
+            trim,
             `preview-${question.id}.jpg`,
           );
           next[question.id] = URL.createObjectURL(crop);
@@ -680,6 +700,7 @@ export function PhotoPageMode({
       window.clearTimeout(timer);
     };
   }, [photo, group, questionBands]);
+  }, [photo, group, questionBands, trim]);
 
   useEffect(
     () => () => {
@@ -700,6 +721,18 @@ export function PhotoPageMode({
         }
       : undefined;
   };
+
+  if (groups.length === 0) {
+    return (
+      <div className="paper p-6 text-sm">
+        <p className="font-medium">Photo mode needs confirmed question cuts.</p>
+        <p className="mt-2 text-muted-foreground">
+          Ask the teacher to verify the question and mark-scheme cuts. They may come from separate
+          documents or one mixed upload.
+        </p>
+      </div>
+    );
+  }
 
   const markPage = async () => {
     if (!photo || !group) return;
@@ -864,6 +897,138 @@ export function PhotoPageMode({
                   }}
                 />
               ) : null}
+              {adjusting ? (
+                <div className="mt-3 space-y-4 rounded-lg border p-3">
+                  <div className="relative overflow-hidden rounded-lg border bg-muted">
+                    <img
+                      src={photoUrl}
+                      alt="Completed full paper page for crop adjustment"
+                      className="w-full"
+                    />
+                    <div
+                      className="pointer-events-none absolute inset-x-0 top-0 bg-destructive/20"
+                      style={{ height: `${trim.top * 100}%` }}
+                    />
+                    <div
+                      className="pointer-events-none absolute inset-x-0 bottom-0 bg-destructive/20"
+                      style={{ height: `${(1 - trim.bottom) * 100}%` }}
+                    />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="text-xs">
+                      Page top edge
+                      <input
+                        type="range"
+                        min={0}
+                        max={35}
+                        value={Math.round(trim.top * 100)}
+                        onChange={(event) => {
+                          setTrim((current) => ({
+                            ...current,
+                            top: Math.min(current.bottom - 0.2, Number(event.target.value) / 100),
+                          }));
+                          setRecutQuestions(
+                            (current) =>
+                              new Set([
+                                ...current,
+                                ...(group?.questions.map((item) => item.id) ?? []),
+                              ]),
+                          );
+                        }}
+                        className="w-full"
+                      />
+                    </label>
+                    <label className="text-xs">
+                      Page bottom edge
+                      <input
+                        type="range"
+                        min={65}
+                        max={100}
+                        value={Math.round(trim.bottom * 100)}
+                        onChange={(event) => {
+                          setTrim((current) => ({
+                            ...current,
+                            bottom: Math.max(current.top + 0.2, Number(event.target.value) / 100),
+                          }));
+                          setRecutQuestions(
+                            (current) =>
+                              new Set([
+                                ...current,
+                                ...(group?.questions.map((item) => item.id) ?? []),
+                              ]),
+                          );
+                        }}
+                        className="w-full"
+                      />
+                    </label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    If one automatic question cut is wrong, adjust only that cut below.
+                  </p>
+                  {group?.questions.map((question) => {
+                    const sourceUrl = (question.imageUrls ?? []).find(
+                      (url) => pageKey(url) === group.key && parseSnipBand(url),
+                    );
+                    const automatic = sourceUrl ? parseSnipBand(sourceUrl) : null;
+                    if (!automatic) return null;
+                    const selectedBand = questionBands[question.id] ?? automatic;
+                    const questionIndex = questions.indexOf(question);
+                    return (
+                      <div key={question.id} className="grid gap-2 border-t pt-3 sm:grid-cols-2">
+                        <p className="text-xs font-medium sm:col-span-2">
+                          Question {labels[questionIndex] ?? questionIndex + 1}
+                        </p>
+                        <label className="text-xs">
+                          Cut starts
+                          <input
+                            type="range"
+                            min={0}
+                            max={98}
+                            value={Math.round(selectedBand.top * 100)}
+                            onChange={(event) => {
+                              setQuestionBands((current) => ({
+                                ...current,
+                                [question.id]: {
+                                  ...selectedBand,
+                                  top: Math.min(
+                                    selectedBand.bottom - 0.02,
+                                    Number(event.target.value) / 100,
+                                  ),
+                                },
+                              }));
+                              setRecutQuestions((current) => new Set(current).add(question.id));
+                            }}
+                            className="w-full"
+                          />
+                        </label>
+                        <label className="text-xs">
+                          Cut ends
+                          <input
+                            type="range"
+                            min={2}
+                            max={100}
+                            value={Math.round(selectedBand.bottom * 100)}
+                            onChange={(event) => {
+                              setQuestionBands((current) => ({
+                                ...current,
+                                [question.id]: {
+                                  ...selectedBand,
+                                  bottom: Math.max(
+                                    selectedBand.top + 0.02,
+                                    Number(event.target.value) / 100,
+                                  ),
+                                },
+                              }));
+                              setRecutQuestions((current) => new Set(current).add(question.id));
+                            }}
+                            className="w-full"
+                          />
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -938,6 +1103,7 @@ export function PhotoPageMode({
                   queryKey={queryKey}
                 />
               ) : null}
+              {result?.feedback ? <p className="text-sm">{result.feedback}</p> : null}
               <QuestionHelpButtons
                 questionId={question.id}
                 answerDraft="Photographed handwritten answer"

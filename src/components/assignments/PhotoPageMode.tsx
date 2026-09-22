@@ -322,6 +322,18 @@ export function PhotoPageMode({
       : undefined;
   };
 
+  if (groups.length === 0) {
+    return (
+      <div className="paper p-6 text-sm">
+        <p className="font-medium">Photo mode needs confirmed question cuts.</p>
+        <p className="mt-2 text-muted-foreground">
+          Ask the teacher to verify the question and mark-scheme cuts. They may come from separate
+          documents or one mixed upload.
+        </p>
+      </div>
+    );
+  }
+
   const markPage = async () => {
     if (!photo || !group) return;
     const remaining = group.questions.filter(

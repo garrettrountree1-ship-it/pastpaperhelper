@@ -74,39 +74,28 @@ function PublicMirrorPage() {
 
   useEffect(() => {
     if (!joined) return;
-    let cancelled = false;
-    let channel: RealtimeChannel | null = null;
-    let helloTimer: number | null = null;
     const trusted = new Set(joined.presenterIds);
 
-    void (async () => {
-      if (cancelled) return;
-      channel = supabase.channel(`lesson-mirror:${joined.classId}`, {
-        config: { broadcast: { self: false } },
-      });
-      channelRef.current = channel;
-      channel.on("broadcast", { event: "lesson" }, ({ payload }) => {
+    const handle = openMirrorChannel(`lesson-mirror:${joined.classId}`, {
+      onLesson: (payload) => {
         const message = payload as Announcement;
         if (!message.from || !trusted.has(message.from)) return;
         setLive(Boolean(message.viewActive));
         const nextUnit = message.view?.["workspace.unitId"];
         if (typeof nextUnit === "string") setUnitId(nextUnit);
-      });
-      channel.subscribe((status) => {
-        if (status !== "SUBSCRIBED") return;
-        const hello = () => void channel?.send({ type: "broadcast", event: "hello", payload: {} });
-        hello();
-        helloTimer = window.setInterval(hello, 2000);
-      });
-    })();
+      },
+      onSubscribed: () => handle.send("hello", {}),
+    });
+    handleRef.current = handle;
+    const helloTimer = window.setInterval(() => handle.send("hello", {}), 2000);
 
     return () => {
-      cancelled = true;
-      if (helloTimer) window.clearInterval(helloTimer);
-      channelRef.current = null;
-      if (channel) void supabase.removeChannel(channel);
+      window.clearInterval(helloTimer);
+      handleRef.current = null;
+      handle.close();
     };
   }, [joined]);
+
 
   const enter = async () => {
     if (!code.trim() || !name.trim()) return;

@@ -88,63 +88,6 @@ async function loadImage(url: string) {
 
 /** Finds the rectangular sheet against its surroundings and returns only the page. */
 async function trimPhotoToPage(file: File): Promise<File> {
-async function imageFingerprint(source: File | string) {
-  const objectUrl = source instanceof File ? URL.createObjectURL(source) : source;
-  try {
-    const image = await loadImage(objectUrl);
-    const canvas = document.createElement("canvas");
-    canvas.width = 16;
-    canvas.height = 16;
-    const context = canvas.getContext("2d", { willReadFrequently: true });
-    if (!context) return [];
-    context.drawImage(image, 0, 0, 16, 16);
-    const pixels = context.getImageData(0, 0, 16, 16).data;
-    return Array.from({ length: 256 }, (_, index) => {
-      const offset = index * 4;
-      return (
-        ((pixels[offset] ?? 0) * 3 + (pixels[offset + 1] ?? 0) * 6 + (pixels[offset + 2] ?? 0)) / 10
-      );
-    });
-  } finally {
-    if (source instanceof File) URL.revokeObjectURL(objectUrl);
-  }
-}
-
-function fingerprintDistance(left: number[], right: number[]) {
-  if (left.length !== right.length || left.length === 0) return Number.POSITIVE_INFINITY;
-  const leftMean = left.reduce((sum, value) => sum + value, 0) / left.length;
-  const rightMean = right.reduce((sum, value) => sum + value, 0) / right.length;
-  return left.reduce(
-    (distance, value, index) =>
-      distance + Math.abs((value >= leftMean ? 1 : 0) - ((right[index] ?? 0) >= rightMean ? 1 : 0)),
-    0,
-  );
-}
-
-async function identifyPage(file: File, groups: ReturnType<typeof pageGroups>) {
-  const uploaded = await imageFingerprint(file);
-  const matches = await Promise.all(
-    groups.map(async (group) => {
-      try {
-        return {
-          key: group.key,
-          distance: fingerprintDistance(uploaded, await imageFingerprint(group.referenceUrl)),
-        };
-      } catch {
-        return { key: group.key, distance: Number.POSITIVE_INFINITY };
-      }
-    }),
-  );
-  const best = matches.sort((left, right) => left.distance - right.distance)[0];
-  return best && Number.isFinite(best.distance) ? best.key : null;
-}
-
-async function cropQuestion(
-  file: File,
-  band: { top: number; bottom: number },
-  trim: { top: number; bottom: number },
-  name: string,
-) {
   const objectUrl = URL.createObjectURL(file);
   try {
     const image = await loadImage(objectUrl);

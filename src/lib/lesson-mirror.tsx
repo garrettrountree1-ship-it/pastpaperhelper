@@ -206,21 +206,13 @@ export function useLessonMirrorState({
 
     const sendAll = () => sendFields(allContent.current, sendingRef.current ? allView.current : {});
 
-    void (async () => {
-      // Realtime can retain an older token after a long-lived school session.
-      // Authenticate explicitly before every lesson channel is opened so the
-      // current signed-in account is used without requiring a logout/refresh.
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.access_token) {
-        await supabase.realtime.setAuth(data.session.access_token);
-      }
-      if (cancelled) return;
+    handle = openMirrorChannel(topic, {
+      onHello: () => sendAll(),
+      onSubscribed: () => sendAll(),
+    });
 
-      channel = supabase.channel(topic, { config: { broadcast: { self: false } } });
-      channel.on("broadcast", { event: "hello" }, () => sendAll());
-      channel.subscribe((status) => {
-        if (status === "SUBSCRIBED") sendAll();
-      });
+    {
+
 
       let lastView = sendingRef.current;
       let lastHeartbeat = 0;

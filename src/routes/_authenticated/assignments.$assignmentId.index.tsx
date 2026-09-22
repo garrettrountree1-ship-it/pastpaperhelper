@@ -335,6 +335,8 @@ function AssignmentPage() {
                   markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
                   allowHint={settings?.allowHint !== false}
                   allowSteps={settings?.allowSteps !== false}
+                  messages={data.messages}
+                  keywordTranslation={Boolean(settings?.keywordTranslation)}
                   queryKey={queryKey}
                 />
               </div>

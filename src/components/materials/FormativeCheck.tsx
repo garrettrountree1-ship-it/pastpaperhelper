@@ -605,6 +605,9 @@ export function FormativeCheckPanel({
         ? fetchMirrorActive({ data: { claimToken: mirrorToken } })
         : fetchActive({ data: { classId } }),
     refetchInterval: 5000,
+    // Brief network drops on school Wi-Fi must not empty the question panel.
+    retry: 3,
+
   });
   const raw = active.data ?? null;
   const check = raw ? { ...raw, isTeacher: raw.isTeacher && !asStudent } : null;

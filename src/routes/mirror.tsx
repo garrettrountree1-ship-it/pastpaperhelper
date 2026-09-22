@@ -124,13 +124,21 @@ function PublicMirrorPage() {
 
 
   const enter = async () => {
-    if (!code.trim() || !name.trim()) return;
+    if (!code.trim() || !name.trim() || joining) return;
     setJoining(true);
     try {
       const saved = window.localStorage.getItem("class-mirror-token") ?? undefined;
-      const result = await join({
-        data: { code, name, ...(saved ? { claimToken: saved } : {}) },
-      });
+      // A stalled network request must never leave the button greyed out for
+      // good, so joining always finishes within a few seconds.
+      const result = await Promise.race([
+        join({ data: { code, name, ...(saved ? { claimToken: saved } : {}) } }),
+        new Promise<never>((_resolve, reject) =>
+          window.setTimeout(
+            () => reject(new Error("The class viewer did not answer. Tap Watch class again.")),
+            15_000,
+          ),
+        ),
+      ]);
       window.localStorage.setItem("class-mirror-code", result.code);
       window.localStorage.setItem("class-mirror-name", result.studentName);
       window.localStorage.setItem("class-mirror-token", result.claimToken);

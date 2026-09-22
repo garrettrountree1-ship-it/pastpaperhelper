@@ -164,10 +164,6 @@ export const mirrorGetLeaderboard = createServerFn({ method: "POST" })
     return formativeLeaderboardCore(classId, studentId, { isTeacher: false, isMember: true });
   });
 
-/** The live class question, read for a mirror viewer by their claim token. */
-export const mirrorGetActiveCheck = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => z.object({ claimToken: z.string().min(10) }).parse(input))
-  .handler(async ({ data }) => {
 
 
 /** The live class question, read for a mirror viewer by their claim token. */

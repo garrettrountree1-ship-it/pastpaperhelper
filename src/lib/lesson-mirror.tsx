@@ -262,21 +262,21 @@ export function useLessonMirrorState({
         }
         sendFields(hasContent ? content : {}, hasView ? view : {});
       }, 120);
-    })();
+    }
 
     return () => {
-      cancelled = true;
       if (timer) clearInterval(timer);
       send({ viewActive: false });
-      const closing = channel;
-      channel = null;
-      if (closing) void supabase.removeChannel(closing);
+      const closing = handle;
+      handle = null;
+      closing?.close();
     };
   }, [isTeacher, selfId, topic]);
 
   // Students always listen, so the teacher's workspace appears live whether
   // either person is using the normal or full-screen lesson view.
-  const studentChannel = useRef<RealtimeChannel | null>(null);
+  const studentHandle = useRef<MirrorHandle | null>(null);
+
 
   useEffect(() => {
     if (isTeacher) return;

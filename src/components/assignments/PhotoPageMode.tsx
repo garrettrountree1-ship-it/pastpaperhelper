@@ -262,13 +262,6 @@ async function identifyPage(file: File, groups: ReturnType<typeof pageGroups>) {
   return best && Number.isFinite(best.distance) ? best.key : null;
 }
 
-async function cropQuestion(file: File, band: { top: number; bottom: number }, name: string) {
-  const objectUrl = URL.createObjectURL(file);
-  try {
-    const image = await loadImage(objectUrl);
-    // A small safety margin protects handwriting touching the prepared cut.
-    const top = Math.max(0, Math.min(0.98, band.top - 0.008));
-    const bottom = Math.max(top + 0.02, Math.min(1, band.bottom + 0.008));
 async function cropQuestion(
   file: File,
   band: { top: number; bottom: number },

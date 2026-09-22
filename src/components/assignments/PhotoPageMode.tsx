@@ -12,7 +12,6 @@ import {
   Plus,
   XCircle,
 } from "lucide-react";
-import { CheckCircle2, CircleDashed, Crop, Eye, EyeOff, ImageUp, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { QuestionHelpButtons } from "@/components/assignments/QuestionHelpDialog";
@@ -89,63 +88,6 @@ async function loadImage(url: string) {
 
 /** Finds the rectangular sheet against its surroundings and returns only the page. */
 async function trimPhotoToPage(file: File): Promise<File> {
-async function imageFingerprint(source: File | string) {
-  const objectUrl = source instanceof File ? URL.createObjectURL(source) : source;
-  try {
-    const image = await loadImage(objectUrl);
-    const canvas = document.createElement("canvas");
-    canvas.width = 16;
-    canvas.height = 16;
-    const context = canvas.getContext("2d", { willReadFrequently: true });
-    if (!context) return [];
-    context.drawImage(image, 0, 0, 16, 16);
-    const pixels = context.getImageData(0, 0, 16, 16).data;
-    return Array.from({ length: 256 }, (_, index) => {
-      const offset = index * 4;
-      return (
-        ((pixels[offset] ?? 0) * 3 + (pixels[offset + 1] ?? 0) * 6 + (pixels[offset + 2] ?? 0)) / 10
-      );
-    });
-  } finally {
-    if (source instanceof File) URL.revokeObjectURL(objectUrl);
-  }
-}
-
-function fingerprintDistance(left: number[], right: number[]) {
-  if (left.length !== right.length || left.length === 0) return Number.POSITIVE_INFINITY;
-  const leftMean = left.reduce((sum, value) => sum + value, 0) / left.length;
-  const rightMean = right.reduce((sum, value) => sum + value, 0) / right.length;
-  return left.reduce(
-    (distance, value, index) =>
-      distance + Math.abs((value >= leftMean ? 1 : 0) - ((right[index] ?? 0) >= rightMean ? 1 : 0)),
-    0,
-  );
-}
-
-async function identifyPage(file: File, groups: ReturnType<typeof pageGroups>) {
-  const uploaded = await imageFingerprint(file);
-  const matches = await Promise.all(
-    groups.map(async (group) => {
-      try {
-        return {
-          key: group.key,
-          distance: fingerprintDistance(uploaded, await imageFingerprint(group.referenceUrl)),
-        };
-      } catch {
-        return { key: group.key, distance: Number.POSITIVE_INFINITY };
-      }
-    }),
-  );
-  const best = matches.sort((left, right) => left.distance - right.distance)[0];
-  return best && Number.isFinite(best.distance) ? best.key : null;
-}
-
-async function cropQuestion(
-  file: File,
-  band: { top: number; bottom: number },
-  trim: { top: number; bottom: number },
-  name: string,
-) {
   const objectUrl = URL.createObjectURL(file);
   try {
     const image = await loadImage(objectUrl);
@@ -309,13 +251,23 @@ async function identifyPage(file: File, groups: ReturnType<typeof pageGroups>) {
   return best && Number.isFinite(best.distance) ? best.key : null;
 }
 
-async function cropQuestion(file: File, band: { top: number; bottom: number }, name: string) {
+async function cropQuestion(
+  file: File,
+  band: { top: number; bottom: number },
+  trim: { top: number; bottom: number },
+  name: string,
+) {
   const objectUrl = URL.createObjectURL(file);
   try {
     const image = await loadImage(objectUrl);
+    // The teacher's page-edge trim narrows the sheet first; the question band
+    // is then measured inside the trimmed area.
+    const span = Math.max(0.05, trim.bottom - trim.top);
+    const relativeTop = trim.top + band.top * span;
+    const relativeBottom = trim.top + band.bottom * span;
     // A small safety margin protects handwriting touching the prepared cut.
-    const top = Math.max(0, Math.min(0.98, band.top - 0.008));
-    const bottom = Math.max(top + 0.02, Math.min(1, band.bottom + 0.008));
+    const top = Math.max(0, Math.min(0.98, relativeTop - 0.008));
+    const bottom = Math.max(top + 0.02, Math.min(1, relativeBottom + 0.008));
     const canvas = document.createElement("canvas");
     canvas.width = image.naturalWidth;
     canvas.height = Math.max(1, Math.round((bottom - top) * image.naturalHeight));
@@ -580,6 +532,7 @@ export function PhotoPageMode({
   const [questionBands, setQuestionBands] = useState<
     Record<string, { top: number; bottom: number }>
   >({});
+  const [trim, setTrim] = useState({ top: 0, bottom: 1 });
   const [adjusting, setAdjusting] = useState(false);
   const [detectingPage, setDetectingPage] = useState(false);
   const [marking, setMarking] = useState(false);
@@ -635,7 +588,6 @@ export function PhotoPageMode({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [photo, group, questionBands]);
   }, [photo, group, questionBands, trim]);
 
   useEffect(
@@ -690,7 +642,7 @@ export function PhotoPageMode({
         const band = sourceUrl ? parseSnipBand(sourceUrl) : null;
         if (!band) continue;
         const filename = `${PHOTO_PAGE_FILE_PREFIX}${Date.now()}-${question.id}.jpg`;
-        const crop = await cropQuestion(photo, questionBands[question.id] ?? band, filename);
+        const crop = await cropQuestion(photo, questionBands[question.id] ?? band, trim, filename);
         let result: PhotoResult;
         if (preview) {
           const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -832,6 +784,7 @@ export function PhotoPageMode({
                     setRecutQuestions((current) => new Set(current).add(questionId));
                   }}
                 />
+              ) : null}
               {adjusting ? (
                 <div className="mt-3 space-y-4 rounded-lg border p-3">
                   <div className="relative overflow-hidden rounded-lg border bg-muted">
@@ -996,7 +949,6 @@ export function PhotoPageMode({
                   src={currentCropUrl}
                   alt={`Extracted answer for question ${labels[index] ?? index + 1}`}
                   className="max-h-96 w-full rounded-lg border bg-white object-contain"
-                  className="w-full rounded-lg border bg-white object-contain"
                 />
               ) : savedPhotos.length ? (
                 <QuestionSnipStack urls={savedPhotos} alt="Your photographed answer" />

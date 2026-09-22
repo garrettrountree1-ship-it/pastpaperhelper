@@ -3,7 +3,12 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { uniqueAlias } from "@/lib/game-alias";
-import { answerFormativeCore, getActiveFormativeCore } from "@/lib/formative.functions";
+import {
+  answerFormativeCore,
+  formativeLeaderboardCore,
+  getActiveFormativeCore,
+} from "@/lib/formative.functions";
+
 
 const presentationInput = z.union([
   z.object({ classId: z.string().uuid() }),

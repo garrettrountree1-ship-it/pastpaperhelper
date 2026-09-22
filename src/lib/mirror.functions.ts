@@ -82,26 +82,26 @@ export const joinPublicMirror = createServerFn({ method: "POST" })
       throw new Error("Enter your name exactly as it appears on your teacher's class roster.");
     }
 
-    // One live seat per roster name. A stale seat (closed tab) is reclaimed.
-    const staleBefore = new Date(Date.now() - CLAIM_STALE_MINUTES * 60_000).toISOString();
+    // One live seat per roster name. Re-entering the class viewer with the same
+    // roster name always works: the browser that just joined takes the seat and
+    // gets a fresh token, so a crashed or closed tab can never lock a student
+    // out of their own name.
     const { data: existing } = await db
       .from("mirror_claims")
-      .select("id, token, last_seen_at")
+      .select("id, token")
       .eq("class_id", klass.id)
       .eq("student_id", rosterProfile.id)
       .maybeSingle();
 
     let token = existing?.token as string | undefined;
     const mine = Boolean(data.claimToken && existing?.token === data.claimToken);
-    if (existing && !mine && (existing.last_seen_at as string) > staleBefore) {
-      throw new Error("Someone is already using this name in the class viewer.");
-    }
-    if (existing) {
+    if (existing && mine) {
       await db
         .from("mirror_claims")
         .update({ last_seen_at: new Date().toISOString() })
         .eq("id", existing.id);
     } else {
+      if (existing) await db.from("mirror_claims").delete().eq("id", existing.id);
       const { data: created, error } = await db
         .from("mirror_claims")
         .insert({ class_id: klass.id, student_id: rosterProfile.id })

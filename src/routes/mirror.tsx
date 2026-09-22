@@ -100,6 +100,7 @@ function PublicMirrorPage() {
     if (!joined) return;
     const trusted = new Set(joined.presenterIds);
 
+    let opened: MirrorHandle | null = null;
     const handle = openMirrorChannel(`lesson-mirror:${joined.classId}`, {
       onLesson: (payload) => {
         const message = payload as Announcement;
@@ -108,8 +109,9 @@ function PublicMirrorPage() {
         const nextUnit = message.view?.["workspace.unitId"];
         if (typeof nextUnit === "string") setUnitId(nextUnit);
       },
-      onSubscribed: () => handle.send("hello", {}),
+      onSubscribed: () => opened?.send("hello", {}),
     });
+    opened = handle;
     handleRef.current = handle;
     const helloTimer = window.setInterval(() => handle.send("hello", {}), 2000);
 

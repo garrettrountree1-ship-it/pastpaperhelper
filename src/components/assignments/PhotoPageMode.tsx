@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -15,16 +15,19 @@ import {
 import { toast } from "sonner";
 
 import { QuestionHelpButtons } from "@/components/assignments/QuestionHelpDialog";
+import { QuestionVocabBox } from "@/components/assignments/QuestionVocabBox";
 import { parseSnipBand, QuestionSnipStack } from "@/components/assignments/QuestionSnip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
-import { gradeAnswer, previewGradeAnswer } from "@/lib/app.functions";
+import { gradeAnswer, previewGradeAnswer, sendTutorMessage } from "@/lib/app.functions";
 import { normalisePhotoFiles } from "@/lib/heic";
 import { COVERED_MARK_SCHEME_PERCENT } from "@/lib/mark-scheme-reveal";
 import { resolveQuestionLabels } from "@/lib/question-label";
+import { getQuestionGlossary } from "@/lib/tutor-settings.functions";
+import { TutorText } from "@/lib/tutor-text";
 
 export const PHOTO_PAGE_FILE_PREFIX = "photo-page-answer-";
 
@@ -38,6 +41,7 @@ type PhotoQuestion = {
 };
 
 type PhotoAnswer = {
+  id?: string;
   question_id: string;
   answer_text?: string | null;
   image_paths?: string[] | null;
@@ -46,6 +50,13 @@ type PhotoAnswer = {
   awarded_marks?: number | null;
   feedback?: string | null;
   attempts?: number;
+};
+
+type PhotoMessage = {
+  id?: string;
+  answer_id: string;
+  role: string;
+  content: string;
 };
 
 type PhotoResult = {
@@ -251,6 +262,13 @@ async function identifyPage(file: File, groups: ReturnType<typeof pageGroups>) {
   return best && Number.isFinite(best.distance) ? best.key : null;
 }
 
+async function cropQuestion(file: File, band: { top: number; bottom: number }, name: string) {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await loadImage(objectUrl);
+    // A small safety margin protects handwriting touching the prepared cut.
+    const top = Math.max(0, Math.min(0.98, band.top - 0.008));
+    const bottom = Math.max(top + 0.02, Math.min(1, band.bottom + 0.008));
 async function cropQuestion(
   file: File,
   band: { top: number; bottom: number },
@@ -457,6 +475,94 @@ function QuestionCutEditor({
   );
 }
 
+function PhotoQuestionVocabulary({
+  questionId,
+  enabled,
+}: {
+  questionId: string;
+  enabled: boolean;
+}) {
+  const glossary = useQuery({
+    queryKey: ["question-glossary", questionId],
+    queryFn: () => getQuestionGlossary({ data: { questionId } }),
+    enabled,
+    staleTime: Infinity,
+  });
+  if (!enabled) return null;
+  if (glossary.isPending) {
+    return <p className="text-xs text-muted-foreground">Preparing question vocabulary…</p>;
+  }
+  return (
+    <QuestionVocabBox
+      terms={glossary.data?.terms ?? []}
+      language={glossary.data?.language ?? "Chinese (Simplified)"}
+    />
+  );
+}
+
+function PhotoTutorConversation({
+  answer,
+  messages,
+  locked,
+  queryKey,
+}: {
+  answer: PhotoAnswer;
+  messages: PhotoMessage[];
+  locked: boolean;
+  queryKey?: string[];
+}) {
+  const tutor = useServerFn(sendTutorMessage);
+  const queryClient = useQueryClient();
+  const [reply, setReply] = useState("");
+  const thread = messages.filter((message) => message.answer_id === answer.id);
+  const send = useMutation({
+    mutationFn: () => tutor({ data: { answerId: answer.id!, message: reply.trim() } }),
+    onSuccess: async () => {
+      setReply("");
+      if (queryKey) await queryClient.refetchQueries({ queryKey, type: "active" });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  if (!answer.id) return null;
+  return (
+    <details className="rounded-lg border bg-muted/20 p-3" open={thread.length > 0}>
+      <summary className="cursor-pointer text-sm font-medium">Talk to the AI tutor</summary>
+      <div className="mt-3 space-y-3">
+        {thread.map((message, index) => (
+          <div
+            key={message.id ?? `${message.role}-${index}`}
+            className={`rounded-lg p-3 text-sm ${
+              message.role === "tutor" ? "bg-primary/10" : "ml-6 bg-secondary"
+            }`}
+          >
+            <p className="mb-1 text-xs font-medium">{message.role === "tutor" ? "Tutor" : "You"}</p>
+            {message.role === "tutor" ? (
+              <TutorText text={message.content} />
+            ) : (
+              <p className="whitespace-pre-wrap">{message.content}</p>
+            )}
+          </div>
+        ))}
+        <textarea
+          value={reply}
+          onChange={(event) => setReply(event.target.value)}
+          placeholder="Reply to the tutor or ask a follow-up question"
+          className="min-h-20 w-full rounded-md border bg-background p-2 text-sm"
+          disabled={locked || send.isPending}
+        />
+        <Button
+          type="button"
+          size="sm"
+          disabled={locked || send.isPending || !reply.trim()}
+          onClick={() => send.mutate()}
+        >
+          {send.isPending ? "Thinking…" : "Send to tutor"}
+        </Button>
+      </div>
+    </details>
+  );
+}
+
 function CoveredScheme({ urls }: { urls: string[] }) {
   const [revealed, setRevealed] = useState(COVERED_MARK_SCHEME_PERCENT);
   return (
@@ -502,6 +608,8 @@ export function PhotoPageMode({
   markSchemeRevealed,
   allowHint,
   allowSteps,
+  messages = [],
+  keywordTranslation = false,
   queryKey,
   preview = false,
   onPreviewResult,
@@ -514,6 +622,8 @@ export function PhotoPageMode({
   markSchemeRevealed: boolean;
   allowHint: boolean;
   allowSteps: boolean;
+  messages?: PhotoMessage[];
+  keywordTranslation?: boolean;
   queryKey?: string[];
   preview?: boolean;
   onPreviewResult?: (questionId: string, result: PhotoResult) => void;
@@ -588,6 +698,7 @@ export function PhotoPageMode({
       cancelled = true;
       window.clearTimeout(timer);
     };
+  }, [photo, group, questionBands]);
   }, [photo, group, questionBands, trim]);
 
   useEffect(
@@ -642,7 +753,7 @@ export function PhotoPageMode({
         const band = sourceUrl ? parseSnipBand(sourceUrl) : null;
         if (!band) continue;
         const filename = `${PHOTO_PAGE_FILE_PREFIX}${Date.now()}-${question.id}.jpg`;
-        const crop = await cropQuestion(photo, questionBands[question.id] ?? band, trim, filename);
+        const crop = await cropQuestion(photo, questionBands[question.id] ?? band, filename);
         let result: PhotoResult;
         if (preview) {
           const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -944,6 +1055,7 @@ export function PhotoPageMode({
               }`}
             >
               <p className="font-medium">Question {labels[index] ?? index + 1}</p>
+              <PhotoQuestionVocabulary questionId={question.id} enabled={keywordTranslation} />
               {currentCropUrl ? (
                 <img
                   src={currentCropUrl}
@@ -976,6 +1088,20 @@ export function PhotoPageMode({
                   </Button>
                 ) : null}
               </div>
+              {result?.feedback ? <TutorText className="text-sm" text={result.feedback} /> : null}
+              {result?.feedback.includes("AI read your work as:") ? (
+                <p className="text-xs font-medium text-emerald-700">
+                  Verified together: this question, its answer-key block, and your readable work.
+                </p>
+              ) : null}
+              {answer?.id && result ? (
+                <PhotoTutorConversation
+                  answer={answer}
+                  messages={messages}
+                  locked={locked}
+                  queryKey={queryKey}
+                />
+              ) : null}
               {result?.feedback ? <p className="text-sm">{result.feedback}</p> : null}
               <QuestionHelpButtons
                 questionId={question.id}

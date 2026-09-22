@@ -12,7 +12,6 @@ import {
   Plus,
   XCircle,
 } from "lucide-react";
-import { CheckCircle2, CircleDashed, Crop, Eye, EyeOff, ImageUp, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { QuestionHelpButtons } from "@/components/assignments/QuestionHelpDialog";

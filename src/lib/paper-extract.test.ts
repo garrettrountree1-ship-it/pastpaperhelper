@@ -60,3 +60,10 @@ test("removes retry duplicates even when their labels and crop edges drift", () 
   ]);
   assert.equal(result.length, 1);
 });
+
+test("matches answer labels by the complete printed number and sub-part", async () => {
+  const { answerLabelsMatch } = await import("./paper-extract.server");
+  assert.equal(answerLabelsMatch("7(b)(ii)", "7 b ii"), true);
+  assert.equal(answerLabelsMatch("7(b)(ii)", "7(b)(i)"), false);
+  assert.equal(answerLabelsMatch("7(b)(ii)", "8(b)(ii)"), false);
+});

@@ -24,6 +24,7 @@ const markSchema = z.object({
   studentWorkReadable: z.coerce.boolean().default(true),
   questionImageMatches: z.coerce.boolean().default(true),
   markSchemeImageMatches: z.coerce.boolean().default(true),
+  studentWorkMatchesQuestion: z.coerce.boolean().default(true),
   markPoints: z
     .array(
       z.object({
@@ -89,6 +90,10 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
       ? `FINAL-NUMBER-ONLY MODE: read the student's final numerical value, including from handwriting, and compare only that value with the teacher-verified accepted answer ${JSON.stringify(input.expectedAnswer || input.markScheme)}. A range written as "minimum to maximum" is inclusive. Do not assess or award method/working marks separately. Award all available marks for a matching value and no marks otherwise.`
       : "FULL-RUBRIC MODE: assess every calculation step against the printed mark scheme. Award method and accuracy marks separately; a bare final answer earns only the marks the printed rubric allows.",
     input.requireVisualVerification
+      ? "Before marking, independently verify that the question picture matches the Question text, the official-answer picture answers that same question, and the student photo contains readable work for that same question. Transcribe or concisely describe exactly what you can read in the student's photo. If the student crop appears to belong to another printed question—even if its handwriting is readable—set studentWorkMatchesQuestion=false. If any check fails, set its boolean false and do not guess."
+      : "Transcribe or concisely describe any student handwriting you use for marking.",
+    "Respond with ONLY a JSON object (no markdown fences, no commentary) of exactly this shape:",
+    `{"verdict":"correct|partial|incorrect","awardedMarks":number,"feedback":"string","explanation":"string","leadingQuestion":"string","studentWorkRead":"exact text/numbers read from the student's image, or concise diagram description","studentWorkReadable":true,"questionImageMatches":true,"markSchemeImageMatches":true,"studentWorkMatchesQuestion":true,"markPoints":[{"point":"string","marks":number,"awarded":true}]}`,
       ? "Before marking, independently verify that the question picture matches the Question text, the official-answer picture answers that same question, and the student photo contains readable work for that question. Transcribe or concisely describe exactly what you can read in the student's photo. If any check fails, set its boolean false and do not guess."
       : "Transcribe or concisely describe any student handwriting you use for marking.",
     "Respond with ONLY a JSON object (no markdown fences, no commentary) of exactly this shape:",
@@ -141,6 +146,11 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
             "The question and answer-key pictures could not be verified as a matching pair. Ask your teacher to check the prepared cuts.",
           );
         }
+        if (!parsed.studentWorkMatchesQuestion) {
+          throw new Error(
+            "The photographed work does not appear to belong to this question. Check the matched page and adjust the question cut.",
+          );
+        }
         if (!parsed.studentWorkReadable || !parsed.studentWorkRead.trim()) {
           throw new Error(
             "The handwriting in this cut is not clear enough to mark. Adjust the cut or upload a clearer, well-lit photo.",
@@ -152,6 +162,8 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
       lastError = error instanceof Error ? error.message : String(error);
       if (
         lastError.startsWith("The question and answer-key pictures") ||
+        lastError.startsWith("The handwriting") ||
+        lastError.startsWith("The photographed work")
         lastError.startsWith("The handwriting")
       ) {
         throw error;

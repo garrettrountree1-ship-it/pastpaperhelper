@@ -130,12 +130,13 @@ const DETAIL_SYSTEM = [
   'answerCrops: the band(s) of page picture(s) showing the OFFICIAL ANSWER / mark scheme for this exact part, so the printed marking points, ticks, fractions and notation are kept as pictures instead of retyped. Paper pages are labelled PAGE N; mark scheme pages are labelled ANSWER PAGE N. Use {"sheet":"answer","page":N,"top":T,"bottom":B} for a mark scheme page and {"sheet":"paper",...} when the answer is printed on a paper page. Start at this part\'s own answer row/label and stop before the next part\'s answer. Give at most two bands, and set answerCrops to null if you cannot locate the answer.',
   "Mark-scheme rows are printed very close together, often a single line apart. Every answerCrops band must be as tight as the printed rows for that one part — a band only one or two lines tall is correct. Never pad a band, and never let the row above or below appear inside it.",
   "answerCrops are required whenever the answer is printed anywhere in the upload: the answer is always shown as this picture and is never retyped for the student.",
+  "For every answerCrops result, also return answerLabelRead (the exact question/part label visibly printed beside that answer) and answerMatchesQuestion=true only if the answer content belongs to the requested question. If the label is missing, ambiguous, or different, set answerCrops to null.",
   'An inline line such as "Mark scheme 1 = A", "Answer = C", or "1 A" immediately below a multiple-choice question IS that question\'s official answer. Return a separate, very thin answerCrops band around the whole line. Do not mistake it for page furniture and do not omit the question above it.',
   "A question followed immediately by its answer is still a complete question: crops must contain the full question up to the blank strip before the answer, while answerCrops contains only the answer line.",
 
   "Symbols and units MUST be reproduced as real Unicode characters exactly as printed: \u00b0C, \u00b0F, \u00b5, \u03a9, \u00b1, \u00d7, \u00f7, \u2264, \u2265, \u2248, \u2192, \u21cc, \u221a, \u03b1\u03b2\u03b3\u03bb\u03c0\u0394\u03b8, subscripts/superscripts (H\u2082O, cm\u00b3, m s\u207b\u00b2, 10\u2076).",
   'Never write symbols as words, ASCII stand-ins or escapes: no "degrees C", "deg C", "oC", "^oC", "ohms", "micro", "+/-", "\\\\u00b0", "&deg;", "?C". Write 25 \u00b0C, 4.7 k\u03a9, 3 \u00b5A.',
-  'Reply with JSON only: {"questions":[{"extractionKey":"q001","label":"1(a)","questionText":"...","markScheme":"...","expectedAnswer":"3.42 × 10⁻³ mol","numericalAnswer":true,"marks":2,"pages":[3,4],"crops":[{"page":3,"top":0.62,"bottom":0.97},{"page":4,"top":0.05,"bottom":0.3}],"answerCrops":[{"sheet":"answer","page":2,"top":0.31,"bottom":0.4}]}]}',
+  'Reply with JSON only: {"questions":[{"extractionKey":"q001","label":"1(a)","questionText":"...","markScheme":"...","expectedAnswer":"3.42 × 10⁻³ mol","numericalAnswer":true,"marks":2,"pages":[3,4],"crops":[{"page":3,"top":0.62,"bottom":0.97},{"page":4,"top":0.05,"bottom":0.3}],"answerCrops":[{"sheet":"answer","page":2,"top":0.31,"bottom":0.4}],"answerLabelRead":"1(a)","answerMatchesQuestion":true}]}]}',
 ].join(" ");
 
 const ANSWER_VALUE_AUDIT_SYSTEM = [
@@ -283,7 +284,8 @@ export async function locateAnswerCrop(input: {
       "Return only its horizontal crop band, starting at its own label and ending before the next answer.",
       "Cut only through blank white space. Never include another answer.",
       "Mark-scheme rows sit very close together, often one line apart. Keep the band as tight as possible — a band only one or two printed lines tall is correct and expected. Never widen it to be safe.",
-      'Reply with JSON only: {"answerCrops":[{"page":1,"top":0.2,"bottom":0.3}]}.',
+      "Read the exact question/part label printed beside the answer. The label and answer meaning must both match the requested question; otherwise return no crop.",
+      'Reply with JSON only: {"answerLabelRead":"1(a)","answerMatchesQuestion":true,"answerCrops":[{"page":1,"top":0.2,"bottom":0.3}]}.',
     ].join(" "),
     [
       {
@@ -294,6 +296,9 @@ export async function locateAnswerCrop(input: {
     ],
   );
   const parsed = parseJson(text);
+  const answerLabelRead = String(parsed["answerLabelRead"] ?? "").trim();
+  if (!answerLabelRead || !answerLabelsMatch(input.label, answerLabelRead)) return null;
+  if (parsed["answerMatchesQuestion"] !== true) return null;
   return parseCropList(parsed["answerCrops"] ?? parsed["answerCrop"], [], "answer", true);
 }
 
@@ -336,6 +341,13 @@ async function runCrossCheck(
 /** "7(b)(ii)", "7 b ii" and "7bii" all compare equal. */
 function labelKey(label: string): string {
   return label.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** Exact main + letter/roman part matching; formatting differences are harmless. */
+export function answerLabelsMatch(questionLabel: string, answerLabel: string): boolean {
+  const question = labelKey(questionLabel);
+  const answer = labelKey(answerLabel);
+  return question.length > 0 && question === answer;
 }
 
 function mainNumberOf(label: string): string {
@@ -882,6 +894,20 @@ async function runDetail(
             .filter((n) => Number.isFinite(n) && n > 0)
         : [];
       const pages = match?.pages?.length ? match.pages : [...new Set(pagesFromModel)].slice(0, 3);
+      const proposedAnswerCrops = parseCropList(
+        item["answerCrops"] ?? item["answerCrop"],
+        [],
+        hasAnswerPages ? "answer" : "paper",
+        true,
+      );
+      const answerLabelRead = String(item["answerLabelRead"] ?? "").trim();
+      const answerCrops =
+        proposedAnswerCrops?.length &&
+        answerLabelRead &&
+        answerLabelsMatch(label, answerLabelRead) &&
+        item["answerMatchesQuestion"] === true
+          ? proposedAnswerCrops
+          : null;
       return {
         key,
         label,
@@ -894,12 +920,7 @@ async function runDetail(
         marks: Math.max(1, Math.round(Number(item["marks"]) || match?.marks || 1)),
         pages,
         crops: parseCropList(item["crops"] ?? item["crop"], pages),
-        answerCrops: parseCropList(
-          item["answerCrops"] ?? item["answerCrop"],
-          [],
-          hasAnswerPages ? "answer" : "paper",
-          true,
-        ),
+        answerCrops,
       };
     })
     .filter((item) => item.questionText.length > 0);

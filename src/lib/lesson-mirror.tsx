@@ -1,7 +1,8 @@
-import type { RealtimeChannel } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { openMirrorChannel, type MirrorHandle } from "@/lib/mirror-channel";
+
 
 /**
  * Live lesson sharing.
@@ -136,21 +137,17 @@ export function useLessonMirrorState({
   useEffect(() => {
     if (!isTeacher || !selfId) return;
     if (sendingRef.current && !sessionId.current) sessionId.current = crypto.randomUUID();
-    let cancelled = false;
-    let channel: RealtimeChannel | null = null;
     let timer: ReturnType<typeof setInterval> | null = null;
+    let handle: MirrorHandle | null = null;
 
     const send = (payload: Payload) => {
-      void channel?.send({
-        type: "broadcast",
-        event: "lesson",
-        payload: { from: selfId, ...payload },
-      });
+      handle?.send("lesson", { from: selfId, ...payload });
     };
     const meta = () => ({
       ...(sessionId.current ? { sessionId: sessionId.current } : {}),
       viewActive: sendingRef.current,
     });
+
 
     const sendChunked = (scope: MirrorScope, key: string, value: unknown) => {
       const json = JSON.stringify(value ?? null);
@@ -210,21 +207,13 @@ export function useLessonMirrorState({
 
     const sendAll = () => sendFields(allContent.current, sendingRef.current ? allView.current : {});
 
-    void (async () => {
-      // Realtime can retain an older token after a long-lived school session.
-      // Authenticate explicitly before every lesson channel is opened so the
-      // current signed-in account is used without requiring a logout/refresh.
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.access_token) {
-        await supabase.realtime.setAuth(data.session.access_token);
-      }
-      if (cancelled) return;
+    handle = openMirrorChannel(topic, {
+      onHello: () => sendAll(),
+      onSubscribed: () => sendAll(),
+    });
 
-      channel = supabase.channel(topic, { config: { broadcast: { self: false } } });
-      channel.on("broadcast", { event: "hello" }, () => sendAll());
-      channel.subscribe((status) => {
-        if (status === "SUBSCRIBED") sendAll();
-      });
+    {
+
 
       let lastView = sendingRef.current;
       let lastHeartbeat = 0;
@@ -274,27 +263,26 @@ export function useLessonMirrorState({
         }
         sendFields(hasContent ? content : {}, hasView ? view : {});
       }, 120);
-    })();
+    }
 
     return () => {
-      cancelled = true;
       if (timer) clearInterval(timer);
       send({ viewActive: false });
-      const closing = channel;
-      channel = null;
-      if (closing) void supabase.removeChannel(closing);
+      const closing = handle;
+      handle = null;
+      closing?.close();
     };
   }, [isTeacher, selfId, topic]);
 
   // Students always listen, so the teacher's workspace appears live whether
   // either person is using the normal or full-screen lesson view.
-  const studentChannel = useRef<RealtimeChannel | null>(null);
+  const studentHandle = useRef<MirrorHandle | null>(null);
+
 
   useEffect(() => {
     if (isTeacher) return;
-    let cancelled = false;
-    let channel: RealtimeChannel | null = null;
     const partials = new Map<string, string[]>();
+
 
     const receive = ({ payload }: { payload: unknown }) => {
       const message = payload as Payload;
@@ -368,38 +356,28 @@ export function useLessonMirrorState({
       }
     };
 
-    void (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.access_token) {
-        await supabase.realtime.setAuth(data.session.access_token);
-      }
-      if (cancelled) return;
+    const handle = openMirrorChannel(topic, {
+      onLesson: (payload: unknown) => receive({ payload }),
 
-      channel = supabase.channel(topic, { config: { broadcast: { self: false } } });
-      studentChannel.current = channel;
-      channel.on("broadcast", { event: "lesson" }, receive);
-      channel.subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          void channel?.send({ type: "broadcast", event: "hello", payload: {} });
-        }
-      });
-    })();
+      onSubscribed: () => handle.send("hello", {}),
+    });
+    studentHandle.current = handle;
     return () => {
-      cancelled = true;
-      studentChannel.current = null;
+      studentHandle.current = null;
       activePresenter.current = null;
       activeSession.current = null;
       setViewActive(false);
-      if (channel) void supabase.removeChannel(channel);
+      handle.close();
     };
   }, [isTeacher, topic]);
+
 
   // Ask repeatedly until the active teacher answers. This covers students who
   // enter while the teacher's channel is reconnecting or has not subscribed yet.
   useEffect(() => {
     if (isTeacher) return;
-    const ask = () =>
-      void studentChannel.current?.send({ type: "broadcast", event: "hello", payload: {} });
+    const ask = () => studentHandle.current?.send("hello", {});
+
     ask();
     // Keep asking, even while following, so a shared screen that was switched
     // off and on again is always picked back up.

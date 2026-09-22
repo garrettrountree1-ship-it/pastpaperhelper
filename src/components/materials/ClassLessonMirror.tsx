@@ -1,10 +1,10 @@
-import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef } from "react";
 
-import { supabase } from "@/integrations/supabase/client";
 import { listClassPresenters } from "@/lib/mirror.functions";
+import { openMirrorChannel } from "@/lib/mirror-channel";
+
 
 type MirrorAnnouncement = {
   from?: string;
@@ -47,11 +47,8 @@ export function ClassLessonMirror({ classId, isStudent }: { classId: string; isS
 
   useEffect(() => {
     if (!isStudent || trusted.current.length === 0) return;
-    let channel: RealtimeChannel | null = null;
-    let timer: number | null = null;
-    let cancelled = false;
 
-    const receive = ({ payload }: { payload: unknown }) => {
+    const receive = (payload: unknown) => {
       const message = payload as MirrorAnnouncement;
       if (!message.from || !trusted.current.includes(message.from)) return;
 
@@ -96,29 +93,18 @@ export function ClassLessonMirror({ classId, isStudent }: { classId: string; isS
       }
     };
 
-    void (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.access_token) await supabase.realtime.setAuth(data.session.access_token);
-      if (cancelled) return;
-      channel = supabase.channel(`lesson-mirror:${classId}`, {
-        config: { broadcast: { self: false } },
-      });
-      channel.on("broadcast", { event: "lesson" }, receive);
-      channel.subscribe((status) => {
-        if (status !== "SUBSCRIBED") return;
-        if (timer) window.clearInterval(timer);
-        const hello = () => void channel?.send({ type: "broadcast", event: "hello", payload: {} });
-        hello();
-        timer = window.setInterval(hello, 1500);
-      });
-    })();
+    const handle = openMirrorChannel(`lesson-mirror:${classId}`, {
+      onLesson: receive,
+      onSubscribed: () => handle.send("hello", {}),
+    });
+    const timer = window.setInterval(() => handle.send("hello", {}), 1500);
 
     return () => {
-      cancelled = true;
-      if (timer) window.clearInterval(timer);
-      if (channel) void supabase.removeChannel(channel);
+      window.clearInterval(timer);
+      handle.close();
     };
   }, [classId, isStudent, presenters.dataUpdatedAt]);
+
 
   return null;
 }

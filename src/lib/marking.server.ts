@@ -160,7 +160,6 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
         lastError.startsWith("The question and answer-key pictures") ||
         lastError.startsWith("The handwriting") ||
         lastError.startsWith("The photographed work")
-        lastError.startsWith("The handwriting")
       ) {
         throw error;
       }

@@ -6,6 +6,8 @@ const source = readFileSync(new URL("./PhotoPageMode.tsx", import.meta.url), "ut
 
 test("photo mode keeps the resolved implementation free of merge artifacts", () => {
   assert.equal(/^(?:<<<<<<<|=======|>>>>>>>)/m.test(source), false);
+  assert.equal(source.match(/import \{ useMutation, useQuery, useQueryClient \}/g)?.length, 1);
+  assert.equal(source.match(/export function PhotoPageMode\s*\(/g)?.length, 1);
   assert.equal(source.match(/async function cropQuestion\s*\(/g)?.length, 1);
   assert.match(
     source,
@@ -18,6 +20,7 @@ test("photo mode uses automatic page trimming with the compact cut editor", () =
   assert.match(source, /function QuestionCutEditor\s*\(/);
   assert.doesNotMatch(source, /const \[trim, setTrim\]/);
   assert.doesNotMatch(source, /\btrim,\s*`preview-/);
+  assert.doesNotMatch(source, /\[photo, group, questionBands, trim\]/);
   assert.doesNotMatch(source, /if \(groups\.length === 0\)\s*\{\s*return \(/);
 });
 

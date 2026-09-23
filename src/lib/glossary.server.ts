@@ -5,6 +5,27 @@ import { fastModel } from "./ai-gateway.server";
 
 export type GlossaryTerm = { term: string; translation: string };
 
+/**
+ * Word glosses are identical for every student reading the same question or the
+ * same tutor sentence, so they are cached in memory and never re-billed while
+ * the server instance is warm.
+ */
+const glossCache = new Map<string, GlossaryTerm[]>();
+const GLOSS_CACHE_MAX = 500;
+
+function cachedGloss(key: string): GlossaryTerm[] | undefined {
+  return glossCache.get(key);
+}
+
+function storeGloss(key: string, terms: GlossaryTerm[]): GlossaryTerm[] {
+  if (glossCache.size >= GLOSS_CACHE_MAX) {
+    const oldest = glossCache.keys().next().value;
+    if (oldest !== undefined) glossCache.delete(oldest);
+  }
+  glossCache.set(key, terms);
+  return terms;
+}
+
 const schema = z.object({
   terms: z
     .array(z.object({ term: z.string().min(1), translation: z.string().min(1) }))

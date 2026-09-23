@@ -386,6 +386,7 @@ function PreviewPage() {
                       markSchemeRevealed={Boolean(data.assignment.markSchemeRevealed)}
                       allowHint={settings?.allowHint !== false}
                       allowSteps={settings?.allowSteps !== false}
+                      keywordTranslation={Boolean(settings?.keywordTranslation)}
                       preview
                       onPreviewResult={(questionId, result) =>
                         recordResult(questionId, { ...result, answerText: "" })

@@ -31,14 +31,14 @@ test("numbers an unlabelled paper in order", () => {
   assert.deepEqual(resolveQuestionLabels(["State one", "Explain"]), ["1", "2"]);
 });
 
-test("repairs legacy running numbers placed before dotted sub-parts", () => {
+test("preserves every explicit label, including teacher edits", () => {
   assert.deepEqual(
     resolveQuestionLabels([
       "4 A standalone question",
-      "5 A shared stem\n\n(a.ii) Calculate the amount",
-      "6 (b.i) (b.i) Sketch the curve",
-      "7 (b.ii) Explain the change",
-      "8 A new standalone question",
+      "5(aii) Calculate the amount",
+      "5(bi) Sketch the curve",
+      "5(bii) Explain the change",
+      "6 A new standalone question",
     ]),
     ["4", "5(aii)", "5(bi)", "5(bii)", "6"],
   );

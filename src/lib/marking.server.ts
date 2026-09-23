@@ -20,6 +20,11 @@ const markSchema = z.object({
   feedback: z.string().default(""),
   explanation: z.string().default(""),
   leadingQuestion: z.string().default(""),
+  studentWorkRead: z.string().default(""),
+  studentWorkReadable: z.coerce.boolean().default(true),
+  questionImageMatches: z.coerce.boolean().default(true),
+  markSchemeImageMatches: z.coerce.boolean().default(true),
+  studentWorkMatchesQuestion: z.coerce.boolean().default(true),
   markPoints: z
     .array(
       z.object({
@@ -47,12 +52,22 @@ type MarkInput = {
   finalNumericOnly?: boolean;
   /** Teacher-verified final value or inclusive range used in final-number-only mode. */
   expectedAnswer?: string;
+  /** Photo-page submissions must prove that all three visual blocks correspond. */
+  requireVisualVerification?: boolean;
 };
 
 export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
   const images = input.imageUrls ?? [];
   const questionImages = input.questionImageUrls ?? [];
   const schemeImages = input.markSchemeImageUrls ?? [];
+  if (
+    input.requireVisualVerification &&
+    (questionImages.length === 0 || schemeImages.length === 0)
+  ) {
+    throw new Error(
+      "This photo cannot be marked safely because its question or answer-key cut is missing. Ask your teacher to confirm both cuts.",
+    );
+  }
   const prompt = [
     `Curriculum: ${input.curriculum}`,
     `Subject: ${input.subject || "General"}`,
@@ -74,8 +89,11 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     input.finalNumericOnly
       ? `FINAL-NUMBER-ONLY MODE: read the student's final numerical value, including from handwriting, and compare only that value with the teacher-verified accepted answer ${JSON.stringify(input.expectedAnswer || input.markScheme)}. A range written as "minimum to maximum" is inclusive. Do not assess or award method/working marks separately. Award all available marks for a matching value and no marks otherwise.`
       : "FULL-RUBRIC MODE: assess every calculation step against the printed mark scheme. Award method and accuracy marks separately; a bare final answer earns only the marks the printed rubric allows.",
+    input.requireVisualVerification
+      ? "Before marking, independently verify that the question picture matches the Question text, the official-answer picture answers that same question, and the student photo contains readable work for that same question. Transcribe or concisely describe exactly what you can read in the student's photo. If the student crop appears to belong to another printed question—even if its handwriting is readable—set studentWorkMatchesQuestion=false. If any check fails, set its boolean false and do not guess."
+      : "Transcribe or concisely describe any student handwriting you use for marking.",
     "Respond with ONLY a JSON object (no markdown fences, no commentary) of exactly this shape:",
-    `{"verdict":"correct|partial|incorrect","awardedMarks":number,"feedback":"string","explanation":"string","leadingQuestion":"string","markPoints":[{"point":"string","marks":number,"awarded":true}]}`,
+    `{"verdict":"correct|partial|incorrect","awardedMarks":number,"feedback":"string","explanation":"string","leadingQuestion":"string","studentWorkRead":"exact text/numbers read from the student's image, or concise diagram description","studentWorkReadable":true,"questionImageMatches":true,"markSchemeImageMatches":true,"studentWorkMatchesQuestion":true,"markPoints":[{"point":"string","marks":number,"awarded":true}]}`,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -118,9 +136,33 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
         answerImages: images,
       });
       const parsed = markSchema.parse(JSON.parse(extractJson(text)));
-      return clamp(parsed, input.marks);
+      if (input.requireVisualVerification) {
+        if (!parsed.questionImageMatches || !parsed.markSchemeImageMatches) {
+          throw new Error(
+            "The question and answer-key pictures could not be verified as a matching pair. Ask your teacher to check the prepared cuts.",
+          );
+        }
+        if (!parsed.studentWorkMatchesQuestion) {
+          throw new Error(
+            "The photographed work does not appear to belong to this question. Check the matched page and adjust the question cut.",
+          );
+        }
+        if (!parsed.studentWorkReadable || !parsed.studentWorkRead.trim()) {
+          throw new Error(
+            "The handwriting in this cut is not clear enough to mark. Adjust the cut or upload a clearer, well-lit photo.",
+          );
+        }
+      }
+      return clamp(parsed, input.marks, images.length > 0);
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);
+      if (
+        lastError.startsWith("The question and answer-key pictures") ||
+        lastError.startsWith("The handwriting") ||
+        lastError.startsWith("The photographed work")
+      ) {
+        throw error;
+      }
       console.error("AI marking attempt failed", {
         attempt: attempt + 1,
         questionImages: attempt < 2 ? questionImages.length : 0,
@@ -135,7 +177,6 @@ export async function markStudentAnswer(input: MarkInput): Promise<MarkResult> {
     "We couldn't mark that answer because the marking service returned no result. Your attempt was not counted. Please wait a moment and try again.",
   );
 }
-
 
 async function requestMarkingJson({
   system,
@@ -182,7 +223,11 @@ async function requestMarkingJson({
 const delay = (milliseconds: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 
-function clamp(result: z.infer<typeof markSchema>, maxMarks: number): MarkResult {
+function clamp(
+  result: z.infer<typeof markSchema>,
+  maxMarks: number,
+  showStudentWorkRead = false,
+): MarkResult {
   const awarded = Math.max(0, Math.min(maxMarks, Math.round(result.awardedMarks * 2) / 2));
   const raw = result.verdict.toLowerCase();
   const verdict: MarkResult["verdict"] =
@@ -192,17 +237,19 @@ function clamp(result: z.infer<typeof markSchema>, maxMarks: number): MarkResult
         ? "partial"
         : "incorrect";
   const isCorrect = verdict === "correct";
+  const feedback = isCorrect
+    ? limitWords(result.feedback.trim() || "Well done — your answer earns full marks.", 40)
+    : [verdict === "partial" ? "Not yet." : "Incorrect.", limitWords(result.explanation ?? "", 85)]
+        .filter(Boolean)
+        .join(" ");
+  const readBack =
+    showStudentWorkRead && result.studentWorkRead.trim()
+      ? ` AI read your work as: “${limitWords(result.studentWorkRead, 45)}”`
+      : "";
   return {
     verdict,
     awardedMarks: awarded,
-    feedback: isCorrect
-      ? limitWords(result.feedback.trim() || "Well done — your answer earns full marks.", 40)
-      : [
-          verdict === "partial" ? "Not yet." : "Incorrect.",
-          limitWords(result.explanation ?? "", 85),
-        ]
-          .filter(Boolean)
-          .join(" "),
+    feedback: `${feedback}${readBack}`,
     explanation: isCorrect ? "" : limitWords(result.explanation ?? "", 85),
     leadingQuestion: isCorrect ? "" : limitWords(result.leadingQuestion ?? "", 30),
     markPoints: (result.markPoints ?? []).map((p) => ({

@@ -723,7 +723,10 @@ async function callGateway(
   content: Array<Record<string, unknown>>,
 ): Promise<string> {
   const { response, detail } = await postChatCompletion({
-    max_tokens: 16000,
+    // Paper extraction keeps full thinking: cutting questions accurately is
+    // worth more than the one-off cost per uploaded paper.
+    reasoning_effort: "medium",
+    max_completion_tokens: 16000,
     messages: [
       { role: "system", content: system },
       { role: "user", content },

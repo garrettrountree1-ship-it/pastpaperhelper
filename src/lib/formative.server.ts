@@ -1,6 +1,6 @@
 import { generateText } from "ai";
 
-import { gatewayModel } from "./ai-gateway.server";
+import { fastModel, gatewayModel } from "./ai-gateway.server";
 import { normalisePartLabels, questionParts } from "./question-parts";
 
 export type FormativeVerdict = "correct" | "close" | "incorrect";
@@ -115,7 +115,7 @@ export async function solveFormativeQuestion(input: {
   ];
 
   const { text } = await generateText({
-    model: gatewayModel(),
+    model: fastModel(),
     system: [
       "You give the model answer to a quick class question, for the teacher to show the class.",
       "Answer directly and briefly: the answer first, then at most two short lines of reasoning.",
@@ -160,7 +160,7 @@ export async function detectQuestionParts(input: {
         : []),
     ];
     const { text } = await generateText({
-      model: gatewayModel(),
+      model: fastModel(),
       system: [
         "You list the separate answerable parts of one exam question.",
         "Look for labels such as a b c d, (a) (b), i ii iii, a(i) a(ii), b.i, or 1. 2.",

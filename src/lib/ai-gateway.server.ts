@@ -9,6 +9,13 @@ import { createOpenAI } from "@ai-sdk/openai";
 
 const LOVABLE_MODEL = "openai/gpt-6-astra";
 
+/**
+ * Cheap, fast model for the many small helper jobs (word glossaries, vocabulary
+ * lists, note summaries, photo authenticity, AI-writing screening). Marking,
+ * tutoring and paper extraction stay on the flagship model above.
+ */
+const FAST_MODEL = "google/gemini-3.8-flash";
+
 /** Back-compat alias used across the marking/extraction code. */
 export const TUTOR_MODEL = LOVABLE_MODEL;
 
@@ -43,7 +50,9 @@ export async function postChatCompletion(
   const response = await fetch(primary.url, {
     method: "POST",
     headers: primary.headers,
-    body: JSON.stringify({ ...body, model: primary.model }),
+    // The flagship model always reasons; "low" keeps examiner accuracy while
+    // cutting the billed thinking tokens roughly in half.
+    body: JSON.stringify({ reasoning_effort: "low", ...body, model: primary.model }),
   });
   if (response.ok) return { response, detail: "" };
   return { response, detail: await response.text() };
@@ -66,9 +75,14 @@ export function createLovableAiGatewayProvider(apiKey: string) {
   });
 }
 
-/** The AI SDK model every text/vision feature uses. */
+/** The AI SDK model marking-grade features use. */
 export function gatewayModel() {
   return createLovableAiGatewayProvider(aiApiKey())(LOVABLE_MODEL);
+}
+
+/** Low-cost AI SDK model for high-volume helper features. */
+export function fastModel() {
+  return createLovableAiGatewayProvider(aiApiKey())(FAST_MODEL);
 }
 
 /** Reasoning-style provider for the streaming tutor paths. */

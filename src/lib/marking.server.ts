@@ -193,7 +193,7 @@ async function requestMarkingJson({
 }): Promise<string> {
   const image = (url: string) => ({ type: "image_url", image_url: { url } });
   const { response, detail } = await postChatCompletion({
-    max_tokens: 1600,
+    max_completion_tokens: 2000,
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: system },

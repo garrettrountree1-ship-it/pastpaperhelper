@@ -1,7 +1,7 @@
 import { generateText } from "ai";
 import { z } from "zod";
 
-import { gatewayModel } from "./ai-gateway.server";
+import { fastModel } from "./ai-gateway.server";
 
 export type AiDetection = {
   isAi: boolean;
@@ -153,7 +153,7 @@ export async function detectAiAnswer(input: {
   ].join("\n\n");
 
   try {
-    const { text } = await generateText({ model: gatewayModel(), system, prompt });
+    const { text } = await generateText({ model: fastModel(), system, prompt });
     const start = text.indexOf("{");
     const end = text.lastIndexOf("}");
     const parsed = schema.parse(JSON.parse(text.slice(start >= 0 ? start : 0, end + 1)));

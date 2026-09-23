@@ -1,9 +1,30 @@
 import { generateText } from "ai";
 import { z } from "zod";
 
-import { gatewayModel } from "./ai-gateway.server";
+import { fastModel } from "./ai-gateway.server";
 
 export type GlossaryTerm = { term: string; translation: string };
+
+/**
+ * Word glosses are identical for every student reading the same question or the
+ * same tutor sentence, so they are cached in memory and never re-billed while
+ * the server instance is warm.
+ */
+const glossCache = new Map<string, GlossaryTerm[]>();
+const GLOSS_CACHE_MAX = 500;
+
+function cachedGloss(key: string): GlossaryTerm[] | undefined {
+  return glossCache.get(key);
+}
+
+function storeGloss(key: string, terms: GlossaryTerm[]): GlossaryTerm[] {
+  if (glossCache.size >= GLOSS_CACHE_MAX) {
+    const oldest = glossCache.keys().next().value;
+    if (oldest !== undefined) glossCache.delete(oldest);
+  }
+  glossCache.set(key, terms);
+  return terms;
+}
 
 const schema = z.object({
   terms: z
@@ -45,8 +66,11 @@ export async function keywordGlossary(
   subject: string,
   language = "Chinese (Simplified)",
 ): Promise<GlossaryTerm[]> {
+  const cacheKey = `q|${language}|${subject}|${questionText.trim()}`;
+  const cached = cachedGloss(cacheKey);
+  if (cached) return cached;
   const { text } = await generateText({
-    model: gatewayModel(),
+    model: fastModel(),
     system: [
       "You help English-language-learner students read exam questions in English.",
       "Pick only the words or two-word phrases in the question that are likely to block understanding: subject-specific terms and command words (describe, explain, calculate, state, deduce).",
@@ -65,7 +89,7 @@ export async function keywordGlossary(
   const end = source.lastIndexOf("}");
   const json = start >= 0 && end > start ? source.slice(start, end + 1) : source;
   try {
-    return cleanTerms(schema.parse(JSON.parse(json)).terms);
+    return storeGloss(cacheKey, cleanTerms(schema.parse(JSON.parse(json)).terms));
   } catch {
     return [];
   }
@@ -81,8 +105,11 @@ export async function tutorGlossary(
   subject: string,
   language = "Chinese (Simplified)",
 ): Promise<GlossaryTerm[]> {
+  const cacheKey = `t|${language}|${subject}|${tutorText.trim()}`;
+  const cached = cachedGloss(cacheKey);
+  if (cached) return cached;
   const { text } = await generateText({
-    model: gatewayModel(),
+    model: fastModel(),
     system: [
       "You help English-language-learner students read a tutor's feedback written in English.",
       "Pick only single words or two-word phrases from the tutor text that a beginner English learner would not know: subject terms and academic verbs.",
@@ -99,7 +126,7 @@ export async function tutorGlossary(
   const end = source.lastIndexOf("}");
   const json = start >= 0 && end > start ? source.slice(start, end + 1) : source;
   try {
-    return cleanTerms(schema.parse(JSON.parse(json)).terms);
+    return storeGloss(cacheKey, cleanTerms(schema.parse(JSON.parse(json)).terms));
   } catch {
     return [];
   }

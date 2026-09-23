@@ -18,6 +18,7 @@ import { isDemoEmail } from "@/lib/demo";
 import { isIbdp } from "@/lib/curricula";
 import { isHigherLevelTag } from "@/lib/ib-level.functions";
 import { isPhotoMode, resolvePhotoMode } from "@/lib/photo-mode";
+import { activeQuestionsForStudent, activeTotalMarks } from "@/lib/visible-questions";
 import { teachesClass, teachingClassIds } from "@/lib/teach-access";
 import { cropAfter } from "@/lib/next-crop";
 import { pageWithoutCrop } from "@/lib/snip-crop";
@@ -965,11 +966,9 @@ export const updateAssignment = createServerFn({ method: "POST" })
       if (delError) throw new Error(delError.message);
     }
 
-    const totalMarks = data.questions.reduce((sum, q) => sum + q.marks, 0);
-    await supabase
-      .from("submissions")
-      .update({ total_marks: totalMarks })
-      .eq("assignment_id", data.assignmentId);
+    // Recalculate each student's own denominator: exclusions and SL/HL
+    // visibility can make it different from the assignment-wide total.
+    await recalcAssignment(await admin(), data.assignmentId);
 
     return { id: data.assignmentId };
   });
@@ -1066,6 +1065,11 @@ export const getClassOverview = createServerFn({ method: "POST" })
     const studentIds = (members ?? []).map((m) => m.student_id);
     const assignmentIds = (assignments ?? []).map((a) => a.id);
 
+    // Heal totals for existing homework before rendering the gradebook. This
+    // also catches level/exclusion changes made before personalised totals were
+    // introduced.
+    for (const assignmentId of assignmentIds) await recalcAssignment(db, assignmentId);
+
     const { data: profiles } = studentIds.length
       ? await db.from("profiles").select("id, full_name, email").in("id", studentIds)
       : { data: [] };
@@ -1085,7 +1089,7 @@ export const getClassOverview = createServerFn({ method: "POST" })
       ? await db
           .from("submissions")
           .select(
-            "id, assignment_id, student_id, status, awarded_marks, submitted_at, locked_at, ai_flag_count, penalty_percent",
+            "id, assignment_id, student_id, status, awarded_marks, total_marks, submitted_at, locked_at, ai_flag_count, penalty_percent",
           )
           .in("assignment_id", assignmentIds)
       : { data: [] };
@@ -1153,7 +1157,7 @@ export const getClassOverview = createServerFn({ method: "POST" })
           assignmentId: a.id,
           status: sub?.status ?? "not_started",
           awardedMarks: sub ? Number(sub.awarded_marks) : null,
-          totalMarks: a.totalMarks,
+          totalMarks: sub ? Number(sub.total_marks) : a.totalMarks,
           locked: Boolean(sub?.locked_at),
           aiFlagCount: sub?.ai_flag_count ?? 0,
           penaltyPercent: Number(sub?.penalty_percent ?? 0),
@@ -1695,12 +1699,26 @@ export const getStudentClassReport = createServerFn({ method: "POST" })
     const report = await Promise.all(
       (assignments ?? []).map(async (assignment) => {
         const submission = (submissions ?? []).find((s) => s.assignment_id === assignment.id);
-        const assignmentQuestions = (questions ?? []).filter(
-          (q) => q.assignment_id === assignment.id,
+        const activeQuestions = await activeQuestionRowsForStudent(
+          db,
+          assignment.id,
+          data.studentId,
         );
-        const totalMarks =
-          Number(submission?.total_marks ?? 0) ||
-          assignmentQuestions.reduce((sum, q) => sum + q.marks, 0);
+        const activeIds = new Set(activeQuestions.map((question) => question.id));
+        const assignmentQuestions = (questions ?? []).filter(
+          (question) => question.assignment_id === assignment.id && activeIds.has(question.id),
+        );
+        const totalMarks = activeTotalMarks(activeQuestions);
+        const rawAwarded = (answers ?? [])
+          .filter(
+            (answer) =>
+              answer.submission_id === submission?.id && activeIds.has(answer.question_id),
+          )
+          .reduce((sum, answer) => sum + Number(answer.awarded_marks ?? 0), 0);
+        const awardedMarks = submission?.locked_at
+          ? 0
+          : Math.round(rawAwarded * (1 - Number(submission?.penalty_percent ?? 0) / 100) * 100) /
+            100;
 
         const questionRows = await Promise.all(
           assignmentQuestions.map(async (question) => {
@@ -1769,7 +1787,7 @@ export const getStudentClassReport = createServerFn({ method: "POST" })
           assignmentId: assignment.id,
           title: assignment.title,
           status: submission?.status ?? "not_started",
-          awardedMarks: submission ? Number(submission.awarded_marks) : null,
+          awardedMarks: submission ? awardedMarks : null,
           totalMarks,
           locked: Boolean(submission?.locked_at),
           lockedReason: submission?.locked_reason ?? null,
@@ -1832,12 +1850,15 @@ export const listStudentWork = createServerFn({ method: "GET" })
 
     const assignmentIds = (assignments ?? []).map((a) => a.id);
     const { data: questions } = assignmentIds.length
-      ? await db.from("questions").select("assignment_id, marks").in("assignment_id", assignmentIds)
+      ? await db
+          .from("questions")
+          .select("id, assignment_id, marks, tag_label")
+          .in("assignment_id", assignmentIds)
       : { data: [] };
     const { data: submissions } = assignmentIds.length
       ? await db
           .from("submissions")
-          .select("id, assignment_id, status, awarded_marks")
+          .select("id, assignment_id, status, awarded_marks, penalty_percent, locked_at")
           .eq("student_id", userId)
           .in("assignment_id", assignmentIds)
       : { data: [] };
@@ -1852,38 +1873,54 @@ export const listStudentWork = createServerFn({ method: "GET" })
     const { data: answers } = submissionIds.length
       ? await db
           .from("answers")
-          .select("submission_id, answer_text, image_paths")
+          .select("submission_id, question_id, answer_text, image_paths, awarded_marks")
           .in("submission_id", submissionIds)
       : { data: [] as { submission_id: string; answer_text: string; image_paths: string[] }[] };
 
     return {
       classes: classes ?? [],
-      assignments: (assignments ?? []).map((a) => {
-        const sub = (submissions ?? []).find((s) => s.assignment_id === a.id);
-        const override = (overrides ?? []).find((o) => o.assignment_id === a.id);
-        const answeredCount = sub
-          ? (answers ?? []).filter(
-              (an) =>
-                an.submission_id === sub.id &&
-                ((an.answer_text ?? "").trim().length > 0 || (an.image_paths ?? []).length > 0),
-            ).length
-          : 0;
-        return {
-          id: a.id,
-          title: a.title,
-          subject: a.subject,
-          dueAt: (override?.due_at as string | null) ?? a.due_at,
-          classId: a.class_id,
-          className: (classes ?? []).find((c) => c.id === a.class_id)?.name ?? "",
-          questionCount: (questions ?? []).filter((q) => q.assignment_id === a.id).length,
-          totalMarks: (questions ?? [])
-            .filter((q) => q.assignment_id === a.id)
-            .reduce((sum, q) => sum + q.marks, 0),
-          status: sub?.status ?? "not_started",
-          awardedMarks: sub ? Number(sub.awarded_marks) : null,
-          answeredCount,
-        };
-      }),
+      assignments: await Promise.all(
+        (assignments ?? []).map(async (a) => {
+          const sub = (submissions ?? []).find((s) => s.assignment_id === a.id);
+          const activeQuestions = await activeQuestionRowsForStudent(db, a.id, userId);
+          const activeIds = new Set(activeQuestions.map((question) => question.id));
+          const override = (overrides ?? []).find((o) => o.assignment_id === a.id);
+          const answeredCount = sub
+            ? (answers ?? []).filter(
+                (an) =>
+                  an.submission_id === sub.id &&
+                  activeIds.has(an.question_id) &&
+                  ((an.answer_text ?? "").trim().length > 0 || (an.image_paths ?? []).length > 0),
+              ).length
+            : 0;
+          return {
+            id: a.id,
+            title: a.title,
+            subject: a.subject,
+            dueAt: (override?.due_at as string | null) ?? a.due_at,
+            classId: a.class_id,
+            className: (classes ?? []).find((c) => c.id === a.class_id)?.name ?? "",
+            questionCount: activeQuestions.length,
+            totalMarks: activeTotalMarks(activeQuestions),
+            status: sub?.status ?? "not_started",
+            awardedMarks: sub
+              ? sub.locked_at
+                ? 0
+                : Math.round(
+                    (answers ?? [])
+                      .filter(
+                        (answer) =>
+                          answer.submission_id === sub.id && activeIds.has(answer.question_id),
+                      )
+                      .reduce((sum, answer) => sum + Number(answer.awarded_marks ?? 0), 0) *
+                      (1 - Number(sub.penalty_percent ?? 0) / 100) *
+                      100,
+                  ) / 100
+              : null,
+            answeredCount,
+          };
+        }),
+      ),
     };
   });
 
@@ -3145,6 +3182,36 @@ type AnyClient = Awaited<ReturnType<typeof admin>>;
 const SUBMISSION_FIELDS =
   "id, status, awarded_marks, total_marks, submitted_at, ai_flag_count, locked_at, locked_reason, penalty_percent";
 
+async function activeQuestionRowsForStudent(
+  db: AnyClient,
+  assignmentId: string,
+  studentId: string,
+) {
+  const [{ data: assignment }, { data: questions }, { data: exclusions }] = await Promise.all([
+    db.from("assignments").select("class_id").eq("id", assignmentId).maybeSingle(),
+    db.from("questions").select("id, marks, tag_label").eq("assignment_id", assignmentId),
+    db.from("question_exclusions").select("question_id").eq("student_id", studentId),
+  ]);
+  if (!assignment) return [];
+  const [{ data: klass }, { data: level }] = await Promise.all([
+    db.from("classes").select("curriculum").eq("id", assignment.class_id).maybeSingle(),
+    db
+      .from("class_student_settings")
+      .select("ib_level")
+      .eq("class_id", assignment.class_id)
+      .eq("student_id", studentId)
+      .maybeSingle(),
+  ]);
+  return activeQuestionsForStudent(
+    (questions ?? []) as Array<{ id: string; marks: number; tag_label?: string | null }>,
+    new Set((exclusions ?? []).map((row) => row.question_id as string)),
+    {
+      ibdp: isIbdp((klass as { curriculum?: string | null } | null)?.curriculum),
+      level: (level as { ib_level?: string | null } | null)?.ib_level,
+    },
+  );
+}
+
 async function ensureSubmission(db: AnyClient, assignmentId: string, studentId: string) {
   const { data: existing } = await db
     .from("submissions")
@@ -3154,12 +3221,9 @@ async function ensureSubmission(db: AnyClient, assignmentId: string, studentId: 
     .maybeSingle();
   if (existing) return existing;
 
-  const { data: questions } = await db
-    .from("questions")
-    .select("marks")
-    .eq("assignment_id", assignmentId);
-  const totalMarks = (questions ?? []).reduce((sum, q) => sum + q.marks, 0);
-
+  const totalMarks = activeTotalMarks(
+    await activeQuestionRowsForStudent(db, assignmentId, studentId),
+  );
   const { data: created, error } = await db
     .from("submissions")
     .insert({ assignment_id: assignmentId, student_id: studentId, total_marks: totalMarks })
@@ -3180,18 +3244,16 @@ async function recalcSubmission(db: AnyClient, submissionId: string) {
   ]);
   if (!submission) return;
 
-  const [{ data: questions }, { data: exclusions }] = await Promise.all([
-    db.from("questions").select("id, marks").eq("assignment_id", submission.assignment_id),
-    db.from("question_exclusions").select("question_id").eq("student_id", submission.student_id),
-  ]);
-  const excluded = new Set((exclusions ?? []).map((e) => e.question_id));
-  const totalMarks = (questions ?? [])
-    .filter((q) => !excluded.has(q.id))
-    .reduce((sum, q) => sum + q.marks, 0);
-
+  const activeQuestions = await activeQuestionRowsForStudent(
+    db,
+    submission.assignment_id,
+    submission.student_id,
+  );
+  const activeIds = new Set(activeQuestions.map((question) => question.id));
+  const totalMarks = activeTotalMarks(activeQuestions);
   const raw = (answers ?? [])
-    .filter((a) => !excluded.has(a.question_id))
-    .reduce((sum, a) => sum + Number(a.awarded_marks), 0);
+    .filter((answer) => activeIds.has(answer.question_id))
+    .reduce((sum, answer) => sum + Number(answer.awarded_marks), 0);
   const penalty = Number(submission.penalty_percent ?? 0);
   const awarded = submission.locked_at ? 0 : Math.round(raw * (1 - penalty / 100) * 100) / 100;
   await db

@@ -156,7 +156,12 @@ function QuestionPhotoButton({
   const [bottom, setBottom] = useState(1);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => () => sourceUrl && URL.revokeObjectURL(sourceUrl), [sourceUrl]);
+  useEffect(
+    () => () => {
+      if (sourceUrl) URL.revokeObjectURL(sourceUrl);
+    },
+    [sourceUrl],
+  );
 
   const open = async (file: File) => {
     const [ready] = await normalisePhotoFiles([file]);
@@ -1235,7 +1240,8 @@ function ContinuousPaper({
                             return next;
                           });
                           setQuestionPhotoUrls((current) => {
-                            if (current[question.id]) URL.revokeObjectURL(current[question.id]);
+                            const currentUrl = current[question.id];
+                            if (currentUrl) URL.revokeObjectURL(currentUrl);
                             const next = { ...current };
                             delete next[question.id];
                             return next;

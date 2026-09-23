@@ -1,7 +1,7 @@
 import { generateText } from "ai";
 import { z } from "zod";
 
-import { gatewayModel } from "./ai-gateway.server";
+import { fastModel } from "./ai-gateway.server";
 
 export type VocabItem = {
   term: string;
@@ -43,7 +43,7 @@ export async function assignmentVocab(
   language: string,
 ): Promise<VocabItem[]> {
   const { text } = await generateText({
-    model: gatewayModel(),
+    model: fastModel(),
     system: [
       "You build a study vocabulary list for exam homework.",
       "Pick the key subject terms, command words (describe, explain, calculate, deduce) and the big concepts a student must understand to answer these questions.",
@@ -123,7 +123,7 @@ export async function explainVocab(
         : "Use clear exam-level language, under 130 words, with one worked example.";
 
   const { text } = await generateText({
-    model: gatewayModel(),
+    model: fastModel(),
     system: [
       "You explain one science/maths vocabulary word or concept to a student doing homework.",
       levelRule,

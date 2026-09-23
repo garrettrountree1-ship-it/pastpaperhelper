@@ -1,7 +1,7 @@
 import { generateText } from "ai";
 import { z } from "zod";
 
-import { gatewayModel } from "./ai-gateway.server";
+import { fastModel } from "./ai-gateway.server";
 
 export type GlossaryTerm = { term: string; translation: string };
 
@@ -46,7 +46,7 @@ export async function keywordGlossary(
   language = "Chinese (Simplified)",
 ): Promise<GlossaryTerm[]> {
   const { text } = await generateText({
-    model: gatewayModel(),
+    model: fastModel(),
     system: [
       "You help English-language-learner students read exam questions in English.",
       "Pick only the words or two-word phrases in the question that are likely to block understanding: subject-specific terms and command words (describe, explain, calculate, state, deduce).",
@@ -82,7 +82,7 @@ export async function tutorGlossary(
   language = "Chinese (Simplified)",
 ): Promise<GlossaryTerm[]> {
   const { text } = await generateText({
-    model: gatewayModel(),
+    model: fastModel(),
     system: [
       "You help English-language-learner students read a tutor's feedback written in English.",
       "Pick only single words or two-word phrases from the tutor text that a beginner English learner would not know: subject terms and academic verbs.",

@@ -1,7 +1,7 @@
 import { generateText } from "ai";
 
 import { cleanMathText } from "./math-text";
-import { gatewayModel } from "./ai-gateway.server";
+import { fastModel } from "./ai-gateway.server";
 
 /**
  * Builds an AI study summary from everything on the lesson page: the text the
@@ -82,7 +82,7 @@ export async function summariseTeacherNotes(input: {
   ];
 
   const { text } = await generateText({
-    model: gatewayModel(),
+    model: fastModel(),
     system,
     messages: [{ role: "user", content }],
   });
@@ -145,7 +145,7 @@ export async function lessonTutorReply(input: {
   ].filter(Boolean);
 
   const { text } = await generateText({
-    model: gatewayModel(),
+    model: fastModel(),
     system,
     prompt: promptParts.join("\n"),
   });

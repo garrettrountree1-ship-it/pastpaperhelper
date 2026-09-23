@@ -1,7 +1,7 @@
 import { generateText } from "ai";
 import { z } from "zod";
 
-import { gatewayModel } from "./ai-gateway.server";
+import { fastModel } from "./ai-gateway.server";
 
 export type PhotoCheck = { ok: boolean; reason: string; confidence: number };
 
@@ -84,7 +84,7 @@ export async function checkHandDrawnPhotos(imageUrls: string[]): Promise<PhotoCh
 
   try {
     const { text } = await generateText({
-      model: gatewayModel(),
+      model: fastModel(),
       system,
       messages: [
         {

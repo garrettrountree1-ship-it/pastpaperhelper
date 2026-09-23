@@ -1,6 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  Camera,
+  ChevronDown,
+  ChevronUp,
   CheckCircle2,
   CircleDashed,
   Eraser,
@@ -27,6 +30,7 @@ import {
   QuestionHelpButtons,
   TeacherIcon,
 } from "@/components/assignments/QuestionHelpDialog";
+import { CameraCapture } from "@/components/assignments/CameraCapture";
 import { PAD_FILE_NAME } from "@/components/assignments/DrawingPad";
 import { QuestionVocabBox } from "@/components/assignments/QuestionVocabBox";
 import { MessageTeacherDialog } from "@/components/messaging/MessageTeacherDialog";
@@ -37,10 +41,18 @@ import {
 } from "@/components/assignments/QuestionSnip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { gradeAnswer, previewGradeAnswer } from "@/lib/app.functions";
+import { normalisePhotoFiles } from "@/lib/heic";
 import { questionPagesOnly } from "@/lib/answer-key";
 import { NO_PASTE_MESSAGE } from "@/lib/integrity";
 import { COVERED_MARK_SCHEME_PERCENT } from "@/lib/mark-scheme-reveal";
@@ -87,6 +99,203 @@ type PaperResult = {
 };
 
 const COLORS = ["#111827", "#2563eb", "#dc2626", "#16a34a", "#7c3aed", "#ea580c"];
+const PAPER_PHOTO_PREFIX = "paper-question-photo-";
+
+async function cropPaperPhoto(file: File, top: number, bottom: number) {
+  const url = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const value = new Image();
+      value.onload = () => resolve(value);
+      value.onerror = () => reject(new Error("The photo could not be opened."));
+      value.src = url;
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth;
+    canvas.height = Math.max(1, Math.round((bottom - top) * image.naturalHeight));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("The photo could not be cropped.");
+    context.fillStyle = "white";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(
+      image,
+      0,
+      Math.round(top * image.naturalHeight),
+      image.naturalWidth,
+      canvas.height,
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    );
+    const blob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob(
+        (value) => (value ? resolve(value) : reject(new Error("The crop could not be saved."))),
+        "image/jpeg",
+        0.92,
+      ),
+    );
+    return new File([blob], `${PAPER_PHOTO_PREFIX}${Date.now()}.jpg`, { type: "image/jpeg" });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function QuestionPhotoButton({
+  disabled,
+  label,
+  onSave,
+}: {
+  disabled: boolean;
+  label: string;
+  onSave: (file: File) => void;
+}) {
+  const [source, setSource] = useState<File | null>(null);
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [top, setTop] = useState(0);
+  const [bottom, setBottom] = useState(1);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => () => sourceUrl && URL.revokeObjectURL(sourceUrl), [sourceUrl]);
+
+  const open = async (file: File) => {
+    const [ready] = await normalisePhotoFiles([file]);
+    if (!ready) return;
+    if (sourceUrl) URL.revokeObjectURL(sourceUrl);
+    setSource(ready);
+    setSourceUrl(URL.createObjectURL(ready));
+    setTop(0);
+    setBottom(1);
+  };
+  const nudgeTop = (amount: number) =>
+    setTop((value) => Math.max(0, Math.min(bottom - 0.04, value + amount)));
+  const nudgeBottom = (amount: number) =>
+    setBottom((value) => Math.min(1, Math.max(top + 0.04, value + amount)));
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2 border-t bg-white px-4 py-2">
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-xs font-medium shadow-xs hover:bg-muted">
+          <Camera className="size-4" /> Add a photo
+          <Input
+            type="file"
+            accept="image/*,.heic,.heif"
+            className="sr-only"
+            disabled={disabled}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void open(file);
+              event.currentTarget.value = "";
+            }}
+          />
+        </label>
+        <CameraCapture disabled={disabled} onCapture={(file) => void open(file)} />
+        <span className="text-xs text-muted-foreground">Photo for Question {label}</span>
+      </div>
+      <Dialog open={Boolean(source)} onOpenChange={(value) => !value && setSource(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Keep only your answer for Question {label}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Use the small red controls to move the top and bottom cut lines. Everything in the clear
+            middle area will be marked.
+          </p>
+          {sourceUrl ? (
+            <div className="relative mx-auto max-h-[52vh] w-fit overflow-hidden rounded-md border bg-muted">
+              <img
+                src={sourceUrl}
+                alt="Photo ready to crop"
+                className="block max-h-[52vh] max-w-full"
+              />
+              <div
+                className="pointer-events-none absolute inset-x-0 top-0 bg-black/45"
+                style={{ height: `${top * 100}%` }}
+              />
+              <div
+                className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/45"
+                style={{ height: `${(1 - bottom) * 100}%` }}
+              />
+              <div
+                className="pointer-events-none absolute inset-x-0 border-y-2 border-red-600"
+                style={{ top: `${top * 100}%`, height: `${(bottom - top) * 100}%` }}
+              />
+            </div>
+          ) : null}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border p-2 text-center text-xs font-medium">
+              Top cut
+              <div className="mt-1 flex justify-center gap-1">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="destructive"
+                  aria-label="Move top cut up"
+                  onClick={() => nudgeTop(-0.01)}
+                >
+                  <ChevronUp />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="destructive"
+                  aria-label="Move top cut down"
+                  onClick={() => nudgeTop(0.01)}
+                >
+                  <ChevronDown />
+                </Button>
+              </div>
+            </div>
+            <div className="rounded-lg border p-2 text-center text-xs font-medium">
+              Bottom cut
+              <div className="mt-1 flex justify-center gap-1">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="destructive"
+                  aria-label="Move bottom cut up"
+                  onClick={() => nudgeBottom(-0.01)}
+                >
+                  <ChevronUp />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="destructive"
+                  aria-label="Move bottom cut down"
+                  onClick={() => nudgeBottom(0.01)}
+                >
+                  <ChevronDown />
+                </Button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setSource(null)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={!source || saving}
+              onClick={async () => {
+                if (!source) return;
+                setSaving(true);
+                try {
+                  onSave(await cropPaperPhoto(source, top, bottom));
+                  setSource(null);
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              {saving ? "Preparing…" : "Use this photo"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
 
 function PaperQuestionVocabulary({
   questionId,
@@ -743,7 +952,12 @@ function ContinuousPaper({
   revealOnFullMarks: boolean;
   markSchemeRevealed: boolean;
   teacherMessage?: { classId: string; className: string; assignmentTitle: string };
-  onMark: (question: PaperQuestion, text: string, file?: File) => Promise<PaperResult>;
+  onMark: (
+    question: PaperQuestion,
+    text: string,
+    file?: File,
+    photo?: File,
+  ) => Promise<PaperResult>;
 }) {
   const [selected, setSelected] = useState(questions[0]?.id ?? "");
   const [drafts, setDrafts] = useState<Record<string, string>>(() =>
@@ -783,6 +997,10 @@ function ContinuousPaper({
   const undoers = useRef<Record<string, () => void>>({});
   const clearers = useRef<Record<string, () => void>>({});
   const [marking, setMarking] = useState<string | null>(null);
+  const [questionPhotos, setQuestionPhotos] = useState<Record<string, File>>({});
+  const [questionPhotoUrls, setQuestionPhotoUrls] = useState<Record<string, string>>({});
+  const questionPhotoUrlsRef = useRef(questionPhotoUrls);
+  questionPhotoUrlsRef.current = questionPhotoUrls;
   const [tool, setTool] = useState<PaperTool>("pen");
   const [color, setColor] = useState(COLORS[0]!);
   const [zoom, setZoom] = useState(1);
@@ -814,6 +1032,19 @@ function ContinuousPaper({
     : undefined;
 
   const questionRefs = useRef<Record<string, HTMLElement | null>>({});
+  useEffect(
+    () => () =>
+      Object.values(questionPhotoUrlsRef.current).forEach((url) => URL.revokeObjectURL(url)),
+    [],
+  );
+
+  const setQuestionPhoto = (questionId: string, file: File) => {
+    setQuestionPhotos((current) => ({ ...current, [questionId]: file }));
+    setQuestionPhotoUrls((current) => {
+      if (current[questionId]) URL.revokeObjectURL(current[questionId]);
+      return { ...current, [questionId]: URL.createObjectURL(file) };
+    });
+  };
   return (
     <div
       className={`relative grid items-start gap-4 pl-14 transition-[filter] lg:grid-cols-[minmax(0,1fr)_19rem] ${
@@ -907,6 +1138,9 @@ function ContinuousPaper({
                   answers.find((answer) => answer.question_id === question.id)?.imageUrls ?? []
                 ).filter((url) => url.includes(PAD_FILE_NAME))
               : [];
+            const savedPhotoUrls = (
+              answers.find((answer) => answer.question_id === question.id)?.imageUrls ?? []
+            ).filter((url) => url.includes(PAPER_PHOTO_PREFIX));
             const multipleChoice = Boolean(question.multipleChoice);
             const needsBlank = /draw|diagram|graph|plot|sketch|calculate/i.test(
               question.question_text,
@@ -974,6 +1208,59 @@ function ContinuousPaper({
                   }}
                 />
                 <PaperQuestionVocabulary questionId={question.id} enabled={keywordTranslation} />
+                {!locked ? (
+                  <QuestionPhotoButton
+                    disabled={locked || result?.verdict === "correct"}
+                    label={label}
+                    onSave={(file) => setQuestionPhoto(question.id, file)}
+                  />
+                ) : null}
+                {questionPhotoUrls[question.id] ? (
+                  <div className="border-t bg-white px-4 py-3">
+                    <div className="flex items-start gap-3 rounded-lg border border-dashed p-2">
+                      <img
+                        src={questionPhotoUrls[question.id]}
+                        alt={`Photographed work for Question ${label}`}
+                        className="max-h-48 min-w-0 flex-1 rounded bg-white object-contain"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={locked || result?.verdict === "correct"}
+                        onClick={() => {
+                          setQuestionPhotos((current) => {
+                            const next = { ...current };
+                            delete next[question.id];
+                            return next;
+                          });
+                          setQuestionPhotoUrls((current) => {
+                            if (current[question.id]) URL.revokeObjectURL(current[question.id]);
+                            const next = { ...current };
+                            delete next[question.id];
+                            return next;
+                          });
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      This photo will be saved and marked with Question {label}.
+                    </p>
+                  </div>
+                ) : null}
+                {!questionPhotoUrls[question.id] && savedPhotoUrls.length > 0 ? (
+                  <div className="border-t bg-white px-4 py-3">
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">
+                      Your photographed work
+                    </p>
+                    <QuestionSnipStack
+                      urls={savedPhotoUrls}
+                      alt={`Photographed work for Question ${label}`}
+                    />
+                  </div>
+                ) : null}
                 {showAnswerHere ? (
                   <div className="border-t bg-primary/5 p-4">
                     <PaperMarkScheme urls={question.answerImageUrls ?? []} />
@@ -1105,6 +1392,7 @@ function ContinuousPaper({
                     // Always include the rendered paper. A student may draw on a
                     // fast-mark question instead of (or as well as) typing.
                     await exporter(),
+                    questionPhotos[selectedQuestion.id],
                   );
                   setResults((current) => ({ ...current, [selectedQuestion.id]: result }));
                   // A correct fast answer settles the question, so the rough
@@ -1223,17 +1511,27 @@ export function StudentPaperMode({
       revealOnFullMarks={revealOnFullMarks}
       markSchemeRevealed={markSchemeRevealed}
       teacherMessage={{ classId, className, assignmentTitle }}
-      onMark={async (question, text, file) => {
+      onMark={async (question, text, file, photo) => {
         const { data } = await supabase.auth.getUser();
         if (!data.user) throw new Error("Please sign in again.");
         const path = `${data.user.id}/${assignmentId}/${question.id}/${PAD_FILE_NAME}`;
+        const photoPath = photo
+          ? `${data.user.id}/${assignmentId}/${question.id}/${photo.name}`
+          : null;
         const useFastAnswer =
+          !photo &&
           Boolean(text.trim()) &&
           (Boolean(question.multipleChoice) || question.answerCheckMode === "final-number");
         if (file && !useFastAnswer) {
           const { error } = await supabase.storage
             .from("student-work")
             .upload(path, file, { contentType: "image/png", upsert: true });
+          if (error) throw new Error(error.message);
+        }
+        if (photo && photoPath) {
+          const { error } = await supabase.storage
+            .from("student-work")
+            .upload(photoPath, photo, { contentType: "image/jpeg", upsert: true });
           if (error) throw new Error(error.message);
         }
         const existingPaths =
@@ -1247,7 +1545,13 @@ export function StudentPaperMode({
             answerText: text,
             // A completed fast-answer field is authoritative. Only use the
             // rendered sketch when that field is empty.
-            imagePaths: file && !useFastAnswer ? [...existingPaths, path].slice(-6) : [],
+            imagePaths: useFastAnswer
+              ? []
+              : [
+                  ...existingPaths,
+                  ...(file ? [path] : []),
+                  ...(photoPath ? [photoPath] : []),
+                ].slice(-6),
           },
         });
         await queryClient.refetchQueries({ queryKey, type: "active" });
@@ -1317,24 +1621,26 @@ export function PreviewPaperMode({
       keywordTranslation={Boolean(settings?.keywordTranslation)}
       revealOnFullMarks={revealOnFullMarks}
       markSchemeRevealed={markSchemeRevealed}
-      onMark={async (question, text, file) => {
+      onMark={async (question, text, file, photo) => {
         const useFastAnswer =
+          !photo &&
           Boolean(text.trim()) &&
           (Boolean(question.multipleChoice) || question.answerCheckMode === "final-number");
-        const dataUrl = file
-          ? await new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(String(reader.result));
-              reader.onerror = () => reject(new Error("Could not read the paper."));
-              reader.readAsDataURL(file);
-            })
-          : null;
+        const fileToDataUrl = (value: File) =>
+          new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.onerror = () => reject(new Error("Could not read the paper."));
+            reader.readAsDataURL(value);
+          });
+        const dataUrl = file ? await fileToDataUrl(file) : null;
+        const photoDataUrl = photo ? await fileToDataUrl(photo) : null;
         const result = await previewGradeAnswer({
           data: {
             assignmentId,
             questionId: question.id,
             answerText: text,
-            imageDataUrls: [],
+            imageDataUrls: photoDataUrl && !useFastAnswer ? [photoDataUrl] : [],
             padDataUrls: dataUrl && !useFastAnswer ? [dataUrl] : [],
             priorFlags: 0,
           },

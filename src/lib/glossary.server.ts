@@ -66,6 +66,9 @@ export async function keywordGlossary(
   subject: string,
   language = "Chinese (Simplified)",
 ): Promise<GlossaryTerm[]> {
+  const cacheKey = `q|${language}|${subject}|${questionText.trim()}`;
+  const cached = cachedGloss(cacheKey);
+  if (cached) return cached;
   const { text } = await generateText({
     model: fastModel(),
     system: [
@@ -86,7 +89,7 @@ export async function keywordGlossary(
   const end = source.lastIndexOf("}");
   const json = start >= 0 && end > start ? source.slice(start, end + 1) : source;
   try {
-    return cleanTerms(schema.parse(JSON.parse(json)).terms);
+    return storeGloss(cacheKey, cleanTerms(schema.parse(JSON.parse(json)).terms));
   } catch {
     return [];
   }
@@ -102,6 +105,9 @@ export async function tutorGlossary(
   subject: string,
   language = "Chinese (Simplified)",
 ): Promise<GlossaryTerm[]> {
+  const cacheKey = `t|${language}|${subject}|${tutorText.trim()}`;
+  const cached = cachedGloss(cacheKey);
+  if (cached) return cached;
   const { text } = await generateText({
     model: fastModel(),
     system: [

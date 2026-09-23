@@ -126,7 +126,7 @@ export async function tutorGlossary(
   const end = source.lastIndexOf("}");
   const json = start >= 0 && end > start ? source.slice(start, end + 1) : source;
   try {
-    return cleanTerms(schema.parse(JSON.parse(json)).terms);
+    return storeGloss(cacheKey, cleanTerms(schema.parse(JSON.parse(json)).terms));
   } catch {
     return [];
   }

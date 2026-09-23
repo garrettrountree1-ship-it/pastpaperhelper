@@ -1883,7 +1883,15 @@ export const listStudentWork = createServerFn({ method: "GET" })
           .from("answers")
           .select("submission_id, question_id, answer_text, image_paths, awarded_marks")
           .in("submission_id", submissionIds)
-      : { data: [] as { submission_id: string; answer_text: string; image_paths: string[] }[] };
+      : {
+          data: [] as {
+            submission_id: string;
+            question_id: string;
+            answer_text: string;
+            image_paths: string[];
+            awarded_marks: number | null;
+          }[],
+        };
 
     return {
       classes: classes ?? [],

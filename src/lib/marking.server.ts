@@ -1,7 +1,7 @@
 import { generateText } from "ai";
 import { z } from "zod";
 
-import { gatewayModel, postChatCompletion } from "./ai-gateway.server";
+import { fastModel, postChatCompletion } from "./ai-gateway.server";
 
 export type MarkPoint = { point: string; marks: number; awarded: boolean };
 
@@ -214,7 +214,7 @@ async function requestMarkingJson({
         ],
       },
     ],
-  });
+  }, { fast: true });
   if (!response.ok) {
     throw new Error(`gateway ${response.status}: ${detail.slice(0, 240)}`);
   }
@@ -355,6 +355,6 @@ export async function tutorStep(input: TutorInput): Promise<string> {
     `Student's latest message:\n${input.latestMessage}`,
   ].join("\n\n");
 
-  const { text } = await generateText({ model: gatewayModel(), system, prompt });
+  const { text } = await generateText({ model: fastModel(), system, prompt });
   return text.trim();
 }

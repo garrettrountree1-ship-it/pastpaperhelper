@@ -45,14 +45,15 @@ export function chatRequest() {
 /** POST a chat-completions body (without `model`) to the Lovable AI Gateway. */
 export async function postChatCompletion(
   body: Record<string, unknown>,
+  options: { fast?: boolean } = {},
 ): Promise<{ response: Response; detail: string }> {
   const primary = chatRequest();
+  const model = options.fast ? FAST_MODEL : primary.model;
   const response = await fetch(primary.url, {
     method: "POST",
     headers: primary.headers,
-    // The flagship model always reasons; "low" keeps examiner accuracy while
-    // cutting the billed thinking tokens roughly in half.
-    body: JSON.stringify({ reasoning_effort: "low", ...body, model: primary.model }),
+    // "low" reasoning keeps examiner accuracy while cutting billed thinking tokens.
+    body: JSON.stringify({ reasoning_effort: "low", ...body, model }),
   });
   if (response.ok) return { response, detail: "" };
   return { response, detail: await response.text() };

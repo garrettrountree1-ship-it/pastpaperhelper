@@ -191,7 +191,14 @@ async function requestMarkingJson({
   schemeImages: string[];
   answerImages: string[];
 }): Promise<string> {
-  const image = (url: string) => ({ type: "image_url", image_url: { url } });
+  // Cost control: the question-page picture is only context (the question text
+  // is already in the prompt), so it is sent at low detail, which bills a small
+  // fixed amount instead of thousands of tokens. The answer key and the
+  // student's work stay at full detail so marking accuracy is unchanged.
+  const image = (url: string, detail?: "low") => ({
+    type: "image_url",
+    image_url: detail ? { url, detail } : { url },
+  });
   const { response, detail } = await postChatCompletion({
     max_completion_tokens: 2000,
     response_format: { type: "json_object" },
@@ -201,9 +208,9 @@ async function requestMarkingJson({
         role: "user",
         content: [
           { type: "text", text: prompt },
-          ...questionImages.map(image),
-          ...schemeImages.map(image),
-          ...answerImages.map(image),
+          ...questionImages.map((url) => image(url, "low")),
+          ...schemeImages.map((url) => image(url)),
+          ...answerImages.map((url) => image(url)),
         ],
       },
     ],

@@ -1,5 +1,4 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { createOpenAI } from "@ai-sdk/openai";
 
 /**
  * AI provider plumbing. Server-only.
@@ -7,7 +6,7 @@ import { createOpenAI } from "@ai-sdk/openai";
  * Every AI feature in the app runs on the Lovable AI Gateway.
  */
 
-const LOVABLE_MODEL = "openai/gpt-6-astra";
+const LOVABLE_MODEL = "google/gemini-3.8-flash";
 
 /**
  * Cheap, fast model for the many small helper jobs (word glossaries, vocabulary
@@ -84,14 +83,4 @@ export function gatewayModel() {
 /** Low-cost AI SDK model for high-volume helper features. */
 export function fastModel() {
   return createLovableAiGatewayProvider(aiApiKey())(FAST_MODEL);
-}
-
-/** Reasoning-style provider for the streaming tutor paths. */
-export function gatewayResponsesModel() {
-  const key = aiApiKey();
-  return createOpenAI({
-    baseURL: "https://ai.gateway.lovable.dev/v1",
-    apiKey: key,
-    headers: { "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
-  }).responses(LOVABLE_MODEL);
 }
